@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import type { FinancialStatementResponse } from '#shared/types/financial-statement'
-import type { StatementRow } from '~/utils/financial-statement-rows'
+import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 // One server-rendered statement（資產負債表／損益表／現金流量表）as a plain table: 科目 ｜ 當期 ｜
 // 去年同期 ｜ 增減% (2026-09-19, the SEO build). The interactive period-picker card
 // (StockFinancialStatementsCard.vue) stays for browsing other quarters; this is the page's own
-// readable, crawlable copy of the latest filing. Section-header rows（no `key`）render blank
-// value cells, exactly as on the card; amounts are 業務中台's bigint-precise strings with thousands
-// separators added deterministically（no toLocaleString）.
+// readable, crawlable copy of the latest filing. Amounts are 業務中台's bigint-precise strings with
+// thousands separators added deterministically（no toLocaleString）.
+// 2026-10-19 起列由 buildStatementLines 依 mops 的欄位中繼資料組（預設精簡、各段加「其他」、可展開全部科目，規則寫在那支的註解）
 const props = withDefaults(
   defineProps<{
     title: string
-    rows: StatementRow[]
+    statementType: StatementType
     current: FinancialStatementResponse | null
     prior: FinancialStatementResponse | null
     currentLabel: string
@@ -24,28 +23,17 @@ const props = withDefaults(
 const currentStatement = computed(() => (props.current?.found ? props.current.statement : null))
 const priorStatement = computed(() => (props.prior?.found ? props.prior.statement : null))
 
-function amount(row: StatementRow, statement: Record<string, string | null> | null): string {
-  if (!row.key) return ''
-  if (!statement) return '－'
-  return formatStatementAmount(statement[row.key])
-}
-
-function change(row: StatementRow): string {
-  if (!row.key || !currentStatement.value || !priorStatement.value) return row.key ? '－' : ''
-  return statementChangePercent(currentStatement.value[row.key], priorStatement.value[row.key])
-}
-
-function unitOf(row: StatementRow): string {
-  return row.key && PER_SHARE_KEYS.has(row.key) ? '元' : '千元'
-}
+const showAll = ref(false)
+const built = computed(() => buildStatementLines(STATEMENT_COLUMNS, props.statementType, currentStatement.value, priorStatement.value, showAll.value))
+const tableId = useId()
 </script>
 
 <template>
   <div class="statement-table">
     <h3 v-if="showTitle" class="statement-table__title">{{ title }}</h3>
     <SharedTableScroll v-if="currentStatement" :label="title">
-      <table class="seo-table" data-ssr-table>
-        <!-- 單位原本寫在看得見的 caption（2026-10-13 caption 一律藏起來），改寫進欄位標題與每股列的列名 -->
+      <table :id="tableId" class="seo-table" data-ssr-table>
+        <!-- 單位原本寫在看得見的 caption（2026-10-13 caption 一律藏起來），改寫進欄位標題與不是千元那幾列的列名 -->
         <caption class="visually-hidden">{{ title }}</caption>
         <thead>
           <tr>
@@ -56,16 +44,30 @@ function unitOf(row: StatementRow): string {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, index) in rows" :key="`${row.label}-${index}`" :class="{ 'is-latest': row.emphasis }">
-            <th scope="row" :class="{ 'statement-table__indent': row.indent }">{{ row.label }}<template v-if="row.key && unitOf(row) === '元'">（元）</template></th>
-            <td class="seo-table__num">{{ amount(row, currentStatement) }}</td>
-            <td class="seo-table__num">{{ amount(row, priorStatement) }}</td>
-            <td class="seo-table__num">{{ change(row) }}</td>
+          <tr v-for="line in built.lines" :key="line.key" :class="{ 'is-latest': line.total }">
+            <th scope="row" :class="{ 'statement-table__indent': !line.total, 'statement-table__other': line.other }">
+              {{ line.label }}<template v-if="line.unit !== '千元'">（{{ line.unit }}）</template>
+            </th>
+            <td class="seo-table__num">{{ formatStatementAmount(line.current) }}</td>
+            <td class="seo-table__num">{{ formatStatementAmount(line.prior) }}</td>
+            <td class="seo-table__num">{{ statementChangePercent(line.current, line.prior) }}</td>
           </tr>
         </tbody>
       </table>
     </SharedTableScroll>
     <p v-else class="stock-answer">{{ title }}：{{ currentLabel }}查無申報資料。</p>
+    <!-- 預設只列主要科目（金額門檻），其餘併進各段的「其他」；這顆展開這家公司每一個有數字的科目 -->
+    <el-button
+      v-if="currentStatement && (built.hidden || showAll)"
+      link
+      type="primary"
+      class="statement-table__toggle"
+      :aria-expanded="showAll"
+      :aria-controls="tableId"
+      @click="showAll = !showAll"
+    >
+      {{ showAll ? '只看主要科目' : `顯示全部科目（另有 ${built.hidden} 項）` }}
+    </el-button>
   </div>
 </template>
 
@@ -86,5 +88,16 @@ function unitOf(row: StatementRow): string {
   padding-left: 28px;
   font-weight: 400;
   color: var(--el-text-color-secondary);
+}
+
+/* 「其他」是算出來的（合計 − 已列的科目），用斜體跟申報的科目分開，不只靠顏色 */
+.statement-table__other {
+  font-style: italic;
+}
+
+.statement-table__toggle {
+  align-self: flex-start;
+  min-height: 44px;
+  margin: 0;
 }
 </style>

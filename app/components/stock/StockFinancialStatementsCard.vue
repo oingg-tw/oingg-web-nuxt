@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StatementType } from '#shared/types/financial-statement'
-import type { StatementRow } from '~/utils/financial-statement-rows'
+import type { StatementLine } from '~/utils/financial-statement-rows'
 // 會計模式's three-statement tables. Line-item labels/structure match how TWSE-listed
 // companies' 資產負債表/損益表/現金流量表 actually lay out on MOPS; each row's `key` is the
 // real 業務中台 field name (GET /stocks/:symbol/financial-statement). A row with no `key` is a
@@ -30,7 +30,6 @@ const props = defineProps<{
 const TABS = STATEMENT_DEFINITIONS
 
 const activeTabKey = ref<StatementType>(TABS[0]!.key)
-const activeTab = computed(() => TABS.find(tab => tab.key === activeTabKey.value)!)
 
 const { year, quarter } = useStockPeriodSelection()
 const priorYear = computed(() => year.value - 1)
@@ -38,6 +37,14 @@ const symbolRef = computed(() => props.symbol)
 
 const { data: current, pending: currentPending } = useFinancialStatement(symbolRef, activeTabKey, year, quarter)
 const { data: prior, pending: priorPending } = useFinancialStatement(symbolRef, activeTabKey, priorYear, quarter)
+
+// 2026-10-19 起列由 buildStatementLines 依 mops 的欄位中繼資料組（預設精簡、各段加「其他」、可展開全部科目，規則寫在那支的註解；
+// 三張報表頁的 StockFinancialStatementTable 用同一支）。預設那一期在伺服器端就從快取讀到了（useStockStatements 預先寫入），
+// 所以列數兩邊一致，下面用列數算的最小高度不會跳
+const showAll = ref(false)
+const built = computed(() => buildStatementLines(STATEMENT_COLUMNS, activeTabKey.value, current.value?.found ? current.value.statement : null, prior.value?.found ? prior.value.statement : null, showAll.value))
+const lines = computed(() => built.value.lines)
+const tableId = useId()
 
 function pad(value: number): string {
   return String(value).padStart(2, '0')
@@ -65,17 +72,8 @@ function periodLabel(targetYear: number, targetQuarter: number, statementType: S
 const currentPeriodLabel = computed(() => periodLabel(year.value, quarter.value, activeTabKey.value))
 const priorPeriodLabel = computed(() => periodLabel(priorYear.value, quarter.value, activeTabKey.value))
 
-function cellValue(row: StatementRow, statement: Record<string, string | null> | null | undefined): string {
-  if (!row.key) return ''
-  if (!statement) return '－'
-  // 2026-10-02：原本這裡有自己的 formatAmount，做 `Number(raw).toLocaleString('zh-TW')`，
-  // 而共用的 formatStatementAmount 開頭就寫明「no toLocaleString」。
-  // 真正的理由不是精度（報表值以千元計，台股量級離 MAX_SAFE_INTEGER 還很遠），是
-  // **toLocaleString 的輸出取決於執行環境的 ICU**——SSR 在 Node、hydration 在瀏覽器，
-  // 同一個數字可能印出不同的分隔，而這張表是 SSR 內容。同一件事有兩個格式化器本身也是風險。
-  // StockFinancialStatementTable.vue 的 amount() 一直走共用那支，這裡是漏掉的那一處。
-  return formatStatementAmount(statement[row.key])
-}
+// 數字一律走共用的 formatStatementAmount，不用 toLocaleString（2026-10-02）：toLocaleString 的輸出取決於執行環境的 ICU，SSR 在 Node、
+// hydration 在瀏覽器，同一個數字可能印出不同的分隔，而這張表是 SSR 內容
 
 // Receiving end of useStatementRowFocus.ts's jumpToStatementRow() — frontend groundwork for the
 // "trace a badge's number back to the original filing" feature (2026-09-10 plan), built ahead
@@ -88,7 +86,7 @@ const laidOut = ref(false)
 onMounted(() => nextTick(() => { laidOut.value = true }))
 // Keyboard-reachable horizontal scroll for the wide statement table on phones — see the
 // composable's own comment (axe scrollable-region-focusable, 2026-09-19).
-useFocusableTableScroll(tableRef, '財務報表表格，可左右捲動', () => activeTab.value.rows)
+useFocusableTableScroll(tableRef, '財務報表表格，可左右捲動', () => lines.value)
 const highlightedRowKey = ref<string | null>(null)
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -104,7 +102,12 @@ watch(focusRequest, async request => {
   if (!request) return
   activeTabKey.value = request.statementType
   await nextTick()
-  const rowIndex = activeTab.value.rows.findIndex(row => row.key === request.rowKey)
+  // 要找的那一列在精簡模式下可能被併進「其他」：先展開全部科目再找
+  if (!showAll.value && !lines.value.some(line => line.key === request.rowKey)) {
+    showAll.value = true
+    await nextTick()
+  }
+  const rowIndex = lines.value.findIndex(line => line.key === request.rowKey)
   if (rowIndex === -1) {
     // Fallback for a fieldKey with no matching row in this statement's own list (shouldn't
     // happen for the current pilot metricCodes, but provenance data is backend-owned and could
@@ -146,10 +149,10 @@ onBeforeUnmount(() => {
   if (highlightTimeout) clearTimeout(highlightTimeout)
 })
 
-function rowClassName({ row }: { row: StatementRow }) {
+function rowClassName({ row }: { row: StatementLine }) {
   const classes: string[] = []
-  if (row.emphasis) classes.push('statement-row--emphasis')
-  if (row.key && row.key === highlightedRowKey.value) classes.push('statement-row--highlighted')
+  if (row.total) classes.push('statement-row--emphasis')
+  if (row.key === highlightedRowKey.value) classes.push('statement-row--highlighted')
   return classes.join(' ')
 }
 </script>
@@ -169,19 +172,31 @@ function rowClassName({ row }: { row: StatementRow }) {
          兩件事一起做：最小高度＝（科目列數＋表頭）× 2rem（size="small" 一列 32px，科目清單是固定的），下面的段落不被推；掛載完成前
          visibility: hidden，表格自己在裡面長出表頭、表身往下移的那一段看不見，就不算位移。
          不用 <ClientOnly>：拿掉伺服器輸出的表格會讓後面幾個 teleport 出去的下拉（期別、報表種類）跟頁首選單的順序對不上，hydration 不一致 -->
-    <el-table ref="tableRef" v-loading="currentPending || priorPending" :data="activeTab.rows" size="small" :row-class-name="rowClassName" :class="{ 'financial-statements-card__table--pending': !laidOut }" :style="{ minHeight: `${(activeTab.rows.length + 1) * 2}rem` }">
+    <el-table ref="tableRef" v-loading="currentPending || priorPending" :id="tableId" :data="lines" size="small" :row-class-name="rowClassName" :class="{ 'financial-statements-card__table--pending': !laidOut }" :style="{ minHeight: `${(lines.length + 1) * 2}rem` }">
       <el-table-column label="科目" min-width="150">
         <template #default="{ row }">
-          <span :class="{ 'financial-statements-card__indent': row.indent }">{{ row.label }}</span>
+          <span :class="{ 'financial-statements-card__indent': !row.total, 'financial-statements-card__other': row.other }">{{ row.label }}<template v-if="row.unit !== '千元'">（{{ row.unit }}）</template></span>
         </template>
       </el-table-column>
       <el-table-column :label="currentPeriodLabel" align="right" min-width="96">
-        <template #default="{ row }">{{ cellValue(tableRow(row), current?.statement) }}</template>
+        <template #default="{ row }">{{ formatStatementAmount(tableRow<StatementLine>(row).current) }}</template>
       </el-table-column>
       <el-table-column :label="priorPeriodLabel" align="right" min-width="96">
-        <template #default="{ row }">{{ cellValue(tableRow(row), prior?.statement) }}</template>
+        <template #default="{ row }">{{ formatStatementAmount(tableRow<StatementLine>(row).prior) }}</template>
       </el-table-column>
     </el-table>
+    <!-- 預設只列主要科目（金額門檻），其餘併進各段的「其他」；這顆展開這家公司這一期每一個有數字的科目 -->
+    <el-button
+      v-if="built.hidden || showAll"
+      link
+      type="primary"
+      class="financial-statements-card__toggle"
+      :aria-expanded="showAll"
+      :aria-controls="tableId"
+      @click="showAll = !showAll"
+    >
+      {{ showAll ? '只看主要科目' : `顯示全部科目（另有 ${built.hidden} 項）` }}
+    </el-button>
 
     <p v-if="current && !current.found" class="financial-statements-card__note">
       {{ year }}年第{{ quarter }}季查無此標的申報資料
@@ -228,6 +243,16 @@ function rowClassName({ row }: { row: StatementRow }) {
 .financial-statements-card__indent {
   padding-left: 16px;
   color: var(--el-text-color-secondary);
+}
+
+/* 「其他」是算出來的（合計 − 已列的科目），用斜體跟申報的科目分開，不只靠顏色 */
+.financial-statements-card__other {
+  font-style: italic;
+}
+
+.financial-statements-card__toggle {
+  min-height: 44px;
+  margin: 8px 0 0;
 }
 
 .financial-statements-card :deep(.statement-row--emphasis td) {

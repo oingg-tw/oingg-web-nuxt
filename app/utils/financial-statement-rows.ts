@@ -1,122 +1,175 @@
 import type { StatementType } from '#shared/types/financial-statement'
+// 三大財報的列（資產負債表／損益表／現金流量表），伺服器輸出的三張報表頁（StockFinancialStatementTable）與會計模式的期別卡片
+//（StockFinancialStatementsCard）共用，兩邊不會各走各的。
+//
+// 2026-10-19 改成依 mops-ts 從 taxonomy 推導的欄位中繼資料組表（financial-statement-columns.ts，scripts/gen-statement-columns.mjs 產生）。
+// 原本是手挑的固定 69 列：各段明細加起來不等於合計、讀者看不出差額在哪，而沒挑到的科目永遠看不到。使用者兩個擔心——「用戶看不懂」
+// 與「少收科目會嚴重影響判讀」——用同一套規則一起處理（mops 逐家核對過：前端用到的欄位沒有一家因為換一種標籤申報而空白）：
+//   - 排法照 MOPS 報表：同一個合計底下的科目依 GL 代碼排，明細在前、合計在後
+//   - 這家公司兩期都沒有數字（null 或 0）的科目不列
+//   - 預設精簡（使用者選的門檻）：資產負債表佔總資產、損益表佔營收 ≥2%，現金流量表佔營業／投資／籌資淨流量最大者 ≥5%。
+//     最上層的合計（資產總計、本期淨利、每股盈餘…）與各段合計（流動資產合計、營業活動之淨現金流入…）一律列；門檻依這家公司的
+//     金額算，所以大的科目不會被漏掉
+//   - 一個合計底下沒列出來的，併成一行「其他」＝合計 − Σ(加減方向 × 已列的子科目)，每一段都加得起來。展開全部科目時，
+//     「其他」只剩沒收錄的子科目（mops 的合計直接取自申報，不是加總）
+// 一個科目的子科目有列出來，它自己一定列（不然那幾行會掛在別人底下）。合計底下只有一個子科目、兩期金額都一樣時，那個子科目不重複列。
 
-// Line-item definitions of the three statements — extracted from StockFinancialStatementsCard.vue
-// on 2026-09-19 (the SEO build) so the server-rendered 當期／去年同期 tables on the 財務報表 page and
-// the card's own period-picker view share one row list. Labels/structure match how TWSE-listed
-// companies' 資產負債表/損益表/現金流量表 lay out on MOPS; each `key` is the real 業務中台 field name
-// (GET /stocks/:symbol/financial-statement — the raw XBRL/MOPS snake_case names, re-derived off a
-// real response on 2026-09-10 after a whole day of guessed camelCase keys matched nothing). A row
-// with no `key` is a pure section header（流動資產／流動負債…）or a subtotal the payload has no
-// single field for（特別股負債, the OCI lines, the cash-flow 稅前淨利／其他調整項目合計）— those
-// render blank rather than a hand-summed number 業務中台 never vouched for.
-export interface StatementRow {
+export interface StatementColumn {
+  key: string
+  statement: StatementType
   label: string
-  key?: string
-  indent?: boolean
-  emphasis?: boolean
+  // 照 MOPS 報表順序排（ci 優先；各產業別各自一套，只在同一個父欄位底下比）
+  gl: string
+  // 最近一個也有收的加總父欄位；最上層是 null
+  parent: string | null
+  // 在父欄位底下是加（1）還是減（-1），例如營業成本在營業毛利底下是 -1
+  weight: number
+  total: boolean
+  unit: '千元' | '元' | '%' | '股'
 }
 
-export const BALANCE_SHEET_ROWS: StatementRow[] = [
-  { label: '流動資產', emphasis: true },
-  { label: '現金及約當現金', key: 'cash_and_cash_equivalents', indent: true },
-  { label: '應收帳款', key: 'accounts_receivable_net', indent: true },
-  { label: '存貨', key: 'inventories', indent: true },
-  { label: '流動資產合計', key: 'current_assets', emphasis: true },
-  { label: '非流動資產', emphasis: true },
-  { label: '不動產、廠房及設備', key: 'property_plant_and_equipment', indent: true },
-  { label: '採用權益法之投資', key: 'investment_accounted_for_using_equity_method', indent: true },
-  { label: '無形資產', key: 'intangible_assets_and_goodwill', indent: true },
-  { label: '非流動資產合計', key: 'noncurrent_assets', emphasis: true },
-  { label: '資產總計', key: 'assets', emphasis: true },
-  { label: '流動負債', emphasis: true },
-  { label: '短期借款', key: 'shortterm_borrowings', indent: true },
-  // No combined "accounts_payable" field in the real payload — only split by counterparty
-  // (trade_and_other_current_payables_to_trade_suppliers / _to_related_parties). Suppliers is the dominant figure.
-  { label: '應付帳款', key: 'trade_and_other_current_payables_to_trade_suppliers', indent: true },
-  { label: '流動負債合計', key: 'current_liabilities', emphasis: true },
-  { label: '非流動負債', emphasis: true },
-  { label: '應付公司債', key: 'noncurrent_portion_of_noncurrent_bonds_issued', indent: true },
-  { label: '長期借款', key: 'longterm_borrowings', indent: true },
-  { label: '非流動負債合計', key: 'noncurrent_liabilities', emphasis: true },
-  { label: '負債總計', key: 'liabilities', emphasis: true },
-  { label: '股本', key: 'ordinary_share', indent: true },
-  { label: '特別股股本', key: 'preference_share', indent: true },
-  { label: '資本公積', key: 'capital_reserve', indent: true },
-  { label: '保留盈餘', key: 'retained_earnings', indent: true },
-  { label: '其他權益', key: 'other_equity_interest', indent: true },
-  { label: '庫藏股', key: 'treasury_shares', indent: true },
-  { label: '歸屬於母公司業主之權益合計', key: 'equity_attributable_to_owners_of_parent', emphasis: true },
-  { label: '非控制權益', key: 'noncontrolling_interests', indent: true },
-  { label: '權益總計', key: 'equity', emphasis: true },
-  // No separate "assets = liabilities + equity" field either — reuses `assets` itself, a real
-  // accounting identity (this line always equals total assets), not a guess.
-  { label: '負債及權益總計', key: 'assets', emphasis: true }
+export interface StatementLine {
+  key: string
+  label: string
+  // 底下有列出子科目的合計（粗體、不縮排）
+  total: boolean
+  // 「其他」那一行（算出來的，不是申報的欄位）
+  other: boolean
+  unit: StatementColumn['unit']
+  current: string | null
+  prior: string | null
+}
+
+export const STATEMENT_DEFINITIONS: { key: StatementType; label: string }[] = [
+  { key: 'balanceSheet', label: '資產負債表' },
+  { key: 'incomeStatement', label: '損益表' },
+  { key: 'cashFlowStatement', label: '現金流量表' }
 ]
 
-export const INCOME_STATEMENT_ROWS: StatementRow[] = [
-  { label: '營業收入', key: 'revenue' },
-  { label: '營業成本', key: 'operating_costs' },
-  { label: '營業毛利', key: 'gross_profit', emphasis: true },
-  { label: '推銷費用', key: 'selling_expense', indent: true },
-  { label: '管理費用', key: 'administrative_expense', indent: true },
-  { label: '研究發展費用', key: 'research_and_development_expense', indent: true },
-  { label: '營業費用合計', key: 'operating_expense', emphasis: true },
-  { label: '營業利益', key: 'profit_loss_from_operating_activities', emphasis: true },
-  { label: '利息收入', key: 'revenue_from_interest', indent: true },
-  { label: '財務成本', key: 'finance_costs', indent: true },
-  { label: '其他收入', key: 'other_revenue', indent: true },
-  { label: '採用權益法認列關聯企業損益之份額', key: 'share_of_profit_loss_of_assoc_jv_equity_method', indent: true },
-  { label: '其他營業外損益', key: 'other_gains_losses', indent: true },
-  { label: '營業外收支合計', key: 'nonoperating_income_and_expenses', emphasis: true },
-  { label: '稅前淨利', key: 'profit_loss_before_tax', emphasis: true },
-  { label: '所得稅費用', key: 'income_tax_expense_continuing_operations', indent: true },
-  { label: '本期淨利', key: 'profit_loss', emphasis: true },
-  { label: '歸屬於母公司業主淨利', key: 'profit_loss_attributable_to_owners_of_parent', indent: true },
-  { label: '歸屬於非控制權益淨利', key: 'profit_loss_attributable_to_noncontrolling_interests', indent: true },
-  // No single "OCI total" field in the real payload, only its components
-  // (oci_that_will_be_reclassified_to_profit_or_loss_net_of_tax / oci_that_will_not_be_reclassified_to_profit_or_loss_net_of_tax) — left
-  // unmapped rather than hand-summed into a number 業務中台 never itself vouches for.
-  { label: '其他綜合損益', indent: true },
-  { label: '本期綜合損益總額', emphasis: true },
-  { label: '基本每股盈餘（元）', key: 'basic_earnings_loss_per_share', emphasis: true },
-  { label: '稀釋每股盈餘（元）', key: 'diluted_earnings_loss_per_share', indent: true }
-]
+// 預設精簡的門檻（使用者 2026-10-19 選「資產負債、損益 ≥2%，現金流量 ≥5%」）：明細的金額（兩期取大）佔這張表的基準多少才單獨列
+const CONCISE_RULES: Record<StatementType, { share: number; base: string[] }> = {
+  balanceSheet: { share: 0.02, base: ['assets'] },
+  incomeStatement: { share: 0.02, base: ['revenue'] },
+  cashFlowStatement: { share: 0.05, base: ['cash_flows_from_used_in_operating_activities', 'net_cash_flows_from_used_in_investing_activities', 'cash_flows_from_used_in_financing_activities'] }
+}
 
-export const CASH_FLOW_STATEMENT_ROWS: StatementRow[] = [
-  // No standalone "稅前淨利"/"其他調整項目合計" fields in the real cash-flow payload (it starts
-  // straight from the reconciling adjustment line items themselves) — left unmapped rather than
-  // guessed or hand-summed.
-  { label: '稅前淨利', indent: true },
-  { label: '折舊費用', key: 'adjustments_for_depreciation_expense', indent: true },
-  { label: '攤銷費用', key: 'adjustments_for_amortisation_expense', indent: true },
-  { label: '其他調整項目合計', indent: true },
-  { label: '營業活動產生之現金', key: 'cash_flows_from_used_in_operations', indent: true },
-  { label: '支付所得稅', key: 'income_taxes_paid_refund_classified_as_operating_activities', indent: true },
-  { label: '營業活動之淨現金流入（出）', key: 'cash_flows_from_used_in_operating_activities', emphasis: true },
-  { label: '取得不動產、廠房及設備', key: 'purchase_of_ppe_classified_as_investing_activities', indent: true },
-  { label: '處分不動產、廠房及設備價款', key: 'proceeds_from_sales_of_ppe_classified_as_investing_activities', indent: true },
-  { label: '取得無形資產', key: 'purchase_of_intangible_assets_investing', indent: true },
-  { label: '收取利息', key: 'interest_received_classified_as_investing_activities', indent: true },
-  { label: '收取股利', key: 'dividends_received_classified_as_investing_activities', indent: true },
-  { label: '投資活動之淨現金流入（出）', key: 'net_cash_flows_from_used_in_investing_activities', emphasis: true },
-  { label: '發行公司債', key: 'proceeds_from_issuing_bonds', indent: true },
-  { label: '償還公司債', key: 'repayments_of_bonds', indent: true },
-  { label: '舉借長期借款', key: 'proceeds_from_long_term_debt', indent: true },
-  { label: '償還長期借款', key: 'repayments_of_long_term_debt', indent: true },
-  { label: '發放現金股利', key: 'dividends_paid_classified_as_financing_activities', indent: true },
-  { label: '支付利息', key: 'interest_paid_classified_as_financing_activities', indent: true },
-  { label: '籌資活動之淨現金流入（出）', key: 'cash_flows_from_used_in_financing_activities', emphasis: true },
-  { label: '匯率變動影響數', key: 'effect_of_exchange_rate_changes_on_cash_and_cash_equivalents', indent: true },
-  { label: '本期現金及約當現金增加（減少）數', key: 'increase_decrease_in_cash_and_cash_equivalents', emphasis: true },
-  { label: '期初現金及約當現金餘額', key: 'cash_and_cash_equivalents_at_beginning_of_period' },
-  { label: '期末現金及約當現金餘額', key: 'cash_and_cash_equivalents_at_end_of_period', emphasis: true }
-]
+type Values = Record<string, string | null> | null | undefined
 
-export const STATEMENT_DEFINITIONS: { key: StatementType; label: string; rows: StatementRow[] }[] = [
-  { key: 'balanceSheet', label: '資產負債表', rows: BALANCE_SHEET_ROWS },
-  { key: 'incomeStatement', label: '損益表', rows: INCOME_STATEMENT_ROWS },
-  { key: 'cashFlowStatement', label: '現金流量表', rows: CASH_FLOW_STATEMENT_ROWS }
-]
+// columns：STATEMENT_COLUMNS（參數而不是直接 import，檢查腳本可以餵小的測資）。回傳要畫的列，以及精簡模式藏了幾個有數字的科目。
+export function buildStatementLines(columns: StatementColumn[], statementType: StatementType, current: Values, prior: Values, showAll: boolean): { lines: StatementLine[]; hidden: number } {
+  const num = (values: Values, key: string) => {
+    const raw = values?.[key]
+    return raw === null || raw === undefined || raw === '' ? null : Number(raw)
+  }
+  const hasValue = (column: StatementColumn) => [num(current, column.key), num(prior, column.key)].some(value => value !== null && value !== 0)
+  const all = columns.filter(column => column.statement === statementType)
+  const byKey = new Map(all.map(column => [column.key, column]))
+  const withValue = all.filter(hasValue)
+  const withValueKeys = new Set(withValue.map(column => column.key))
+
+  // 父欄位沒有數字的話，往上找最近一個有數字的祖先，加減方向沿路相乘
+  const anchorOf = (column: StatementColumn): { parent: StatementColumn | null; weight: number } => {
+    let weight = column.weight
+    let parent = column.parent ? byKey.get(column.parent) ?? null : null
+    while (parent && !withValueKeys.has(parent.key)) {
+      weight *= parent.weight
+      parent = parent.parent ? byKey.get(parent.parent) ?? null : null
+    }
+    return { parent, weight }
+  }
+  const depthOf = (column: StatementColumn) => {
+    let depth = 0
+    let parent = column.parent ? byKey.get(column.parent) : undefined
+    while (parent) {
+      depth++
+      parent = parent.parent ? byKey.get(parent.parent) : undefined
+    }
+    return depth
+  }
+
+  const children = new Map<string | null, { column: StatementColumn; weight: number }[]>()
+  for (const column of withValue) {
+    const { parent, weight } = anchorOf(column)
+    const list = children.get(parent?.key ?? null) ?? []
+    list.push({ column, weight })
+    children.set(parent?.key ?? null, list)
+  }
+  // 排序鍵：自己的 GL 與底下每一個科目的 GL 取最前面的。光比自己的 GL 會錯：現金流量表的「本期增減」是 EEEE、「期初現金」是 E00100，
+  // 字串比較 E0 在 EE 前面，期初就排到本期增減前面；本期增減底下有營業活動的 A 開頭代碼，取最前面的就排對了。沒有 GL 的（taxonomy 本身
+  // 沒編）排在同一段的最後
+  const sortKeys = new Map<string, string>()
+  const sortKeyOf = (column: StatementColumn): string => {
+    const known = sortKeys.get(column.key)
+    if (known !== undefined) return known
+    let key = column.gl || '~'
+    for (const child of children.get(column.key) ?? []) {
+      const childKey = sortKeyOf(child.column)
+      if (childKey < key) key = childKey
+    }
+    sortKeys.set(column.key, key)
+    return key
+  }
+  for (const list of children.values()) list.sort((a, b) => (sortKeyOf(a.column) < sortKeyOf(b.column) ? -1 : sortKeyOf(a.column) > sortKeyOf(b.column) ? 1 : 0))
+
+  const rule = CONCISE_RULES[statementType]
+  const baseOf = (values: Values) => Math.max(0, ...rule.base.map(key => Math.abs(num(values, key) ?? 0)))
+  const base = baseOf(current) || baseOf(prior)
+  const qualifies = (column: StatementColumn) => {
+    if (showAll) return true
+    // 股數、資本適足率不是金額，只在展開全部時列
+    if (column.unit === '%' || column.unit === '股') return false
+    if (!column.parent) return true
+    if (column.total && depthOf(column) <= 1) return true
+    const size = Math.max(Math.abs(num(current, column.key) ?? 0), Math.abs(num(prior, column.key) ?? 0))
+    return base > 0 && size >= rule.share * base
+  }
+  const visible = new Set<string>()
+  const markVisible = (column: StatementColumn): boolean => {
+    // 先看完所有子科目（不能短路，每一個都要標）
+    const anyChild = (children.get(column.key) ?? []).map(child => markVisible(child.column)).includes(true)
+    if (anyChild || qualifies(column)) visible.add(column.key)
+    return visible.has(column.key)
+  }
+  for (const root of children.get(null) ?? []) markVisible(root.column)
+
+  const lines: StatementLine[] = []
+  const emit = (column: StatementColumn) => {
+    const shown = (children.get(column.key) ?? []).filter(child => visible.has(child.column.key))
+    for (const child of shown) emit(child.column)
+    if (shown.length) {
+      const remainder = (values: Values) => {
+        const total = num(values, column.key)
+        if (total === null) return null
+        return total - shown.reduce((sum, child) => sum + child.weight * (num(values, child.column.key) ?? 0), 0)
+      }
+      const otherCurrent = remainder(current)
+      const otherPrior = remainder(prior)
+      // 小於 1（千元）的差是四捨五入，不是漏掉的科目
+      const hasOther = [otherCurrent, otherPrior].some(value => value !== null && Math.abs(value) >= 1)
+      // 合計底下只列出一個子科目、兩期金額都一樣：那一行只是重複（2330 的「營業毛利」與「營業毛利淨額」、「繼續營業單位本期淨利」與
+      // 「本期淨利」），只留合計
+      const only = shown.length === 1 ? shown[0]!.column : null
+      const last = lines.at(-1)
+      if (!hasOther && only && last?.key === only.key && num(current, only.key) === num(current, column.key) && num(prior, only.key) === num(prior, column.key)) lines.pop()
+      if (hasOther) {
+        lines.push({
+          key: `${column.key}__other`,
+          label: '其他',
+          total: false,
+          other: true,
+          unit: column.unit,
+          current: otherCurrent === null ? null : String(Math.round(otherCurrent)),
+          prior: otherPrior === null ? null : String(Math.round(otherPrior))
+        })
+      }
+    }
+    lines.push({ key: column.key, label: column.label, total: shown.length > 0, other: false, unit: column.unit, current: current?.[column.key] ?? null, prior: prior?.[column.key] ?? null })
+  }
+  for (const root of children.get(null) ?? []) {
+    if (visible.has(root.column.key)) emit(root.column)
+  }
+  return { lines, hidden: withValue.length - visible.size }
+}
 
 // Per-share lines are in 元; everything else on a filing is in 新台幣千元（confirmation requested
 // from 業務中台 2026-09-19 — the endpoint doesn't state its unit）.
