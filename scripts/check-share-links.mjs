@@ -294,7 +294,7 @@ console.log('持股特色：持股分析頁（1440）')
   const headers = await page.locator('.holdings-traits__box th').allInnerTexts()
   const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).trim()
   check(figcaption === '規模與風格九宮格（占市值）' && captions.length === 1 && captions[0].startsWith('這組持股') && headers.join() === '價值,混合,成長,大型,中型,小型' && coreCell === '100%', `九宮格：大盤還沒有時只有「這組持股」一張，欄是風格、列是規模，大型混合 100%（${captions.join('、')}；${coreCell}）`)
-  check(await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).count() === 0, '沒有大中小型三列（九宮格的列就是規模）')
+  check(await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).count() === 0 && await page.locator('.holdings-traits__vs').count() === 0, '沒有大中小型三列（九宮格的列就是規模）；只有一張時沒有 vs')
   const metricHeaders = (await page.locator('.holdings-traits__metrics thead th').allInnerTexts()).map(text => text.trim())
   check(JSON.stringify(metricHeaders) === '["指標","這組持股"]', `指標表：大盤還沒有時只有兩欄、沒有「意思」欄（${metricHeaders.join('、')}）`)
   const top3Row = (await page.locator('.holdings-traits__metrics tbody tr', { hasText: '前三大持股占比（ETF 除外）' }).innerText()).replace(/\s+/g, ' ')
@@ -364,11 +364,15 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     const cores = await Promise.all([0, 1].map(async index => (await boxes.nth(index).locator('tbody tr').first().locator('td').nth(1).innerText()).trim()))
     check(await boxes.count() === 2 && cores.join() === '100%,50%', `${label}：九宮格兩張，這組持股的大型混合 100%、大盤的 50%（${cores.join('、')}）`)
     const [figureBox, metricsBox, own, market] = await Promise.all([page.locator('.holdings-traits__boxes'), page.locator('.holdings-traits__metrics'), boxes.nth(0), boxes.nth(1)].map(locator => locator.boundingBox()))
+    // 兩張中間的 vs（使用者：「中間希望加上 vs」）
+    const vs = await page.locator('.holdings-traits__vs').boundingBox()
     if (width >= 1280) {
       const [leftGap, rightGap] = [own.x - figureBox.x, figureBox.x + figureBox.width - (market.x + market.width)]
       check(own.y === market.y && market.x >= own.x + own.width && Math.abs(leftGap - rightGap) < 2, `${label}：兩張並排、左右對稱（左右留白 ${leftGap.toFixed(0)}／${rightGap.toFixed(0)}）`)
+      check(!!vs && vs.x >= own.x + own.width && vs.x + vs.width <= market.x && Math.abs(vs.x + vs.width / 2 - (figureBox.x + figureBox.width / 2)) < 2, `${label}：vs 在兩張正中間`)
     } else {
       check(market.y >= own.y + own.height, `${label}：兩張上下疊，大盤在下`)
+      check(!!vs && vs.y >= own.y + own.height && vs.y + vs.height <= market.y, `${label}：上下疊時 vs 夾在兩張中間`)
     }
     check(metricsBox.y >= figureBox.y + figureBox.height && Math.abs(metricsBox.width - figureBox.width) < 2, `${label}：指標表在九宮格下面、跟九宮格那一層一樣寬（${metricsBox.width.toFixed(0)}／${figureBox.width.toFixed(0)}）`)
   }

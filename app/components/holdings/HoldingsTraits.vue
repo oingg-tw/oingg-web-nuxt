@@ -3,9 +3,9 @@ import type { HoldingsTraitsResult, Traits } from '~/utils/holdings-traits'
 
 // 「這組持股有什麼特色？」（2026-10-19）：持股分析頁與分享頁共用，兩邊長一樣。
 // 同日兩次重新設計。使用者先說：「九宮格要拆兩個，大盤跟自己兩個合在一起太混淆了」；第二版又說：「看起來還是醜醜的，而且資訊還重複了」
-// （標籤後面寫的依據跟指標表同一批數字、涵蓋率寫兩次；格線像試算表；各區塊寬度不一）。現在：問句 → 一塊面板（同持股總覽的面板）：
-// 標籤一排（只有名字，跟全站的 ETF 標籤同一種）→ 上層九宮格兩張（這組持股｜大盤）→ 下層指標表全寬 → 涵蓋率一行；
-// 每個數字只出現一次。面板外是折疊的「指標的意思與計算方式」（使用者：「holdings 希望減少不必要的說明」）。
+// （標籤後面寫的依據跟指標表同一批數字、涵蓋率寫兩次；格線像試算表；各區塊寬度不一）。現在：問句 → 標籤一排（只有名字，跟全站的
+// ETF 標籤同一種）→ 一塊面板（同持股總覽的面板）：上層九宮格「這組持股 vs 大盤」→ 下層指標表全寬 → 涵蓋率一行；每個數字只出現
+// 一次。面板外是折疊的「指標的意思與計算方式」（使用者：「holdings 希望減少不必要的說明」）。
 // 數字與大盤都來自 業務中台（見 utils/holdings-traits.ts），標籤規則也在那裡。大盤還沒上線（market 是 null）時不畫大盤那一欄與那一張，
 // 只貼不必跟大盤比的標籤。只陳述數字與門檻，沒有排名、建議或「適合誰」；持股頁不放免責聲明（同其他持股頁）。
 const props = defineProps<{
@@ -56,33 +56,36 @@ const coverageNote = computed(() => {
   <section class="holdings-traits" :aria-labelledby="headingId">
     <h2 :id="headingId" class="holdings-traits__title">這組持股有什麼特色？</h2>
 
-    <div class="holdings-traits__panel">
-      <!-- 答句：標籤一排，只有名字；數字在下面，門檻在折疊區 -->
-      <ul v-if="tags.length" class="holdings-traits__tags" role="list" aria-label="特色標籤">
-        <li v-for="tag in tags" :key="tag"><el-tag effect="plain" size="large" class="holdings-traits__tag">{{ tag }}</el-tag></li>
-      </ul>
-      <p v-else class="holdings-traits__tags holdings-traits__none">沒有達到任何標籤的門檻（門檻寫在下面的「指標的意思與計算方式」）。</p>
+    <!-- 答句：標籤一排，接在問句下面、面板前面（使用者：「試試看把 tags 放在卡片前面」）；只有名字，數字在面板裡，門檻在折疊區 -->
+    <ul v-if="tags.length" class="holdings-traits__tags" role="list" aria-label="特色標籤">
+      <li v-for="tag in tags" :key="tag"><el-tag effect="plain" size="large" class="holdings-traits__tag">{{ tag }}</el-tag></li>
+    </ul>
+    <p v-else class="holdings-traits__tags holdings-traits__none">沒有達到任何標籤的門檻（門檻寫在下面的「指標的意思與計算方式」）。</p>
 
-      <!-- 上層：九宮格兩張並排（這組持股｜大盤），各占一半寬、在自己那一半置中；放不下時上下疊 -->
+    <div class="holdings-traits__panel">
+      <!-- 上層：九宮格「這組持股 vs 大盤」，各占一半寬、在自己那一半置中；放不下時上下疊，vs 夾在中間 -->
       <figure v-if="boxes.length" class="holdings-traits__boxes">
         <figcaption>規模與風格九宮格（占市值）</figcaption>
-        <!-- 標題不放進這一層的 grid：橫跨所有欄的項目會讓 auto-fit 留下空欄，兩張就不對稱了 -->
-        <div class="holdings-traits__box-row">
-          <table v-for="box in boxes" :key="box.caption" class="holdings-traits__box">
-            <caption>{{ box.caption }}<span class="visually-hidden">的規模與風格</span></caption>
-            <thead>
-              <tr>
-                <td />
-                <th v-for="column in STYLE_BOX_COLUMNS" :key="column.key" scope="col">{{ column.label }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in box.rows" :key="row.label">
-                <th scope="row">{{ row.label }}</th>
-                <td v-for="cell in row.cells" :key="cell.key" :class="`holdings-traits__cell--${cell.level}`">{{ cell.text }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- vs（使用者：「中間希望加上 vs，也就是對比的意思」）只是裝飾，報讀器靠兩張表的標題分辨 -->
+        <div class="holdings-traits__box-row" :class="{ 'holdings-traits__box-row--pair': boxes.length > 1 }">
+          <template v-for="(box, index) in boxes" :key="box.caption">
+            <span v-if="index" class="holdings-traits__vs" aria-hidden="true">vs</span>
+            <table class="holdings-traits__box">
+              <caption>{{ box.caption }}<span class="visually-hidden">的規模與風格</span></caption>
+              <thead>
+                <tr>
+                  <td />
+                  <th v-for="column in STYLE_BOX_COLUMNS" :key="column.key" scope="col">{{ column.label }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in box.rows" :key="row.label">
+                  <th scope="row">{{ row.label }}</th>
+                  <td v-for="cell in row.cells" :key="cell.key" :class="`holdings-traits__cell--${cell.level}`">{{ cell.text }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
         </div>
       </figure>
       <p v-else-if="boxEmpty" class="holdings-traits__note holdings-traits__box-empty">九宮格只放分得出規模與風格的個股；這組持股全是 ETF、特別股或資料不夠分類的股票。</p>
@@ -154,14 +157,13 @@ const coverageNote = computed(() => {
   background: var(--el-bg-color);
 }
 
-/* 答句：標籤一排，下面一條分隔線 */
+/* 答句：標籤一排，在面板上面 */
 .holdings-traits__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 16px;
-  padding: 0 0 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  padding: 0;
   list-style: none;
 }
 
@@ -174,8 +176,10 @@ const coverageNote = computed(() => {
   color: var(--el-text-color-regular);
 }
 
+/* figure 是整個面板寬的區塊，拿來當 container：依它的寬度決定兩張並排還是上下疊 */
 .holdings-traits__boxes {
   margin: 0;
+  container-type: inline-size;
 }
 
 .holdings-traits__boxes > figcaption {
@@ -184,11 +188,31 @@ const coverageNote = computed(() => {
   color: var(--el-text-color-primary);
 }
 
-/* 上層：兩張各占一半寬、在自己那一半置中（左右對稱）；放不下時上下疊（約 544px 以下，不設斷點） */
+/* 上層：一欄、各張置中；兩張時中間夾一個 vs（窄的上下疊）。夠寬時排成「這組持股 vs 大盤」三欄，兩張各占一半、在自己那一半置中 */
 .holdings-traits__box-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  gap: 16px 32px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 24px;
+}
+
+@container (min-width: 36rem) {
+  .holdings-traits__box-row--pair {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
+.holdings-traits__vs {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--el-border-color);
+  border-radius: 50%;
+  background: var(--el-bg-color);
+  font-weight: 700;
+  color: var(--el-text-color-regular);
 }
 
 /* 每一格是一塊色塊、不畫格線（不像試算表）：0 是淺灰、字淡；有占比的依格子上寫的整數分三階主色 */
