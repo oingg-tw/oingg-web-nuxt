@@ -222,7 +222,9 @@ watch(importVisible, (open) => { if (open) importAccountId.value = defaultAccoun
 // ---- 分享（2026-10-19 第二階段，SharedShareButton）----
 // 分享的是側欄目前選的帳戶，「全部帳戶」是 null（業務中台 合併各帳戶）。可以勾的欄跟明細表一樣，加上占比（業務中台 算好送來，
 // 不必露出股數就看得出分配）；會透露部位大小的四欄預設不勾（同下載）。占比與報酬率只送比例，股數任一欄勾了才會送
+// 持股特色（2026-10-19）：加權的本益比、Beta、ROE…加大盤對照與標籤（持股分析頁那一段），整體數字、不露出各檔占比，預設勾
 const SHARE_COLUMNS = [
+  { key: 'traits', label: '持股特色' },
   { key: 'weight', label: '占比' },
   { key: 'pnlPct', label: '報酬率' },
   { key: 'dayChange', label: '今日漲跌' },

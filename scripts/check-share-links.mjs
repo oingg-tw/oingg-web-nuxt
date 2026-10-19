@@ -22,8 +22,18 @@ const holdings = [
   { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0' },
   { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0' }
 ]
+// 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE 只涵蓋 60%（ETF 沒有財報）；
+// market 還沒上線時是 null，上線後同形狀
+const trait = (value, coverage = '1.000000') => ({ value, coverage })
+const TRAITS = {
+  asOf: '2026-10-16',
+  portfolio: { peRatio: trait('14.200000', '0.600000'), pbRatio: trait('1.800000', '0.600000'), dividendYield: trait('5.100000', '0.600000'), roe: trait('12.300000', '0.600000'), revenueGrowth: trait('4.000000', '0.600000'), beta: trait('0.700000'), revenueYoyVolatility: trait(null, '0.000000') },
+  market: null
+}
+const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000') } }
 const HOLDINGS_PAYLOAD = {
-  ratios: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }] },
+  ratios: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }], traits: TRAITS },
+  market: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: '0.400000' }, { symbol: '2330', weight: '0.600000' }], traits: TRAITS_WITH_MARKET },
   sizes: { kind: 'holdings', asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ symbol, quantity, averageCost, costUnknownQuantity }) => ({ symbol, quantity, averageCost, costUnknownQuantity })) }
 }
 let storedShares = []
@@ -38,6 +48,7 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
     if (p === '/api/core/users/me/watchlist-columns' && m === 'GET') return route.fulfill({ json: { watchlistColumns: { columns: null } } })
     if (p === '/api/core/portfolios' && m === 'GET') return route.fulfill({ json: { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
     if (p === '/api/core/holdings' && m === 'GET') return route.fulfill({ json: { holdings } })
+    if (p === '/api/core/holdings/traits' && m === 'GET') return route.fulfill({ json: TRAITS })
     if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: storedShares } })
     if (p === '/api/core/shares' && m === 'PUT') {
       const body = JSON.parse(req.postData()); calls.push(`PUT ${JSON.stringify(body)}`)
@@ -223,12 +234,12 @@ console.log('持股：擁有者（1440）')
   const dialog = page.getByRole('dialog', { name: '分享「我的持股」' })
   check(await dialog.isVisible(), '一個帳戶時標題寫 分享「我的持股」')
   const checkedLabels = (await dialog.locator('.el-checkbox.is-checked').allInnerTexts()).map(text => text.trim())
-  check(JSON.stringify(checkedLabels) === '["占比","報酬率","今日漲跌"]', `預設勾占比、報酬率、今日漲跌（實得 ${checkedLabels.join('、')}）`)
+  check(JSON.stringify(checkedLabels) === '["持股特色","占比","報酬率","今日漲跌"]', `預設勾持股特色、占比、報酬率、今日漲跌（實得 ${checkedLabels.join('、')}）`)
   check((await dialog.locator('.column-checklist__heading').innerText()).includes('部位大小（預設不分享）'), '股數、市值、未實現損益、預估年股利在「部位大小（預設不分享）」下面、不勾')
   console.log('  axe（對話框開著）:', await axe(page))
   await shot(page, 'share-holdings-dialog-1440')
   await dialog.getByRole('button', { name: '建立連結' }).click(); await page.waitForTimeout(600)
-  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"weight","label":"占比"},{"key":"pnlPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}]}', 'PUT 的 body：kind holdings、全部帳戶（null）、三欄')
+  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"pnlPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}]}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄')
   check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}`, '網址就是這條連結')
   await dialog.getByRole('button', { name: '完成' }).click(); await page.waitForTimeout(400)
   check((await button.innerText()).trim() === '已分享', '按鈕變成「已分享」')
@@ -261,9 +272,30 @@ console.log('持股：擁有者（1440）')
   await ctx.close()
 }
 
+console.log('持股特色：持股分析頁（1440）')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+  await mock(ctx)
+  const page = await ctx.newPage()
+  await page.goto(`${base}/holdings/analysis`, { waitUntil: 'networkidle', timeout: 180000 }); await page.waitForTimeout(2000)
+  await page.addStyleTag({ content: '#nuxt-devtools-container{display:none!important}' })
+  const headings = (await page.locator('main h2, .holdings-shell h2').allInnerTexts()).map(text => text.trim())
+  check(headings.indexOf('資金分布在哪些產業？') >= 0 && headings.indexOf('這組持股有什麼特色？') > headings.indexOf('資金分布在哪些產業？'), `產業之後是「這組持股有什麼特色？」（${headings.join('／')}）`)
+  const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
+  check(JSON.stringify(tags) === '["低 Beta"]', `大盤還沒有時只貼不必比大盤的標籤（${tags.join('、')}）`)
+  const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
+  check(!traitHeaders.includes('大盤'), `大盤還沒有時不畫大盤那一欄（${traitHeaders.join('、')}）`)
+  const roeRow = (await page.locator('.holdings-traits tbody tr', { hasText: 'ROE' }).innerText()).replace(/\s+/g, ' ')
+  check(roeRow.includes('12.3%') && roeRow.includes('涵蓋 60% 的市值'), `ROE 12.3%、寫出涵蓋 60%（${roeRow}）`)
+  check(await page.locator('.holdings-traits tbody tr', { hasText: '營收年增率波動' }).count() === 0, '營收年增率波動沒有資料時不出現')
+  console.log('  axe:', await axe(page))
+  await shot(page, 'traits-analysis-1440', true)
+  await ctx.close()
+}
+
 console.log('持股：訪客打開分享頁（站內換頁）')
 const priceOf = symbol => 100 + (hash(`${symbol}stock.latestClose`) % 7) - 3
-for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'sizes']]) {
+for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'market'], [1440, 'sizes']]) {
   const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 768, hasTouch: width < 768 })
   await mock(ctx, { holdingsPayload: payload })
   const page = await ctx.newPage()
@@ -276,9 +308,21 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'sizes
   check((await page.locator('h1').innerText()).startsWith('分享的持股'), `${label}：h1 是「分享的持股」`)
   check(await page.title() === '分享的持股｜安盈選股', `${label}：分頁標題`)
   check(await page.getByRole('button', { name: /明細/ }).count() === 0, `${label}：沒有「明細」展開`)
+  const traitsBox = await page.locator('.holdings-traits').count() ? await page.locator('.holdings-traits').boundingBox() : null
+  const tableBox = await page.locator(width >= 1280 ? '.view-table' : '.symbol-table__cards').boundingBox()
+  if (payload === 'sizes') check(!traitsBox, `${label}：沒勾持股特色就沒有那一段`)
+  else check(!!traitsBox && traitsBox.y < tableBox.y, `${label}：持股特色在表格上面`)
+  if (payload === 'market') {
+    const tags = (await page.locator('.holdings-traits__tag').allInnerTexts()).map(text => text.trim())
+    const traitHeaders = (await page.locator('.holdings-traits thead th').allInnerTexts()).map(text => text.trim())
+    check(traitHeaders.includes('大盤'), `${label}：大盤到了就有大盤那一欄`)
+    check(JSON.stringify(tags) === '["低 Beta","高殖利率","低本益比","低股價淨值比"]', `${label}：比大盤的標籤照規則出現（${tags.join('、')}）`)
+  }
   if (width >= 1280) {
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
-    if (payload === 'ratios') {
+    if (payload === 'market') {
+      check(JSON.stringify(headers) === '["名稱","占比"]', `${label}：各檔只有占比（${headers.join('、')}）`)
+    } else if (payload === 'ratios') {
       check(JSON.stringify(headers) === '["名稱","占比","報酬率","今日漲跌"]', `${label}：欄位只有勾的那三欄（${headers.join('、')}）`)
       const first = (await page.locator('.view-table tbody tr').first().innerText()).replace(/\s+/g, ' ')
       check(first.includes('2330') && first.includes('60.0%') && first.includes('+25.00%'), `${label}：依占比排、2330 在第一列，占比 60.0%、報酬率 +25.00%（${first}）`)

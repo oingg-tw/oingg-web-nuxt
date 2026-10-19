@@ -97,8 +97,8 @@ function closeLink() {
           <el-button v-if="canShare" @click="shareLink(name, url)">傳送…</el-button>
         </div>
       </div>
-      <p class="share-dialog__heading">一起顯示的欄位（代號與名稱一定會有）</p>
-      <SharedColumnChecklist v-model="chosen" :columns="columns" label="一起顯示的欄位" :sensitive-heading="sensitiveHeading" />
+      <p class="share-dialog__heading">一起分享的內容（代號與名稱一定會有）</p>
+      <SharedColumnChecklist v-model="chosen" :columns="columns" label="一起分享的內容" :sensitive-heading="sensitiveHeading" />
       <p class="visually-hidden" role="status">{{ status }}</p>
       <template #footer>
         <div class="share-dialog__footer">

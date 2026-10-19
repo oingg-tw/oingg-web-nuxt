@@ -18,7 +18,7 @@ export function useHoldings() {
   const loadFailed = useState('holdings-load-failed', () => false)
   const loadedFor = useState<string | null>('holdings-loaded-for', () => null)
   const { market, quotesFailed, etfWindow, marketYield, loadQuotes, loadReferenceData, loadMarketYield } = useHoldingsMarket()
-  const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, clearPeriodCache } = useHoldingsReports()
+  const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache } = useHoldingsReports()
   // 帳戶（2026-10-19）：讀取帶 scopeQuery（全部帳戶就不帶），loadedFor 記的是「誰＋哪個帳戶」，寫入一定帶 portfolioId
   const { portfolios, selected, scopeQuery, holdingsScope, writeTarget, ensurePortfolio } = useHoldingsPortfolios()
 
@@ -324,6 +324,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-    load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchDividends, fetchPerformance, fetchRisk, fetchColumns, saveColumns
+    load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchDividends, fetchTraits, fetchPerformance, fetchRisk, fetchColumns, saveColumns
   }
 }

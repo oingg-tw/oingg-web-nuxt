@@ -1,4 +1,5 @@
 import type { HoldingDividendsResult, PerformanceOutcome, PerformanceResult, RealizedResult, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
+import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 
 // 持股的期間報表（2026-10-08 從 useHoldings 拆出）：期間報酬率、風險指標、已實現損益，依「端點＋期間」快取在分頁裡；帳本寫入後
 // useHoldings 的 load() 會 clearPeriodCache()——帳本變了，舊的損益與報酬就不對了。
@@ -91,7 +92,21 @@ export function useHoldingsReports() {
     }, result => result !== null)
   }
 
-  return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, clearPeriodCache }
+  // ---- 持股特色（GET /holdings/traits，業務中台 bd8a4e9，2026-10-19） ----
+  // 組合依市值占比加權（本益比、股價淨值比調和平均），Beta 是近一年回推、跟 /holdings/risk 同一支；market 是全市場同一套算法，
+  // analysis-ts 上線前是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。帳本寫入後跟其他報表一起清快取。null ＝ 讀不到。
+  async function fetchTraits(): Promise<HoldingsTraitsResult | null> {
+    return cachedPeriod('traits', async () => {
+      try {
+        return await request<HoldingsTraitsResult>('/holdings/traits', { query: scopeQuery.value })
+      } catch (error) {
+        devWarn('holdings', 'GET /holdings/traits unavailable', error)
+        return null
+      }
+    }, result => result !== null)
+  }
+
+  return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache }
 }
 
 // 持股各頁共用的期間（2026-10-07 交易績效拆成「報酬與大盤／已實現損益／績效統計」三頁之後）：切頁時期間不重設。

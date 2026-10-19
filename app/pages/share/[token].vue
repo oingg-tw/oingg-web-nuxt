@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ShareColumn } from '~/composables/share/useShares'
 import type { PublicHolding } from '~/components/holdings/HoldingsSharedView.vue'
+import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 
 // 分享出去的觀察清單或持股（2026-10-19，SharedShareButton 建的連結）：有連結就能看、免登入，內容即時——每次打開都讀
 // 業務中台 的公開 API（GET /public/shares/{token}），只回分享時勾的欄位推得出來的東西；擁有者是誰不顯示。不給搜尋引擎收錄、
@@ -19,6 +20,8 @@ interface PublicHoldingsShare {
   // 算占比、報酬率用的收盤日；兩欄都沒勾時是 null
   asOf: string | null
   holdings: PublicHolding[]
+  // 勾了「持股特色」才有（2026-10-19）：跟擁有者在持股分析頁看到的同一份
+  traits?: HoldingsTraitsResult
 }
 
 const token = String(useRoute().params.token ?? '')
@@ -59,7 +62,12 @@ useSeoMeta({ title, ogTitle: title, description, ogDescription: description, rob
     <p class="share-page__note">這份{{ subject }}由安盈選股的使用者分享。</p>
 
     <el-empty v-if="!count" :description="`這份${subject}目前沒有股票`" :image-size="64" />
-    <HoldingsSharedView v-else-if="holdings" :columns="holdings.columns" :holdings="holdings.holdings" />
+    <template v-else-if="holdings">
+      <!-- 持股特色在表格上面（2026-10-19，使用者：「造訪的人就可以看出這一組持股的特色」），之後才是各檔 -->
+      <HoldingsTraits v-if="holdings.traits" class="share-page__traits" :traits="holdings.traits" heading-id="share-traits-title" />
+      <h2 v-if="holdings.traits" class="share-page__section-title">持有哪幾檔？</h2>
+      <HoldingsSharedView :columns="holdings.columns" :holdings="holdings.holdings" />
+    </template>
     <WatchlistTable v-else :rows="rows" :columns="columns" :notes="notes" order-label="清單順序" storage-key="watchlist-share" />
 
     <p v-if="count" class="share-page__note share-page__hint">想追蹤其中幾檔？點名稱進個股頁，按星號加到你的觀察清單。</p>
@@ -85,5 +93,15 @@ useSeoMeta({ title, ogTitle: title, description, ogDescription: description, rob
 
 .share-page__hint {
   margin: 16px 0 0;
+}
+
+.share-page__traits {
+  margin-bottom: 32px;
+}
+
+.share-page__section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 12px;
 }
 </style>

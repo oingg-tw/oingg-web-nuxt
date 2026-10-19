@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { MarketDirectory } from '#shared/types/hub'
 import type { RiskReport } from '~/composables/holdings/holdings-model'
+import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 
 // 持股分析（2026-10-05）。使用者：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比。持股總覽那邊就可以
 // 簡化 UIUX。跟占比分析有關的塞進新的功能。」
 // 2026-10-19 使用者：「holdings/analysis 保留產業分析就好」——個股占比、持股的整體估值（本益比／股價淨值比）、上方一排數字卡都拿掉，
 // 只剩產業占比：問句 → 答句 → 圖 → 表（站上的規矩，圖之後是同樣資料的表格，圖不是唯一的資料路徑）。只陳述占比，不說集中是好是壞
-// （投信投顧法）。
+// （投信投顧法）。同日稍晚加回第二段「這組持股有什麼特色？」（加權的本益比、Beta、ROE…加大盤對照與標籤，分享時可以一起帶出去），
+// 那一段的畫法在 HoldingsTraits、規則在 utils/holdings-traits.ts。
 //
 // 產業用證交所類股，資料是全市場目錄 /api/hub/directory（Nitro 每天快取一次，個股總表用同一份、同一個 key）。
 //
@@ -14,7 +16,7 @@ import type { RiskReport } from '~/composables/holdings/holdings-model'
 useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk, fetchTraits } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
 const { data: directory } = useFetch<MarketDirectory>('/api/hub/directory', { key: 'hub-directory', lazy: true, server: false })
@@ -67,6 +69,17 @@ const effectiveSectorsText = computed(() => {
   return value ? `依市值，相當於平均分散在 ${Number(value).toFixed(1)} 個產業。` : ''
 })
 
+// 持股特色（2026-10-19，使用者：「PER、BETA、ROE…有些是低 Beta、有些是景氣循環專精，分享的時候可以一起帶出去」）：
+// 業務中台 算好的加權數字＋大盤對照，產業之後一段（HoldingsTraits，分享頁共用）。讀不到交給全站彈窗，只影響這一段
+const traits = ref<HoldingsTraitsResult | null>(null)
+const traitsFailed = ref(false)
+async function loadTraits() {
+  const result = await fetchTraits()
+  traits.value = result
+  traitsFailed.value = result === null
+}
+watchLoadFailure('holdings-traits', () => traitsFailed.value, () => loadTraits(), { scope: 'section' })
+
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
 watch([authResolved, holdingsScope], ([resolved, uid]) => {
@@ -74,15 +87,17 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (uid) {
     ensureLoaded()
     loadEffectiveSectors()
+    loadTraits()
   } else {
     clear()
     riskReport.value = null
+    traits.value = null
   }
 }, { immediate: true })
 </script>
 
 <template>
-  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業" guest-title="登入後查看你的持股分析">
+  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析">
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
     <template v-if="loadFailed" />
@@ -91,21 +106,31 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 
-    <section v-else aria-labelledby="analysis-sector-title">
-      <h2 id="analysis-sector-title" class="analysis-page__section-title">資金分布在哪些產業？</h2>
-      <p v-if="!directory" class="analysis-page__note">產業分類載入中…</p>
-      <template v-else>
-        <p v-if="answer" class="analysis-page__answer">{{ answer }}<template v-if="effectiveSectorsText">{{ effectiveSectorsText }}</template></p>
-        <p v-if="unpricedCount" class="analysis-page__note">{{ unpricedCount }} 檔目前沒有報價，未計入占比。</p>
-        <HoldingsAllocationChart title="產業占比" :items="sectors.map(sector => ({ label: sector.label, value: sector.value }))" />
-        <HoldingsMetricTable caption="各產業的市值與占比" :rows="sectorTableRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" />
-        <p class="analysis-page__footnote">產業是證交所與櫃買中心的類股分類。ETF 自成一類；特別股歸到發行公司的產業。占比＝市值 ÷ 總市值，以最新收盤價計算。</p>
-      </template>
-    </section>
+    <div v-else class="analysis-page__sections">
+      <section aria-labelledby="analysis-sector-title">
+        <h2 id="analysis-sector-title" class="analysis-page__section-title">資金分布在哪些產業？</h2>
+        <p v-if="!directory" class="analysis-page__note">產業分類載入中…</p>
+        <template v-else>
+          <p v-if="answer" class="analysis-page__answer">{{ answer }}<template v-if="effectiveSectorsText">{{ effectiveSectorsText }}</template></p>
+          <p v-if="unpricedCount" class="analysis-page__note">{{ unpricedCount }} 檔目前沒有報價，未計入占比。</p>
+          <HoldingsAllocationChart title="產業占比" :items="sectors.map(sector => ({ label: sector.label, value: sector.value }))" />
+          <HoldingsMetricTable caption="各產業的市值與占比" :rows="sectorTableRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" />
+          <p class="analysis-page__footnote">產業是證交所與櫃買中心的類股分類。ETF 自成一類；特別股歸到發行公司的產業。占比＝市值 ÷ 總市值，以最新收盤價計算。</p>
+        </template>
+      </section>
+
+      <HoldingsTraits v-if="traits" :traits="traits" heading-id="analysis-traits-title" />
+    </div>
   </HoldingsPageShell>
 </template>
 
 <style scoped>
+.analysis-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
 .analysis-page__section-title {
   font-size: 1.125rem;
   font-weight: 600;
