@@ -15,9 +15,10 @@ const HOLDINGS_NAV_ITEMS = [
   { label: '配息日程', to: '/holdings/dividends' },
   // 以目前持股回推的風險指標（業務中台 23b7b09）：描述的是「現在這組持股」，不是已實現的交易結果
   { label: '風險', to: '/holdings/risk' },
-  // 原「交易績效」的報酬部分（路徑沿用）：這段期間實際持有過的組合
-  { label: '報酬與大盤', to: '/holdings/performance', heading: '期間持有的' },
-  { label: '已實現損益', to: '/holdings/realized' },
+  // 這段期間實際持有過的組合。已實現損益放第一個（使用者 2026-10-19「期間持有的 已經實現損益放第一個」）
+  { label: '已實現損益', to: '/holdings/realized', heading: '期間持有的' },
+  // 原「交易績效」的報酬部分（路徑沿用）
+  { label: '報酬與大盤', to: '/holdings/performance' },
   // 捕獲率、Beta、Sharpe 這些進階統計，名詞門檻高，自成一頁
   { label: '績效統計', to: '/holdings/statistics' },
   // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值」「可能是另外的 sidebar 項目」
