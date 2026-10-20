@@ -24,6 +24,9 @@ const props = defineProps<{
   hideAdd?: boolean
   // 目前這一組未儲存時的按鈕文字：「存成我的篩選」「存成我的欄位組合」
   saveLabel: string
+  // 不畫「管理」選單：改名、上移、下移、刪除由呼叫端放在別處，用 expose 出去的同一組函式（顯示欄位放進「欄位設定」面板，
+  // 2026-10-21 使用者：「管理與欄位設定是否可以合併」）
+  hideManage?: boolean
 }>()
 
 const activeId = defineModel<string>('activeId', { required: true })
@@ -45,6 +48,7 @@ const visibleItems = computed(() => props.items.filter(item => !pendingRemoval.v
 const activeItem = computed(() => visibleItems.value.find(item => item.id === activeId.value) ?? null)
 const activeIndex = computed(() => visibleItems.value.findIndex(item => item.id === activeId.value))
 const editable = computed(() => activeItem.value?.editable !== false)
+const canRemove = computed(() => editable.value && visibleItems.value.length > 1)
 const status = ref('')
 
 function optionLabel(item: PresetSelectItem) {
@@ -80,7 +84,7 @@ function move(offset: -1 | 1) {
 
 function remove() {
   const item = activeItem.value
-  if (!item || visibleItems.value.length <= 1) return
+  if (!item || !canRemove.value) return
   const index = activeIndex.value
   pendingRemoval.value = [...pendingRemoval.value, item.id]
   const fallback = visibleItems.value[Math.max(index - 1, 0)]
@@ -96,6 +100,8 @@ function remove() {
     nextTick(() => { pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id) })
   })
 }
+
+defineExpose({ activeItem, editable, canRemove, canMove, rename, move, remove })
 
 function onCommand(command: string) {
   if (command === 'rename') rename()
@@ -119,14 +125,14 @@ function onCommand(command: string) {
     </el-select>
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button" @click="emit('save')">{{ saveLabel }}</el-button>
     <el-button v-if="!hideAdd" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋新增</el-button>
-    <el-dropdown trigger="click" popper-class="screener-preset-select__menu" @command="onCommand">
+    <el-dropdown v-if="!hideManage" trigger="click" popper-class="screener-preset-select__menu" @command="onCommand">
       <el-button class="screener-preset-select__button" :aria-label="`管理${label}`">管理</el-button>
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item command="rename" :disabled="!editable">改名</el-dropdown-item>
           <el-dropdown-item command="up" :disabled="!canMove(-1)">上移</el-dropdown-item>
           <el-dropdown-item command="down" :disabled="!canMove(1)">下移</el-dropdown-item>
-          <el-dropdown-item command="remove" :disabled="!editable || visibleItems.length <= 1" divided>刪除</el-dropdown-item>
+          <el-dropdown-item command="remove" :disabled="!canRemove" divided>刪除</el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>

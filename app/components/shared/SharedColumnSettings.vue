@@ -41,6 +41,8 @@ function remove(index: number) {
 
 <template>
   <div :id="id" class="column-settings">
+    <!-- 呼叫端放在欄位清單上面的東西（篩選頁：這一組欄位組合的改名、上移、下移、刪除） -->
+    <slot name="head" />
     <ol class="column-settings__list">
       <li v-for="(column, index) in columns" :key="column.field" class="column-settings__row">
         <span class="column-settings__label">{{ labelOf(column) }}</span>

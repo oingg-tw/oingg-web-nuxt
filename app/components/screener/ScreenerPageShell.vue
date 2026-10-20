@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ScreenerWorkspace } from '~/composables/screener/screener-tab-model'
 import type { ScreenerUniverse } from '~/utils/screener-zone'
+import type ScreenerPresetSelect from './ScreenerPresetSelect.vue'
 // 三組篩選（普通股、特別股、ETF）共用的整頁（2026-10-15 三組篩選重新設計）。使用者：「三組最後使用UIUX要接近，降低用戶負擔」。
 // 每一個控制項都只在這裡接一次，三頁只給「資料」（screener：useScreenerTabs 或 useUniverseScreener 包成的 ScreenerWorkspace）
 // 與自己的標題、說明——改一個控制項三組一起改，不會有哪一頁漏接（同個股頁的 StockPageShell）。
@@ -59,6 +60,23 @@ function focusNewCondition() {
   const slots = tab.value?.slots ?? []
   if (slots.length <= slotCountAtOpen) return
   setupRef.value?.querySelector<HTMLElement>(`[data-slot-id="${slots.at(-1)!.id}"] .condition-pill__value`)?.focus()
+}
+
+// 欄位組合的改名、上移、下移、刪除放在「欄位設定」面板最上面，不另開「管理」選單（2026-10-21 使用者：「管理與欄位設定是否可以合併」）：
+// 一個管「哪一組」、一個管「這一組有哪些欄」，名字又太像。函式與刪除的 10 秒復原仍在 ScreenerPresetSelect（選單要跟著藏起刪掉的那一組）。
+// 一個都不能做（內建、訪客那一組）就寫一句話，不畫一排反灰的按鈕
+const columnSetSelect = useTemplateRef<InstanceType<typeof ScreenerPresetSelect>>('columnSetSelect')
+const columnSetHeadId = `${uid}-column-set`
+const columnSetActionable = computed<boolean>(() => {
+  const select = columnSetSelect.value
+  return !!select && (select.editable || select.canMove(-1) || select.canMove(1))
+})
+// 刪掉之後換成前一組，可能是內建那組（按鈕整排換成一句話）：焦點放回這一段，不掉到 body
+function removeColumnSet() {
+  columnSetSelect.value?.remove()
+  nextTick(() => {
+    if (!document.activeElement || document.activeElement === document.body) document.getElementById(columnSetHeadId)?.focus()
+  })
 }
 
 function openRow(symbol: string) {
@@ -153,6 +171,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             <!-- 放進表格的工具列：跟「欄位設定」同一列 -->
             <template #toolbar>
               <ScreenerPresetSelect
+                ref="columnSetSelect"
+                hide-manage
                 label="顯示欄位"
                 add-label="新增欄位組合"
                 save-label="存成我的欄位組合"
@@ -165,6 +185,18 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
                 @reorder="screener.reorderColumnSets"
                 @save="screener.saveColumnSet()"
               />
+            </template>
+            <template #column-settings-head>
+              <div class="screener-shell__column-set" role="group" :aria-labelledby="columnSetHeadId">
+                <p :id="columnSetHeadId" class="screener-shell__column-set-name" tabindex="-1">這一組：{{ columnSetSelect?.activeItem?.name }}</p>
+                <div v-if="columnSetActionable" class="screener-shell__column-set-actions">
+                  <button type="button" class="column-settings__button" :disabled="!columnSetSelect?.editable" @click="columnSetSelect?.rename()">改名</button>
+                  <button type="button" class="column-settings__button" :disabled="!columnSetSelect?.canMove(-1)" @click="columnSetSelect?.move(-1)">上移</button>
+                  <button type="button" class="column-settings__button" :disabled="!columnSetSelect?.canMove(1)" @click="columnSetSelect?.move(1)">下移</button>
+                  <button type="button" class="column-settings__button" :disabled="!columnSetSelect?.canRemove" @click="removeColumnSet">刪除</button>
+                </div>
+                <p v-else class="screener-shell__column-set-note">這一組不能改名、移動或刪除；按「＋新增」建一組自己的。</p>
+              </div>
             </template>
           </SharedMetricTable>
         </section>
@@ -215,6 +247,33 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 </template>
 
 <style scoped>
+/* 欄位設定面板最上面：這一組欄位組合本身的動作，跟下面的欄位清單隔一條線 */
+.screener-shell__column-set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.screener-shell__column-set-name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.screener-shell__column-set-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.screener-shell__column-set-note {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+}
+
 .screener-shell {
   display: flex;
   flex-direction: column;

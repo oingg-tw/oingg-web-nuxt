@@ -480,7 +480,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           <option value="ascending">小到大</option>
         </select>
       </label>
-      <!-- el-button：跟同一列「顯示欄位」的＋新增、管理同高（滑鼠 32px、觸控 44px） -->
+      <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
       <el-button
         v-if="!readonly"
         class="smt-toolbar__settings"
@@ -499,7 +499,9 @@ watch(() => props.loading, (loading, wasLoading) => {
       @reorder="reorderFromSettings"
       @remove="field => emit('removeColumn', field)"
       @add="triggerEl => emit('addColumnClick', triggerEl)"
-    />
+    >
+      <template v-if="$slots['column-settings-head']" #head><slot name="column-settings-head" /></template>
+    </SharedColumnSettings>
 
     <!-- 窄的時候是卡片（cards），寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
          渲染時用寬度選標記）。卡片沿用同一組 #name／#cell／#actions slot。 -->
