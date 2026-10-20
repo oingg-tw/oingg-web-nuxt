@@ -9,7 +9,8 @@
 // pending：頁面在載入這段期間的資料時傳 true。載入完成後由下面的 status 念出「已顯示 X～Y」，讓螢幕閱讀器
 // 使用者知道換了期間之後資料已經更新。
 // days：這段期間用了幾個交易日（風險頁傳；業務中台 要求跟數字一起寫出，天數少時統計誤差大），寫在起訖日期後面。
-const props = defineProps<{ pending?: boolean; days?: number }>()
+// daysPending：會有 days、但還沒讀到（2026-10-20）——先畫同樣長的骨架，手機上這一行換行時，天數晚出現不會多長一行把下面推下去
+const props = defineProps<{ pending?: boolean; days?: number; daysPending?: boolean }>()
 
 const range = useHoldingsRange()
 const today = holdingsTaipeiDate()
@@ -61,6 +62,7 @@ const status = computed(() => (props.pending ? '' : `已顯示 ${range.value[0]}
     </span>
     <span v-else class="holdings-range__text">{{ slash(range[0]) }}～{{ slash(range[1]) }}</span>
     <span v-if="days" class="holdings-range__text">共 {{ days }} 個交易日</span>
+    <span v-else-if="daysPending" class="holdings-range__text"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">共 240 個交易日</span></span>
     <p class="visually-hidden" role="status">{{ status }}</p>
   </div>
 </template>

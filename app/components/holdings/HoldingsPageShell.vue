@@ -10,9 +10,7 @@ const props = withDefaults(defineProps<{
   guestText?: string
   // 頁面第一份資料還沒到。之後的重新讀取（換期間）照舊是頁面區塊自己的 v-loading
   pending?: boolean
-  // ponytail: 過渡用（2026-10-20）。改好骨架的頁面設 true，其餘頁面照舊整塊一個轉圈；全部改完就拿掉這個開關與轉圈那一支
-  skeleton?: boolean
-}>(), { subtitle: undefined, guestText: '持股資料存在你的帳號裡，只有你看得到。', pending: false, skeleton: false })
+}>(), { subtitle: undefined, guestText: '持股資料存在你的帳號裡，只有你看得到。', pending: false })
 
 // 內容的 slot 拿到 loading：還在讀（登入狀態未定、帳戶清單或頁面第一份資料還沒到）時，頁面照樣畫標題、說明、表頭，只把資料換成同樣大小
 // 的骨架（.app-skeleton）——2026-10-20 使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」。
@@ -20,16 +18,11 @@ const props = withDefaults(defineProps<{
 // 右上的動作區也拿得到（只有會員才是 true）：按鈕要從第一個畫面就在，手機上它們換行在標題下面，晚出現會把內容往下推
 defineSlots<{ default?: (props: { loading: boolean }) => unknown; actions?: (props: { loading: boolean }) => unknown }>()
 
-const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
-// 登入狀態還沒確定（伺服器、hydration、Firebase 還原中）：這台瀏覽器登入過（auth-hint，firebase.client.ts）就先畫內容的骨架，沒登入過
-// 就直接畫訪客卡，兩種都從伺服器的第一個畫面就是對的。等 hydration 而不是只看 authResolved：Firebase 可能在 hydration 前就解析完，
-// 瀏覽器的第一次渲染要跟伺服器一樣（2026-10-05 Hydration node mismatch）
-const authHint = useCookie<boolean | null>('auth-hint')
-const resolving = computed(() => !hasHydrated.value || !authResolved.value)
-const member = computed(() => (resolving.value ? !!authHint.value : !!currentUser.value))
+// 登入狀態還沒確定時畫內容的骨架還是訪客卡：useMemberGate（觀察清單兩頁共用）
+const { resolving, member } = useMemberGate()
 
 // ---- 持股帳戶（2026-10-19，使用者：「持股（比如不同券商）」，選了「全部帳戶合併＋單一帳戶切換」）----
 // 持股各頁都經過這裡，所以帳戶清單的載入、網址 ?account= 的同步只寫在這裡。切換在側欄（HoldingsNav 的 SharedScopeSwitch，同日搬過去：
@@ -66,9 +59,7 @@ const loading = computed(() => resolving.value || !ready.value || props.pending)
 
     <HoldingsNav />
 
-    <div v-if="!props.skeleton && (resolving || (currentUser && loading))" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
-
-    <section v-else-if="props.skeleton ? !member : !currentUser" class="holdings-shell__guest">
+    <section v-if="!member" class="holdings-shell__guest">
       <h2 class="app-page__h2">{{ props.guestTitle }}</h2>
       <p class="holdings-shell__guest-text">{{ props.guestText }}</p>
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>

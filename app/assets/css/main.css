@@ -198,38 +198,11 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   color: var(--el-text-color-secondary);
 }
 
-/* 資料還沒回來時的佔位：給一個高度，不然頁面會先縮成一條再撐開。轉圈用 CSS 畫、不用 v-loading（2026-10-20，使用者：「holdings/analysis
-   重新整理還是有閃一下」「像是卡片的部分顯示閃動」）：v-loading 的遮罩是 90% 白、hydration 之後才淡入 0.3 秒，在米色的頁面底上就是一張
-   白卡片淡入；持股頁外殼的佔位換成頁面的佔位時又從頭淡入一次。這個伺服器就畫好，沒有遮罩、不淡入。大小與位置同 v-loading 的轉圈 */
-.app-loading-placeholder {
-  position: relative;
-  min-height: 200px;
-}
-
-.app-loading-placeholder::before {
-  content: '';
-  position: absolute;
-  top: 16px;
-  left: calc(50% - 17px);
-  width: 34px;
-  height: 34px;
-  box-sizing: border-box;
-  border: 2px solid transparent;
-  border-top-color: var(--el-color-primary);
-  border-right-color: var(--el-color-primary);
-  border-radius: 50%;
-  animation: app-loading-spin 1s linear infinite;
-}
-
-@keyframes app-loading-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* 資料還沒到的區塊（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」）：標題、說明、
    表頭照常畫，只有數字、表格的列、圖換成同樣大小的灰塊，資料到了原地換掉，旁邊與下面都不動。顏色取文字色的低透明度，壓在米色頁面、
-   白色面板、深色模式上都是「比底色深一點」。--text 是一行字：1em 的條加上下 0.25em，跟 1.5 倍行高的一行一樣高 */
+   白色面板、深色模式上都是「比底色深一點」。--text 是一行字：1em 的條加上下 0.25em，跟 1.5 倍行高的一行一樣高。
+   第一次讀不用 v-loading，也不用整塊一個轉圈：v-loading 的遮罩是 90% 白、hydration 後才淡入，在米色頁面上像一張白卡片閃一下
+  （同日先試過整塊轉圈、內容到齊才一起出來，使用者覺得看不出結構） */
 .app-skeleton {
   display: block;
   border-radius: 4px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RiskDrawdown, RiskOutcome } from '~/composables/holdings/holdings-model'
+import type { RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
 // 持股的風險指標（2026-10-05）：使用者在 業務中台 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，業務中台 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。
@@ -59,9 +59,14 @@ function drawdownText(drawdown: RiskDrawdown | null): string {
 // （現在持有的「是什麼」在持股分析，「漲跌起伏多大」在這裡）。
 const showAllMetrics = ref(false)
 const metricsTableId = useId()
+// 讀的時候（2026-10-20）：用一份空的報告算出同樣的列（名稱與意思），數值清空，表格畫成骨架（HoldingsMetricTable loading）。
+// 空報告的欄位都是 undefined，pct／plain／holdingsMetricText／drawdownText 都當成沒有值
+const BLANK_REPORT = { tradingDays: 0, marketValue: null, portfolio: {}, benchmark: {}, diversificationRatio: null } as unknown as RiskReport
 const metricRows = computed(() => {
-  const r = report.value
-  if (!r) return []
+  if (!report.value) return outcome.value ? [] : metricRowsOf(BLANK_REPORT).map(row => ({ ...row, value: '', market: '' }))
+  return metricRowsOf(report.value)
+})
+function metricRowsOf(r: RiskReport) {
   const tailMissing = firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS))
   // 以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
   const loss = (value: string | null | undefined) => (r.marketValue && value != null ? holdingsMetricText(String(Math.abs(Number(value))), 'money') : null)
@@ -78,7 +83,7 @@ const metricRows = computed(() => {
     // 有效持股數、前三大權重 2026-10-07 搬到持股分析頁（那是占比的事實，不需要股價歷史）；這裡只留要用股價回推的
     { core: false, name: '分散化比率', value: holdingsMetricText(r.diversificationRatio, 'ratio', firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))), meaning: '各檔波動度依權重平均 ÷ 組合的波動度（≥ 1），數字越大，各檔漲跌互相抵銷的部分越多' }
   ]
-})
+}
 const shownMetricRows = computed(() => metricRows.value.filter(row => row.core || showAllMetrics.value))
 
 // ---- 各檔的市值占比與波動占比 ----
@@ -107,7 +112,13 @@ const contributionRows = computed(() => {
 // 2026-10-19：圖例改叫「市值占比／波動占比」，不必再配一句說明；橫條上已有數字，數值軸拿掉（375 寬時刻度字會疊在一起）
 const { resolvedMode, color: accentColorName } = useAppTheme()
 const hasContribution = computed(() => contributionHoldings.value.some(holding => holding.riskContribution !== null))
-const contributionChartHeight = computed(() => `${Math.max(200, contributionHoldings.value.length * 44 + 80)}px`)
+// 一檔一列兩根橫條：高度跟著檔數。讀的時候照上次的檔數畫同樣高的骨架（useLayoutHint）
+const chartHeightFor = (count: number) => `${Math.max(200, count * 44 + 80)}px`
+const contributionChartHeight = computed(() => chartHeightFor(contributionHoldings.value.length))
+const contributionCountHint = useLayoutHint('holdings-risk-holdings', 5)
+watch(contributionHoldings, (list) => {
+  if (report.value) contributionCountHint.value = list.length
+})
 const contributionOption = computed(() => {
   const ink = getChartInk(resolvedMode.value)
   // ECharts 的類別軸由下往上排，反過來才是最大的在最上面
@@ -155,26 +166,26 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
 <template>
   <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價，看漲跌起伏有多大" guest-title="登入後查看你的持股風險指標" :pending="pending && !outcome">
+    <template #default="{ loading }">
 
       <!-- 交易日數寫在期間旁邊（業務中台 要求一併顯示；兩段共用。2026-10-19 從內容上方獨立的一句搬來） -->
-      <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" />
+      <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" :days-pending="loading" />
 
       <!-- 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：每段只剩問句 → 圖或表 → 一個展開。
            波動占比（風險貢獻）仍放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」）。 -->
-      <div v-loading="pending" class="risk-page__body">
+      <!-- 遮罩只給換期間（內容已經在畫面上）；第一次讀的時候問句、指標名稱與意思、計算方式照畫，圖與數字是骨架（2026-10-20） -->
+      <div v-loading="pending && !loading" class="risk-page__body" :aria-busy="loading">
         <el-alert v-if="outcome && !outcome.ok && !outcome.error" type="error" :closable="false" show-icon :title="outcome.message">
           <el-button @click="loadRisk">重新載入</el-button>
         </el-alert>
 
-        <template v-else-if="report">
-          <!-- 統計天數不足時照實說，不下結論 -->
-          <!-- 少於 120 天時，波動占比與分散化比率的格子自己寫「樣本不足」 -->
-          <p v-if="fewDays < 60" class="risk-page__note">交易日少於 60 天，波動度的統計誤差較大。</p>
+        <template v-else-if="loading || report">
 
-          <section v-if="contributionRows.length" aria-labelledby="risk-contribution-title">
+          <section v-if="loading ? contributionCountHint : contributionRows.length" aria-labelledby="risk-contribution-title">
             <h2 id="risk-contribution-title" class="risk-page__section-title">哪幾檔占了大部分的波動？</h2>
             <!-- 先圖後表（2026-10-07「risk 先圖表 再表格」，同站上指標頁的規矩） -->
-            <ClientOnly>
+            <div v-if="loading" class="risk-contribution-chart app-skeleton" :style="{ height: chartHeightFor(contributionCountHint) }" aria-hidden="true" />
+            <ClientOnly v-else>
               <SharedChart
                 v-if="hasContribution"
                 class="risk-contribution-chart"
@@ -187,8 +198,8 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
             </ClientOnly>
             <!-- 有圖時表格收進 details（2026-10-08「有了圖表還需要表格嗎…可以收合精簡視覺嗎」）：圖是 canvas，
                  螢幕閱讀器念不出各檔數字，所以文字版必須在，只是預設收起來。沒有圖時直接攤開。 -->
-            <details v-if="hasContribution" class="holdings-details">
-              <summary>各檔數字（{{ contributionRows.length }} 檔）</summary>
+            <details v-if="loading || hasContribution" class="holdings-details">
+              <summary>各檔數字<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（{{ contributionCountHint }} 檔）</span><template v-else>（{{ contributionRows.length }} 檔）</template></summary>
               <HoldingsMetricTable caption="各檔持股的市值占比與波動占比" :rows="contributionRows" value-label="市值占比" market-label="波動占比" />
             </details>
             <HoldingsMetricTable v-else caption="各檔持股的市值占比與波動占比" :rows="contributionRows" value-label="市值占比" market-label="波動占比" />
@@ -196,11 +207,14 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
           <section aria-labelledby="risk-metrics-title">
             <h2 id="risk-metrics-title" class="risk-page__section-title">波動和跌幅跟大盤比起來如何？</h2>
-            <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權指數的風險指標" :rows="shownMetricRows" market-label="同期加權指數" />
+            <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權指數的風險指標" :rows="shownMetricRows" market-label="同期加權指數" :loading="loading" />
             <el-button link type="primary" class="risk-page__toggle" :aria-expanded="showAllMetrics" :aria-controls="metricsTableId" @click="showAllMetrics = !showAllMetrics">
               {{ showAllMetrics ? '只看主要指標' : `顯示全部指標（另有 ${metricRows.length - shownMetricRows.length} 項）` }}
             </el-button>
             <!-- 會改變數字的缺口才留在外面，一行（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單） -->
+            <!-- 統計天數不足時照實說，不下結論；少於 120 天時，波動占比與分散化比率的格子自己寫「樣本不足」。放在表格下面
+                 （2026-10-20）：資料到了才知道要不要這一行，原本在最上面，出現時把兩段一起往下推（正式建置量到 0.038） -->
+            <p v-if="!loading && fewDays < 60" class="risk-page__note">交易日少於 60 天，波動度的統計誤差較大。</p>
             <p v-if="partialHoldings.length" class="risk-page__note">
               期間中才有股價（之前的比例分給其他持股）：{{ partialCoverageText(partialHoldings) }}
             </p>
@@ -210,17 +224,18 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
           <details class="holdings-details">
             <summary>計算方式</summary>
             <ul class="risk-page__notes">
-              <li>用現在每一檔的市值比例<template v-if="report.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>用現在每一檔的市值比例<template v-if="report?.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
               <li>波動占比（風險貢獻）：每一檔占整體波動的比例，合計約 100%。</li>
               <li>除權配股已還原，現金股利未還原，與價格型加權指數相同。</li>
-              <li v-if="drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
-              <li v-if="drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
+              <li v-if="report && drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
+              <li v-if="report && drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
             </ul>
           </details>
 
         </template>
       </div>
 
+    </template>
   </HoldingsPageShell>
 </template>
 

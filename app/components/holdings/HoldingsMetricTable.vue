@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<{
   //（.app-skeleton--flow），所以呼叫端在數值欄放一個典型的值（例如 '49.6%'）：欄寬照內容算，跟資料到了一樣，表頭不會左右跳。
   // 列固定的表傳真的名稱與意思，字先出現、列高也一樣；列數不定的表傳 useLayoutHint 記住的列數個 skeleton 列（整列都是範例字）
   loading?: boolean
-  // 寬的時候固定欄寬（依欄位順序：名稱、數值、大盤、意思），不照內容算：列數不定、名稱長短不一的表，骨架換成資料時表頭才不會左右移動
+  // 寬的時候的欄寬（依欄位順序：名稱、數值、大盤、意思）。不給就照有哪些欄用預設比例，見 columnWidths
   widths?: string[]
 }>(), { valueLabel: '你的持股', marketLabel: undefined, nameLabel: '指標', meaningLabel: '意思', loading: false, widths: undefined })
 
@@ -25,20 +25,27 @@ const props = withDefaults(defineProps<{
 defineSlots<{ name?: (props: { row: { name: string; value: string; market?: string; meaning?: string; skeleton?: boolean } }) => unknown }>()
 
 const hasMeaning = computed(() => props.rows.some(row => row.meaning != null))
+// 寬的時候欄寬一律固定、不照內容算（2026-10-20，使用者：「然後不要閃動」）：骨架的範例字跟真的數值長短不同（例如沒有交易時是
+//「期間內沒有持股」），照內容算的話資料到的那一刻整欄左右移（已實現損益量到 0.013）。名稱與意思是同樣的字，換行也一樣；意思欄最寬
+const columnWidths = computed(() => props.widths ?? (props.marketLabel
+  ? (hasMeaning.value ? ['22%', '16%', '16%', '46%'] : ['46%', '27%', '27%'])
+  : (hasMeaning.value ? ['24%', '22%', '54%'] : ['60%', '40%'])))
+// 數值欄沒給範例字時的骨架寬度：持股頁的數值多半是這個長度
+const VALUE_SAMPLE = '12.3%'
 </script>
 
 <template>
   <!-- role 寫明（2026-10-07 a11y 盤點）：窄的時候 table/tr 改成 block/grid，Safari＋VoiceOver 會因此把表格語意
        丟掉，明寫 role 才保得住。 -->
   <div class="holdings-metric-table">
-    <table class="seo-table holdings-metric-table__table" :class="{ 'holdings-metric-table__table--fixed': widths }" role="table">
+    <table class="seo-table holdings-metric-table__table" role="table">
       <caption class="visually-hidden">{{ caption }}</caption>
       <thead role="rowgroup">
         <tr role="row">
-          <th scope="col" role="columnheader" :style="{ width: widths?.[0] }">{{ nameLabel }}</th>
-          <th scope="col" role="columnheader" class="seo-table__num" :style="{ width: widths?.[1] }">{{ valueLabel }}</th>
-          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num" :style="{ width: widths?.[2] }">{{ marketLabel }}</th>
-          <th v-if="hasMeaning" scope="col" role="columnheader" :style="{ width: widths?.[marketLabel ? 3 : 2] }">{{ meaningLabel }}</th>
+          <th scope="col" role="columnheader" :style="{ width: columnWidths[0] }">{{ nameLabel }}</th>
+          <th scope="col" role="columnheader" class="seo-table__num" :style="{ width: columnWidths[1] }">{{ valueLabel }}</th>
+          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num" :style="{ width: columnWidths[2] }">{{ marketLabel }}</th>
+          <th v-if="hasMeaning" scope="col" role="columnheader" :style="{ width: columnWidths[marketLabel ? 3 : 2] }">{{ meaningLabel }}</th>
         </tr>
       </thead>
       <tbody role="rowgroup">
@@ -50,11 +57,11 @@ const hasMeaning = computed(() => props.rows.some(row => row.meaning != null))
           </th>
           <!-- 有兩個數值欄時，窄卡片上兩個都標欄名（例如「權重：53.3%」「風險貢獻：54.0%」），否則分不出哪個是哪個 -->
           <td role="cell" class="seo-table__num holdings-metric-table__value holdings-card__value" :data-value-label="marketLabel ? valueLabel : undefined">
-            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.value }}</span>
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.value || VALUE_SAMPLE }}</span>
             <template v-else>{{ row.value }}</template>
           </td>
           <td v-if="marketLabel" role="cell" class="seo-table__num" :data-label="marketLabel">
-            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.market }}</span>
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.market || VALUE_SAMPLE }}</span>
             <template v-else>{{ row.market ?? '－' }}</template>
           </td>
           <td v-if="hasMeaning" role="cell" class="holdings-metric-table__meaning">
@@ -139,9 +146,19 @@ const hasMeaning = computed(() => props.rows.some(row => row.meaning != null))
     background: var(--el-bg-color);
   }
 
-  /* 欄寬照表頭的 width，不照內容 */
-  .holdings-metric-table__table--fixed {
+  /* 欄寬照表頭的 width，不照內容（columnWidths） */
+  .holdings-metric-table__table {
     table-layout: fixed;
+  }
+
+  /* 數值欄（數值、大盤）與它們的表頭一律靠右：欄寬固定之後，原本靠左的數值欄跟靠右的大盤欄一左一右很明顯。全站的 .seo-table 不換行，
+     欄寬固定時長的原因（「樣本不足（30 天，需 120 天）」）會蓋到隔壁欄，這裡讓它換行 */
+  .holdings-metric-table__table thead th.seo-table__num,
+  .holdings-metric-table__table .holdings-metric-table__value,
+  .holdings-metric-table__table td[data-label] {
+    text-align: right;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .holdings-metric-table__table thead {
@@ -170,9 +187,10 @@ const hasMeaning = computed(() => props.rows.some(row => row.meaning != null))
     vertical-align: top;
   }
 
+  /* 欄寬固定，長名稱換行（骨架與資料是同樣的字，換行也一樣） */
   .holdings-metric-table__table tbody th {
     font-weight: 500;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .holdings-metric-table__value {

@@ -21,12 +21,15 @@ const props = withDefaults(defineProps<{
   actions?: boolean
   // 給了就在工具列放下載（檔名前半段）
   downloadName?: string
-}>(), { notes: () => ({}), storageKey: 'watchlist', movable: false, actions: false, downloadName: undefined })
+  // 資料還沒到（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）：rows 是呼叫端給的空列（列數照上次），
+  // 表頭、卡片上的欄名照畫，名稱與數字是骨架；操作鈕由呼叫端依 slot 的 loading 停用，不能下載
+  loading?: boolean
+}>(), { notes: () => ({}), storageKey: 'watchlist', movable: false, actions: false, downloadName: undefined, loading: false })
 const emit = defineEmits<{ reorder: [fields: string[]] }>()
 defineSlots<{
   toolbar?: () => unknown
   settings?: () => unknown
-  actions?: (props: { row: WatchlistRow; view: 'table' | 'card' }) => unknown
+  actions?: (props: { row: WatchlistRow; view: 'table' | 'card'; loading: boolean }) => unknown
 }>()
 
 const { data: schema } = useFilterSchema()
@@ -128,7 +131,7 @@ const sortedCards = computed(() => {
       </label>
     </div>
     <slot name="toolbar" />
-    <SharedDownloadButton v-if="downloadName" :rows="rows" :columns="sheetColumns" :filename="downloadName" />
+    <SharedDownloadButton v-if="downloadName" :rows="loading ? [] : rows" :columns="sheetColumns" :filename="downloadName" />
   </div>
   <slot name="settings" />
   <div class="view-table">
@@ -144,7 +147,11 @@ const sortedCards = computed(() => {
       @reorder="reorderFromSheet"
     >
       <template #cell="{ row, column, text }">
-        <template v-if="column.key === 'name'">
+        <div v-if="column.key === '__actions'" class="watchlist-row-actions">
+          <slot name="actions" :row="row" view="table" :loading="loading" />
+        </div>
+        <span v-else-if="loading" class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" />
+        <template v-else-if="column.key === 'name'">
           <div class="watchlist-name">
             <NuxtLink :to="linkOf(row)" :title="row.name">{{ row.name }}</NuxtLink>
             <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
@@ -152,9 +159,6 @@ const sortedCards = computed(() => {
           <p v-if="notes[row.code]" class="watchlist-note">{{ notes[row.code] }}</p>
         </template>
         <span v-else-if="column.key === WATCHLIST_CHANGE" :class="priceDirectionClass(row.change)">{{ text }}</span>
-        <div v-else-if="column.key === '__actions'" class="watchlist-row-actions">
-          <slot name="actions" :row="row" view="table" />
-        </div>
         <template v-else>{{ text }}</template>
       </template>
     </SharedSheetGrid>
@@ -162,7 +166,8 @@ const sortedCards = computed(() => {
 
   <ul class="view-card watchlist-cards">
     <li v-for="row in sortedCards" :key="row.code" class="watchlist-card">
-      <div class="watchlist-name">
+      <div v-if="loading" class="watchlist-name" aria-hidden="true"><span class="app-skeleton app-skeleton--inline watchlist-skeleton" /></div>
+      <div v-else class="watchlist-name">
         <NuxtLink :to="linkOf(row)">{{ row.name }}</NuxtLink>
         <span class="watchlist-name__code">{{ row.code }}</span>
         <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
@@ -171,17 +176,22 @@ const sortedCards = computed(() => {
       <dl class="watchlist-card__figures">
         <div v-for="column in columns" :key="column.field" :class="{ 'watchlist-card__wide': column.label.length > 7 || column.field === WATCHLIST_EX_DIVIDEND }">
           <dt>{{ column.label }}</dt>
-          <dd :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
+          <dd v-if="loading"><span class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" /></dd>
+          <dd v-else :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
         </div>
       </dl>
       <div v-if="actions" class="watchlist-row-actions">
-        <slot name="actions" :row="row" view="card" />
+        <slot name="actions" :row="row" view="card" :loading="loading" />
       </div>
     </li>
   </ul>
 </template>
 
 <style scoped>
+.watchlist-skeleton {
+  width: 4.5em;
+}
+
 .watchlist-name {
   display: flex;
   flex-wrap: wrap;

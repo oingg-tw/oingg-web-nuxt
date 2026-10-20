@@ -76,6 +76,8 @@ export interface LineChartEntry {
 const props = defineProps<{
   // Ascending (oldest first), as 業務中台 returns it — time runs left to right on the x-axis.
   entries: LineChartEntry[]
+  // 資料還沒到：同樣高的骨架塊（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）
+  loading?: boolean
   series: readonly LineSeriesSpec[]
   // 'category'（預設）＝主題色領頭、其餘用分類色（getSeriesColors）：杜邦、三率、流動/速動/現金比率等
   //（2026-10-17 使用者選「主題色＋分類色」，取代 2026-09-27 起的五階綠→紅漸層——綠紅是漲跌色，這些線沒有漲跌的意思）。
@@ -270,7 +272,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart v-if="entries.length > 1" class="stock-multi-line-chart" :option="chartOption" autoresize />
+  <div v-if="loading" class="stock-multi-line-chart app-skeleton" aria-hidden="true" />
+  <SharedChart v-else-if="entries.length > 1" class="stock-multi-line-chart" :option="chartOption" autoresize />
 </template>
 
 <style scoped>

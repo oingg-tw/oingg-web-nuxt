@@ -26,6 +26,8 @@ const props = defineProps<{
   remove: (id: string) => Promise<unknown>
   // 要剛好是全部的 id（業務中台的 reorder 規則）
   reorder: (ids: string[]) => Promise<unknown>
+  // 資料還沒到：畫這麼多列骨架（useLayoutHint 記住的組數），0＝資料到了（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」）
+  skeletonRows?: number
 }>()
 
 const uid = useId()
@@ -83,7 +85,19 @@ async function add() {
 <template>
   <section class="collection-manager__section" :aria-labelledby="`${uid}-list`">
     <h2 :id="`${uid}-list`" class="collection-manager__title">{{ listTitle }}</h2>
-    <p v-if="!visible.length" class="collection-manager__text">{{ emptyText }}</p>
+    <!-- 讀的時候（skeletonRows）：上次那麼多列，名稱是骨架、按鈕照畫但不能按，列高跟資料到了一樣（2026-10-20） -->
+    <ul v-if="skeletonRows" class="collection-manager__list" aria-hidden="true">
+      <li v-for="index in skeletonRows" :key="index" class="collection-manager__row">
+        <span class="collection-manager__name"><span class="app-skeleton app-skeleton--inline collection-manager__skeleton" /></span>
+        <div class="collection-manager__actions">
+          <el-button link type="primary" disabled tabindex="-1">改名</el-button>
+          <el-button link disabled tabindex="-1">上移</el-button>
+          <el-button link disabled tabindex="-1">下移</el-button>
+          <el-button v-if="skeletonRows > 1" link type="danger" disabled tabindex="-1">刪除</el-button>
+        </div>
+      </li>
+    </ul>
+    <p v-else-if="!visible.length" class="collection-manager__text">{{ emptyText }}</p>
     <ul v-else class="collection-manager__list">
       <li v-for="(item, index) in visible" :key="item.id" class="collection-manager__row">
         <span class="collection-manager__name">{{ item.name }}</span>
@@ -105,7 +119,7 @@ async function add() {
       <div class="collection-manager__new-row">
         <!-- 不加 size="large"：Element Plus 的 large 把輸入框字級寫死成 14px（全站下限 16px） -->
         <el-input :id="`${uid}-name`" v-model="newName" :maxlength="20" :placeholder="placeholder" />
-        <el-button type="primary" native-type="submit" :loading="creating" :disabled="!newName.trim()">新增</el-button>
+        <el-button type="primary" native-type="submit" :loading="creating" :disabled="!newName.trim() || !!skeletonRows">新增</el-button>
       </div>
     </form>
   </section>
@@ -149,6 +163,10 @@ async function add() {
 .collection-manager__name {
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.collection-manager__skeleton {
+  width: 6em;
 }
 
 .collection-manager__actions {

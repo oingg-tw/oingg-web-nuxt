@@ -4,15 +4,19 @@
 // 刪除一組＝連同裡面的股票一起刪（業務中台），提示寫明。
 useSeoMeta({ title: '清單管理', robots: 'noindex, nofollow' })
 
-const hasHydrated = useHasHydrated()
-const authResolved = useAuthResolved()
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
-// 清單是登入時由 app.vue 的 useWatchlistSync 讀進來的：讀到之前先不畫（不然會先閃「還沒有任何清單」）。synced 在開始讀時就是 true，
-// 讀完要再看 sync-pending
+// 登入過的瀏覽器先畫清單管理的結構、列是骨架，沒登入過直接畫訪客卡（useMemberGate，同持股頁的外殼，2026-10-20）。清單是登入時由
+// app.vue 的 useWatchlistSync 讀進來的：讀到之前是骨架（不然會先閃「還沒有任何清單」）。synced 在開始讀時就是 true，讀完要再看 sync-pending
+const { resolving, member } = useMemberGate()
 const synced = useState('watchlist-synced-from-server', () => false)
 const syncPending = useState('watchlist-sync-pending', () => false)
+const loading = computed(() => resolving.value || (!!currentUser.value && (!synced.value || syncPending.value)))
 const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWatchlists } = useStocks()
+const listCountHint = useLayoutHint('watchlist-lists', 1)
+watch(() => (loading.value || !currentUser.value ? null : watchlists.value.length), (count) => {
+  if (count !== null) listCountHint.value = count
+})
 </script>
 
 <template>
@@ -22,9 +26,7 @@ const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWa
 
     <WatchlistNav />
 
-    <div v-if="!hasHydrated || !authResolved || (currentUser && (!synced || syncPending))" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
-
-    <section v-else-if="!currentUser" class="watchlist-lists-page__guest">
+    <section v-if="!member" class="watchlist-lists-page__guest">
       <h2 class="app-page__h2">登入後管理你的觀察清單</h2>
       <p class="watchlist-lists-page__subtitle">清單存在你的帳號裡，換電腦或手機都在。</p>
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
@@ -33,6 +35,7 @@ const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWa
     <SharedCollectionManager
       v-else
       :items="watchlists"
+      :skeleton-rows="loading ? listCountHint : 0"
       list-title="你的清單"
       empty-text="第一次加入股票時，會自動建立「我的觀察清單」。"
       add-title="新增清單"

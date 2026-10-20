@@ -67,6 +67,13 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
   }
 }))
 type RealizedRow = (typeof rows.value)[number]
+// 讀的時候（2026-10-20）：表格畫上次看到的檔數那麼多列骨架；0＝上次沒有賣出，就只畫一句答句的骨架。下面兩張表名稱與意思照畫、
+// 數值留空（HoldingsMetricTable loading），上次沒有賣出時不畫「賣出的統計」
+const realizedCountHint = useLayoutHint('holdings-realized-rows', 3)
+watch(rows, (list) => {
+  if (realized.value) realizedCountHint.value = list.length
+})
+const firstLoad = computed(() => !realized.value && !failed.value)
 
 // 收盤價（2026-10-16「holdings/realized 希望外面表格可以放今日收盤價」）：最近一筆有成交的收盤（stock.latestClose，跟持股總覽算市值
 // 的同一份）。表頭寫是哪一天；比那天舊的（上市隔天早上才更新、或已經不交易）在數字後面標自己的日期，不讓人當成今天
@@ -112,55 +119,64 @@ function directionClass(value: number | null): string {
 // 用「獲利筆數占比」不用「勝率」：只陳述筆數，不帶比賽的語氣
 const tradeStatRows = computed(() => {
   const t = realized.value?.tradeStats
-  if (!t || t.sellCount === 0) return []
+  if (firstLoad.value ? !realizedCountHint.value : !t || t.sellCount === 0) return []
+  const text = (...args: Parameters<typeof holdingsMetricText>) => (t ? holdingsMetricText(...args) : '')
   return [
-    { name: '賣出筆數', value: `${t.sellCount} 筆`, meaning: `獲利 ${t.winCount} 筆、虧損 ${t.lossCount} 筆` },
-    { name: '獲利筆數占比', value: holdingsMetricText(t.winRate, 'pct'), meaning: '獲利的賣出筆數 ÷ 全部賣出筆數' },
-    { name: '平均每筆獲利', value: holdingsMetricText(t.averageWin, 'money', '沒有獲利的賣出'), meaning: '獲利的那幾筆，平均每筆的已實現損益' },
-    { name: '平均每筆虧損', value: holdingsMetricText(t.averageLoss, 'money', '沒有虧損的賣出'), meaning: '虧損的那幾筆，平均每筆的已實現損益' },
-    { name: '獲利因子', value: holdingsMetricText(t.profitFactor, 'ratio', '沒有虧損的賣出'), meaning: '獲利筆數的損益合計 ÷ 虧損筆數的損益合計（取絕對值）' },
-    { name: '平均持有天數', value: t.averageHoldingDays === null ? '－' : `${Math.round(Number(t.averageHoldingDays))} 天`, meaning: '從買進到賣出的平均日曆天數' }
+    { name: '賣出筆數', value: t ? `${t.sellCount} 筆` : '', meaning: t ? `獲利 ${t.winCount} 筆、虧損 ${t.lossCount} 筆` : '' },
+    { name: '獲利筆數占比', value: text(t?.winRate, 'pct'), meaning: '獲利的賣出筆數 ÷ 全部賣出筆數' },
+    { name: '平均每筆獲利', value: text(t?.averageWin, 'money', '沒有獲利的賣出'), meaning: '獲利的那幾筆，平均每筆的已實現損益' },
+    { name: '平均每筆虧損', value: text(t?.averageLoss, 'money', '沒有虧損的賣出'), meaning: '虧損的那幾筆，平均每筆的已實現損益' },
+    { name: '獲利因子', value: text(t?.profitFactor, 'ratio', '沒有虧損的賣出'), meaning: '獲利筆數的損益合計 ÷ 虧損筆數的損益合計（取絕對值）' },
+    { name: '平均持有天數', value: !t ? '' : t.averageHoldingDays === null ? '－' : `${Math.round(Number(t.averageHoldingDays))} 天`, meaning: '從買進到賣出的平均日曆天數' }
   ]
 })
 
 const tradingRows = computed(() => {
   const trading = performance.value?.ok ? performance.value.result.trading : null
-  if (!trading) return []
+  if (!trading && !firstLoad.value) return []
+  const text = (...args: Parameters<typeof holdingsMetricText>) => (trading ? holdingsMetricText(...args) : '')
   const noExposure = '期間內沒有持股'
   return [
-    { name: '買進金額', value: holdingsMetricText(trading.buyAmount, 'money'), meaning: '期間內實際成交的買進（不含配股與成本不明的取得）' },
-    { name: '賣出金額', value: holdingsMetricText(trading.sellAmount, 'money'), meaning: '期間內實際成交的賣出' },
-    { name: '手續費', value: holdingsMetricText(trading.fees, 'money'), meaning: '買進與賣出的券商手續費' },
-    { name: '證交稅', value: holdingsMetricText(trading.taxes, 'money'), meaning: '賣出時的證券交易稅' },
-    { name: '週轉率', value: holdingsMetricText(trading.turnover, 'pct', noExposure, 2), meaning: '買進與賣出較小的那一個 ÷ 平均市值，整段期間、不年化' },
-    { name: '成本率', value: holdingsMetricText(trading.costRatio, 'pct', noExposure, 2), meaning: '（手續費＋證交稅）÷ 平均市值，整段期間、不年化' }
+    { name: '買進金額', value: text(trading?.buyAmount, 'money'), meaning: '期間內實際成交的買進（不含配股與成本不明的取得）' },
+    { name: '賣出金額', value: text(trading?.sellAmount, 'money'), meaning: '期間內實際成交的賣出' },
+    { name: '手續費', value: text(trading?.fees, 'money'), meaning: '買進與賣出的券商手續費' },
+    { name: '證交稅', value: text(trading?.taxes, 'money'), meaning: '賣出時的證券交易稅' },
+    { name: '週轉率', value: text(trading?.turnover, 'pct', noExposure, 2), meaning: '買進與賣出較小的那一個 ÷ 平均市值，整段期間、不年化' },
+    { name: '成本率', value: text(trading?.costRatio, 'pct', noExposure, 2), meaning: '（手續費＋證交稅）÷ 平均市值，整段期間、不年化' }
   ]
 })
 </script>
 
 <template>
   <HoldingsPageShell title="已實現損益" subtitle="選一段期間，看賣掉的股票賺賠多少、賣出的統計與交易成本" guest-title="登入後查看你的已實現損益" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !realized">
+    <template #default="{ loading }">
 
       <HoldingsRangePicker :pending="pending" />
 
       <!-- 2026-10-19 重新設計（使用者：「已實現損益 賣出的損益 這個區塊請重新設計」）：問句 → 答句 → 表，同持股分析、配息日程。
            原本的合計框拿掉：框裡的起訖日期跟上面的期間重複，大字的紅綠金額也不再當標題；合計寫進答句、一般字級。
            成本不明的那一行寫出是哪幾檔；口徑收進「計算方式」（同持股總覽、風險）。 -->
-      <section v-loading="pending" aria-labelledby="realized-title">
+      <!-- 遮罩只給換期間（內容已經在畫面上）；第一次讀的時候是骨架（2026-10-20） -->
+      <section v-loading="pending && !loading" aria-labelledby="realized-title" :aria-busy="loading">
         <h2 id="realized-title" class="realized-page__section-title">這段期間賣掉的股票賺賠多少？</h2>
 
         <!-- 讀不到：彈窗會說明並自動重讀 -->
         <template v-if="failed" />
 
-        <p v-else-if="realized && !rows.length" class="realized-page__answer">這段期間沒有賣出。</p>
+        <p v-else-if="loading ? !realizedCountHint : !rows.length" class="realized-page__answer">
+          <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">這段期間沒有賣出。</span>
+          <template v-else>這段期間沒有賣出。</template>
+        </p>
 
-        <template v-else-if="realized">
+        <template v-else>
           <p class="realized-page__answer">
-            賣出 {{ rows.length }} 檔，已實現損益合計 <span :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</span>。
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">賣出 3 檔，已實現損益合計 ▲ +123,456 元。</span>
+            <template v-else>賣出 {{ rows.length }} 檔，已實現損益合計 <span :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</span>。</template>
           </p>
           <HoldingsSymbolTable
             v-model:expanded="expanded"
-            :rows="rows"
+            :skeleton-rows="loading ? realizedCountHint : 0"
+            :rows="loading ? [] : rows"
             :columns="columns"
             default-sort="value"
             download-name="已實現損益"
@@ -178,7 +194,7 @@ const tradingRows = computed(() => {
             </template>
           </HoldingsSymbolTable>
 
-          <p v-if="excludedText" class="realized-page__note">未計入：{{ excludedText }}</p>
+          <p v-if="!loading && excludedText" class="realized-page__note">未計入：{{ excludedText }}</p>
           <details class="holdings-details realized-page__method">
             <summary>計算方式</summary>
             <ul class="realized-page__notes">
@@ -192,13 +208,14 @@ const tradingRows = computed(() => {
 
       <section v-if="tradeStatRows.length" aria-labelledby="realized-stats-title">
         <h2 id="realized-stats-title" class="realized-page__section-title">賣出的統計</h2>
-        <HoldingsMetricTable caption="期間內賣出的統計" :rows="tradeStatRows" value-label="數值" />
+        <HoldingsMetricTable caption="期間內賣出的統計" :rows="tradeStatRows" value-label="數值" :loading="loading" />
       </section>
 
       <section v-if="tradingRows.length" aria-labelledby="realized-cost-title">
         <h2 id="realized-cost-title" class="realized-page__section-title">交易成本</h2>
-        <HoldingsMetricTable caption="期間內的交易與成本" :rows="tradingRows" value-label="數值" />
+        <HoldingsMetricTable caption="期間內的交易與成本" :rows="tradingRows" value-label="數值" :loading="loading" />
       </section>
+    </template>
   </HoldingsPageShell>
 </template>
 

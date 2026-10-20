@@ -116,7 +116,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析" :pending="firstPaintPending" skeleton>
+  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析" :pending="firstPaintPending">
 
     <template #default="{ loading }">
       <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->

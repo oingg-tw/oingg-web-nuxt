@@ -44,13 +44,20 @@ const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.inc
 // 從沒存過，用預設。免費方案上限 8 欄（預設 5＋自己的 3），付費無上限，每個方案硬上限 20（使用者 2026-10-06
 // 的決定，業務中台 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——存檔不先查額度再擋，因為
 // 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。只有「新增」在開挑選器前先擋（openPicker）。
-const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () => defaultColumns())
 const { fetchColumns, saveColumns } = useUserWatchlist()
 const currentUser = useCurrentUser()
 const serializeColumns = (list: ScreenerResultTableColumn[]) => JSON.stringify(list.map(({ field, label }) => ({ field, label })))
 // 內建欄位用程式裡的定義（標籤之後改了也跟得上），自訂欄位照存的
 const fromSaved = (saved: { field: string; label: string }[]) =>
   saved.map(item => BUILTIN_COLUMNS.find(column => column.field === item.field) ?? { field: item.field, label: item.label })
+// 欄位的副本放在 cookie（2026-10-20，使用者：「然後不要閃動」）：帳號裡那份要等登入還原才讀得到，原本重新整理先畫預設的欄位、讀到才換成
+// 自己的；有副本時伺服器的第一個畫面就是自己的欄位。只在這台瀏覽器登入過（auth-hint）時用；讀到帳號裡的那份照樣以它為準
+const columnsHint = useCookie<{ field: string; label: string }[] | null>('watchlist-columns-hint', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+const authHint = useCookie<boolean | null>('auth-hint')
+const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () => (authHint.value && columnsHint.value?.length ? fromSaved(columnsHint.value) : defaultColumns()))
+watch(columns, (value) => {
+  columnsHint.value = value.map(({ field, label }) => ({ field, label }))
+}, { deep: true })
 let lastSaved = serializeColumns(columns.value)
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -146,6 +153,16 @@ const syncPending = useState('watchlist-sync-pending', () => false)
 const firstPaintPending = computed(() => !hasHydrated.value || !authResolved.value
   || (currentUser.value ? !synced.value || syncPending.value : guestListLoading.value)
   || (pending.value && !priceDate.value))
+// 分享鈕從第一個畫面就在（登入過的瀏覽器）：它在工具列裡，手機上晚出現會多長一行（useMemberGate）
+const { member } = useMemberGate()
+// 骨架的列數＝上次看到的檔數（useLayoutHint）；0＝上次是空的
+const rowCountHint = useLayoutHint('watchlist-rows', 5)
+watch(() => (firstPaintPending.value ? null : listCodes.value.length), (count) => {
+  if (count !== null) rowCountHint.value = count
+})
+const skeletonRows = computed<WatchlistRow[]>(() => Array.from({ length: rowCountHint.value }, (_, index) => ({
+  code: `skeleton-${index}`, name: '', kind: 'common', values: {}, change: null, changePercent: null, nextDividendEvent: null
+})))
 const { keyword, fetchSuggestions, firstMatch } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
@@ -221,7 +238,10 @@ async function submitNote() {
       觀察清單
       <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
            第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
-      <span v-if="listCodes.length && !firstPaintPending" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
+      <span v-if="firstPaintPending ? rowCountHint : listCodes.length" class="watchlist-page__count">
+        <span v-if="firstPaintPending" class="app-skeleton app-skeleton--flow" aria-hidden="true">共 {{ rowCountHint }} 檔・10/20 收盤</span>
+        <template v-else>共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></template>
+      </span>
     </h1>
 
     <WatchlistNav />
@@ -247,12 +267,13 @@ async function submitNote() {
       目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
     </p>
 
-    <div v-if="firstPaintPending" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
-    <div v-else class="watchlist-page__content">
-      <el-empty v-if="!listCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
+    <!-- 讀的時候表頭、卡片的欄名照畫，列是骨架、列數照上次（2026-10-20）；上次是空的就直接是空狀態 -->
+    <div class="watchlist-page__content" :aria-busy="firstPaintPending">
+      <el-empty v-if="firstPaintPending ? !rowCountHint : !listCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <WatchlistTable
         v-else
-        :rows="rows"
+        :loading="firstPaintPending"
+        :rows="firstPaintPending ? skeletonRows : rows"
         :columns="columns"
         :notes="watchlistNotes"
         :order-label="isGuest ? '市值順序' : '加入順序'"
@@ -265,10 +286,10 @@ async function submitNote() {
           <!-- 靠右的一組：分享鈕讀到連結狀態後才出現，放在最左邊，出現時欄位設定不會被推動 -->
           <div class="watchlist-toolbar__end">
             <SharedShareButton
-              v-if="!isGuest && activeWatchlist"
+              v-if="member && (firstPaintPending || activeWatchlist)"
               kind="watchlist"
-              :target-id="activeWatchlist.id"
-              :name="activeWatchlist.name"
+              :target-id="activeWatchlist?.id ?? ''"
+              :name="activeWatchlist?.name ?? ''"
               :columns="shareColumns"
               sensitive-heading="只有你看得到的，預設不分享"
             />
@@ -288,9 +309,9 @@ async function submitNote() {
             <button type="button" class="column-settings__button" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</button>
           </SharedColumnSettings>
         </template>
-        <template #actions="{ row, view }">
-          <el-button v-if="watchlistIds[row.code]" :link="view === 'table'" :type="view === 'table' ? 'primary' : undefined" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
-          <el-button :link="view === 'table'" type="danger" :plain="view === 'card'" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
+        <template #actions="{ row, view, loading }">
+          <el-button v-if="loading || watchlistIds[row.code]" :disabled="loading" :link="view === 'table'" :type="view === 'table' ? 'primary' : undefined" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
+          <el-button :link="view === 'table'" type="danger" :plain="view === 'card'" :aria-label="`從觀察清單移除 ${row.name}`" :disabled="loading" @click="removeStock(row.code)">移除</el-button>
         </template>
       </WatchlistTable>
     </div>

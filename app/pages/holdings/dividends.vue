@@ -82,6 +82,12 @@ const events = computed(() => {
   })
 })
 
+// 骨架畫幾列＝上次看到的筆數（useLayoutHint）；0＝上次沒有任何配息，讀的時候就不畫月曆與表格
+const eventCountHint = useLayoutHint('holdings-dividends-rows', 5)
+watch(events, (list) => {
+  if (result.value) eventCountHint.value = list.length
+})
+
 // 答句：接下來幾筆、最近的是哪一筆；過去一年發放了幾筆、合計多少。只陳述數字
 const answer = computed(() => {
   if (!result.value) return null
@@ -105,50 +111,69 @@ const answer = computed(() => {
 
 <template>
   <HoldingsPageShell title="配息日程" subtitle="持股接下來要除權息、發放的，以及過去一年發放過的" guest-title="登入後查看你的配息日程" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !result">
-    <section aria-labelledby="dividends-title">
-      <h2 id="dividends-title" class="dividends-page__section-title">接下來與過去一年的配息有哪些？</h2>
-      <!-- 讀不到：彈窗會說明並自動重讀 -->
-      <template v-if="failed" />
-      <template v-else-if="result">
-        <p class="dividends-page__answer">{{ answer }}</p>
-        <!-- 月曆在上、表格在下（2026-10-19 使用者：「要先呈現配息月曆，下半部才會是表格」） -->
-        <HoldingsDividendCalendar v-if="events.length" :events="events" :as-of="result.asOf" class="dividends-page__calendar" />
-        <SharedTableScroll v-if="events.length" label="持股的配息日程">
-          <table class="seo-table dividends-page__table">
-            <caption class="visually-hidden">持股的配息日程：還沒發放的在前、已發放的在後</caption>
-            <thead>
-              <tr>
-                <th scope="col">股票</th>
-                <th scope="col">除權息日</th>
-                <th scope="col">發放日</th>
-                <th scope="col">每股</th>
-                <th scope="col">股數</th>
-                <th scope="col">應收</th>
-                <th scope="col">狀態</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="event in events" :key="event.key">
-                <th scope="row">
-                  <NuxtLink :to="event.link">{{ event.name }}</NuxtLink>
-                  <span class="dividends-page__code">{{ event.symbol }}</span>
-                </th>
-                <td>{{ event.exText }}</td>
-                <td>{{ event.payText }}</td>
-                <td>{{ event.perShareText }}</td>
-                <td class="seo-table__num">{{ event.sharesText }}</td>
-                <td class="seo-table__num">{{ event.amountText }}</td>
-                <td>{{ STATUS_TEXT[event.status] }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
-        <p class="dividends-page__footnote">
-          股數是除息日前一天收盤時的持股；還沒除息的用目前持股估算。應收是股數乘以每股金額，還沒扣匯費與二代健保補充保費，實際入帳可能略少。
-          配股無條件捨去到整股，不足一股的部分通常依面額折發現金，這裡沒有算進去；配股在新股上市（上櫃）買賣日入帳，那個日期目前沒有資料，所以只標「已除權」。
-        </p>
-      </template>
-    </section>
+    <template #default="{ loading }">
+      <!-- 讀的時候問句、月曆（這個月、空的）、表頭、註腳照畫，答句與表格的列是骨架（2026-10-20）。月曆的格子有最小高度，
+           事件標籤放進去不變高。上次沒有任何配息時（列數提示是 0）不畫月曆與表格，跟資料到了一樣 -->
+      <section aria-labelledby="dividends-title" :aria-busy="loading">
+        <h2 id="dividends-title" class="dividends-page__section-title">接下來與過去一年的配息有哪些？</h2>
+        <!-- 讀不到：彈窗會說明並自動重讀 -->
+        <template v-if="failed" />
+        <template v-else-if="loading || result">
+          <p class="dividends-page__answer">
+            <!-- 範例字照上次有沒有配息挑一句：沒有配息的那句短很多，手機上少一行 -->
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ eventCountHint ? '接下來 2 筆，最近的是 11/05 除息的台積電，應收 5,000 元；過去一年發放 6 筆，現金合計應收 34,934 元。' : '目前沒有已公告、還沒發放的配息；過去一年沒有發放的配息。' }}</span>
+            <template v-else>{{ answer }}</template>
+          </p>
+          <!-- 月曆在上、表格在下（2026-10-19 使用者：「要先呈現配息月曆，下半部才會是表格」） -->
+          <HoldingsDividendCalendar v-if="loading ? eventCountHint > 0 : events.length" :events="loading ? [] : events" :as-of="result?.asOf ?? holdingsTaipeiDate()" class="dividends-page__calendar" />
+          <SharedTableScroll v-if="loading ? eventCountHint > 0 : events.length" label="持股的配息日程">
+            <table class="seo-table dividends-page__table">
+              <caption class="visually-hidden">持股的配息日程：還沒發放的在前、已發放的在後</caption>
+              <thead>
+                <tr>
+                  <th scope="col">股票</th>
+                  <th scope="col">除權息日</th>
+                  <th scope="col">發放日</th>
+                  <th scope="col">每股</th>
+                  <th scope="col">股數</th>
+                  <th scope="col">應收</th>
+                  <th scope="col">狀態</th>
+                </tr>
+              </thead>
+              <tbody v-if="loading" aria-hidden="true">
+                <tr v-for="index in eventCountHint" :key="index">
+                  <th scope="row"><span class="app-skeleton app-skeleton--flow">台積電 2330</span></th>
+                  <td><span class="app-skeleton app-skeleton--flow">2026/11/05 除息</span></td>
+                  <td><span class="app-skeleton app-skeleton--flow">2026/12/02</span></td>
+                  <td><span class="app-skeleton app-skeleton--flow">5 元</span></td>
+                  <td class="seo-table__num"><span class="app-skeleton app-skeleton--flow">1,000 股</span></td>
+                  <td class="seo-table__num"><span class="app-skeleton app-skeleton--flow">5,000 元</span></td>
+                  <td><span class="app-skeleton app-skeleton--flow">待發放</span></td>
+                </tr>
+              </tbody>
+              <tbody v-else>
+                <tr v-for="event in events" :key="event.key">
+                  <th scope="row">
+                    <NuxtLink :to="event.link">{{ event.name }}</NuxtLink>
+                    <span class="dividends-page__code">{{ event.symbol }}</span>
+                  </th>
+                  <td>{{ event.exText }}</td>
+                  <td>{{ event.payText }}</td>
+                  <td>{{ event.perShareText }}</td>
+                  <td class="seo-table__num">{{ event.sharesText }}</td>
+                  <td class="seo-table__num">{{ event.amountText }}</td>
+                  <td>{{ STATUS_TEXT[event.status] }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </SharedTableScroll>
+          <p class="dividends-page__footnote">
+            股數是除息日前一天收盤時的持股；還沒除息的用目前持股估算。應收是股數乘以每股金額，還沒扣匯費與二代健保補充保費，實際入帳可能略少。
+            配股無條件捨去到整股，不足一股的部分通常依面額折發現金，這裡沒有算進去；配股在新股上市（上櫃）買賣日入帳：2026 年 10 月 20 日以後公告的配股有發放日，之前的沒有資料，只標「已除權」。
+          </p>
+        </template>
+      </section>
+    </template>
   </HoldingsPageShell>
 </template>
 

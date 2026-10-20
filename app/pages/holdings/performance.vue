@@ -102,13 +102,17 @@ const report = computed(() => (performance.value?.ok && performance.value.result
 // 同樣進出買大盤：影子組合賣超（endValue ≤ 0）時它的 mwr 是 null
 const sameFlows = computed(() => report.value?.sameFlowsBenchmark ?? null)
 const sameFlowsOversold = computed(() => !!sameFlows.value && Number(sameFlows.value.endValue) <= 0)
+// 讀的時候（2026-10-20）：表格的列照樣列出、數值留空（HoldingsMetricTable loading），名稱與意思先出現；逐年的列數照上次
+const firstLoad = computed(() => !performance.value)
+const metricText = (...args: Parameters<typeof holdingsMetricText>) => (report.value ? holdingsMetricText(...args) : '')
+
 const pairRows = computed(() => {
   const result = report.value
-  if (!result) return []
+  if (!result && !firstLoad.value) return []
   const start = comparison.value?.start && comparison.value.start > range.value[0] ? `（${comparison.value.start} 起）` : ''
   return [
-    { name: `時間加權報酬${start}`, value: holdingsMetricText(result.twr, 'signedPct', '－', 2), market: comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－', meaning: '看選股；大盤是同一段期間' },
-    { name: '資金加權報酬', value: holdingsMetricText(result.mwr, 'signedPct', '－', 2), market: holdingsMetricText(sameFlows.value?.mwr, 'signedPct', '－', 2), meaning: '看實際的錢，含進出時機；大盤是同樣的錢、同樣的日子買賣' }
+    { name: `時間加權報酬${start}`, value: metricText(result?.twr, 'signedPct', '－', 2), market: !result ? '' : comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－', meaning: '看選股；大盤是同一段期間' },
+    { name: '資金加權報酬', value: metricText(result?.mwr, 'signedPct', '－', 2), market: metricText(sameFlows.value?.mwr, 'signedPct', '－', 2), meaning: '看實際的錢，含進出時機；大盤是同樣的錢、同樣的日子買賣' }
   ]
 })
 
@@ -128,33 +132,40 @@ const periodRow = (row: { period: string; portfolio: string | null; benchmark: s
 })
 const yearlyRows = computed(() => (report.value?.periodReturns.yearly ?? []).map(periodRow))
 const monthlyRows = computed(() => (report.value?.periodReturns.monthly ?? []).map(periodRow))
+const yearCountHint = useLayoutHint('holdings-performance-years', 2)
+watch(yearlyRows, (rows) => {
+  if (report.value) yearCountHint.value = rows.length
+})
+const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value }, () => ({ skeleton: true, name: '2026', value: '+12.34%', market: '+12.34%', meaning: '240 天' })))
 
 const drawdownRows = computed(() => {
   const d = report.value?.drawdown
-  if (!d) return []
+  if (!d && !firstLoad.value) return []
   return [
-    { name: '最大跌幅', value: holdingsMetricText(d.maxDrawdown, 'pct'), meaning: d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
-    { name: '低於前高的天數', value: `${d.underwaterDays} 天`, meaning: '收盤低於前高的交易日合計' },
-    { name: '最長連續低於前高', value: `${d.longestUnderwaterDays} 天`, meaning: '跌破前高到站回，最長的一段' },
-    { name: '目前距前高', value: Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
+    { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
+    { name: '低於前高的天數', value: d ? `${d.underwaterDays} 天` : '', meaning: '收盤低於前高的交易日合計' },
+    { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
+    { name: '目前距前高', value: !d ? '' : Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
   ]
 })
 </script>
 
 <template>
   <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期加權指數" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="performancePending && !performance">
+    <template #default="{ loading }">
 
       <HoldingsRangePicker :pending="performancePending" />
 
-      <section v-loading="performancePending" aria-labelledby="performance-compare-title">
+      <!-- 遮罩只給換期間（內容已經在畫面上）；第一次讀的時候問句、表的名稱與意思、註腳照畫，數字與走勢圖是骨架（2026-10-20） -->
+      <section v-loading="performancePending && !loading" aria-labelledby="performance-compare-title" :aria-busy="loading">
         <h2 id="performance-compare-title" class="performance-page__section-title">與大盤比較</h2>
 
         <el-alert v-if="performance && !performance.ok && !performance.error" type="error" :closable="false" show-icon :title="performance.message">
           <el-button @click="loadPerformance">重新載入</el-button>
         </el-alert>
 
-        <template v-else-if="performance?.ok">
-          <p v-if="performance.result.twr === null" class="performance-page__note">這段期間沒有持股。</p>
+        <template v-else-if="loading || performance?.ok">
+          <p v-if="!loading && performance?.ok && performance.result.twr === null" class="performance-page__note">這段期間沒有持股。</p>
           <template v-else>
             <!-- 兩組配對（2026-10-16，使用者：「我畢竟有主動交易，這樣我的持股就不能很好拿來跟大盤比較」→「對我這樣進出，有沒有比
                  同樣時間買大盤好」）：時間加權報酬對同期加權指數（比選股）、資金加權報酬對同樣的錢在同樣的日子買賣加權指數（業務中台
@@ -162,11 +173,12 @@ const drawdownRows = computed(() => {
                  對照表跟下面逐年報酬同一個元件，中性色、不用漲跌色暗示好壞。
                  同日先放過一句答句「這樣進出，比同樣時間買賣大盤多／少 X 元」，使用者看到自己的數字：「這太傷心了請拿掉」——
                  不要把輸給大盤的金額寫成大字答句，只留表格裡的百分比 -->
-            <HoldingsMetricTable class="performance-page__pairs" caption="你的持股與加權指數的報酬對照" :rows="pairRows" market-label="加權指數" meaning-label="比的是" />
+            <HoldingsMetricTable class="performance-page__pairs" caption="你的持股與加權指數的報酬對照" :rows="pairRows" market-label="加權指數" meaning-label="比的是" :loading="loading" />
 
             <StockMultiSeriesLineChart
-              v-if="comparison?.entries.length"
-              :entries="comparison.entries"
+              v-if="loading || comparison?.entries.length"
+              :loading="loading"
+              :entries="comparison?.entries ?? []"
               :series="comparisonSeries"
               palette="accent"
               unit="%"
@@ -175,21 +187,24 @@ const drawdownRows = computed(() => {
               :aria-label="chartLabel"
             />
 
-            <p v-if="annualizedText" class="performance-page__note">{{ annualizedText }}</p>
+            <p v-if="loading || annualizedText" class="performance-page__note">
+              <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">年化：時間加權 +12.34%、資金加權 +12.34%。</span>
+              <template v-else>{{ annualizedText }}</template>
+            </p>
 
             <p class="performance-page__footnote">
-              大盤不扣交易成本，你的手續費與證交稅算在你這邊；兩邊都不含股利。<template v-if="sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬。</template>
+              大盤不扣交易成本，你的手續費與證交稅算在你這邊；兩邊都不含股利。<template v-if="!loading && sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬。</template>
             </p>
           </template>
         </template>
       </section>
 
-      <template v-if="report">
-        <section v-if="yearlyRows.length" aria-labelledby="performance-period-title">
+      <template v-if="loading || report">
+        <section v-if="loading ? yearCountHint : yearlyRows.length" aria-labelledby="performance-period-title" :aria-busy="loading">
           <h2 id="performance-period-title" class="performance-page__section-title">逐年與逐月報酬</h2>
-          <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="yearlyRows" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
-          <details v-if="monthlyRows.length" class="performance-page__details holdings-details">
-            <summary>逐月報酬（{{ monthlyRows.length }} 個月）</summary>
+          <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="loading ? skeletonYearRows : yearlyRows" :loading="loading" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
+          <details v-if="loading || monthlyRows.length" class="performance-page__details holdings-details">
+            <summary>逐月報酬<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（12 個月）</span><template v-else>（{{ monthlyRows.length }} 個月）</template></summary>
             <HoldingsMetricTable caption="持股與加權指數的逐月報酬" :rows="monthlyRows" name-label="月份" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
           </details>
         </section>
@@ -197,10 +212,11 @@ const drawdownRows = computed(() => {
         <section aria-labelledby="performance-drawdown-title">
           <h2 id="performance-drawdown-title" class="performance-page__section-title">跌幅與回到前高</h2>
           <p class="performance-page__note">依實際帳本計算，與「風險」頁用現在持股回推的不同。</p>
-          <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" />
+          <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" :loading="loading" />
         </section>
 
       </template>
+    </template>
   </HoldingsPageShell>
 </template>
 

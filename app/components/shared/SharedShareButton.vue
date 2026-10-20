@@ -24,9 +24,12 @@ const props = defineProps<{
 // 持股卡片往下推（/holdings 375 寬量到 0.0089）。讀不到就不畫（同原本）
 const { shares, ensureShares, shareOf, saveShare, revokeShare } = useShares()
 const currentUser = useCurrentUser()
+const authResolved = useAuthResolved()
 const checking = ref(true)
 onMounted(() => {
-  watch(currentUser, async () => {
+  // 登入還在還原時骨架留著：原本 hydration 時還沒有使用者，骨架先收、登入好了又畫一次（check-reload-flash 抓到的）
+  watch([authResolved, currentUser], async ([resolved]) => {
+    if (!resolved) return
     checking.value = !shares.value
     await ensureShares()
     checking.value = false

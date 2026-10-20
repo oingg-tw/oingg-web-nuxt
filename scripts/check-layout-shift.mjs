@@ -69,6 +69,8 @@ if (login) {
   await ui.locator('.firebaseui-id-submit').click()
   await page.locator('.user-menu-button__trigger').first().waitFor({ state: 'attached', timeout: 60000 })
   await page.locator('.post-login-loader').waitFor({ state: 'hidden', timeout: 60000 }).catch(() => {})
+  // 已經回答過 Cookie 同意的會員：底部的同意橫幅換行變高時頂邊移動也算位移，量到的是橫幅不是頁面
+  await context.addCookies([{ name: 'analytics-consent', value: 'denied', url: baseUrl }])
   storageState = await context.storageState({ indexedDB: true })
   await context.close()
 }
@@ -79,6 +81,14 @@ for (const route of routes) {
     const mobile = width < 768
     const context = await browser.newContext({ viewport: { width, height: mobile ? 812 : 900 }, isMobile: mobile, hasTouch: mobile, storageState })
     if (login) await blockWrites(context)
+    // 會員頁量的是回訪（2026-10-20）：讀的時候畫骨架，表格列數記在這個瀏覽器的 cookie（useLayoutHint），先開一次（不量）才記得住。
+    // 第一次來的瀏覽器用預設列數，資料長短不同時會動一次——那是已知的取捨；使用者回報的是重新整理，用的是記住的列數
+    if (login) {
+      const warm = await context.newPage()
+      await warm.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle', timeout: 180000 }).catch(() => {})
+      await warm.waitForTimeout(1500)
+      await warm.close()
+    }
     const page = await context.newPage()
     await (await context.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: 4 })
     await page.addInitScript(() => {

@@ -86,7 +86,19 @@ async function loadColumns() {
   columnsLoadFailed.value = saved === undefined
   columns.value = saved === undefined ? [] : (saved === null ? DEFAULT_COLUMNS : upgradeLegacy(saved)).map(column => ({ ...column }))
   savedCount.value = columns.value.length
+  columnsReady.value = true
 }
+// 欄位跟持股同時讀：第一次讀完兩者都到了才畫，不然先畫只有「股票」一欄的表、欄位再一欄一欄出現（2026-10-20）
+const columnsReady = ref(false)
+// 讀的時候：表頭的字母照畫、欄名與格子是骨架，列數與欄數照上次（useLayoutHint；列數跟持股總覽共用同一個）
+const rowCountHint = useLayoutHint('holdings-rows', 5)
+const columnCountHint = useLayoutHint('holdings-columns-count', DEFAULT_COLUMNS.length)
+watch(() => (columnsReady.value ? columns.value.length : null), (count) => {
+  if (count !== null) columnCountHint.value = count
+})
+watch(() => (pending.value ? 0 : holdings.value.length), (count) => {
+  if (count) rowCountHint.value = count
+})
 
 const letters = computed(() => columns.value.map((_, index) => columnLetter(index)))
 
@@ -278,6 +290,12 @@ function copyValue(value: FormulaValue | undefined): string | number | null {
 const shownColumn = (column: HoldingColumn) => (column.id === editingId.value ? draft : column)
 // 下載時預設不勾的欄（會透露部位大小，規則在 holdings-formula.ts 的 sizeRevealingLetters）
 const sizeLetters = computed(() => sizeRevealingLetters(columns.value.map((column, index) => ({ letter: letters.value[index]!, formula: shownColumn(column).formula, format: shownColumn(column).format }))))
+// 骨架：同一張 SharedSheetGrid（表頭、列高、框線都一樣），欄是「股票」加上次那麼多欄、只有字母，列是空的
+const skeletonRows = computed(() => Array.from({ length: rowCountHint.value }, (_, index) => ({ symbol: `skeleton-${index}`, name: '', values: {} }) as unknown as ColumnRow))
+const skeletonSheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
+  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: () => '' },
+  ...Array.from({ length: columnCountHint.value }, (_, index): SheetColumn<ColumnRow> => ({ key: `skeleton-${index}`, label: columnLetter(index), numeric: true, text: () => '' }))
+])
 const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
   { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: row => `${row.name} ${row.symbol}` },
   ...columns.value.map((column, index): SheetColumn<ColumnRow> => {
@@ -394,6 +412,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
   editingId.value = null
   if (uid) {
     ensureLoaded()
+    columnsReady.value = false
     loadColumns()
   } else {
     clear()
@@ -403,111 +422,119 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =A*C 就是「股數 × 收盤價」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。" :pending="pending && !holdings.length">
+  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =A*C 就是「股數 × 收盤價」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。" :pending="(pending && !holdings.length) || !columnsReady">
+    <template #default="{ loading }">
 
-    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
-    <template v-if="loadFailed" />
+      <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
+      <template v-if="loadFailed" />
 
-    <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
+      <el-empty v-else-if="!loading && !holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 
-    <template v-else>
+      <template v-else>
 
-      <h2 class="visually-hidden">公式列</h2>
-      <div class="formula-bar" role="group" aria-label="公式列">
-        <template v-if="editingId">
-          <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
-          <el-input v-model="draft.label" class="formula-bar__label" maxlength="20" aria-label="欄位名稱" placeholder="欄位名稱" />
-          <span class="formula-bar__fx" aria-hidden="true">fx</span>
-          <div class="formula-bar__formula formula-input">
-            <div ref="formulaMirror" class="formula-input__mirror" aria-hidden="true"><span v-for="(part, index) in formulaParts" :key="index" :style="part.color ? { color: part.color } : undefined">{{ part.text }}</span></div>
-            <input
-              ref="formulaInput"
-              v-model="draft.formula"
-              class="formula-input__field"
-              maxlength="200"
-              aria-label="公式"
-              aria-describedby="formula-help"
-              placeholder="=A*C"
-              spellcheck="false"
-              autocomplete="off"
-              @keydown="onFormulaKey"
-              @scroll="syncMirror"
-              @input="syncMirror"
-              @keyup="syncMirror"
+        <h2 class="visually-hidden">公式列</h2>
+        <div class="formula-bar" role="group" aria-label="公式列">
+          <template v-if="editingId">
+            <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
+            <el-input v-model="draft.label" class="formula-bar__label" maxlength="20" aria-label="欄位名稱" placeholder="欄位名稱" />
+            <span class="formula-bar__fx" aria-hidden="true">fx</span>
+            <div class="formula-bar__formula formula-input">
+              <div ref="formulaMirror" class="formula-input__mirror" aria-hidden="true"><span v-for="(part, index) in formulaParts" :key="index" :style="part.color ? { color: part.color } : undefined">{{ part.text }}</span></div>
+              <input
+                ref="formulaInput"
+                v-model="draft.formula"
+                class="formula-input__field"
+                maxlength="200"
+                aria-label="公式"
+                aria-describedby="formula-help"
+                placeholder="=A*C"
+                spellcheck="false"
+                autocomplete="off"
+                @keydown="onFormulaKey"
+                @scroll="syncMirror"
+                @input="syncMirror"
+                @keyup="syncMirror"
+              >
+            </div>
+            <el-select v-model="draft.format" class="formula-bar__format" aria-label="顯示格式">
+              <el-option value="number" label="數字" />
+              <el-option value="percent" label="百分比" />
+              <el-option value="money" label="金額（元）" />
+            </el-select>
+            <el-input-number v-model="draft.decimals" class="formula-bar__decimals" :min="0" :max="4" :precision="0" :controls="false" aria-label="小數位數" />
+            <div class="formula-bar__actions">
+              <el-button type="primary" :loading="saving" :disabled="!!parseError || !!labelError" @click="applyDraft">套用</el-button>
+              <el-button @click="cancelEditing">取消</el-button>
+              <el-button :icon="Delete" :aria-label="`刪除欄位 ${editingLetter} ${draft.label}`" @click="deleteColumn">刪除欄位</el-button>
+            </div>
+            <!-- 說明文字本身不是 live region：原本整段掛 role="status"，每打一個字就重念一次。錯誤另外念（見下方） -->
+            <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }">
+              {{ labelError || parseError || '點任一欄的表頭或格子可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
+            </p>
+          </template>
+          <template v-else>
+            <!-- 存檔還沒回來就不能再加：第一次失敗回滾時，第二次的欄位會跟著不見或留下半份 -->
+            <div class="formula-bar__actions">
+              <!-- 讀的時候照畫、先不能按：欄位還沒讀到就加，存檔會蓋掉帳號裡的欄位 -->
+              <el-button type="primary" :icon="Plus" :disabled="loading || atQuota || saving" @click="pickerOpen = true">新增指標</el-button>
+              <el-button ref="addButton" :icon="Plus" :disabled="loading || atQuota || saving" @click="addColumn">新增公式</el-button>
+            </div>
+            <p v-if="atQuota" class="formula-bar__help" role="status">
+              你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
+            </p>
+            <p class="formula-bar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除。</p>
+          </template>
+        </div>
+
+        <SharedMetricColumnPicker v-model="pickerOpen" title="新增指標" @select="addMetricColumn" />
+
+        <p class="visually-hidden" role="status">{{ labelError || parseError || statusText }}</p>
+
+        <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
+        <h2 class="visually-hidden">持股表</h2>
+        <div class="holdings-columns__toolbar">
+          <SharedDownloadButton :rows="loading ? [] : rows" :columns="sheetColumns" filename="持股自訂欄位" />
+        </div>
+        <!-- 表頭與格子都可以點：沒在編輯時是修改那一欄（表頭點一下、格子按 F2 或雙擊）；編輯中是把那一欄的字母插進公式 -->
+        <SharedSheetGrid
+          :rows="loading ? skeletonRows : rows"
+          :columns="loading ? skeletonSheetColumns : sheetColumns"
+          :aria-busy="loading"
+          :row-key="row => row.symbol"
+          label="持股表"
+          storage-key="holdings-columns"
+          :pointing="!!editingId"
+          :highlights="highlights"
+          hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；表頭上按加號、減號調整欄寬，按 0 自動貼合。"
+          @pick="column => !loading && pickColumn(column.key)"
+          @header-activate="column => !loading && editColumn(column.key)"
+          @edit="(_row, column) => !loading && editColumn(column.key)"
+        >
+          <template #header="{ column, index }">
+            <template v-if="column.key === STOCK_KEY">股票</template>
+            <span v-else-if="loading" class="column-header">
+              <span class="column-header__letter">{{ column.label }}</span><span class="app-skeleton app-skeleton--inline columns-page__skeleton" aria-hidden="true" />
+            </span>
+            <span
+              v-else
+              class="column-header"
+              :data-column-id="column.key"
+              :class="{ 'is-editing': column.key === editingId, 'is-pickable': editingId && column.key !== editingId }"
             >
-          </div>
-          <el-select v-model="draft.format" class="formula-bar__format" aria-label="顯示格式">
-            <el-option value="number" label="數字" />
-            <el-option value="percent" label="百分比" />
-            <el-option value="money" label="金額（元）" />
-          </el-select>
-          <el-input-number v-model="draft.decimals" class="formula-bar__decimals" :min="0" :max="4" :precision="0" :controls="false" aria-label="小數位數" />
-          <div class="formula-bar__actions">
-            <el-button type="primary" :loading="saving" :disabled="!!parseError || !!labelError" @click="applyDraft">套用</el-button>
-            <el-button @click="cancelEditing">取消</el-button>
-            <el-button :icon="Delete" :aria-label="`刪除欄位 ${editingLetter} ${draft.label}`" @click="deleteColumn">刪除欄位</el-button>
-          </div>
-          <!-- 說明文字本身不是 live region：原本整段掛 role="status"，每打一個字就重念一次。錯誤另外念（見下方） -->
-          <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }">
-            {{ labelError || parseError || '點任一欄的表頭或格子可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
-          </p>
-        </template>
-        <template v-else>
-          <!-- 存檔還沒回來就不能再加：第一次失敗回滾時，第二次的欄位會跟著不見或留下半份 -->
-          <div class="formula-bar__actions">
-            <el-button type="primary" :icon="Plus" :disabled="atQuota || saving" @click="pickerOpen = true">新增指標</el-button>
-            <el-button ref="addButton" :icon="Plus" :disabled="atQuota || saving" @click="addColumn">新增公式</el-button>
-          </div>
-          <p v-if="atQuota" class="formula-bar__help" role="status">
-            你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
-          </p>
-          <p class="formula-bar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除。</p>
-        </template>
-      </div>
+              <span class="column-header__letter" :style="referenceColors.get(letters[index - 1]!) ? { color: referenceColors.get(letters[index - 1]!) } : undefined">{{ letters[index - 1] }}</span>{{ shownColumn(columns[index - 1]!).label }}
+            </span>
+          </template>
+          <template #cell="{ row, column, text }">
+            <span v-if="loading" class="app-skeleton app-skeleton--inline columns-page__skeleton" aria-hidden="true" />
+            <template v-else-if="column.key === STOCK_KEY">{{ row.name }} <span class="columns-page__code">{{ row.symbol }}</span></template>
+            <template v-else>{{ text }}</template>
+          </template>
+        </SharedSheetGrid>
 
-      <SharedMetricColumnPicker v-model="pickerOpen" title="新增指標" @select="addMetricColumn" />
-
-      <p class="visually-hidden" role="status">{{ labelError || parseError || statusText }}</p>
-
-      <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
-      <h2 class="visually-hidden">持股表</h2>
-      <div class="holdings-columns__toolbar">
-        <SharedDownloadButton :rows="rows" :columns="sheetColumns" filename="持股自訂欄位" />
-      </div>
-      <!-- 表頭與格子都可以點：沒在編輯時是修改那一欄（表頭點一下、格子按 F2 或雙擊）；編輯中是把那一欄的字母插進公式 -->
-      <SharedSheetGrid
-        :rows="rows"
-        :columns="sheetColumns"
-        :row-key="row => row.symbol"
-        label="持股表"
-        storage-key="holdings-columns"
-        :pointing="!!editingId"
-        :highlights="highlights"
-        hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；表頭上按加號、減號調整欄寬，按 0 自動貼合。"
-        @pick="column => pickColumn(column.key)"
-        @header-activate="column => editColumn(column.key)"
-        @edit="(_row, column) => editColumn(column.key)"
-      >
-        <template #header="{ column, index }">
-          <template v-if="column.key === STOCK_KEY">股票</template>
-          <span
-            v-else
-            class="column-header"
-            :data-column-id="column.key"
-            :class="{ 'is-editing': column.key === editingId, 'is-pickable': editingId && column.key !== editingId }"
-          >
-            <span class="column-header__letter" :style="referenceColors.get(letters[index - 1]!) ? { color: referenceColors.get(letters[index - 1]!) } : undefined">{{ letters[index - 1] }}</span>{{ shownColumn(columns[index - 1]!).label }}
-          </span>
-        </template>
-        <template #cell="{ row, column, text }">
-          <template v-if="column.key === STOCK_KEY">{{ row.name }} <span class="columns-page__code">{{ row.symbol }}</span></template>
-          <template v-else>{{ text }}</template>
-        </template>
-      </SharedSheetGrid>
-
-      <p class="columns-page__footnote">
-        每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利、DAYCHANGE() 今日漲跌、DAYRETURN() 今日漲跌幅（比例）。指標用 METRIC("roe.TTM")，「新增指標」會幫你寫好；百分比的指標在公式裡是比例（0.152 代表 15.2%）。沒有報價、成本不明，或 ETF、特別股沒有的指標，格子顯示「－」；除以 0 是 #DIV/0!。
-      </p>
+        <p class="columns-page__footnote">
+          每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利、DAYCHANGE() 今日漲跌、DAYRETURN() 今日漲跌幅（比例）。指標用 METRIC("roe.TTM")，「新增指標」會幫你寫好；百分比的指標在公式裡是比例（0.152 代表 15.2%）。沒有報價、成本不明，或 ETF、特別股沒有的指標，格子顯示「－」；除以 0 是 #DIV/0!。
+        </p>
+      </template>
     </template>
   </HoldingsPageShell>
 </template>
@@ -516,6 +543,10 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 .columns-page__code {
   color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
+}
+
+.columns-page__skeleton {
+  width: 4em;
 }
 
 .columns-page__footnote {

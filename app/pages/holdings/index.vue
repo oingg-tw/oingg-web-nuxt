@@ -368,7 +368,7 @@ async function submit() {
 </script>
 
 <template>
-  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股" :pending="pending && !holdings.length" skeleton>
+  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股" :pending="pending && !holdings.length">
     <template #actions="{ loading }">
       <!-- 讀的時候也畫、先不能按（2026-10-20）：手機上換行在標題下面，晚出現會把內容往下推；帳戶清單到之前按下去，寫入時會多建一個
            「我的帳戶」。讀完沒有持股就收起來，空狀態裡有同樣兩顆 -->

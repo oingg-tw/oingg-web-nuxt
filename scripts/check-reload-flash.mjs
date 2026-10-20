@@ -2,10 +2,10 @@
 // check-layout-shift 量不到兩種情況：一是沒有位移的換畫面（v-loading 的白色遮罩淡入、轉圈換手、先寫「還沒有…」再換成內容），二是有內容時
 // 的樣子——它登入的測試帳號沒有持股、清單也是空的。這支用假資料（一個帳戶、六檔持股、持股特色、一組六檔的觀察清單；報價是真的公開讀取），
 // 每頁重新整理一次，從伺服器的第一個畫面看到內容出來，驗：
-//   - 第一個畫面是對的那一種，不是訪客卡或空狀態：改成骨架的頁面（2026-10-20 第二輪，使用者：「載入之前，可以讓用戶看的出來畫面結構」）
-//     要有問句與骨架；其餘頁面是伺服器畫的轉圈
+//   - 第一個畫面是對的那一種，不是訪客卡或空狀態：有頁面的結構（問句或主要區塊）與骨架（同日第二輪，使用者：「載入之前，可以讓用戶
+//     看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」）
 //   - 沒有出現過 v-loading 的遮罩（.el-loading-mask）
-//   - 佔位只有伺服器畫的那一個：之後沒有再加新的 .app-loading-placeholder（換手、hydration 對不上都會加）
+//   - 骨架都是伺服器畫的：之後瀏覽器沒有再加 .app-skeleton（或舊的轉圈佔位）——晚出現的骨架本身就是一次閃動，hydration 對不上也會加
 //   - 中間狀態的字一次都沒出現；最後有畫出內容、骨架都換掉了（假資料沒接上時不能空過）
 //   - 正式建置時（BASE 指到 pnpm build 的伺服器）位移 ≤ 0.005：骨架跟內容一樣大，資料到了不能推動任何東西。dev 會晚注入元件樣式，
 //     位移只列出來不判定
@@ -14,15 +14,21 @@ import { chromium } from 'playwright'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
 const isDev = (await (await fetch(base)).text()).includes('/@vite/client')
-// 頁面 → 第一個畫面要有的、內容出來的記號
-const PLACEHOLDER = ['.app-loading-placeholder']
+// 頁面 → 第一個畫面要有的結構（問句或主要區塊；骨架另外驗）、內容出來的記號。績效那幾頁的端點沒有假資料，測試帳號是空的：
+// 驗的是「第一個畫面有結構、沒有遮罩、骨架最後都換掉」，空帳號的內容本來就比骨架短
 const ROUTES = {
-  '/holdings': { first: ['#holdings-summary-title', '#holdings-list-title', '.app-skeleton'], marker: '.holdings-page__overview' },
-  '/holdings/analysis': { first: ['#analysis-sector-title', '.holdings-traits__title', '.app-skeleton'], marker: '.holdings-traits__panel' },
-  '/holdings/columns': { first: PLACEHOLDER, marker: '.formula-bar' },
-  '/holdings/risk': { first: PLACEHOLDER, marker: '.risk-page__body' },
-  '/watchlist': { first: PLACEHOLDER, marker: '.watchlist-page__count' },
-  '/watchlist/lists': { first: PLACEHOLDER, marker: '.collection-manager__section' }
+  '/holdings': { first: ['#holdings-summary-title', '#holdings-list-title'], marker: '.holdings-page__overview' },
+  '/holdings/analysis': { first: ['#analysis-sector-title', '.holdings-traits__title'], marker: '.holdings-traits__panel' },
+  '/holdings/columns': { first: ['.formula-bar', '.sheet'], marker: '.sheet' },
+  // 測試帳號沒有配息：上次 0 筆時讀的時候不畫月曆與表格
+  '/holdings/dividends': { first: ['#dividends-title'], marker: '.dividends-page__footnote' },
+  '/holdings/risk': { first: ['#risk-metrics-title'], marker: '.risk-page__body' },
+  '/holdings/statistics': { first: ['#statistics-relative-title'], marker: '.statistics-page__body' },
+  '/holdings/realized': { first: ['#realized-title'], marker: '#realized-title' },
+  '/holdings/performance': { first: ['#performance-compare-title'], marker: '#performance-compare-title' },
+  '/holdings/accounts': { first: ['.collection-manager__section'], marker: '.collection-manager__section' },
+  '/watchlist': { first: ['.watchlist-page__content'], marker: '.watchlist-page__count' },
+  '/watchlist/lists': { first: ['.collection-manager__section'], marker: '.collection-manager__section' }
 }
 const INTERIM = ['還沒有記錄任何持股', '還沒有追蹤任何股票', '產業分類載入中', '目前沒有報價']
 
@@ -65,6 +71,8 @@ await ui.locator('.firebaseui-id-submit').click()
 await ui.locator('input[name="password"]').fill(process.env.A11Y_TEST_PASSWORD)
 await ui.locator('.firebaseui-id-submit').click()
 await login.locator('.user-menu-button__trigger').first().waitFor({ state: 'attached', timeout: 60000 })
+// 已經回答過 Cookie 同意的會員（重新整理的人都回答過了）：新的瀏覽器都會跳底部的同意橫幅，它換行變高時頂邊移動也算位移，量到的是橫幅不是頁面
+await loginContext.addCookies([{ name: 'analytics-consent', value: 'denied', url: base }])
 const storageState = await loginContext.storageState({ indexedDB: true })
 await loginContext.close()
 
@@ -76,10 +84,21 @@ for (const width of [1440, 375]) for (const [route, { first, marker }] of Object
   await stub(context)
   const page = await context.newPage()
   await page.addInitScript(({ interim, first }) => {
-    const seen = { first: null, masks: 0, placeholders: 0, interim: new Set(), cls: 0 }
+    const seen = { first: null, masks: 0, placeholders: 0, interim: new Set(), cls: 0, shifts: [] }
     window.__flash = seen
     new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) if (!entry.hadRecentInput) seen.cls += entry.value
+      for (const entry of list.getEntries()) {
+        if (entry.hadRecentInput) continue
+        seen.cls += entry.value
+        // 失敗時印出是誰動了：元素（第一個有 class 的祖先）與前後位置
+        const name = (node) => {
+          let element = node
+          while (element && (element.nodeType !== 1 || !element.className)) element = element.parentElement
+          return element ? `${element.tagName.toLowerCase()}.${String(element.className).split(' ').slice(0, 2).join('.')}` : '(removed)'
+        }
+        const rect = box => `${Math.round(box.y)}+${Math.round(box.height)}`
+        seen.shifts.push(`${entry.value.toFixed(4)}@${Math.round(entry.startTime)} ${entry.sources.map(source => `${name(source.node)} ${rect(source.previousRect)}→${rect(source.currentRect)}`).join(' + ')}`)
+      }
     }).observe({ type: 'layout-shift', buffered: true })
     // 伺服器的 HTML 解析完之後才算「瀏覽器加的」
     new MutationObserver((records) => {
@@ -87,13 +106,13 @@ for (const width of [1440, 375]) for (const [route, { first, marker }] of Object
       for (const record of records) for (const node of record.addedNodes) {
         if (node.nodeType !== 1) continue
         if (node.matches('.el-loading-mask') || node.querySelector('.el-loading-mask')) seen.masks++
-        if (node.matches('.app-loading-placeholder') || node.querySelector('.app-loading-placeholder')) seen.placeholders++
+        if (node.matches('.app-skeleton, .app-loading-placeholder') || node.querySelector('.app-skeleton, .app-loading-placeholder')) seen.placeholders++
       }
     }).observe(document, { childList: true, subtree: true })
     const tick = () => {
       const container = document.querySelector('.holdings-shell, .watchlist-page, .app-page')
       if (container) {
-        seen.first ??= first.every(selector => container.querySelector(selector))
+        seen.first ??= [...first, '.app-skeleton'].every(selector => container.querySelector(selector))
         for (const text of interim) if (container.innerText.includes(text)) seen.interim.add(text)
       }
       requestAnimationFrame(tick)
@@ -105,13 +124,13 @@ for (const width of [1440, 375]) for (const [route, { first, marker }] of Object
   await page.reload({ waitUntil: 'networkidle', timeout: 180000 })
   await page.waitForTimeout(2000)
   const seen = await page.evaluate(() => ({ ...window.__flash, interim: [...window.__flash.interim] }))
-  check(seen.first === true, `第一個畫面有 ${first.join('、')}`)
+  check(seen.first === true, `第一個畫面有結構與骨架（${first.join('、')}）`)
   check(seen.masks === 0, `沒有 v-loading 遮罩（${seen.masks}）`)
-  check(seen.placeholders === 0, `佔位沒有換手（瀏覽器加了 ${seen.placeholders} 個）`)
+  check(seen.placeholders === 0, `骨架都是伺服器畫的（瀏覽器加了 ${seen.placeholders} 個）`)
   check(seen.interim.length === 0, `沒有中間狀態的字（${seen.interim.join('、') || '無'}）`)
   check(await page.locator(marker).count() > 0 && await page.locator('.app-loading-placeholder, .app-skeleton').count() === 0, `內容畫出來了、骨架都換掉了（${marker}）`)
   if (isDev) console.log(`  ----  位移 ${seen.cls.toFixed(4)}（dev 不判定）`)
-  else check(seen.cls <= 0.005, `位移 ${seen.cls.toFixed(4)} ≤ 0.005`)
+  else check(seen.cls <= 0.005, `位移 ${seen.cls.toFixed(4)} ≤ 0.005${seen.cls > 0.005 ? `：${seen.shifts.join('；')}` : ''}`)
   await context.close()
 }
 
