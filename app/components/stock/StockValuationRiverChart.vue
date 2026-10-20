@@ -206,15 +206,16 @@ const bandPalette = computed(() => {
 
 const formatMultiple = (value: number): string => `${value.toFixed(1)}倍`
 
-function bandRangeFor(value: number): string | null {
+// 提示框的「河道位置」：名稱＋倍數範圍（2026-10-21 加名稱，同篩選器的河道位置欄位）。河外的兩塊也寫出來——原本低於最下面那條線
+// 什麼都不寫、高於最上面那條線算成最上面那條河道
+function bandTextFor(value: number): string | null {
   const multiples = levels.value
   if (!multiples) return null
-  for (let k = 0; k < multiples.length - 1; k++) {
-    const low = multiples[k]!
-    const high = multiples[k + 1]!
-    if (value >= low && (value <= high || k === multiples.length - 2)) return `${formatMultiple(low)}～${formatMultiple(high)}`
-  }
-  return null
+  const zone = riverZoneIndex(value, multiples)
+  const name = RIVER_ZONE_NAMES[zone]
+  if (zone === 0) return `${name}（低於 ${formatMultiple(multiples[0]!)}）`
+  if (zone === multiples.length) return `${name}（高於 ${formatMultiple(multiples.at(-1)!)}）`
+  return `${name}（${formatMultiple(multiples[zone - 1]!)}～${formatMultiple(multiples[zone]!)}）`
 }
 
 // ECharts stacks the band series, so every series above the bottom one carries only its own gap
@@ -259,7 +260,7 @@ const chartOption = computed(() => ({
       const rowStyle = 'display:flex;justify-content:space-between;gap:16px;padding:2px 0;'
       const row = (label: string, value: string, muted = false) =>
         `<div style="${rowStyle}${muted ? `color:${CHART_TOOLTIP_INK.secondary};` : ''}"><span>${label}</span><strong>${value}</strong></div>`
-      const band = point.ratio !== null ? bandRangeFor(point.ratio) : null
+      const band = point.ratio !== null ? bandTextFor(point.ratio) : null
       // 尚無資料, not the original's 資料不足 — that phrasing is in this app's own compliance
       // register (shared/utils/compliance-words.ts) and was restored-and-corrected here rather
       // than carried over verbatim with the rest of the chart.
@@ -268,7 +269,7 @@ const chartOption = computed(() => ({
         ${point.price !== null ? row('股價', `${groupThousands(point.price.toFixed(2))} 元`) : row('股價', '尚無資料', true)}
         ${point.ratio !== null ? row(spec.value.ratioLabel, formatMultiple(point.ratio)) : row(spec.value.ratioLabel, '尚無資料', true)}
         ${point.base !== null ? row(spec.value.baseLabel, `${groupThousands(point.base.toFixed(2))} 元`) : ''}
-        ${band ? row('所在河道', band, true) : ''}
+        ${band ? row('河道位置', band, true) : ''}
       </div>`
     }
   },
