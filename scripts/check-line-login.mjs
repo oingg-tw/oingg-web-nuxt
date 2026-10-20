@@ -23,6 +23,13 @@ for (const evil of ['//evil.example', 'https://evil.example', '/auth/line?code=x
   pending(evil)
   assert(takeLineLogin('s1')?.returnTo === '/', `不接受 ${JSON.stringify(evil)}，改回首頁`)
 }
+// 綁定（2026-10-20）：intent 原樣帶回；舊格式（沒有 intent）與不認得的值當成登入
+store.set('line-login', JSON.stringify({ state: 's1', nonce: 'n'.repeat(36), returnTo: '/profile', intent: 'link' }))
+assert(takeLineLogin('s1')?.intent === 'link', 'intent link 原樣帶回')
+pending('/x')
+assert(takeLineLogin('s1')?.intent === 'login', '舊格式沒有 intent，當成登入')
+store.set('line-login', JSON.stringify({ state: 's1', nonce: 'n'.repeat(36), returnTo: '/x', intent: 'admin' }))
+assert(takeLineLogin('s1')?.intent === 'login', '不認得的 intent 當成登入')
 store.set('line-login', '{broken')
 assert(takeLineLogin('s1') === null, '存的內容壞掉不丟錯')
 

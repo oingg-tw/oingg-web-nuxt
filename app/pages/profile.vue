@@ -71,45 +71,107 @@ const needsReauth = ref(false)
 const deleting = ref(false)
 const deleteMessage = ref('')
 const providers = computed(() => currentUser.value?.providerData.map(provider => provider.providerId) ?? [])
-const reauthWithGoogle = computed(() => providers.value.includes('google.com') && !providers.value.includes('password'))
-// LINE 帳號（custom token，uid 是 line:…）沒有 email 可對：確認改成輸入「刪除帳號」；重新驗證只能再走一次 LINE 登入（跳轉回這一頁，
-// 再打開對話框時 auth_time 就是新的）
+// LINE 帳號（custom token，uid 是 line:…）沒有 email 可對：確認改成輸入「刪除帳號」
 const lineAccount = computed(() => currentUser.value?.uid.startsWith('line:') ?? false)
+// 這次是不是用 LINE 登入的（ID token 的 sign_in_provider 是 custom）。綁定之後，用 LINE 登入的也可能是 Google／email 帳號（2026-10-20）：
+// 重新驗證要看「這次怎麼登入」，不能看 uid 開頭或 providerData——不然會跳 Google 視窗，而那在 LINE 內建瀏覽器裡一定失敗。
+// 用 LINE 登入的只能再走一次 LINE 登入（跳轉回這一頁，auth_time 就是新的）
+const lineSession = ref(false)
+watch(currentUser, async (user) => {
+  lineSession.value = (await user?.getIdTokenResult())?.signInProvider === 'custom'
+}, { immediate: true })
+const reauthWithGoogle = computed(() => !lineSession.value && providers.value.includes('google.com') && !providers.value.includes('password'))
 const confirmText = computed(() => (lineAccount.value ? '刪除帳號' : currentUser.value?.email ?? ''))
 const confirmMatches = computed(() => !!confirmText.value && deleteConfirmEmail.value.trim().toLowerCase() === confirmText.value.toLowerCase())
+
+async function recentlySignedIn() {
+  const result = await currentUser.value?.getIdTokenResult()
+  return !!result && Date.now() - Date.parse(result.authTime) <= REAUTH_WINDOW_MS
+}
 
 async function openDelete() {
   deleteConfirmEmail.value = ''
   deletePassword.value = ''
   deleteMessage.value = ''
   deleteOpen.value = true
-  const result = await currentUser.value?.getIdTokenResult()
-  needsReauth.value = !result || Date.now() - Date.parse(result.authTime) > REAUTH_WINDOW_MS
+  needsReauth.value = !(await recentlySignedIn())
 }
 
-async function reauthenticate(): Promise<boolean> {
+// 重新驗證（刪帳號與綁定 LINE 共用）：Google 帳號跳 Google 視窗，密碼帳號用 password。成功回 null，失敗回要顯示的訊息
+async function reauthenticate(password: string): Promise<string | null> {
   const user = currentUser.value
-  if (!user) return false
+  if (!user) return '身分驗證沒有成功，請再試一次。'
   try {
     if (reauthWithGoogle.value) await reauthenticateWithPopup(user, new GoogleAuthProvider())
-    else await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', deletePassword.value))
+    else await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
     await user.getIdToken(true)
-    needsReauth.value = false
-    return true
+    return null
   } catch (error) {
     const code = (error as { code?: string }).code ?? ''
-    deleteMessage.value = /wrong-password|invalid-credential/.test(code)
+    return /wrong-password|invalid-credential/.test(code)
       ? '密碼不正確，請再試一次。'
       : /popup-closed|cancelled-popup/.test(code) ? '驗證視窗關掉了，請再按一次。' : '身分驗證沒有成功，請再試一次。'
-    return false
   }
+}
+
+// ---- 登入方式與綁定 LINE（2026-10-20，使用者：「之前用 gmail 登入，現在用 Line 登入卻沒看到任何交易紀錄與持股明細。該如何綁定？」）----
+// 已用 Google／email 登入的人把 LINE 綁上來，之後用 LINE 登入就是這個帳號（業務中台 POST /auth/line/link 記下 LINE → 這個帳號）。
+// 另一條是業務中台用 LINE 的 email 自動找同 email 的帳號（不用按，但要 LINE 給 email、而且 email 一樣）。
+// 綁定會讓帳號多一種登入方式，所以最近 5 分鐘內沒登入過要先重新驗證（同刪帳號；業務中台也會再檢查一次）。
+// lineLinked 來自 GET /users/me：舊版 業務中台 沒有這欄時是 undefined，就不顯示 LINE 那一列（按了也只會失敗）。
+// 這次不做解除綁定，也不做「LINE 帳號再綁 Google」（LINE 帳號只看到一句說明）
+const lineLinked = ref<boolean | undefined>(undefined)
+watch(currentUser, async (user) => {
+  lineLinked.value = undefined
+  if (!user || user.uid.startsWith('line:')) return
+  lineLinked.value = await authedFetch<{ user: { lineLinked?: boolean } }>('/users/me').then(response => response.user.lineLinked, () => undefined)
+}, { immediate: true })
+const linkNeedsPassword = ref(false)
+const linkPassword = ref('')
+const linkMessage = ref('')
+const linkBusy = ref(false)
+async function linkLine() {
+  linkMessage.value = ''
+  linkBusy.value = true
+  try {
+    if (!(await recentlySignedIn())) {
+      if (!reauthWithGoogle.value && !linkNeedsPassword.value) {
+        // 密碼帳號：先在這裡輸入密碼，再按一次
+        linkNeedsPassword.value = true
+        return
+      }
+      const failed = await reauthenticate(linkPassword.value)
+      if (failed) {
+        linkMessage.value = failed
+        return
+      }
+    }
+    startLineLogin('/profile', 'link')
+  } finally {
+    linkBusy.value = false
+  }
+}
+
+async function reauthForDelete() {
+  deleting.value = true
+  const failed = await reauthenticate('')
+  deleting.value = false
+  deleteMessage.value = failed ?? ''
+  needsReauth.value = !!failed
 }
 
 async function deleteAccount() {
   deleteMessage.value = ''
   deleting.value = true
   try {
-    if (needsReauth.value && !(await reauthenticate())) return
+    if (needsReauth.value) {
+      const failed = await reauthenticate(deletePassword.value)
+      if (failed) {
+        deleteMessage.value = failed
+        return
+      }
+      needsReauth.value = false
+    }
     await authedFetch('/users/me', { method: 'DELETE' })
     // 立刻登出，中間不打任何 API（見上面）。登出後這一頁的 watcher 會回首頁
     await signOut(auth)
@@ -153,6 +215,26 @@ const planName = computed(() => {
       <p class="profile-page__email">{{ currentUser.email }}</p>
       <el-button :icon="SwitchButton" class="profile-page__signout" @click="handleSignOut">登出</el-button>
     </div>
+
+    <section class="profile-page__section" aria-labelledby="sign-in-methods-title">
+      <h2 id="sign-in-methods-title" class="profile-page__section-title">登入方式</h2>
+      <ul class="profile-page__methods">
+        <li v-if="providers.includes('google.com')" class="profile-page__method"><span>Google</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
+        <li v-if="providers.includes('password')" class="profile-page__method"><span>電子郵件</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
+        <li v-if="lineAccount || lineLinked !== undefined" class="profile-page__method">
+          <span>LINE</span>
+          <span v-if="lineAccount || lineLinked" class="profile-page__method-note">已綁定</span>
+          <el-button v-else :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
+        </li>
+      </ul>
+      <template v-if="linkNeedsPassword && !lineLinked">
+        <label for="link-line-password" class="profile-page__delete-label">為了安全，綁定前請輸入密碼，再按一次「綁定 LINE」</label>
+        <el-input id="link-line-password" v-model="linkPassword" type="password" show-password autocomplete="current-password" />
+      </template>
+      <p v-if="linkMessage" class="profile-page__delete-message" role="alert">{{ linkMessage }}</p>
+      <p v-if="lineAccount" class="profile-page__plan-note">這是用 LINE 建立的帳號。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再到這裡綁定 LINE，兩邊就是同一個帳號。</p>
+      <p v-else-if="lineLinked === false" class="profile-page__plan-note">綁定後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
+    </section>
 
     <section id="plan" class="profile-page__section">
       <h2 class="profile-page__section-title">方案與用量</h2>
@@ -236,8 +318,8 @@ const planName = computed(() => {
       </ul>
       <template v-if="needsReauth">
         <p class="profile-page__delete-text">為了安全，刪除前請再驗證一次身分。</p>
-        <el-button v-if="lineAccount" @click="startLineLogin('/profile')">用 LINE 重新登入</el-button>
-        <el-button v-else-if="reauthWithGoogle" :loading="deleting" @click="reauthenticate">用 Google 重新驗證</el-button>
+        <el-button v-if="lineSession" @click="startLineLogin('/profile')">用 LINE 重新登入</el-button>
+        <el-button v-else-if="reauthWithGoogle" :loading="deleting" @click="reauthForDelete">用 Google 重新驗證</el-button>
         <template v-else>
           <label for="delete-account-password" class="profile-page__delete-label">密碼</label>
           <el-input id="delete-account-password" v-model="deletePassword" type="password" show-password autocomplete="current-password" />
@@ -253,7 +335,7 @@ const planName = computed(() => {
         <el-button
           type="danger"
           :loading="deleting"
-          :disabled="!confirmMatches || (needsReauth && (lineAccount || (!reauthWithGoogle && !deletePassword)))"
+          :disabled="!confirmMatches || (needsReauth && (lineSession || (!reauthWithGoogle && !deletePassword)))"
           @click="deleteAccount"
         >
           永久刪除
@@ -313,6 +395,39 @@ const planName = computed(() => {
 
 .profile-page__delete-text {
   margin: 0 0 12px;
+}
+
+/* 登入方式：一行一種，名稱靠左、狀態或按鈕靠右（同卡片的框） */
+.profile-page__methods {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+  background: var(--el-bg-color);
+}
+
+.profile-page__method {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.profile-page__method + .profile-page__method {
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.profile-page__method-note {
+  color: var(--el-text-color-regular);
+  overflow-wrap: anywhere;
+}
+
+.profile-page__method .el-button {
+  min-height: 44px;
 }
 
 .profile-page__delete-list {
