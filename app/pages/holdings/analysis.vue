@@ -53,6 +53,11 @@ const sectorTableRows = computed(() => sectors.value.map(sector => ({
   market: `${holdingsMoney(sector.value)} 元`,
   meaning: `${sector.count} 檔`
 })))
+// 骨架的列數＝上次看到的產業數（useLayoutHint），資料到了下面的面板才不會被推動或拉上來；範例字讓欄寬跟真的表一樣
+const sectorCountHint = useLayoutHint('analysis-sectors', 5)
+// 產業名稱 2～8 個字：欄寬固定，不然名稱長短一變表頭就左右移
+const SECTOR_COLUMN_WIDTHS = ['32%', '20%', '30%', '18%']
+const skeletonSectorRows = computed(() => Array.from({ length: sectorCountHint.value }, () => ({ skeleton: true, name: '半導體業', value: '49.6%', market: '721,500 元', meaning: '1 檔' })))
 
 function percent(value: number | null, digits = 1): string {
   return value === null ? '－' : `${(value * 100).toFixed(digits)}%`
@@ -89,6 +94,9 @@ watchLoadFailure('holdings-traits', () => traitsFailed.value, () => loadTraits()
 // 產業分類只等「還沒有」：側欄切過來時 useFetch 會重抓（status 是 pending），手上那份照用
 const firstPaintPending = computed(() => (pending.value && !holdings.value.length)
   || (holdings.value.length > 0 && ((!traits.value && !traitsFailed.value) || (!directory.value && directoryStatus.value === 'pending'))))
+watch(sectorTableRows, (rows) => {
+  if (rows.length && !firstPaintPending.value) sectorCountHint.value = rows.length
+})
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
@@ -108,28 +116,36 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析" :pending="firstPaintPending">
+  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析" :pending="firstPaintPending" skeleton>
 
-    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
-    <template v-if="loadFailed" />
+    <template #default="{ loading }">
+      <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
+      <template v-if="loadFailed" />
 
-    <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
+      <el-empty v-else-if="!loading && !holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 
-    <div v-else class="analysis-page__sections">
-      <section aria-labelledby="analysis-sector-title">
-        <h2 id="analysis-sector-title" class="analysis-page__section-title">資金分布在哪些產業？</h2>
-        <p v-if="!directory" class="analysis-page__note">產業分類載入中…</p>
-        <template v-else>
-          <p v-if="answer" class="analysis-page__answer">{{ answer }}<template v-if="effectiveSectorsText">{{ effectiveSectorsText }}</template></p>
-          <p v-if="unpricedCount" class="analysis-page__note">{{ unpricedCount }} 檔目前沒有報價，未計入占比。</p>
-          <HoldingsAllocationChart title="產業占比" :items="sectors.map(sector => ({ label: sector.label, value: sector.value }))" />
-          <HoldingsMetricTable caption="各產業的市值與占比" :rows="sectorTableRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" />
+      <!-- 讀的時候問句、表頭、註腳照畫，答句、圖、表格的列是同樣大小的骨架（2026-10-20） -->
+      <div v-else class="analysis-page__sections">
+        <section aria-labelledby="analysis-sector-title" :aria-busy="loading">
+          <h2 id="analysis-sector-title" class="analysis-page__section-title">資金分布在哪些產業？</h2>
+          <template v-if="loading">
+            <p class="analysis-page__answer"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">6 檔持股分布在 6 個產業，占比最大的是半導體業（49.6%）。依市值，相當於平均分散在 3.3 個產業。</span></p>
+            <HoldingsAllocationChart title="產業占比" :items="[]" loading />
+            <HoldingsMetricTable caption="各產業的市值與占比" :rows="skeletonSectorRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" :widths="SECTOR_COLUMN_WIDTHS" loading />
+          </template>
+          <p v-else-if="!directory" class="analysis-page__note">產業分類載入中…</p>
+          <template v-else>
+            <p v-if="answer" class="analysis-page__answer">{{ answer }}<template v-if="effectiveSectorsText">{{ effectiveSectorsText }}</template></p>
+            <p v-if="unpricedCount" class="analysis-page__note">{{ unpricedCount }} 檔目前沒有報價，未計入占比。</p>
+            <HoldingsAllocationChart title="產業占比" :items="sectors.map(sector => ({ label: sector.label, value: sector.value }))" />
+            <HoldingsMetricTable caption="各產業的市值與占比" :rows="sectorTableRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" :widths="SECTOR_COLUMN_WIDTHS" />
+          </template>
           <p class="analysis-page__footnote">產業是證交所與櫃買中心的類股分類。ETF 自成一類；特別股歸到發行公司的產業。占比＝市值 ÷ 總市值，以最新收盤價計算。</p>
-        </template>
-      </section>
+        </section>
 
-      <HoldingsTraits v-if="traits" :traits="traits" heading-id="analysis-traits-title" />
-    </div>
+        <HoldingsTraits v-if="loading || traits" :traits="loading ? null : traits" heading-id="analysis-traits-title" />
+      </div>
+    </template>
   </HoldingsPageShell>
 </template>
 

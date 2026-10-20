@@ -1,27 +1,40 @@
 <script setup lang="ts">
-// 持股七頁共用的外殼（2026-10-08）：標題列（h1、副標、右側動作）、HoldingsNav、登入狀態還沒確定時的 loading 佔位、訪客的登入
-// 提示卡，然後才是頁面內容。原本七頁各寫一份（每頁一組 mounted／authResolved／openLogin 加約 50 行 CSS）。
+// 持股七頁共用的外殼（2026-10-08）：標題列（h1、副標、右側動作）、HoldingsNav、訪客的登入提示卡，然後才是頁面內容。原本七頁各寫
+// 一份（每頁一組 mounted／authResolved／openLogin 加約 50 行 CSS）。
 // 選元件不選父路由：持股總覽的動作區依頁面狀態變化、各頁標題不同，專案裡也沒有父路由的先例。
-// 各頁自己的資料載入（watch([authResolved, uid, range])）留在頁面裡，這裡只管「畫哪一層」。
+// 各頁自己的資料載入（watch([authResolved, uid, range])）留在頁面裡，這裡只管「畫哪一層」與「還在不在讀」。
 const props = withDefaults(defineProps<{
   title: string
   subtitle?: string
   guestTitle: string
   guestText?: string
-  // 頁面第一份資料還沒到：同一個佔位一路轉到內容出來（2026-10-20，使用者：「重新整理還是有閃一下」）。原本外殼的佔位一收、頁面再畫
-  // 自己的佔位或區塊的 v-loading，轉圈（與白色遮罩）從頭淡入第二次。之後的重新讀取（換期間）照舊是頁面區塊自己的 v-loading
+  // 頁面第一份資料還沒到。之後的重新讀取（換期間）照舊是頁面區塊自己的 v-loading
   pending?: boolean
-}>(), { subtitle: undefined, guestText: '持股資料存在你的帳號裡，只有你看得到。', pending: false })
+  // ponytail: 過渡用（2026-10-20）。改好骨架的頁面設 true，其餘頁面照舊整塊一個轉圈；全部改完就拿掉這個開關與轉圈那一支
+  skeleton?: boolean
+}>(), { subtitle: undefined, guestText: '持股資料存在你的帳號裡，只有你看得到。', pending: false, skeleton: false })
+
+// 內容的 slot 拿到 loading：還在讀（登入狀態未定、帳戶清單或頁面第一份資料還沒到）時，頁面照樣畫標題、說明、表頭，只把資料換成同樣大小
+// 的骨架（.app-skeleton）——2026-10-20 使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」。
+// 原本整塊換成一個轉圈，內容到齊才一起出來
+defineSlots<{ default?: (props: { loading: boolean }) => unknown; actions?: () => unknown }>()
 
 const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
+// 登入狀態還沒確定（伺服器、hydration、Firebase 還原中）：這台瀏覽器登入過（auth-hint，firebase.client.ts）就先畫內容的骨架，沒登入過
+// 就直接畫訪客卡，兩種都從伺服器的第一個畫面就是對的。等 hydration 而不是只看 authResolved：Firebase 可能在 hydration 前就解析完，
+// 瀏覽器的第一次渲染要跟伺服器一樣（2026-10-05 Hydration node mismatch）
+const authHint = useCookie<boolean | null>('auth-hint')
+const resolving = computed(() => !hasHydrated.value || !authResolved.value)
+const member = computed(() => (resolving.value ? !!authHint.value : !!currentUser.value))
 
 // ---- 持股帳戶（2026-10-19，使用者：「持股（比如不同券商）」，選了「全部帳戶合併＋單一帳戶切換」）----
 // 持股各頁都經過這裡，所以帳戶清單的載入、網址 ?account= 的同步只寫在這裡。切換在側欄（HoldingsNav 的 SharedScopeSwitch，同日搬過去：
 // 「視覺上複雜度開始直線上升了」），新增、改名、刪除在「帳戶管理」頁。各頁的資料載入看 useHoldingsPortfolios 的 holdingsScope
-//（誰＋哪個帳戶），換帳戶就跟換人一樣重新載入。帳戶清單讀到之前不畫內容（同登入狀態未定）：先畫的話會先抓一次合併的
+//（誰＋哪個帳戶），換帳戶就跟換人一樣重新載入。帳戶清單讀到之前內容是骨架、頁面也還不抓（holdingsScope 是 undefined）：先抓的話
+// 會先抓一次合併的
 const { selectedPortfolioId, selected, ready, loadPortfolios, clearPortfolios } = useHoldingsPortfolios()
 const route = useRoute()
 const router = useRouter()
@@ -37,6 +50,7 @@ watch([ready, () => selected.value?.id ?? null], ([isReady, id]) => {
   const { account: _account, ...rest } = route.query
   void router.replace({ query: id ? { ...rest, account: id } : rest })
 }, { immediate: true })
+const loading = computed(() => resolving.value || !ready.value || props.pending)
 </script>
 
 <template>
@@ -51,19 +65,15 @@ watch([ready, () => selected.value?.id ?? null], ([isReady, id]) => {
 
     <HoldingsNav />
 
-    <!-- 登入狀態還沒確定：不畫訪客卡也不畫內容，免得重新整理時先閃一下錯的那一個。hasHydrated 而不是 authResolved
-         單獨：Firebase 可能在 hydration 前就解析完，client 第一次渲染就會跟 SSR 的「還不知道」不同（2026-10-05 Hydration node mismatch） -->
-    <div v-if="!hasHydrated || !authResolved || (currentUser && (!ready || props.pending))" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
+    <div v-if="!props.skeleton && (resolving || (currentUser && loading))" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
 
-    <section v-else-if="!currentUser" class="holdings-shell__guest">
+    <section v-else-if="props.skeleton ? !member : !currentUser" class="holdings-shell__guest">
       <h2 class="app-page__h2">{{ props.guestTitle }}</h2>
       <p class="holdings-shell__guest-text">{{ props.guestText }}</p>
       <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
     </section>
 
-    <template v-else>
-      <slot />
-    </template>
+    <slot v-else :loading="loading" />
   </div>
 </template>
 

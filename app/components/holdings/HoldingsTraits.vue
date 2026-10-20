@@ -9,13 +9,17 @@ import type { HoldingsTraitsResult, Traits } from '~/utils/holdings-traits'
 // 數字與大盤都來自 業務中台（見 utils/holdings-traits.ts），標籤規則也在那裡。大盤還沒上線（market 是 null）時不畫大盤那一欄與那一張，
 // 只貼不必跟大盤比的標籤。只陳述數字與門檻，沒有排名、建議或「適合誰」；持股頁不放免責聲明（同其他持股頁）。
 const props = defineProps<{
-  traits: HoldingsTraitsResult
+  // null＝還在讀（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）：問句、九宮格的欄列名、指標名照畫，
+  // 數字與標籤畫骨架，大小跟資料到了一樣
+  traits: HoldingsTraitsResult | null
   // 同一頁可能有兩段問句，id 由呼叫端給
   headingId: string
 }>()
 
-const tags = computed(() => traitTags(props.traits))
-const hasMarket = computed(() => !!props.traits.market)
+const loading = computed(() => !props.traits)
+const tags = computed(() => (props.traits ? traitTags(props.traits) : []))
+// 讀的時候照「有大盤」畫（2026-10-19 起都有）
+const hasMarket = computed(() => !props.traits || !!props.traits.market)
 
 // 九宮格（使用者：「要做 而且要九宮格」）：這組持股一張、大盤一張，深淺分三階（主色 light-9／8／7），比位置就好。排法試過三種：
 // 並排在表格左邊（「怪尷尬的」）、只留一張（「畫面不平衡」），使用者最後選上下兩層——兩張並排、各占一半寬、在自己那一半置中，
@@ -26,17 +30,24 @@ const boxRows = (values: Traits) => STYLE_BOX_ROWS.map(row => ({
   label: row.label,
   cells: STYLE_BOX_COLUMNS.map(column => ({ key: column.key, ...boxCell(values[styleBoxKey(row.key, column.key)]?.value) }))
 }))
+// 讀的時候兩張都畫、格子是空的淺色塊
+const emptyBoxRows = () => STYLE_BOX_ROWS.map(row => ({ label: row.label, cells: STYLE_BOX_COLUMNS.map(column => ({ key: column.key, text: '', level: 0 })) }))
 const boxes = computed(() => {
+  if (!props.traits) return [{ caption: '這組持股', rows: emptyBoxRows() }, { caption: '大盤', rows: emptyBoxRows() }]
   const { portfolio, market } = props.traits
   if (!hasBox(portfolio)) return []
   return [{ caption: '這組持股', rows: boxRows(portfolio) }, ...(market && hasBox(market) ? [{ caption: '大盤', rows: boxRows(market) }] : [])]
 })
-const boxEmpty = computed(() => !boxes.value.length && hasBox(props.traits.market))
+const boxEmpty = computed(() => !!props.traits && !boxes.value.length && hasBox(props.traits.market))
 
-// 指標表：組合與大盤都沒有值的那一列不畫（營收年增率波動在上游有資料之前不出現）
-const rows = computed(() => TRAIT_ROWS
-  .filter(row => props.traits.portfolio[row.key]?.value != null || props.traits.market?.[row.key]?.value != null)
-  .map(row => ({ ...row, value: traitText(props.traits.portfolio[row.key]?.value, row.unit), market: traitText(props.traits.market?.[row.key]?.value, row.unit) })))
+// 指標表：組合與大盤都沒有值的那一列不畫（營收年增率波動在上游有資料之前不出現）；讀的時候每一列都畫、數字留空
+const rows = computed(() => {
+  const traits = props.traits
+  if (!traits) return TRAIT_ROWS.map(row => ({ ...row, value: '', market: '' }))
+  return TRAIT_ROWS
+    .filter(row => traits.portfolio[row.key]?.value != null || traits.market?.[row.key]?.value != null)
+    .map(row => ({ ...row, value: traitText(traits.portfolio[row.key]?.value, row.unit), market: traitText(traits.market?.[row.key]?.value, row.unit) }))
+})
 
 // 指標的意思與計算方式（使用者：「打開怎麼看都像散亂的文字，這邊也請設計下」）：照頁面上的順序分四組——標籤、九宮格、指標、大盤，
 // 每組一個小標＋「名稱｜說明」兩欄（窄的時候上下），說明一兩句。九宮格不算哪些股票也寫在這裡，不放在面板上（使用者：「這句話為什麼
@@ -57,7 +68,7 @@ const methodGroups = computed(() => [
   },
   {
     title: '指標',
-    note: `依每一檔的市值占比計算${props.traits.asOf ? `，以 ${props.traits.asOf} 的收盤價為準` : ''}，只算有數字的持股；ETF 與特別股沒有財報，本益比、股價淨值比、ROE、營收不算入它們。`,
+    note: `依每一檔的市值占比計算${props.traits?.asOf ? `，以 ${props.traits.asOf} 的收盤價為準` : ''}，只算有數字的持股；ETF 與特別股沒有財報，本益比、股價淨值比、ROE、營收不算入它們。`,
     items: rows.value.map(row => ({ term: row.name, text: row.meaning }))
   },
   { title: '大盤', note: '全市場普通股（上市＋上櫃）依市值、用同一套算法，等於把全市場當成一組持股；大盤的 Beta 是 1。', items: [] }
@@ -65,11 +76,14 @@ const methodGroups = computed(() => [
 </script>
 
 <template>
-  <section class="holdings-traits" :aria-labelledby="headingId">
+  <section class="holdings-traits" :aria-labelledby="headingId" :aria-busy="loading">
     <h2 :id="headingId" class="holdings-traits__title">這組持股有什麼特色？</h2>
 
     <!-- 答句：標籤一排，接在問句下面、面板前面（使用者：「試試看把 tags 放在卡片前面」）；只有名字，數字在面板裡，門檻在折疊區 -->
-    <ul v-if="tags.length" class="holdings-traits__tags" role="list" aria-label="特色標籤">
+    <ul v-if="loading" class="holdings-traits__tags" aria-hidden="true">
+      <li v-for="index in 2" :key="index"><span class="app-skeleton holdings-traits__tag-skeleton" /></li>
+    </ul>
+    <ul v-else-if="tags.length" class="holdings-traits__tags" role="list" aria-label="特色標籤">
       <li v-for="tag in tags" :key="tag"><el-tag effect="plain" size="large" class="holdings-traits__tag">{{ tag }}</el-tag></li>
     </ul>
     <p v-else class="holdings-traits__tags holdings-traits__none">沒有達到任何標籤的門檻（門檻寫在下面的「指標的意思與計算方式」）。</p>
@@ -117,8 +131,14 @@ const methodGroups = computed(() => [
         <tbody role="rowgroup">
           <tr v-for="row in rows" :key="row.key" role="row">
             <th role="rowheader" scope="row" class="holdings-traits__name">{{ row.name }}</th>
-            <td role="cell" class="holdings-traits__own">{{ row.value }}</td>
-            <td v-if="hasMarket" role="cell" class="holdings-traits__market">{{ row.market }}</td>
+            <td role="cell" class="holdings-traits__own">
+              <span v-if="loading" class="app-skeleton app-skeleton--inline holdings-traits__value-skeleton" />
+              <template v-else>{{ row.value }}</template>
+            </td>
+            <td v-if="hasMarket" role="cell" class="holdings-traits__market">
+              <span v-if="loading" class="app-skeleton app-skeleton--inline holdings-traits__value-skeleton" />
+              <template v-else>{{ row.market }}</template>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -127,7 +147,7 @@ const methodGroups = computed(() => [
     </div>
 
     <!-- 照頁面上的順序分組：小標＋「名稱｜說明」。不放表格：表格會讓「tbody tr」選到兩份同名的列 -->
-    <details class="holdings-details holdings-traits__method">
+    <details v-if="!loading" class="holdings-details holdings-traits__method">
       <summary>指標的意思與計算方式</summary>
       <section v-for="group in methodGroups" :key="group.title" class="holdings-traits__method-group">
         <h3 class="holdings-traits__method-title">{{ group.title }}</h3>
@@ -172,6 +192,16 @@ const methodGroups = computed(() => [
 
 .holdings-traits__tag {
   font-weight: 600;
+}
+
+/* 跟 size="large" 的 el-tag 一樣高 */
+.holdings-traits__tag-skeleton {
+  width: 5.5em;
+  height: 32px;
+}
+
+.holdings-traits__value-skeleton {
+  width: 3.5em;
 }
 
 .holdings-traits__none {

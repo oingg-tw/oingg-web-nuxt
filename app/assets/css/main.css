@@ -227,6 +227,47 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   }
 }
 
+/* 資料還沒到的區塊（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」）：標題、說明、
+   表頭照常畫，只有數字、表格的列、圖換成同樣大小的灰塊，資料到了原地換掉，旁邊與下面都不動。顏色取文字色的低透明度，壓在米色頁面、
+   白色面板、深色模式上都是「比底色深一點」。--text 是一行字：1em 的條加上下 0.25em，跟 1.5 倍行高的一行一樣高 */
+.app-skeleton {
+  display: block;
+  border-radius: 4px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--el-text-color-primary) 6%, transparent) 25%, color-mix(in srgb, var(--el-text-color-primary) 11%, transparent) 37%, color-mix(in srgb, var(--el-text-color-primary) 6%, transparent) 63%);
+  background-size: 400% 100%;
+  animation: app-skeleton-shimmer 1.6s ease infinite;
+}
+
+.app-skeleton--text {
+  height: 1em;
+  margin: 0.25em 0;
+}
+
+/* 行內的一段字（表格儲存格、dd 裡的數字） */
+.app-skeleton--inline {
+  display: inline-block;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
+/* 一句長短會隨內容與螢幕寬度換行的字（答句）：放一句同樣長的範例字、字設透明，每一行各自畫底色，換行跟真的那句一樣、段落一樣高。
+   範例字要加 aria-hidden */
+.app-skeleton--flow {
+  display: inline;
+  color: transparent;
+  box-decoration-break: clone;
+}
+
+@keyframes app-skeleton-shimmer {
+  from {
+    background-position: 100% 50%;
+  }
+
+  to {
+    background-position: 0 50%;
+  }
+}
+
 .hub-disclaimer {
   margin: 0;
   font-size: 1rem;

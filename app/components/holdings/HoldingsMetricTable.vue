@@ -3,43 +3,64 @@
 // 原生 <table> 而不是 el-table：mobile first——窄的時候每一列是一張小卡片（名稱與數值一行、大盤一行、意思一行），
 // 表格區塊夠寬才是四欄表格。只改 CSS 不出第二份 DOM，作法同指標速覽的表格。
 // 數值一律中性色（不用漲跌色暗示好壞，投信投顧法）。
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   caption: string
-  rows: { name: string; value: string; market?: string; meaning?: string }[]
+  // skeleton：骨架列（列數不定的表在資料到之前用），整列都畫成骨架
+  rows: { name: string; value: string; market?: string; meaning?: string; skeleton?: boolean }[]
   valueLabel?: string
   // 有給才多一欄（例如「同期加權指數」）
   marketLabel?: string
   // 第一欄與最後一欄的欄名（逐年報酬是「年度」與「交易日數」）
   nameLabel?: string
   meaningLabel?: string
-}>(), { valueLabel: '你的持股', marketLabel: undefined, nameLabel: '指標', meaningLabel: '意思' })
+  // 資料還沒到（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）：數值欄畫成骨架。骨架是透明的範例字
+  //（.app-skeleton--flow），所以呼叫端在數值欄放一個典型的值（例如 '49.6%'）：欄寬照內容算，跟資料到了一樣，表頭不會左右跳。
+  // 列固定的表傳真的名稱與意思，字先出現、列高也一樣；列數不定的表傳 useLayoutHint 記住的列數個 skeleton 列（整列都是範例字）
+  loading?: boolean
+  // 寬的時候固定欄寬（依欄位順序：名稱、數值、大盤、意思），不照內容算：列數不定、名稱長短不一的表，骨架換成資料時表頭才不會左右移動
+  widths?: string[]
+}>(), { valueLabel: '你的持股', marketLabel: undefined, nameLabel: '指標', meaningLabel: '意思', loading: false, widths: undefined })
 
 // 第一欄可以換成自己的內容（例如連到個股頁的名稱）：<template #name="{ row }">…</template>
-defineSlots<{ name?: (props: { row: { name: string; value: string; market?: string; meaning?: string } }) => unknown }>()
+defineSlots<{ name?: (props: { row: { name: string; value: string; market?: string; meaning?: string; skeleton?: boolean } }) => unknown }>()
+
+const hasMeaning = computed(() => props.rows.some(row => row.meaning != null))
 </script>
 
 <template>
   <!-- role 寫明（2026-10-07 a11y 盤點）：窄的時候 table/tr 改成 block/grid，Safari＋VoiceOver 會因此把表格語意
        丟掉，明寫 role 才保得住。 -->
   <div class="holdings-metric-table">
-    <table class="seo-table holdings-metric-table__table" role="table">
+    <table class="seo-table holdings-metric-table__table" :class="{ 'holdings-metric-table__table--fixed': widths }" role="table">
       <caption class="visually-hidden">{{ caption }}</caption>
       <thead role="rowgroup">
         <tr role="row">
-          <th scope="col" role="columnheader">{{ nameLabel }}</th>
-          <th scope="col" role="columnheader" class="seo-table__num">{{ valueLabel }}</th>
-          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num">{{ marketLabel }}</th>
-          <th v-if="rows.some(row => row.meaning)" scope="col" role="columnheader">{{ meaningLabel }}</th>
+          <th scope="col" role="columnheader" :style="{ width: widths?.[0] }">{{ nameLabel }}</th>
+          <th scope="col" role="columnheader" class="seo-table__num" :style="{ width: widths?.[1] }">{{ valueLabel }}</th>
+          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num" :style="{ width: widths?.[2] }">{{ marketLabel }}</th>
+          <th v-if="hasMeaning" scope="col" role="columnheader" :style="{ width: widths?.[marketLabel ? 3 : 2] }">{{ meaningLabel }}</th>
         </tr>
       </thead>
       <tbody role="rowgroup">
         <!-- key 帶序號：同一檔可能有好幾列（例如匯入時的多批期初部位） -->
         <tr v-for="(row, index) in rows" :key="`${index}-${row.name}`" role="row" class="holdings-card">
-          <th scope="row" role="rowheader"><slot name="name" :row="row">{{ row.name }}</slot></th>
+          <th scope="row" role="rowheader">
+            <span v-if="loading && row.skeleton" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.name }}</span>
+            <slot v-else name="name" :row="row">{{ row.name }}</slot>
+          </th>
           <!-- 有兩個數值欄時，窄卡片上兩個都標欄名（例如「權重：53.3%」「風險貢獻：54.0%」），否則分不出哪個是哪個 -->
-          <td role="cell" class="seo-table__num holdings-metric-table__value holdings-card__value" :data-value-label="marketLabel ? valueLabel : undefined">{{ row.value }}</td>
-          <td v-if="marketLabel" role="cell" class="seo-table__num" :data-label="marketLabel">{{ row.market ?? '－' }}</td>
-          <td v-if="rows.some(item => item.meaning)" role="cell" class="holdings-metric-table__meaning">{{ row.meaning }}</td>
+          <td role="cell" class="seo-table__num holdings-metric-table__value holdings-card__value" :data-value-label="marketLabel ? valueLabel : undefined">
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.value }}</span>
+            <template v-else>{{ row.value }}</template>
+          </td>
+          <td v-if="marketLabel" role="cell" class="seo-table__num" :data-label="marketLabel">
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.market }}</span>
+            <template v-else>{{ row.market ?? '－' }}</template>
+          </td>
+          <td v-if="hasMeaning" role="cell" class="holdings-metric-table__meaning">
+            <span v-if="loading && row.skeleton" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.meaning }}</span>
+            <template v-else>{{ row.meaning }}</template>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -93,7 +114,6 @@ defineSlots<{ name?: (props: { row: { name: string; value: string; market?: stri
 .holdings-metric-table__value {
   color: var(--el-text-color-primary);
 }
-
 .holdings-metric-table__table td[data-label],
 .holdings-metric-table__meaning {
   grid-column: 1 / -1;
@@ -117,6 +137,11 @@ defineSlots<{ name?: (props: { row: { name: string; value: string; market?: stri
   .holdings-metric-table__table {
     display: table;
     background: var(--el-bg-color);
+  }
+
+  /* 欄寬照表頭的 width，不照內容 */
+  .holdings-metric-table__table--fixed {
+    table-layout: fixed;
   }
 
   .holdings-metric-table__table thead {

@@ -20,11 +20,17 @@ const props = defineProps<{
 }>()
 
 // 讀到自己有哪些連結之後才出現：讀不到就分不出「分享」還是「已分享」（業務中台 還沒上線這支時也是這樣，上線後自動出現）。
-// 呼叫端把它放在靠右那一組的最左邊，出現時不推動旁邊的按鈕
+// 還在問的時候畫一個同樣大小的骨架（2026-10-20，使用者：「不要閃動」）：原本空著，手機上工具列換行，按鈕一出現就多長一行、把下面的
+// 持股卡片往下推（/holdings 375 寬量到 0.0089）。讀不到就不畫（同原本）
 const { shares, ensureShares, shareOf, saveShare, revokeShare } = useShares()
 const currentUser = useCurrentUser()
+const checking = ref(true)
 onMounted(() => {
-  watch(currentUser, () => void ensureShares(), { immediate: true })
+  watch(currentUser, async () => {
+    checking.value = !shares.value
+    await ensureShares()
+    checking.value = false
+  }, { immediate: true })
 })
 
 // 關閉連結的那 10 秒，畫面上當作已經關了
@@ -134,7 +140,8 @@ function closeLink() {
 
 <template>
   <!-- 包一層：呼叫端的 class 才套得上；對話框本身 teleport 到 body，不佔這裡的版面 -->
-  <span v-if="shares" class="shared-share">
+  <span v-if="!shares && checking" class="app-skeleton shared-share__skeleton" aria-hidden="true" />
+  <span v-else-if="shares" class="shared-share">
     <el-button class="shared-share__button" aria-haspopup="dialog" @click="openDialog">{{ active ? '已分享' : '分享' }}</el-button>
     <el-dialog v-model="open" :title="`分享「${name}」`" width="min(480px, 92vw)">
       <p class="share-dialog__note">有連結的人不用登入就能看，內容會即時更新。</p>
@@ -181,6 +188,14 @@ function closeLink() {
 .shared-share__button {
   min-height: 44px;
   min-width: 5.5rem;
+}
+
+/* 跟上面的按鈕一樣大 */
+.shared-share__skeleton {
+  display: inline-block;
+  width: 5.5rem;
+  height: 44px;
+  vertical-align: middle;
 }
 
 .share-dialog__note {

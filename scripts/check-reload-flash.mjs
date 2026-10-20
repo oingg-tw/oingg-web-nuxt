@@ -2,22 +2,27 @@
 // check-layout-shift 量不到兩種情況：一是沒有位移的換畫面（v-loading 的白色遮罩淡入、轉圈換手、先寫「還沒有…」再換成內容），二是有內容時
 // 的樣子——它登入的測試帳號沒有持股、清單也是空的。這支用假資料（一個帳戶、六檔持股、持股特色、一組六檔的觀察清單；報價是真的公開讀取），
 // 每頁重新整理一次，從伺服器的第一個畫面看到內容出來，驗：
-//   - 第一個畫面就是佔位（伺服器畫的轉圈），不是訪客卡或空狀態
+//   - 第一個畫面是對的那一種，不是訪客卡或空狀態：改成骨架的頁面（2026-10-20 第二輪，使用者：「載入之前，可以讓用戶看的出來畫面結構」）
+//     要有問句與骨架；其餘頁面是伺服器畫的轉圈
 //   - 沒有出現過 v-loading 的遮罩（.el-loading-mask）
 //   - 佔位只有伺服器畫的那一個：之後沒有再加新的 .app-loading-placeholder（換手、hydration 對不上都會加）
-//   - 中間狀態的字一次都沒出現；最後有畫出內容（假資料沒接上時不能空過）
+//   - 中間狀態的字一次都沒出現；最後有畫出內容、骨架都換掉了（假資料沒接上時不能空過）
+//   - 正式建置時（BASE 指到 pnpm build 的伺服器）位移 ≤ 0.005：骨架跟內容一樣大，資料到了不能推動任何東西。dev 會晚注入元件樣式，
+//     位移只列出來不判定
 // 寫入一律擋下。Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-reload-flash.mjs（BASE= 換伺服器）
 import { chromium } from 'playwright'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
-// 頁面 → 內容出來的記號
+const isDev = (await (await fetch(base)).text()).includes('/@vite/client')
+// 頁面 → 第一個畫面要有的、內容出來的記號
+const PLACEHOLDER = ['.app-loading-placeholder']
 const ROUTES = {
-  '/holdings': '.holdings-page__overview',
-  '/holdings/analysis': '.holdings-traits__panel',
-  '/holdings/columns': '.formula-bar',
-  '/holdings/risk': '.risk-page__body',
-  '/watchlist': '.watchlist-page__count',
-  '/watchlist/lists': '.collection-manager__section'
+  '/holdings': { first: PLACEHOLDER, marker: '.holdings-page__overview' },
+  '/holdings/analysis': { first: ['#analysis-sector-title', '.holdings-traits__title', '.app-skeleton'], marker: '.holdings-traits__panel' },
+  '/holdings/columns': { first: PLACEHOLDER, marker: '.formula-bar' },
+  '/holdings/risk': { first: PLACEHOLDER, marker: '.risk-page__body' },
+  '/watchlist': { first: PLACEHOLDER, marker: '.watchlist-page__count' },
+  '/watchlist/lists': { first: PLACEHOLDER, marker: '.collection-manager__section' }
 }
 const INTERIM = ['還沒有記錄任何持股', '還沒有追蹤任何股票', '產業分類載入中', '目前沒有報價']
 
@@ -63,14 +68,19 @@ await login.locator('.user-menu-button__trigger').first().waitFor({ state: 'atta
 const storageState = await loginContext.storageState({ indexedDB: true })
 await loginContext.close()
 
-for (const [route, marker] of Object.entries(ROUTES)) {
-  console.log(route)
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+// 手機寬度另跑一次：答句換行、表格變卡片，骨架跟內容最容易對不齊的地方
+for (const width of [1440, 375]) for (const [route, { first, marker }] of Object.entries(ROUTES)) {
+  console.log(`${route} @${width}`)
+  const mobile = width < 768
+  const context = await browser.newContext({ viewport: { width, height: mobile ? 812 : 900 }, isMobile: mobile, hasTouch: mobile, storageState })
   await stub(context)
   const page = await context.newPage()
-  await page.addInitScript((interim) => {
-    const seen = { first: null, masks: 0, placeholders: 0, interim: new Set() }
+  await page.addInitScript(({ interim, first }) => {
+    const seen = { first: null, masks: 0, placeholders: 0, interim: new Set(), cls: 0 }
     window.__flash = seen
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) if (!entry.hadRecentInput) seen.cls += entry.value
+    }).observe({ type: 'layout-shift', buffered: true })
     // 伺服器的 HTML 解析完之後才算「瀏覽器加的」
     new MutationObserver((records) => {
       if (document.readyState === 'loading') return
@@ -83,23 +93,25 @@ for (const [route, marker] of Object.entries(ROUTES)) {
     const tick = () => {
       const container = document.querySelector('.holdings-shell, .watchlist-page, .app-page')
       if (container) {
-        seen.first ??= !!container.querySelector('.app-loading-placeholder')
+        seen.first ??= first.every(selector => container.querySelector(selector))
         for (const text of interim) if (container.innerText.includes(text)) seen.interim.add(text)
       }
       requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
-  }, INTERIM)
-  // 先開一次（暖快取），量的是重新整理
+  }, { interim: INTERIM, first })
+  // 先開一次（暖快取，也讓頁面記下骨架的列數），量的是重新整理
   await page.goto(`${base}${route}`, { waitUntil: 'networkidle', timeout: 180000 })
   await page.reload({ waitUntil: 'networkidle', timeout: 180000 })
   await page.waitForTimeout(2000)
   const seen = await page.evaluate(() => ({ ...window.__flash, interim: [...window.__flash.interim] }))
-  check(seen.first === true, '第一個畫面是佔位')
+  check(seen.first === true, `第一個畫面有 ${first.join('、')}`)
   check(seen.masks === 0, `沒有 v-loading 遮罩（${seen.masks}）`)
   check(seen.placeholders === 0, `佔位沒有換手（瀏覽器加了 ${seen.placeholders} 個）`)
   check(seen.interim.length === 0, `沒有中間狀態的字（${seen.interim.join('、') || '無'}）`)
-  check(await page.locator(marker).count() > 0 && await page.locator('.app-loading-placeholder').count() === 0, `內容畫出來了（${marker}）`)
+  check(await page.locator(marker).count() > 0 && await page.locator('.app-loading-placeholder, .app-skeleton').count() === 0, `內容畫出來了、骨架都換掉了（${marker}）`)
+  if (isDev) console.log(`  ----  位移 ${seen.cls.toFixed(4)}（dev 不判定）`)
+  else check(seen.cls <= 0.005, `位移 ${seen.cls.toFixed(4)} ≤ 0.005`)
   await context.close()
 }
 
@@ -112,9 +124,11 @@ await page.goto(`${base}/holdings/analysis`, { waitUntil: 'networkidle', timeout
 await page.locator('.holdings-traits__panel').waitFor({ timeout: 30000 })
 await page.locator('a[href="/holdings"]:visible').first().click()
 await page.locator('.holdings-page__overview').waitFor({ timeout: 30000 })
+// 持股總覽自己也要讀完（分享鈕的骨架等 GET /shares），才開始數切回持股分析的那幾個畫面
+await page.waitForFunction(() => !document.querySelector('.app-loading-placeholder, .app-skeleton'), null, { timeout: 30000 })
 await page.evaluate(() => {
   window.__spinnerFrames = 0
-  const tick = () => { if (document.querySelector('.app-loading-placeholder')) window.__spinnerFrames++; requestAnimationFrame(tick) }
+  const tick = () => { if (document.querySelector('.app-loading-placeholder, .app-skeleton')) window.__spinnerFrames++; requestAnimationFrame(tick) }
   requestAnimationFrame(tick)
 })
 await page.locator('a[href="/holdings/analysis"]:visible').first().click()

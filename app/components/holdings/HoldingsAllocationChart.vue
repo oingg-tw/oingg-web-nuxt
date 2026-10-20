@@ -19,6 +19,8 @@ const props = defineProps<{
   items: { label: string; value: number }[]
   // 圖的可及名稱開頭（同一頁有產業與個股兩張圓餅圖，原本都叫「持股比例」分不出來）
   title?: string
+  // 資料還沒到：同樣高的框、圓環的位置與大小畫骨架（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）
+  loading?: boolean
 }>()
 
 const TOP = 6
@@ -57,7 +59,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <SharedChart v-if="slices.length" class="holdings-allocation-chart" :option="chartOption" autoresize role="img" :aria-label="`${props.title ?? '持股比例'}：${slices.map(item => item.label).join('、')}`" />
+  <div v-if="props.loading" class="holdings-allocation-chart holdings-allocation-chart--loading" aria-hidden="true"><span class="app-skeleton holdings-allocation-chart__ring" /></div>
+  <SharedChart v-else-if="slices.length" class="holdings-allocation-chart" :option="chartOption" autoresize role="img" :aria-label="`${props.title ?? '持股比例'}：${slices.map(item => item.label).join('、')}`" />
 </template>
 
 <style scoped>
@@ -70,5 +73,19 @@ const chartOption = computed(() => {
   .holdings-allocation-chart {
     height: 300px;
   }
+}
+
+/* 圓環跟 series 的 radius 一樣：外徑是框高的 68%（框比高寬，ECharts 取短邊），內徑 38%（38 ÷ 68 ≈ 0.56） */
+.holdings-allocation-chart--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.holdings-allocation-chart__ring {
+  height: 68%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  mask: radial-gradient(circle closest-side, transparent 55.9%, #000 56%);
 }
 </style>
