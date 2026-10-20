@@ -152,7 +152,7 @@ const unit = computed(() => {
     border-radius: var(--el-dialog-border-radius, 8px);
   }
 
-  /* 選指標本體在大面板裡拿掉 720px 上限、每欄拉高（同原本 ScreenerIndicatorPicker 的置中模式） */
+  /* 選指標本體在大面板裡拿掉 720px 上限、每欄拉高（同 SharedMetricColumnPicker 的桌機大小） */
   .el-dialog.condition-panel .indicator-dialog {
     max-width: none;
     --indicator-rows: 9.5;

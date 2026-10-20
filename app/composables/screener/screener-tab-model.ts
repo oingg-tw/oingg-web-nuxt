@@ -19,7 +19,7 @@ import type { PresetSelectItem } from '~/components/screener/ScreenerPresetSelec
 // results until its own filters change again.
 //
 // "新增條件" doesn't append anything here directly — it opens the field picker
-// (ScreenerIndicatorPicker), then once a field's picked, the value editor
+// (ScreenerConditionPanel), then once a field's picked, the value editor
 // (ScreenerRangeEditor), and only once the user actually sets a value does a
 // real slot get pushed here (see closeRangeEditor). Picking a field but abandoning the value
 // editor without setting anything never creates a slot at all — per explicit feedback that

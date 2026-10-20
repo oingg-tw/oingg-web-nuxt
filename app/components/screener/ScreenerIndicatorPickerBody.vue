@@ -6,10 +6,10 @@ import type { MetricCategory, MetricField, Metric } from '~/composables/screener
 // set, see IconHexagon.vue's own comment.
 import IconHexagon from '~/components/shared/IconHexagon.vue'
 
-// The 大/中/小 (category/metric/field) navigation itself — pulled out of
-// ScreenerIndicatorPicker so that component can mount this identical body inside either a
-// fullscreen dialog (mobile) or an anchored popover (desktop) without duplicating the whole
-// three-column UI and its state in two places.
+// The 大/中/小 (category/metric/field) navigation itself, mounted by two wrappers: the screener's
+// ScreenerConditionPanel (conditions and columns, one panel) and SharedMetricColumnPicker (pick a
+// catalog metric as a column: /watchlist, /holdings/columns). Labels use metricDisplayName so the
+// 交易所／即時 variants of one name (本益比, 市值…) never come out identical (2026-10-20).
 const props = defineProps<{
   categories: MetricCategory[]
   // The field already on the slot being edited, if any — lets this jump straight to that
@@ -199,7 +199,7 @@ function entriesOf(fields: MetricField[], metricKey: string, metricName: string)
 }
 
 function browseFieldsOf(metric: Metric): IndicatorEntry[] {
-  return entriesOf(sortedFieldsOf(metric), metric.key, metric.name)
+  return entriesOf(sortedFieldsOf(metric), metric.key, metricDisplayName(metric))
 }
 
 // A field counts as matching the query on the owning metric's name alone in hidePeriod mode
@@ -230,7 +230,7 @@ function metricMatchesQuery(metric: Metric, query: string): boolean {
   // 股價淨值比、市值、葛拉漢倍數、本益成長比、盈餘收益率）全都只靠後綴分辨。
   return metricDisplayName(metric).toLowerCase().includes(query)
     || (metric.nameEn?.toLowerCase().includes(query) ?? false)
-    || metric.fields.some(field => fieldMatchesQuery(metric.name, field, query))
+    || metric.fields.some(field => fieldMatchesQuery(metricDisplayName(metric), field, query))
 }
 
 // Metrics (中分類), flattened across every category — mirrors how the field list below
@@ -258,9 +258,10 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     // bySort order, searching for the same metric's name showed them in raw API order
     // instead, silently inconsistent with each other).
     return sortedCategories.value.flatMap(category => bySort(category.metrics)).flatMap(metric => {
-      const metricNameMatches = metricDisplayName(metric).toLowerCase().includes(query)
-      const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(metric.name, field, query)))
-      return entriesOf(matchingFields, metric.key, metric.name)
+      // 英文縮寫也算（2026-10-20）：搜「ROE」原本只在中欄找到指標，右欄卻是空的、沒有東西可以點
+      const metricNameMatches = metricDisplayName(metric).toLowerCase().includes(query) || (metric.nameEn?.toLowerCase().includes(query) ?? false)
+      const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(metricDisplayName(metric), field, query)))
+      return entriesOf(matchingFields, metric.key, metricDisplayName(metric))
     })
   }
   return activeMetric.value ? browseFieldsOf(activeMetric.value) : []

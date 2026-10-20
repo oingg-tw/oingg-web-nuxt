@@ -2,12 +2,13 @@
 //
 // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值，UIUX 體感盡可能比照 Excel」。
 // 自己寫而不用 filtrex／math.js：那兩個的等號是 `==`、沒有 `%` 百分比與 `<>`，語意跟 Excel 對不上；Excel 的
-// 子集只要一個小解析器。**絕不 eval**——這裡只認數字、欄位字母、白名單函數與運算子，其餘一律是錯誤。
+// 子集只要一個小解析器。**絕不 eval**——這裡只認數字、欄位字母、白名單函數與運算子，以及 METRIC 裡的指標代碼字串，
+// 其餘一律是錯誤。
 //
 // 零 import，讓 scripts/check-holdings-formula.mjs 能直接 import。
 //
 // 錯誤值照 Excel：#DIV/0!（除以 0）、#N/A（那一列沒有這個值，例如沒報價）、#REF!（不存在的欄位、循環參照、
-// 被刪掉的欄位）、#NAME?（不認得的函數）、#VALUE!（參數不對）。錯誤會一路往外傳，跟 Excel 一樣。
+// 被刪掉的欄位）、#NAME?（不認得的函數或指標）、#VALUE!（參數不對）。錯誤會一路往外傳，跟 Excel 一樣。
 
 export type FormulaError = '#DIV/0!' | '#N/A' | '#REF!' | '#NAME?' | '#VALUE!'
 export type FormulaValue = number | boolean | FormulaError
@@ -42,6 +43,7 @@ type Token = (
   | { kind: 'err'; value: FormulaError }
   | { kind: 'range'; value: string }
   | { kind: 'op'; value: string }
+  | { kind: 'str'; value: string }
 ) & { start: number; end: number }
 
 function tokenize(text: string): Token[] | string {
@@ -51,6 +53,14 @@ function tokenize(text: string): Token[] | string {
     const ch = text[i]!
     if (/\s/.test(ch)) { i++; continue }
     const start = i
+    // 字串（2026-10-20）：只能當 METRIC 的參數，寫的是指標代碼，例如 METRIC("roe.TTM")
+    if (ch === '"') {
+      const close = text.indexOf('"', i + 1)
+      if (close === -1) return '字串少了右引號'
+      i = close + 1
+      tokens.push({ kind: 'str', value: text.slice(start + 1, close), start, end: i })
+      continue
+    }
     const number = /^\d+(\.\d+)?|^\.\d+/.exec(text.slice(i))
     if (number) {
       i += number[0].length
@@ -100,6 +110,11 @@ export function formulaReferences(formula: string): { letter: string; start: num
   return tokens.flatMap(token => (token.kind === 'ref' || token.kind === 'range' ? [{ letter: token.value, start: token.start + offset, end: token.end + offset }] : []))
 }
 
+// 公式裡用到的指標代碼（2026-10-20）：頁面拿這份去跟 /screener/values 要值
+export function formulaMetrics(formula: string): string[] {
+  return [...formula.matchAll(/\bMETRIC\s*\(\s*"([^"]*)"/gi)].map(match => match[1]!)
+}
+
 // 會透露部位大小的欄（2026-10-18 下載用，使用者：「下載要有選項 比如 預設不顯示持有股數」，選了「所有會透露部位大小的」預設不下載）：
 //   - 金額格式的欄
 //   - 直接用到跟持有多少成正比的資料函數（股數、市值、未實現損益、預估年股利、今日漲跌金額）
@@ -134,6 +149,7 @@ export type FormulaNode =
   | { type: 'percent'; operand: FormulaNode }
   | { type: 'binary'; op: string; left: FormulaNode; right: FormulaNode }
   | { type: 'call'; name: string; args: FormulaNode[] }
+  | { type: 'metric'; field: string }
 
 export type ParseResult = { ok: true; node: FormulaNode } | { ok: false; message: string }
 
@@ -203,6 +219,13 @@ export function parseFormula(formula: string): ParseResult {
     if (token.kind === 'range') return { type: 'range', letter: token.value }
     if (token.kind === 'func') {
       pos++ // (
+      // 指標（2026-10-20）：唯一的參數是代碼字串。字串放在別的地方，都會落到最後一行的「…的位置不對」
+      if (token.value === 'METRIC') {
+        const arg = tokens[pos++]
+        if (arg?.kind !== 'str' || !isOp(')')) throw new Error('指標要寫成 METRIC("roe.TTM")')
+        pos++
+        return { type: 'metric', field: arg.value }
+      }
       const args: FormulaNode[] = []
       if (!isOp(')')) {
         args.push(comparison())
@@ -239,6 +262,7 @@ export function parseFormula(formula: string): ParseResult {
 // 自由刪改（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」），像 Excel 一樣沒有「內建欄」。
 // 值是那一列的持股資料；null（例如沒有報價、成本不明）是 #N/A。
 // 持股總覽上的每一個數字，這裡都要拿得到當積木（2026-10-15 使用者同意的分工：總覽固定、自訂欄位自己算），而且跟總覽同一個算法。
+// 指標目錄裡的任何指標另用 METRIC("roe.TTM")（2026-10-20，「新增指標」會幫忙寫好）：值在 RowFields.metrics，百分比是比例。
 export const FIELD_FUNCTIONS = {
   SHARES: '股數',
   AVGCOST: '平均成本',
@@ -252,14 +276,24 @@ export const FIELD_FUNCTIONS = {
   DAYRETURN: '今日漲跌幅'
 } as const
 
+// 有沒有用到資料函數或指標：一個都沒用到的清單是 2026-10-05 以前存的舊格式（見 columns.vue 的 upgradeLegacy）。
+// METRIC 一定要算在內：只有指標欄的清單被當成舊格式的話，重新整理後會被補上 7 個舊欄，字母全部位移
+const DATA_FUNCTION = new RegExp(`\\b(${[...Object.keys(FIELD_FUNCTIONS), 'METRIC'].join('|')})\\s*\\(`, 'i')
+export function usesDataFunction(formula: string): boolean {
+  return DATA_FUNCTION.test(formula)
+}
+
 export type FieldName = keyof typeof FIELD_FUNCTIONS
-export type RowFields = Record<FieldName, number | null>
+// metrics：METRIC 的值，key 是代碼（用 Map，"constructor" 這種代碼才不會碰到物件原型）。沒有這個 key＝不認得的指標
+export type RowFields = Record<FieldName, number | null> & { metrics?: Map<string, number | null> }
 
 interface Context {
   lookup: (letter: string) => FormulaValue
   // 整欄：那一欄所有列的值；不存在的欄是 #REF!
   range: (letter: string) => FormulaValue[] | FormulaError
   field: (name: FieldName) => number | null
+  // undefined：不認得的指標；null：這一列沒有值（例如 ETF 沒有 ROE）
+  metric: (field: string) => number | null | undefined
 }
 
 function toNumber(value: FormulaValue): number | FormulaError {
@@ -309,6 +343,10 @@ function evaluate(node: FormulaNode, ctx: Context): FormulaValue {
     case 'bool': return node.value
     case 'err': return node.value
     case 'ref': return ctx.lookup(node.letter)
+    case 'metric': {
+      const value = ctx.metric(node.field)
+      return value === undefined ? '#NAME?' : value ?? '#N/A'
+    }
     case 'unary': {
       const x = toNumber(ev(node.operand))
       if (isFormulaError(x)) return x
@@ -405,7 +443,8 @@ export function evaluateTable(rows: RowFields[], columns: ColumnFormula[]): Reco
         if (!parsed.has(other)) return '#REF!'
         return rows.map((_, index) => cell(index, other))
       },
-      field: name => rows[row]![name]
+      field: name => rows[row]![name],
+      metric: field => rows[row]!.metrics?.get(field)
     })
     visiting.delete(key)
     results[row]![letter] = value
@@ -419,11 +458,12 @@ export function evaluateTable(rows: RowFields[], columns: ColumnFormula[]): Reco
 }
 
 // 刪掉一欄時改寫公式，跟 Excel 一樣：參照被刪那一欄的變成 #REF!，後面的欄位字母往前移一格。
-// 用斷詞而不是字串取代，所以函數名稱（例如 ROUND 裡的字母）不會被誤改。
+// 用斷詞而不是字串取代，所以函數名稱（例如 ROUND 裡的字母）不會被誤改；字串（METRIC 的指標代碼）整段原樣保留，
+// 不然 METRIC("roe.TTM") 刪一欄就變成 METRIC("ROD.TTL")。
 export function rewriteAfterDelete(formula: string, deletedLetter: string): string {
   const deleted = columnIndex(deletedLetter)
-  return formula.replace(/(#[A-Z/0!?]+)|([A-Za-z]+)(\s*\()?/g, (match, error: string | undefined, word: string | undefined, call: string | undefined) => {
-    if (error || call || !word) return match
+  return formula.replace(/("[^"]*"?)|(#[A-Z/0!?]+)|([A-Za-z]+)(\s*\()?/g, (match, text: string | undefined, error: string | undefined, word: string | undefined, call: string | undefined) => {
+    if (text || error || call || !word) return match
     const upper = word.toUpperCase()
     if (upper === 'TRUE' || upper === 'FALSE') return match
     const index = columnIndex(upper)

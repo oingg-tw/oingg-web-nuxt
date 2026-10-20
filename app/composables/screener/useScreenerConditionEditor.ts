@@ -34,9 +34,9 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   // shallowRef：T 是泛型，ref 會把它包成 UnwrapRef<T> 而對不上型別；頁籤本身已經是父層的響應式物件，改它的欄位照樣會更新
   const pickerTargetTab = shallowRef<T | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
-  // The button that opened the picker — on desktop it's shown as a dropdown anchored to
-  // this element instead of a fullscreen dialog (see ScreenerIndicatorPicker's triggerEl
-  // prop). Unused on mobile, which always stays fullscreen regardless of what this holds.
+  // The button that opened the picker. It used to anchor a desktop dropdown picker (the old
+  // ScreenerIndicatorPicker, deleted 2026-10-20; the screener has used ScreenerConditionPanel
+  // since 2026-10-07) and is still handed on as rangeEditorTriggerEl below.
   const pickerTriggerEl = ref<HTMLElement | null>(null)
 
   function nextSlotId(tab: T): number {
@@ -97,7 +97,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   // expandFields/collapseFields comments for the first, a wrong field label). handleSelect
   // below (both branches that come from the field-picker chain, not openRangeEditor's own
   // direct-from-a-pill path) sets rangeEditorTriggerEl to pickerTriggerEl — the SAME "新增條件"
-  // button ScreenerIndicatorPicker's own popover was JUST anchored to via virtual-triggering,
+  // button the old picker popover (ScreenerIndicatorPicker, since deleted) was JUST anchored to via virtual-triggering,
   // which closes (`pickerVisible = false`) in the very same click handler that opens this one.
   // Two el-popover instances racing to attach/detach virtual-triggering on the identical
   // trigger element within one synchronous tick left the second one's popper root stuck at

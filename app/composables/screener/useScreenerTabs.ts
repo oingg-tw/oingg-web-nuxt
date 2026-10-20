@@ -79,7 +79,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     }))
   }
 
-  // Empty placeholder slots (fieldId still null, waiting on ScreenerIndicatorPicker)
+  // Empty placeholder slots (fieldId still null, waiting on the condition panel's picker)
   // never reach the API — they're not a real criterion yet.
   // 類股不是指標條件，另外轉成 sectorCodes／excludeSectorCodes（sectorScopeFor）
   function filtersOfTab(tab: ScreenerTab): FilterCriterion[] {

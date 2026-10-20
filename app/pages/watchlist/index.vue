@@ -42,8 +42,8 @@ const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.inc
 
 // 欄位存在帳號裡（GET／PUT /users/me/watchlist-columns，業務中台 9a2eeff）。存的是整張表、照顯示順序；null ＝
 // 從沒存過，用預設。免費方案上限 8 欄（預設 5＋自己的 3），付費無上限，每個方案硬上限 20（使用者 2026-10-06
-// 的決定，業務中台 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——不先查額度再擋，因為
-// 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。
+// 的決定，業務中台 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——存檔不先查額度再擋，因為
+// 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。只有「新增」在開挑選器前先擋（openPicker）。
 const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () => defaultColumns())
 const { fetchColumns, saveColumns } = useUserWatchlist()
 const currentUser = useCurrentUser()
@@ -111,10 +111,15 @@ function resetColumns() {
 }
 
 const { data: schema } = await useFilterSchema()
+// 挑選器是 SharedMetricColumnPicker（2026-10-20 跟 /holdings/columns 的「新增指標」共用）。「新增」在開挑選器之前先擋額度：
+// 原本加上去約 0.6 秒後被 PUT 的 403 收回。只擋新增——重排、刪欄在降級後照樣要能存（見 columns 上面的註解）
 const pickerVisible = ref(false)
-const pickerTriggerEl = ref<HTMLElement | null>(null)
-function openPicker(triggerEl: HTMLElement) {
-  pickerTriggerEl.value = triggerEl
+function openPicker() {
+  const limit = quotaOf('watchlistColumns')
+  if (typeof limit === 'number' && columns.value.length >= limit) {
+    showQuotaReached('觀察清單欄位')
+    return
+  }
   pickerVisible.value = true
 }
 
@@ -286,16 +291,7 @@ async function submitNote() {
       還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
     </p>
 
-    <ScreenerIndicatorPicker
-      v-if="schema.categories.length"
-      v-model="pickerVisible"
-      centered
-      title="新增欄位"
-      :categories="schema.categories"
-      :trigger-el="pickerTriggerEl"
-      :hide-period="false"
-      @select="addColumn"
-    />
+    <SharedMetricColumnPicker v-model="pickerVisible" title="新增欄位" @select="addColumn" />
 
     <el-dialog :model-value="noteTarget !== null" :title="noteTarget ? `${noteTarget.name} 的備註` : '備註'" width="min(480px, 92vw)" @close="noteTarget = null">
       <label for="watchlist-note-input" class="watchlist-note-dialog__label">為什麼想追蹤這一檔？只有你自己看得到。</label>

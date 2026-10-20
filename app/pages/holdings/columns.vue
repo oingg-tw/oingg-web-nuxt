@@ -15,6 +15,9 @@ import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 //
 // 計算全在瀏覽器（app/utils/holdings-formula.ts，不 eval）：持股最多一兩百列，而且是使用者自己的資料。
 // 公式存進帳號（GET/PUT /users/me/holding-columns）。
+// 2026-10-20 加「新增指標」（使用者：「我要怎麼任意自行加上我要的指標 比如 ROE…能跟篩選那邊一樣可以自由選擇嗎」，選了「兩顆按鈕」）：
+// 從指標目錄挑（SharedMetricColumnPicker，觀察清單同一個），挑到的就是一欄 =METRIC("roe.TTM")——跟其他欄一樣是公式欄，有字母、
+// 可以被別的公式引用。上游把公式當純文字存，所以不用改後端。
 //
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
@@ -26,6 +29,9 @@ const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchC
 // 業務中台 數的是整份清單（含預設 7 欄），所以免費方案是 10。null ＝ 不限；undefined ＝ 讀不到（不在前端擋）。
 const { quotaOf } = useEntitlement()
 const companyByCode = useCompanyLookup(() => holdings.value.map(holding => holding.symbol))
+// 指標目錄：METRIC 欄的單位（百分比要換成比例）與「認不認得這個代碼」。挑選器本身也讀同一份（共用 key 的請求在頁面這層等一次）
+const { data: schema } = await useFilterSchema()
+const fieldOf = (id: string) => locateFieldInSchema(schema.value.categories, id)?.field
 
 // **每一欄都能自由刪改**（使用者 2026-10-05：「ABCD 啥的預設欄位都可以自由刪改」）。像 Excel 一樣沒有內建欄：
 // 預設的「股數」「收盤價」只是 =SHARES()、=PRICE() 這種資料函數的公式欄（見 holdings-formula.ts 的
@@ -54,13 +60,11 @@ const LEGACY_DATA_COLUMNS: HoldingColumn[] = [
   { id: 'dividend', label: '預估年股利', formula: '=DIVIDEND()', format: 'money', decimals: 0 }
 ]
 
-const FIELD_PATTERN = new RegExp(`\\b(${Object.keys(FIELD_FUNCTIONS).join('|')})\\s*\\(`, 'i')
-
 // 舊版存的清單（2026-10-05 早上）只有 H 以後的自訂欄，A～G 是寫死的內建欄、公式用字母參照它們。清單裡完全
-// 沒有資料函數時，就是那種舊格式：把那七個資料欄補在前面，字母剛好對回原本的 A～G，舊公式不用改。
+// 沒有資料函數（含 METRIC，見 usesDataFunction）時，就是那種舊格式：把那七個資料欄補在前面，字母剛好對回原本的 A～G，舊公式不用改。
 // 用 LEGACY_DATA_COLUMNS 不用 DEFAULT_COLUMNS：預設 2026-10-15 改成基本積木之後只剩四個資料欄，字母會對錯。
 function upgradeLegacy(saved: HoldingColumn[]): HoldingColumn[] {
-  if (saved.length === 0 || saved.some(column => FIELD_PATTERN.test(column.formula))) return saved
+  if (saved.length === 0 || saved.some(column => usesDataFunction(column.formula))) return saved
   return [...LEGACY_DATA_COLUMNS, ...saved]
 }
 
@@ -102,7 +106,9 @@ const baseRows = computed(() => holdings.value.map((holding) => {
     RETURN: figures.pnlPct === null ? null : figures.pnlPct / 100,
     DIVIDEND: figures.annualDividend,
     DAYCHANGE: day.amount,
-    DAYRETURN: day.pct === null ? null : day.pct / 100
+    DAYRETURN: day.pct === null ? null : day.pct / 100,
+    // METRIC 的值：清單上用到的每個代碼都有一筆（還沒抓到、這一檔沒有都是 null →「－」）；不在清單上的代碼是 #NAME?
+    metrics: new Map(metricFields.value.map(field => [field, metricValues.value.get(holding.symbol)?.get(field) ?? null]))
   }
   const entry = companyByCode.value.get(holding.symbol)
   return { symbol: holding.symbol, name: entry?.name ?? holding.symbol, fields }
@@ -164,6 +170,22 @@ function addColumn() {
   const column: HoldingColumn = { id: crypto.randomUUID(), label: `新欄位 ${columns.value.length + 1}`, formula: '=', format: 'number', decimals: 2 }
   columns.value = [...columns.value, column]
   startEditing(column)
+}
+
+// 新增指標：挑到的指標直接成為一欄並存起來，不開公式列（要改名、改格式再點表頭）。格式：單位 % 的用百分比（引擎裡是比例），
+// 其餘用數字；不用金額——每股的「元」不透露部位大小，用金額會被當成下載時預設不勾的敏感欄
+const pickerOpen = ref(false)
+async function addMetricColumn(field: string, label: string) {
+  const formula = `=METRIC("${field}")`
+  if (columns.value.some(column => column.formula === formula)) {
+    ElMessage.info(`「${label}」已經在表格裡`)
+    return
+  }
+  const column: HoldingColumn = { id: crypto.randomUUID(), label: label.slice(0, 20), formula, format: fieldOf(field)?.unit === '%' ? 'percent' : 'number', decimals: 2 }
+  const previous = columns.value
+  const next = [...previous, column]
+  columns.value = next
+  if (await persist(next, previous)) settleFocus(column.id, `已新增 ${columnLetter(next.length - 1)} 欄 ${column.label}`)
 }
 
 // Excel 的點選參照：編輯公式時點一欄的表頭，把它的字母插進游標位置
@@ -271,6 +293,46 @@ const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
     }
   })
 ])
+// ---- 指標的值（METRIC）----
+// 代碼從所有欄的公式收集（含正在編輯的草稿，打字時整欄就能預覽）。目錄還沒到時先全部當作認得（不會閃 #NAME?），到了只留目錄裡
+// 有的——一個不認得的欄位會讓整批 /screener/values 400。百分比換成比例（跟 RETURN() 一樣），每檔存成一個 Map。
+// 鍵含「目錄到了沒」：目錄到之前不抓；到了之後如果代碼都認得，欄位字串不會變，少了這一段就永遠不會去抓。
+// 放在 shownColumn 之後：immediate 的 watcher 在 setup 時就會讀到它（TDZ）
+const catalogReady = computed(() => schema.value.categories.length > 0)
+const metricFields = computed(() => [...new Set(columns.value.flatMap(column => formulaMetrics(shownColumn(column).formula)))]
+  .filter(field => !catalogReady.value || fieldOf(field))
+  .sort())
+const metricValues = shallowRef(new Map<string, Map<string, number | null>>())
+const metricsFailed = ref(false)
+const metricsKey = computed(() => `${catalogReady.value}|${holdings.value.map(holding => holding.symbol).join()}|${metricFields.value.join()}`)
+async function loadMetrics() {
+  const key = metricsKey.value
+  // ponytail: 只送前 200 檔（/screener/values 一次的上限，跟報價同一個天花板）；第 201 檔起是「－」，真的有人持股超過 200 檔再分批
+  const symbols = holdings.value.map(holding => holding.symbol).slice(0, 200)
+  const fields = metricFields.value
+  if (!catalogReady.value || !fields.length || !symbols.length) {
+    metricsFailed.value = false
+    return
+  }
+  try {
+    const response = await fetchScreenerValues<{ value: string | null }>(symbols, fields)
+    if (key !== metricsKey.value) return
+    const percent = new Set(fields.filter(field => fieldOf(field)?.unit === '%'))
+    metricValues.value = new Map(response.results.map(result => [result.symbol, new Map(fields.map((field) => {
+      // 空字串不當 0
+      const raw = result.values[field]?.value
+      const value = raw ? Number(raw) : Number.NaN
+      return [field, Number.isFinite(value) ? (percent.has(field) ? value / 100 : value) : null] as const
+    }))]))
+    metricsFailed.value = false
+  } catch (error) {
+    devWarn('holdings-columns', 'POST /screener/values (METRIC) failed', error)
+    if (key === metricsKey.value) metricsFailed.value = true
+  }
+}
+watch(metricsKey, () => void loadMetrics(), { immediate: true })
+watchLoadFailure('holdings-metrics', () => metricsFailed.value, () => loadMetrics(), { scope: 'section' })
+
 const columnByKey = (key: string) => columns.value.find(column => column.id === key)
 function pickColumn(key: string) {
   const index = columns.value.findIndex(column => column.id === key)
@@ -393,13 +455,19 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
           </p>
         </template>
         <template v-else>
-          <el-button ref="addButton" type="primary" :icon="Plus" :disabled="atQuota" @click="addColumn">新增欄位</el-button>
+          <!-- 存檔還沒回來就不能再加：第一次失敗回滾時，第二次的欄位會跟著不見或留下半份 -->
+          <div class="formula-bar__actions">
+            <el-button type="primary" :icon="Plus" :disabled="atQuota || saving" @click="pickerOpen = true">新增指標</el-button>
+            <el-button ref="addButton" :icon="Plus" :disabled="atQuota || saving" @click="addColumn">新增公式</el-button>
+          </div>
           <p v-if="atQuota" class="formula-bar__help" role="status">
             你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
           </p>
-          <p class="formula-bar__help">點任一欄的表頭可以改名、改公式或刪除。</p>
+          <p class="formula-bar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除。</p>
         </template>
       </div>
+
+      <SharedMetricColumnPicker v-model="pickerOpen" title="新增指標" @select="addMetricColumn" />
 
       <p class="visually-hidden" role="status">{{ labelError || parseError || statusText }}</p>
 
@@ -440,7 +508,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
       </SharedSheetGrid>
 
       <p class="columns-page__footnote">
-        每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利、DAYCHANGE() 今日漲跌、DAYRETURN() 今日漲跌幅（比例）。沒有報價或成本不明的格子顯示「－」；除以 0 是 #DIV/0!。
+        每一欄都能改名、改公式或刪除。持股資料用函數取得：SHARES() 股數、AVGCOST() 平均成本、PRICE() 收盤價、MARKETVALUE() 市值、PNL() 未實現損益、RETURN() 報酬率（比例，0.2 代表 20%）、DIVIDEND() 預估年股利、DAYCHANGE() 今日漲跌、DAYRETURN() 今日漲跌幅（比例）。指標用 METRIC("roe.TTM")，「新增指標」會幫你寫好；百分比的指標在公式裡是比例（0.152 代表 15.2%）。沒有報價、成本不明，或 ETF、特別股沒有的指標，格子顯示「－」；除以 0 是 #DIV/0!。
       </p>
     </template>
   </HoldingsPageShell>

@@ -2,7 +2,7 @@
 // "never eval" guarantee. Pure, no network.
 //
 // Run: node scripts/check-holdings-formula.mjs
-import { columnLetter, evaluateTable, parseFormula, rewriteAfterDelete, sizeRevealingLetters } from '../app/utils/holdings-formula.ts'
+import { columnLetter, evaluateTable, formulaMetrics, formulaReferences, parseFormula, rewriteAfterDelete, sizeRevealingLetters, usesDataFunction } from '../app/utils/holdings-formula.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -89,12 +89,36 @@ console.log('\n整欄範圍（D:D）')
 }
 
 console.log('\n絕不執行程式碼')
-assert(!parseFormula('=constructor.constructor("return 1")()').ok, '屬性存取與字串不是合法語法')
+assert(!parseFormula('=constructor.constructor("return 1")()').ok, '屬性存取不是合法語法（字串只能放在 METRIC 裡）')
 assert(!parseFormula('=alert(1);').ok, '分號不是合法字元')
 assert(one('=alert(1)') === '#NAME?', '任意函數名只會是 #NAME?，不會被呼叫')
 
 console.log('\n語法錯誤（給編輯器的訊息）')
 assert(!parseFormula('=(A+B').ok && !parseFormula('=A+').ok && !parseFormula('=').ok, '少右括號、寫一半、空公式都會被擋')
+
+console.log('\n指標（METRIC，2026-10-20「新增指標」）')
+{
+  const metrics = new Map([['roe.TTM', 0.152], ['exchangePeRatio.EOD', null]])
+  const r = evaluateTable([{ ...row, metrics }], [
+    { letter: 'A', formula: '=METRIC("roe.TTM")' },
+    { letter: 'B', formula: '=A*100' },
+    { letter: 'C', formula: '=METRIC("exchangePeRatio.EOD")' },
+    { letter: 'D', formula: '=METRIC("noSuch.TTM")' },
+    { letter: 'E', formula: '=METRIC("constructor")' },
+    { letter: 'F', formula: '=IFERROR(METRIC("exchangePeRatio.EOD"), 0)' },
+    { letter: 'G', formula: '=metric( "roe.TTM" )' }
+  ])[0]
+  assert(close(r.A, 0.152) && close(r.B, 15.2), 'METRIC("roe.TTM") 取那一列的指標值（百分比是比例），也能再拿去算')
+  assert(r.C === '#N/A', '那一列沒有這個指標（例如 ETF 沒有本益比）是 #N/A')
+  assert(r.D === '#NAME?' && r.E === '#NAME?', '不認得的代碼是 #NAME?；"constructor" 也不會碰到物件原型')
+  assert(r.F === 0 && close(r.G, 0.152), 'IFERROR 包得住；函數名不分大小寫、括號裡可以有空白')
+  assert(!parseFormula('=METRIC(A)').ok && !parseFormula('="x"').ok && !parseFormula('=METRIC("roe.TTM"').ok && !parseFormula('=METRIC("roe.TTM)').ok, 'METRIC 的參數一定是字串；字串不能放在別處；少右括號、少右引號都會被擋')
+  assert(JSON.stringify(formulaMetrics('=METRIC("roe.TTM")/metric( "pbRatio.Q" )+A')) === '["roe.TTM","pbRatio.Q"]', 'formulaMetrics 找得到公式裡每一個指標代碼')
+  const refs = formulaReferences('=METRIC("roe.TTM")*A')
+  assert(refs.length === 1 && refs[0].letter === 'A' && refs[0].start === 19, `字串裡的字母不是欄位參照、不會上色（${JSON.stringify(refs)}）`)
+  assert(rewriteAfterDelete('=METRIC("roe.TTM")/B', 'A') === '=METRIC("roe.TTM")/A', '刪欄改寫字母時指標代碼原樣保留（不會變成 ROD.TTL）')
+  assert(usesDataFunction('=METRIC("roe.TTM")') && usesDataFunction('=price()') && !usesDataFunction('=D/(A*B)'), '只有指標欄的清單不是舊格式（不會被補上 7 個舊欄）')
+}
 
 console.log('\n刪除欄位時改寫參照（像 Excel）')
 assert(rewriteAfterDelete('=C/B', 'B') === '=B/#REF!', '參照被刪的欄位變 #REF!，後面的欄位往前移')
@@ -112,10 +136,13 @@ const sizeColumns = [
   { letter: 'E', formula: '=D/(A*B)', format: 'percent' },
   { letter: 'F', formula: '=G*2', format: 'number' }, // 引用後面的欄
   { letter: 'G', formula: '=A*C', format: 'number' },
-  { letter: 'H', formula: '=dayChange()', format: 'number' }
+  { letter: 'H', formula: '=dayChange()', format: 'number' },
+  // 指標欄（每股、比率）不透露部位大小；代碼裡的 dividend 不會被當成 DIVIDEND()
+  { letter: 'I', formula: '=METRIC("dividendYield.EOD")', format: 'percent' },
+  { letter: 'J', formula: '=METRIC("eps.TTM")', format: 'number' }
 ]
 const size = sizeRevealingLetters(sizeColumns)
-assert([...size].sort().join('') === 'ADFGH', `透露部位大小的欄：股數、金額格式、引用它們的非百分比欄（含往後引用）、小寫函數名；成本殖利率與單價不算（得到 ${[...size].sort().join('')}）`)
+assert([...size].sort().join('') === 'ADFGH', `透露部位大小的欄：股數、金額格式、引用它們的非百分比欄（含往後引用）、小寫函數名；成本殖利率、單價、指標欄不算（得到 ${[...size].sort().join('')}）`)
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')
 process.exitCode = failures ? 1 : 0
