@@ -28,8 +28,16 @@ const HOLDINGS_NAV_ITEMS = [
 ]
 
 // 帳戶切換在側欄最下面（SharedScopeSwitch，兩個以上帳戶才有）；兩個以上帳戶時，手機底部條寫出正在看哪個帳戶（手機看不到側欄）。
-// 讀到帳戶清單之前（ready）不畫：還不知道 ?account= 指的帳戶在不在
+// 讀到帳戶清單之前（ready）不能選（還不知道 ?account= 指的帳戶在不在），畫上次那麼多帳戶的骨架（2026-10-20）：側欄垂直置中，這一段
+// 讀完才出現的話整個側欄往上跳。帳戶數記在這裡（持股每一頁都有側欄），帳戶管理頁的骨架讀同一個提示
 const { portfolios, selectedPortfolioId, selected, ready } = useHoldingsPortfolios()
+const { member } = useMemberGate()
+const accountCountHint = useLayoutHint('holdings-accounts', 1)
+watch(() => (ready.value ? portfolios.value.length : null), (count) => {
+  if (count !== null) accountCountHint.value = count
+})
+// 多一列是「全部帳戶」
+const skeletonRows = computed(() => (!ready.value && member.value && accountCountHint.value > 1 ? accountCountHint.value + 1 : 0))
 const showSwitch = computed(() => ready.value && portfolios.value.length > 1)
 const accountItems = computed(() => [{ id: null, name: '全部帳戶' }, ...portfolios.value.map(({ id, name }) => ({ id: id as string | null, name }))])
 const currentAccount = computed(() => (showSwitch.value ? selected.value?.name ?? '全部帳戶' : null))
@@ -38,7 +46,14 @@ const currentAccount = computed(() => (showSwitch.value ? selected.value?.name ?
 <template>
   <SectionNav label="持股管理" :items="HOLDINGS_NAV_ITEMS" :current-detail="currentAccount">
     <template #after>
-      <SharedScopeSwitch v-if="showSwitch" heading="帳戶" :items="accountItems" :active-id="selected?.id ?? null" @select="(id) => { selectedPortfolioId = id }" />
+      <SharedScopeSwitch
+        v-if="showSwitch || skeletonRows"
+        heading="帳戶"
+        :items="accountItems"
+        :active-id="selected?.id ?? null"
+        :skeleton-rows="skeletonRows"
+        @select="(id) => { selectedPortfolioId = id }"
+      />
     </template>
   </SectionNav>
 </template>

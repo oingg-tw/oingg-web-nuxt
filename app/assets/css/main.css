@@ -198,6 +198,80 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   color: var(--el-text-color-secondary);
 }
 
+/* 側欄清單的樣子（2026-10-20，使用者：「watchlist sidebar 看起來像是跑版一樣，我們全站的 sidebar 樣式請統一管理」）：側欄的外框是
+   AppNavRail，裡面每一列、組標題、分隔線都用這幾個 class——SectionNav（持股、觀察清單、總經、新手、篩選、特別股）、StockPageNavList
+  （個股、ETF）、SharedScopeSwitch（帳戶、清單的切換）。原本三處各寫一份，切換那一段多空一截、滑過與鍵盤焦點也不一致。
+   列高 48px 是本站的觸控下限；目前頁粗體＋底線＋底色一起上，不只靠顏色 */
+.rail-list {
+  margin: 0;
+  padding: 8px 0;
+  list-style: none;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--el-text-color-primary);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rail-item:hover {
+  background: var(--el-fill-color-light);
+}
+
+/* 側欄是 overflow 容器，往外畫的焦點框會被邊緣裁掉，往內畫 */
+.rail-item:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
+}
+
+.rail-item[aria-current] {
+  font-weight: 700;
+  color: var(--el-color-primary-dark-2);
+  background: var(--el-color-primary-light-9);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+/* 新的一組：組標題加上面一條分隔線。清單最上面那一組不加線 */
+.rail-heading {
+  margin: 8px 0 0;
+  padding: 12px 20px 4px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+}
+
+.rail-list > .rail-heading:first-child {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: 0;
+}
+
+/* 清單後面接著的一組（帳戶、清單的切換）：清單已經留了 8px 底，跟清單裡的組標題一樣只隔 8px */
+* + .rail-group > .rail-heading {
+  margin-top: 0;
+}
+
+/* 沒有組標題的分隔（設定類的頁面跟上面分開） */
+.rail-divided {
+  margin-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
 /* 資料還沒到的區塊（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」）：標題、說明、
    表頭照常畫，只有數字、表格的列、圖換成同樣大小的灰塊，資料到了原地換掉，旁邊與下面都不動。顏色取文字色的低透明度，壓在米色頁面、
    白色面板、深色模式上都是「比底色深一點」。--text 是一行字：1em 的條加上下 0.25em，跟 1.5 倍行高的一行一樣高。

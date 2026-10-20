@@ -37,10 +37,11 @@ const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait('14.2'), divide
 const SYMBOLS = ['2330', '2317', '2412', '2884', '1216', '0056']
 const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50', totalCost: '50000', realizedProfitLoss: '0' }))
 const STUBS = {
-  '/api/core/portfolios': { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] },
+  // 兩個帳戶、兩組清單：側欄最下面的切換才會出現（它晚出現的話垂直置中的側欄會整個跳，2026-10-20）
+  '/api/core/portfolios': { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }, { id: 'p-b', name: '國泰', brokerCode: null, position: 1, createdAt: '2026-10-02T00:00:00Z' }] },
   '/api/core/holdings': { holdings: HOLDINGS },
   '/api/core/holdings/traits': TRAITS,
-  '/api/core/watchlists': { watchlists: [{ id: 'w-a', name: '存股名單', sourceShareToken: null }] },
+  '/api/core/watchlists': { watchlists: [{ id: 'w-a', name: '存股名單', sourceShareToken: null }, { id: 'w-b', name: '成長股', sourceShareToken: null }] },
   '/api/core/watchlist': { items: SYMBOLS.map((symbol, index) => ({ id: `i${index}`, watchlistId: 'w-a', symbol, note: null })) }
 }
 const blocked = []

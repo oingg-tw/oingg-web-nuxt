@@ -33,6 +33,9 @@
 // aria-current="page" comes from vue-router's own exact-active match and is styled with weight +
 // underline + background, never colour alone.
 //
+// 列、組標題、分隔線的樣子不在這裡：main.css 的 .rail-*（2026-10-20，使用者：「我們全站的sidbear樣式請統一管理」），
+// StockPageNavList 與 SharedScopeSwitch 用同一套。
+//
 // No `current` prop: the pages passed one from the day this component was written and nothing ever
 // read it — the active state has always come from the router. Dropped 2026-09-22 along with the
 // three call sites that were feeding it.
@@ -62,12 +65,12 @@ const current = computed(() => {
   <!-- Narrow widths. The list markup is repeated below rather than extracted into a third
        component: it is five lines, and both copies must exist in the DOM simultaneously. -->
   <AppBottomNav :current="current" :label="`${label}清單`">
-    <nav class="section-nav section-nav--rail" :aria-label="label">
-      <ul class="section-nav__list">
+    <nav :aria-label="label">
+      <ul class="rail-list">
         <template v-for="item in items" :key="item.to">
-          <li v-if="item.heading" class="section-nav__heading">{{ item.heading }}</li>
-          <li :class="{ 'section-nav__divided': item.divided }">
-            <NuxtLink :to="item.to" class="section-nav__link" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
+          <li v-if="item.heading" class="rail-heading">{{ item.heading }}</li>
+          <li :class="{ 'rail-divided': item.divided }">
+            <NuxtLink :to="item.to" class="rail-item" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
           </li>
         </template>
       </ul>
@@ -77,12 +80,12 @@ const current = computed(() => {
   </AppBottomNav>
 
   <AppNavRail :label="`${label}導覽（釘選）`">
-    <nav class="section-nav section-nav--rail" :aria-label="label">
-      <ul class="section-nav__list">
+    <nav :aria-label="label">
+      <ul class="rail-list">
         <template v-for="item in items" :key="item.to">
-          <li v-if="item.heading" class="section-nav__heading">{{ item.heading }}</li>
-          <li :class="{ 'section-nav__divided': item.divided }">
-            <NuxtLink :to="item.to" class="section-nav__link" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
+          <li v-if="item.heading" class="rail-heading">{{ item.heading }}</li>
+          <li :class="{ 'rail-divided': item.divided }">
+            <NuxtLink :to="item.to" class="rail-item" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
           </li>
         </template>
       </ul>
@@ -90,74 +93,3 @@ const current = computed(() => {
     <slot name="after" />
   </AppNavRail>
 </template>
-
-<style scoped>
-.section-nav__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* ≥48px targets, this app's own floor for an older audience — above WCAG's 24×24. */
-.section-nav__link {
-  display: flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-}
-
-.section-nav__link[aria-current] {
-  font-weight: 700;
-  color: var(--el-color-primary-dark-2);
-  background: var(--el-color-primary-light-9);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  text-decoration-thickness: 2px;
-}
-
-
-/* Rail copy: one full-width row per link, stacked. Drops the pill's border and rounding — inside a
-   240px panel those read as seven boxed buttons rather than a list; the active row's own weight,
-   underline and background tint carry the state on their own, matching what the el-menu rows in
-   StockPageNavList look like beside it. */
-.section-nav--rail .section-nav__list {
-  flex-direction: column;
-  flex-wrap: nowrap;
-  gap: 0;
-  padding: 8px 0;
-}
-
-/* 組標題：同個股側欄「自選指標」那一段（StockPageNavList 的 __heading）；第一組在最上面，不加分隔線 */
-.section-nav--rail .section-nav__heading {
-  margin-top: 8px;
-  padding: 12px 20px 4px;
-  border-top: 1px solid var(--el-border-color-lighter);
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
-.section-nav--rail .section-nav__heading:first-child {
-  margin-top: 0;
-  padding-top: 4px;
-  border-top: 0;
-}
-
-/* 同個股側欄的 stock-page-nav__divided */
-.section-nav--rail .section-nav__divided {
-  margin-top: 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.section-nav--rail .section-nav__link {
-  border: none;
-  border-radius: 0;
-  padding: 0 20px;
-}
-</style>

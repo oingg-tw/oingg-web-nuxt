@@ -11,7 +11,18 @@ const WATCHLIST_NAV_ITEMS = [
 const { watchlists, activeWatchlist, activeWatchlistId } = useStocks()
 const currentUser = useCurrentUser()
 const route = useRoute()
-const showSwitch = computed(() => !!currentUser.value && watchlists.value.length > 1)
+// 清單還在讀（同清單管理頁）：畫上次那麼多組的骨架（2026-10-20）。側欄垂直置中，切換那一段讀完才出現的話整個側欄往上跳——使用者說
+// 「watchlist sidebar看起來像是跑版一樣」。組數記在這裡，觀察清單兩頁都有側欄，清單管理頁的骨架讀同一個提示
+const { resolving, member } = useMemberGate()
+const synced = useState('watchlist-synced-from-server', () => false)
+const syncPending = useState('watchlist-sync-pending', () => false)
+const loading = computed(() => resolving.value || (!!currentUser.value && (!synced.value || syncPending.value)))
+const listCountHint = useLayoutHint('watchlist-lists', 1)
+watch(() => (loading.value || !currentUser.value ? null : watchlists.value.length), (count) => {
+  if (count !== null) listCountHint.value = count
+})
+const skeletonRows = computed(() => (loading.value && member.value && listCountHint.value > 1 ? listCountHint.value : 0))
+const showSwitch = computed(() => !loading.value && !!currentUser.value && watchlists.value.length > 1)
 const listItems = computed(() => watchlists.value.map(({ id, name }) => ({ id: id as string | null, name })))
 const currentList = computed(() => (showSwitch.value ? activeWatchlist.value?.name ?? null : null))
 
@@ -26,7 +37,14 @@ function select(id: string | null) {
 <template>
   <SectionNav label="觀察清單" :items="WATCHLIST_NAV_ITEMS" :current-detail="currentList">
     <template #after>
-      <SharedScopeSwitch v-if="showSwitch" heading="清單" :items="listItems" :active-id="activeWatchlist?.id ?? null" @select="select" />
+      <SharedScopeSwitch
+        v-if="showSwitch || skeletonRows"
+        heading="清單"
+        :items="listItems"
+        :active-id="activeWatchlist?.id ?? null"
+        :skeleton-rows="skeletonRows"
+        @select="select"
+      />
     </template>
   </SectionNav>
 </template>

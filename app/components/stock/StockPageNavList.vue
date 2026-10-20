@@ -62,19 +62,19 @@ onUnmounted(() => sortable?.destroy())
 <template>
   <nav class="stock-page-nav" :aria-label="label">
     <!-- 釘選那一段不包 ClientOnly：useState 的預設值兩邊一致，那些列是帳號同步完成後才長出來的狀態變化，不是 hydration 不匹配。 -->
-    <ul class="stock-page-nav__list">
+    <ul class="rail-list">
       <li v-for="item in leadingItems" :key="item.label">
-        <NuxtLink :to="item.to!(code)" class="stock-page-nav__link">
+        <NuxtLink :to="item.to!(code)" class="rail-item">
           <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
         </NuxtLink>
       </li>
       <template v-if="sortableItems.length">
-        <li v-if="sortableHeading" class="stock-page-nav__heading">{{ sortableHeading }}</li>
+        <li v-if="sortableHeading" class="rail-heading">{{ sortableHeading }}</li>
         <li>
-          <ul ref="sortableList" class="stock-page-nav__list">
+          <ul ref="sortableList" class="stock-page-nav__sublist">
             <li v-for="item in sortableItems" :key="item.label" class="stock-page-nav__pinned">
               <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->
-              <NuxtLink :to="item.to!(code)" class="stock-page-nav__link" draggable="false">
+              <NuxtLink :to="item.to!(code)" class="rail-item" draggable="false">
                 <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
                 <!-- 靠右的拖曳記號（2026-10-13「sidebar 靠右加上 icon 讓用戶知道他可以操作」）：整列都能拖，這只是提示；
                      aria-hidden，title 給滑鼠停留的人。粗指標（手機）不能拖，所以 CSS 一起藏起來 -->
@@ -87,8 +87,8 @@ onUnmounted(() => sortable?.destroy())
           </ul>
         </li>
       </template>
-      <li v-for="(item, index) in trailingItems" :key="item.label" :class="{ 'stock-page-nav__divided': index === 0 }">
-        <NuxtLink :to="item.to!(code)" class="stock-page-nav__link">
+      <li v-for="(item, index) in trailingItems" :key="item.label" :class="{ 'rail-divided': index === 0 }">
+        <NuxtLink :to="item.to!(code)" class="rail-item">
           <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
         </NuxtLink>
       </li>
@@ -97,61 +97,21 @@ onUnmounted(() => sortable?.destroy())
 </template>
 
 <style scoped>
+/* 列、組標題、分隔線、目前頁的樣子在 main.css 的 .rail-*（全站側欄共用，2026-10-20）；這裡只留個股側欄自己才有的東西 */
 .stock-page-nav {
   width: 100%;
 }
 
-.stock-page-nav__list {
+/* 釘選那一段是巢狀清單：不再加上下內距 */
+.stock-page-nav__sublist {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* 整列可點（連結撐滿 li），48px 是本站的觸控下限 */
-.stock-page-nav__link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 8px 20px;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-}
-
-.stock-page-nav__link:hover {
-  background: var(--el-fill-color-light);
-}
-
-/* 側欄與底部清單都是 overflow 容器，全站的 2px 外框會被邊緣裁掉，所以往內畫 */
-.stock-page-nav__link:focus-visible {
-  outline-offset: -2px;
-  border-radius: 0;
-}
-
-/* 目前頁：粗體＋底線＋底色一起上——顏色從來不是唯一的線索 */
-.stock-page-nav__link[aria-current='page'] {
-  font-weight: 700;
-  color: var(--el-color-primary-dark-2);
-  background: var(--el-color-primary-light-9);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  text-decoration-thickness: 2px;
-}
-
 .stock-page-nav__icon {
   flex-shrink: 0;
   font-size: 1.125rem;
-}
-
-/* 兩條分隔線長得一樣，因為分的是同一種東西：骨幹｜自己釘的｜找不到時去翻的 */
-.stock-page-nav__heading {
-  margin-top: 8px;
-  padding: 12px 20px 4px;
-  border-top: 1px solid var(--el-border-color-lighter);
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
 }
 
 /* 拖曳記號靠右、淡色，滑過那一列才加深 */
@@ -176,10 +136,5 @@ onUnmounted(() => sortable?.destroy())
 /* 拖曳中留在原位的那一列（sortable 的預設 ghostClass） */
 .stock-page-nav__pinned.sortable-ghost {
   opacity: 0.4;
-}
-
-.stock-page-nav__divided {
-  margin-top: 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
 }
 </style>

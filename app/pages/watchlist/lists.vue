@@ -13,10 +13,8 @@ const synced = useState('watchlist-synced-from-server', () => false)
 const syncPending = useState('watchlist-sync-pending', () => false)
 const loading = computed(() => resolving.value || (!!currentUser.value && (!synced.value || syncPending.value)))
 const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWatchlists } = useStocks()
+// 組數由側欄（WatchlistNav）記
 const listCountHint = useLayoutHint('watchlist-lists', 1)
-watch(() => (loading.value || !currentUser.value ? null : watchlists.value.length), (count) => {
-  if (count !== null) listCountHint.value = count
-})
 </script>
 
 <template>
