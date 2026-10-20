@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close, Loading, Plus } from '@element-plus/icons-vue'
+import { Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
@@ -298,10 +298,11 @@ function sortableFor(field: string): boolean | 'custom' {
 }
 
 // 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
-// 加上排序箭頭（24px，2026-10-15 從 14px 放大）、移除鈕、兩個間距與左右內距約 88px。內容比表頭長的欄位自己帶 minWidth。
+// 加上排序箭頭（24px，2026-10-15 從 14px 放大）、一個間距與左右內距約 56px（2026-10-21 表頭的移除鈕拿掉後由 88 縮回）。內容比表頭長的欄位
+// 自己帶 minWidth。
 // （觀察清單 2026-10-16 試過表頭折行、拿掉表頭 ✕；2026-10-17 它改用 SharedSheetGrid，那兩個選項跟著刪掉。）
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 88)
+  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 56)
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -562,19 +563,9 @@ watch(() => props.loading, (loading, wasLoading) => {
                caret — which it appends as a sibling AFTER whatever this slot renders, not
                inside it — can be visually reordered via CSS order (see
                .screener-result-table__draggable-header .cell below). Sort caret leads, then
-               the label text, then remove last. -->
+               the label text. 表頭沒有移除鈕（2026-10-21，使用者：「screener 表頭移除直接按下X刪除的功能」）：
+               移除欄位只在「欄位設定」面板裡，點表頭只會排序。 -->
           <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
-          <!-- 真正的按鈕，不是 role="button" 的圖示：Enter／Space、焦點環、觸控尺寸都是免費的（2026-10-08） -->
-          <el-button
-            v-if="!readonly"
-            class="screener-result-table__column-remove"
-            :icon="Close"
-            circle
-            text
-            :title="`移除${displayLabel(column)}欄位`"
-            :aria-label="`移除${displayLabel(column)}欄位`"
-            @click.stop="emit('removeColumn', column.field)"
-          />
         </template>
         <template #default="{ row }">
           <!-- 共用時加的 #cell：觀察清單的「漲跌」「下次除權息」是自己算的欄位，要自己畫 -->
@@ -962,7 +953,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   box-shadow: inset -2px 0 0 0 var(--el-color-primary);
 }
 
-/* Flex row across the label, el-table's own sort caret, and the remove icon — see the
+/* Flex row across the label and el-table's own sort caret — see the
    template comment on #header for why the caret (rendered by el-table itself, not this
    component) needs an explicit `order` to land in front of the label rather than trailing
    after everything else. */
@@ -985,16 +976,6 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .screener-result-table__column-label {
   order: 1;
-}
-
-.screener-result-table__column-remove {
-  order: 2;
-  flex-shrink: 0;
-  color: var(--el-text-color-secondary);
-}
-
-.screener-result-table__column-remove:hover {
-  color: var(--el-color-danger);
 }
 
 .screener-result-table__cell {
