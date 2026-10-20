@@ -34,11 +34,16 @@ export function useHoldings() {
       // 特別股清單跟持股無關，跟 GET /holdings 同時發出
       const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings', { query: scopeQuery.value }), loadReferenceData(), loadMarketYield()])
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
-      holdings.value = pendingDeletes.has(CLEAR_ALL_KEY)
+      const next = pendingDeletes.has(CLEAR_ALL_KEY)
         ? []
         : (response.holdings ?? []).filter(holding => !pendingDeletes.has(`holding:${holding.symbol}`))
+      // loadedFor 照舊在拿到持股時就標：載入中又被 ensureLoaded() 叫一次的話，看到同一個帳戶就不會清掉重來（移到報價之後時量到
+      // 整段多載一輪、慢約 1 秒）
       loadedFor.value = holdingsScope.value ?? null
-      await loadQuotes(holdings.value.map(holding => holding.symbol))
+      // 報價到了才放上畫面（2026-10-20，使用者：「holdings/analysis 重新整理的時候會閃動」）：原本先放持股再等報價，各頁會先畫一次
+      // 「N 檔目前沒有報價」、空的答句與圖，報價一到整段重畫（量到位移 0.097）。loadQuotes 讀不到只會標 quotesFailed、不會丟錯
+      await loadQuotes(next.map(holding => holding.symbol))
+      holdings.value = next
     } catch (error) {
       loadFailed.value = true
       devWarn('holdings', 'GET /holdings unavailable', error)

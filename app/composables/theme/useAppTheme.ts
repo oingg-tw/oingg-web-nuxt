@@ -86,11 +86,12 @@ export function useAppTheme() {
   // false too, or a freshly-synced account with no saved preference will visibly jump from
   // centered to full-width the moment sign-in resolves. See the message to 業務中台 about this.
   const fullWidth = useCookie<boolean>('layout-full-width', { default: () => false, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
-  // Only matters once mode is actually 'SYSTEM' — DEFAULT_MODE is 'LIGHT', not 'SYSTEM', so
-  // this dummy server-side guess never causes a real mismatch for a new visitor; onMounted
-  // below corrects it before
-  // resolvedMode would ever need it to reflect something other than DEFAULT_MODE.
-  const prefersDark = useState('app-theme-prefers-dark', () => true)
+  // 系統是不是深色（只有 mode 是 SYSTEM 時用得到）。從 cookie 起算（2026-10-20，使用者：「重新整理的時候會閃動，好像其他畫面也有」）：
+  // 原本伺服器與 hydration 一律當成深色、onMounted 才讀 matchMedia——「跟隨系統」又是淺色系統的帳號，每一頁重新整理都先黑一下再變白
+  // （dev 量到 1.6 秒）。onMounted 讀到的值寫回 cookie，伺服器下次就畫對；只剩「這台瀏覽器第一次、而且是跟隨系統」會猜一次。
+  // useState 才是畫面用的那一份：它跟著 SSR payload 傳到瀏覽器，hydration 跟伺服器看到同一個值，不會 mismatch
+  const systemDarkCookie = useCookie<boolean>('theme-system-dark', { default: () => true, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
+  const prefersDark = useState('app-theme-prefers-dark', () => systemDarkCookie.value !== false)
   // Guards the matchMedia listener + currentUser watcher so they start once per app — first
   // component to mount this, not once per every component that calls useAppTheme() — same
   // pattern as useSystemHealth's own polling-interval guard.
@@ -132,9 +133,9 @@ export function useAppTheme() {
     usePostLoginLoader().registerPending(themeSyncPending)
 
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    prefersDark.value = mql.matches
+    prefersDark.value = systemDarkCookie.value = mql.matches
     mql.addEventListener('change', event => {
-      prefersDark.value = event.matches
+      prefersDark.value = systemDarkCookie.value = event.matches
     })
 
     // Once, the first time a signed-in user is known — not on every auth-state change, and

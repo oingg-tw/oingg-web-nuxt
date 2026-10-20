@@ -9,6 +9,13 @@ withDefaults(defineProps<{ showName?: boolean }>(), { showName: false })
 
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
+// 登入狀態還沒確定（伺服器、hydration、Firebase 還在還原）：登入過的瀏覽器（firebase.client.ts 的 auth-hint）先畫一個頭像大小的
+// 空位，不先畫「登入」再換掉（2026-10-20，使用者：「重新整理的時候會閃動」）。也要等 hydration：Firebase 可能在那之前就解析完，
+// 瀏覽器的第一次渲染要跟伺服器一樣，否則 Hydration node mismatch（同日 dev 日誌量到的就是這裡）
+const hasHydrated = useHasHydrated()
+const authResolved = useAuthResolved()
+const authHint = useCookie<boolean | null>('auth-hint')
+const resolving = computed(() => !hasHydrated.value || !authResolved.value)
 
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')
 const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
@@ -16,7 +23,7 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
 
 <template>
   <NuxtLink
-    v-if="currentUser"
+    v-if="currentUser && !resolving"
     to="/profile"
     class="user-menu-button__trigger"
     aria-label="個人資料設定"
@@ -28,6 +35,7 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
     </el-avatar>
     <span v-if="showName" class="user-menu-button__name">{{ displayLabel }}</span>
   </NuxtLink>
+  <span v-else-if="resolving && authHint" class="user-menu-button__pending" aria-hidden="true"><span class="user-menu-button__pending-avatar" /></span>
   <!-- 兩顆而不是一顆帶條件 slot 的按鈕：el-button 只要收到 default slot 就會多包一個 span，純圖示的圓形按鈕
        會因此偏離中心（2026-09-17） -->
   <el-button v-else-if="showName" :icon="User" title="登入" class="user-menu-button__action" @click="openLogin">登入</el-button>
@@ -63,6 +71,20 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 登入狀態確定前的空位：跟頭像一樣大，換成頭像時頁首不動 */
+.user-menu-button__pending {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.user-menu-button__pending-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--el-fill-color);
 }
 
 /* 帶文字的「登入」要和旁邊的外觀設定按鈕同高（2026-09-20 反映兩顆高度不一） */

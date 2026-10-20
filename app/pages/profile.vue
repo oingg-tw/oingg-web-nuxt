@@ -118,13 +118,16 @@ async function reauthenticate(password: string): Promise<string | null> {
 // 已用 Google／email 登入的人把 LINE 綁上來，之後用 LINE 登入就是這個帳號（業務中台 POST /auth/line/link 記下 LINE → 這個帳號）。
 // 只有這一條：不做 email 自動對應（使用者聽完風險後決定——LINE 不保證 email 驗證過）。綁定成功後業務中台會刪掉空的 line:{sub}。
 // 綁定會讓帳號多一種登入方式，所以最近 5 分鐘內沒登入過要先重新驗證（同刪帳號；業務中台也會再檢查一次）。
-// lineLinked 來自 GET /users/me：舊版 業務中台 沒有這欄時是 undefined，就不顯示 LINE 那一列（按了也只會失敗）。
-// 這次不做解除綁定，也不做「LINE 帳號再綁 Google」（LINE 帳號只看到一句說明）
-const lineLinked = ref<boolean | undefined>(undefined)
+// lineLinked 來自 GET /users/me：loading＝還在問；unknown＝讀不到或舊版 業務中台 沒有這欄（不給按鈕，按了也只會失敗）。
+// LINE 那一列一開始就畫、右邊先留按鈕大小的空位，說明也固定一句：原本等回應才長出那一列與說明，把下面的方案往下推 120～145px
+//（2026-10-20 正式建置量到 /profile 位移 0.013／0.048）。不做解除綁定
+const lineStatus = ref<'loading' | 'linked' | 'unlinked' | 'unknown'>('loading')
+const lineLinked = computed(() => lineStatus.value === 'linked')
 watch(currentUser, async (user) => {
-  lineLinked.value = undefined
+  lineStatus.value = 'loading'
   if (!user || user.uid.startsWith('line:')) return
-  lineLinked.value = await authedFetch<{ user: { lineLinked?: boolean } }>('/users/me').then(response => response.user.lineLinked, () => undefined)
+  const linked = await authedFetch<{ user: { lineLinked?: boolean } }>('/users/me').then(response => response.user.lineLinked, () => undefined)
+  lineStatus.value = linked === true ? 'linked' : linked === false ? 'unlinked' : 'unknown'
 }, { immediate: true })
 const linkNeedsPassword = ref(false)
 const linkPassword = ref('')
@@ -260,10 +263,11 @@ const planName = computed(() => {
       <ul class="profile-page__methods">
         <li v-if="providers.includes('google.com')" class="profile-page__method"><span>Google</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
         <li v-if="providers.includes('password')" class="profile-page__method"><span>電子郵件</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
-        <li v-if="lineAccount || lineLinked !== undefined" class="profile-page__method">
+        <li class="profile-page__method">
           <span>LINE</span>
           <span v-if="lineAccount || lineLinked" class="profile-page__method-note">已綁定</span>
-          <el-button v-else :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
+          <el-button v-else-if="lineStatus === 'unlinked'" :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
+          <span v-else-if="lineStatus === 'loading'" class="profile-page__method-pending" aria-hidden="true" />
         </li>
         <!-- LINE 建立的帳號還沒有 Google：加上去之後上面就會多一列 Google -->
         <li v-if="lineAccount && !providers.includes('google.com')" class="profile-page__method">
@@ -281,7 +285,7 @@ const planName = computed(() => {
       </template>
       <p v-if="linkMessage" class="profile-page__delete-message" role="alert">{{ linkMessage }}</p>
       <p v-if="lineAccount && !providers.includes('google.com')" class="profile-page__plan-note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
-      <p v-else-if="lineLinked === false" class="profile-page__plan-note">綁定後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
+      <p v-else-if="!lineAccount" class="profile-page__plan-note">綁定 LINE 之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
     </section>
 
     <section id="plan" class="profile-page__section">
@@ -476,6 +480,12 @@ const planName = computed(() => {
 
 .profile-page__method .el-button {
   min-height: 44px;
+}
+
+/* 還在問有沒有綁定：跟「綁定 LINE」按鈕差不多大的空位，答案回來時這一列不變高 */
+.profile-page__method-pending {
+  width: 6.5em;
+  height: 44px;
 }
 
 .profile-page__method-link {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { MarketDirectory } from '#shared/types/hub'
-import type { RiskReport } from '~/composables/holdings/holdings-model'
 import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 
 // 持股分析（2026-10-05）。使用者：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比。持股總覽那邊就可以
@@ -16,7 +15,7 @@ import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchRisk, fetchTraits } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchTraits } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
 const { data: directory } = useFetch<MarketDirectory>('/api/hub/directory', { key: 'hub-directory', lazy: true, server: false })
@@ -58,15 +57,13 @@ const answer = computed(() => {
   return `${rows.value.length} 檔持股分布在 ${sectors.value.length} 個產業，占比最大的是${top.label}（${percent(top.value / totalValue.value)}）。`
 })
 
-// 有效產業數（業務中台 risk.sectors，依市值算的「相當於平均分散在幾個產業」）。跟風險頁預設期間同一個快取鍵，看過風險頁就不必再算一次
-const riskReport = ref<RiskReport | null>(null)
-async function loadEffectiveSectors() {
-  const outcome = await fetchRisk(...holdingsLastYear())
-  riskReport.value = outcome.ok ? outcome.result : null
-}
+// 有效產業數：依市值，相當於平均分散在幾個產業＝1 ÷ Σ產業占比²（跟業務中台 risk.sectors.effectiveSectors 同一個定義）。
+// 用上面表格同一份占比在這裡算（2026-10-20）：原本等風險端點（回推一年股價，慢），答句晚一兩秒才多長出這半句（使用者：「重新整理的
+// 時候會閃動」）；在這裡算也保證跟表格的產業分法一致
 const effectiveSectorsText = computed(() => {
-  const value = riskReport.value?.sectors?.effectiveSectors
-  return value ? `依市值，相當於平均分散在 ${Number(value).toFixed(1)} 個產業。` : ''
+  if (totalValue.value <= 0) return ''
+  const hhi = sectors.value.reduce((sum, sector) => sum + (sector.value / totalValue.value) ** 2, 0)
+  return hhi > 0 ? `依市值，相當於平均分散在 ${(1 / hhi).toFixed(1)} 個產業。` : ''
 })
 
 // 持股特色（2026-10-19，使用者：「PER、BETA、ROE…有些是低 Beta、有些是景氣循環專精，分享的時候可以一起帶出去」）：
@@ -86,11 +83,9 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) {
     ensureLoaded()
-    loadEffectiveSectors()
     loadTraits()
   } else {
     clear()
-    riskReport.value = null
     traits.value = null
   }
 }, { immediate: true })

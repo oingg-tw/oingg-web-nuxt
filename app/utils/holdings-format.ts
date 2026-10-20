@@ -37,8 +37,8 @@ export function holdingsMonthsBefore(date: string, months: number): string {
   return target.toISOString().slice(0, 10)
 }
 
-// 「近一年」：持股各頁的預設期間（使用者 2026-10-05 指定、2026-10-19 再說一次「期間要預設為近一年」）、期間選單的「近一年」、
-// 持股分析的有效產業數（跟風險頁共用快取）都用這一支。原本預設用「年份減一」、選單用「往前推 12 個月」，2 月 29 日兩者差一天，
+// 「近一年」：持股各頁的預設期間（使用者 2026-10-05 指定、2026-10-19 再說一次「期間要預設為近一年」）、期間選單的「近一年」都用
+// 這一支（持股分析的有效產業數 2026-10-20 起改在頁面上算，不再借風險頁）。原本預設用「年份減一」、選單用「往前推 12 個月」，2 月 29 日兩者差一天，
 // 選單就會顯示「自訂區間…」而不是「近一年」
 export function holdingsLastYear(): [string, string] {
   const today = holdingsTaipeiDate()

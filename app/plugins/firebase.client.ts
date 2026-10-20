@@ -36,9 +36,14 @@ export default defineNuxtPlugin(() => {
   // from "haven't checked yet"). onAuthStateChanged's callback is always asynchronous, even
   // for a warm/cached session — see useAuthResolved.ts for why callers need this.
   const authResolved = useState('firebase-auth-resolved', () => false)
+  // 這台瀏覽器有沒有登入中的帳號（2026-10-20，使用者：「重新整理的時候會閃動」）：登入狀態只在瀏覽器、要等 Firebase 非同步還原，
+  // 伺服器不知道，頁首原本先畫「登入」、還原後才換成頭像。這個 cookie 只是給畫面的提示（不是憑證、不帶身分），讓頁首先留一個頭像大小
+  // 的空位（UserMenuButton）
+  const authHint = useCookie<boolean | null>('auth-hint', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
   onAuthStateChanged(auth, user => {
     currentUser.value = user
     authResolved.value = true
+    authHint.value = user ? true : null
   })
 
   return {

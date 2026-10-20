@@ -1,5 +1,5 @@
 // 綁定 LINE（2026-10-20，使用者：「之前用 gmail 登入，現在用 Line 登入卻沒看到任何交易紀錄…該如何綁定？」，與業務中台共同設計）：
-//   - 個人資料「登入方式」：lineLinked false 有「綁定 LINE」、true 寫「已綁定」；舊版 業務中台（沒有這欄）不顯示 LINE 那一列
+//   - 個人資料「登入方式」：lineLinked false 有「綁定 LINE」、true 寫「已綁定」；舊版 業務中台（沒有這欄）LINE 那一列沒有按鈕
 //   - 按「綁定 LINE」導向 access.line.me：scope 是 openid profile（不拿 email，使用者決定不做 email 自動對應）、sessionStorage 記著 intent link
 //   - 回呼頁的綁定那條：帶 Bearer 打 POST /auth/line/link、不打登入用的 /auth/line、uid 不變；成功回個人資料並提示；
 //     409 line_already_linked／account_already_linked／line_account_has_data、400 line_account_cannot_link、401 reauth_required 各自說明
@@ -101,7 +101,7 @@ for (const [lineLinked, expected] of [[true, '已綁定'], ['absent', null]]) {
   const page = await open(ctx, '/profile')
   const text = await section(page).innerText()
   if (expected) check(text.includes('LINE') && text.includes(expected) && await section(page).getByRole('button', { name: '綁定 LINE' }).count() === 0, 'lineLinked true：寫「已綁定」、沒有按鈕')
-  else check(!text.includes('LINE'), '舊版 業務中台（沒有 lineLinked）：不顯示 LINE 那一列')
+  else check(!text.includes('已綁定') && await section(page).getByRole('button', { name: '綁定 LINE' }).count() === 0, '舊版 業務中台（沒有 lineLinked）：LINE 那一列沒有按鈕、也不寫已綁定')
   await ctx.close()
 }
 
