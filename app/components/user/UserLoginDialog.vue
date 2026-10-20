@@ -123,6 +123,12 @@ function handleClose() {
   font-size: 1rem;
 }
 
+/* 按鈕用滿彈窗寬（使用者 2026-10-20：「Google 登入折行了」）：FirebaseUI 把按鈕鎖在 220px，字放到 16px 之後
+   「使用 Google 帳號登入」放不下、折成兩行；彈窗本身有 328px，問題不在彈窗寬度 */
+:deep(.firebaseui-idp-button) {
+  max-width: none;
+}
+
 :deep(.firebaseui-idp-password),
 :deep(.firebaseui-idp-password:hover) {
   background-color: #c5372c !important;
