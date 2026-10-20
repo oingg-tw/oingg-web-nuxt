@@ -64,6 +64,12 @@ function symbolLabel(symbol: string): string {
   return entry ? `${entry.name} ${symbol}` : symbol
 }
 
+// 骨架畫幾列＝上次看到的檔數（useLayoutHint，2026-10-20）：資料到了，表格下面的東西才不會被推動或拉上來
+const holdingsCountHint = useLayoutHint('holdings-rows', 5)
+watch(() => holdings.value.length, (count) => {
+  if (count) holdingsCountHint.value = count
+})
+
 const baseRows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const entry = companyByCode.value.get(holding.symbol)
@@ -216,6 +222,10 @@ function clearEverything() {
 // 記一筆、匯入都要知道記在哪個帳戶：預設是目前選的那個（全部帳戶時是第一個）。只有一個帳戶時不顯示欄位。
 // 清除全部只清一個帳戶，所以全部帳戶又不只一個時不提供（writeTarget 是 null）
 const { portfolios, selected: selectedPortfolio, writeTarget, ensurePortfolio } = useHoldingsPortfolios()
+const clearButtonHint = useLayoutHint('holdings-clear-button', 1)
+watch(() => (holdingsScope.value && !pending.value && holdings.value.length ? Number(!!writeTarget.value) : null), (shown) => {
+  if (shown !== null) clearButtonHint.value = shown
+})
 const defaultAccountId = () => selectedPortfolio.value?.id ?? portfolios.value[0]?.id ?? null
 const importAccountId = ref<string | null>(null)
 watch(importVisible, (open) => { if (open) importAccountId.value = defaultAccountId() })
@@ -358,186 +368,217 @@ async function submit() {
 </script>
 
 <template>
-  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股" :pending="pending && !holdings.length">
-    <template #actions>
-      <div v-if="currentUser && !loadFailed && holdings.length" class="holding-actions">
-        <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
-        <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
+  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股" :pending="pending && !holdings.length" skeleton>
+    <template #actions="{ loading }">
+      <!-- 讀的時候也畫、先不能按（2026-10-20）：手機上換行在標題下面，晚出現會把內容往下推；帳戶清單到之前按下去，寫入時會多建一個
+           「我的帳戶」。讀完沒有持股就收起來，空狀態裡有同樣兩顆 -->
+      <div v-if="!loadFailed && (loading || (currentUser && holdings.length))" class="holding-actions">
+        <el-button size="large" :icon="Upload" :disabled="loading" @click="importVisible = true">匯入成交明細</el-button>
+        <el-button type="primary" size="large" :icon="Plus" :disabled="loading" @click="openRecord()">記一筆交易</el-button>
       </div>
     </template>
 
-    <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
-    <template v-if="loadFailed" />
+    <template #default="{ loading }">
+      <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
+      <template v-if="loadFailed" />
 
-    <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股" :image-size="64">
-      <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
-      <div class="holding-actions holding-actions--center">
-        <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
-        <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
-      </div>
-    </el-empty>
-
-    <template v-else>
-      <section class="holdings-page__overview" aria-labelledby="holdings-summary-title">
-        <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
-        <!-- 總覽（2026-10-16 重新設計，使用者：「今日漲跌可以與未實現損益合併，預估年度股利可以與殖利率合併，請重新設計總覽」；
-             先試的三格卡片版「合併以後看起來髒髒的」——各格內容長短不一、同一格紅綠兩色、括號太多）。改成一塊、不分格：總市值是唯一的
-             大數字，下面三列對齊成「名稱｜金額｜比率」，損益兩列在上、股利一列在下。每列只有一種顏色；日期只在總市值寫一次 -->
-        <dl class="holdings-overview">
-          <div class="holdings-overview__hero">
-            <dt>總市值<template v-if="priceDates.length">（{{ shortDate(priceDates.at(-1)!) }} 收盤）</template></dt>
-            <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
-          </div>
-          <div class="holdings-overview__row">
-            <dt>未實現損益</dt>
-            <dd :class="toneOf(totals.pnl)">{{ signedMoney(totals.pnl) }}</dd>
-            <dd :class="toneOf(totals.pnl)">{{ signedPct(totals.pnlPct) }}</dd>
-          </div>
-          <div class="holdings-overview__row">
-            <!-- 跟總市值不是同一天時才寫日期（收盤還停在前一個交易日的情況，見 dayDate） -->
-            <dt>今日漲跌<template v-if="dayDate && dayDate !== priceDates.at(-1)">（{{ shortDate(dayDate) }}）</template></dt>
-            <dd :class="toneOf(dayTotals.amount)">{{ signedMoney(dayTotals.amount) }}</dd>
-            <dd :class="toneOf(dayTotals.amount)">{{ signedPct(dayTotals.pct) }}</dd>
-          </div>
-          <div class="holdings-overview__row">
-            <dt>預估年度股利</dt>
-            <dd>{{ totals.annualDividend === null ? '－' : `${money(totals.annualDividend)} 元` }}</dd>
-            <dd>殖利率 {{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}<span v-if="marketYield" class="holdings-overview__compare">（大盤 {{ marketYield.value.toFixed(2) }}%）</span></dd>
-          </div>
-        </dl>
-        <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
-             計算口徑全部收進最下面的「計算方式」。 -->
-        <p v-if="excludedText" class="holdings-page__excluded">未計入：{{ excludedText }}</p>
-      </section>
-
-      <section aria-labelledby="holdings-list-title">
-        <h2 id="holdings-list-title" class="holdings-page__section-title">持股明細（{{ holdings.length }} 檔）</h2>
-        <HoldingsSymbolTable
-          v-model:expanded="expanded"
-          :rows="baseRows"
-          :columns="columns"
-          default-sort="marketValue"
-          download-name="持股明細"
-          :toggle-labels="['明細', '收合']"
-          @open="loadTransactions"
-        >
-          <template #toolbar>
-            <SharedShareButton
-              class="holdings-page__share"
-              kind="holdings"
-              :target-id="selectedPortfolio?.id ?? null"
-              :name="shareName"
-              :columns="SHARE_COLUMNS"
-              sensitive-heading="部位大小，預設不分享"
-            />
-          </template>
-          <template #detail="{ row, variant }">
-            <HoldingsDetailPanel
-              :variant="variant"
-              :holding="row.holding"
-              :average-cost="averageCostText(row.holding)"
-              :price="row.figures.marketValue === null ? '－' : plainNumber(row.input.price!)"
-              :label="row.label"
-              :entries="transactions[row.symbol]"
-              :symbol-label="symbolLabel"
-              @record="openRecord(row.symbol)"
-              @remove-holding="removeHolding(row.holding, row.label)"
-              :reload="() => loadTransactions(row.symbol)"
-              @edit="openEditTransaction"
-              @remove-transaction="removeTransaction"
-            />
-          </template>
-        </HoldingsSymbolTable>
-
-        <div v-if="writeTarget" class="holding-actions holdings-page__clear">
-          <el-button type="danger" plain :icon="Delete" @click="clearEverything">{{ portfolios.length > 1 ? `清除「${writeTarget.name}」的全部持股與交易紀錄` : '清除全部持股與交易紀錄' }}</el-button>
+      <el-empty v-else-if="!loading && !holdings.length" description="還沒有記錄任何持股" :image-size="64">
+        <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
+        <div class="holding-actions holding-actions--center">
+          <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
+          <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
         </div>
+      </el-empty>
 
-        <details class="holdings-page__method holdings-details">
-          <summary>計算方式</summary>
-          <ul>
-            <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
-            <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
-            <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上櫃股票的收盤價當天傍晚就更新，上市股票目前要到隔天早上；還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
-            <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
-            <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
-          </ul>
-        </details>
-      </section>
+      <template v-else>
+        <section class="holdings-page__overview" aria-labelledby="holdings-summary-title">
+          <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
+          <!-- 總覽（2026-10-16 重新設計，使用者：「今日漲跌可以與未實現損益合併，預估年度股利可以與殖利率合併，請重新設計總覽」；
+               先試的三格卡片版「合併以後看起來髒髒的」——各格內容長短不一、同一格紅綠兩色、括號太多）。改成一塊、不分格：總市值是唯一的
+               大數字，下面三列對齊成「名稱｜金額｜比率」，損益兩列在上、股利一列在下。每列只有一種顏色；日期只在總市值寫一次 -->
+          <!-- 讀的時候欄名照畫，數字是同樣長短的範例字骨架（2026-10-20）：欄寬照內容算，換成真的數字時不移動 -->
+          <dl v-if="loading" class="holdings-overview" aria-hidden="true">
+            <div class="holdings-overview__hero">
+              <dt>總市值<span class="app-skeleton app-skeleton--flow">（10/16 收盤）</span></dt>
+              <dd><span class="app-skeleton app-skeleton--flow">1,234,567 元</span></dd>
+            </div>
+            <div class="holdings-overview__row">
+              <dt>未實現損益</dt>
+              <dd><span class="app-skeleton app-skeleton--flow">▲ +123,456 元</span></dd>
+              <dd><span class="app-skeleton app-skeleton--flow">+12.34%</span></dd>
+            </div>
+            <div class="holdings-overview__row">
+              <dt>今日漲跌</dt>
+              <dd><span class="app-skeleton app-skeleton--flow">▲ +12,345 元</span></dd>
+              <dd><span class="app-skeleton app-skeleton--flow">+1.23%</span></dd>
+            </div>
+            <div class="holdings-overview__row">
+              <dt>預估年度股利</dt>
+              <dd><span class="app-skeleton app-skeleton--flow">45,678 元</span></dd>
+              <dd>殖利率 <span class="app-skeleton app-skeleton--flow">3.45%</span><span class="holdings-overview__compare"><span class="app-skeleton app-skeleton--flow">（大盤 3.12%）</span></span></dd>
+            </div>
+          </dl>
+          <dl v-else class="holdings-overview">
+            <div class="holdings-overview__hero">
+              <dt>總市值<template v-if="priceDates.length">（{{ shortDate(priceDates.at(-1)!) }} 收盤）</template></dt>
+              <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
+            </div>
+            <div class="holdings-overview__row">
+              <dt>未實現損益</dt>
+              <dd :class="toneOf(totals.pnl)">{{ signedMoney(totals.pnl) }}</dd>
+              <dd :class="toneOf(totals.pnl)">{{ signedPct(totals.pnlPct) }}</dd>
+            </div>
+            <div class="holdings-overview__row">
+              <!-- 跟總市值不是同一天時才寫日期（收盤還停在前一個交易日的情況，見 dayDate） -->
+              <dt>今日漲跌<template v-if="dayDate && dayDate !== priceDates.at(-1)">（{{ shortDate(dayDate) }}）</template></dt>
+              <dd :class="toneOf(dayTotals.amount)">{{ signedMoney(dayTotals.amount) }}</dd>
+              <dd :class="toneOf(dayTotals.amount)">{{ signedPct(dayTotals.pct) }}</dd>
+            </div>
+            <div class="holdings-overview__row">
+              <dt>預估年度股利</dt>
+              <dd>{{ totals.annualDividend === null ? '－' : `${money(totals.annualDividend)} 元` }}</dd>
+              <dd>殖利率 {{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}<span v-if="marketYield" class="holdings-overview__compare">（大盤 {{ marketYield.value.toFixed(2) }}%）</span></dd>
+            </div>
+          </dl>
+          <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
+               計算口徑全部收進最下面的「計算方式」。 -->
+          <p v-if="excludedText" class="holdings-page__excluded">未計入：{{ excludedText }}</p>
+        </section>
 
-    </template>
-
-    <HoldingsImportDialog v-model="importVisible" v-model:account-id="importAccountId" :accounts="portfolios" :import-trades="importIntoAccount" :symbol-label="symbolLabel" />
-
-    <el-dialog v-model="dialogVisible" :title="editing ? '編輯交易' : dialogSymbol ? `記一筆交易：${symbolLabel(dialogSymbol)}` : '記一筆交易'" width="min(520px, 92vw)">
-      <el-alert v-if="notice" type="warning" :closable="false" show-icon :title="notice" class="holdings-form__notice" />
-      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
-        <el-form-item v-if="!dialogSymbol" label="股票" prop="symbol">
-          <el-autocomplete
-            ref="symbolInputRef"
-            v-model="keyword"
-            :fetch-suggestions="fetchSuggestions"
-            class="holdings-form__full"
-            placeholder="輸入代號或名稱，例如 2330 或 台積電"
-            clearable
-            @select="selectStock"
+        <section aria-labelledby="holdings-list-title">
+          <h2 id="holdings-list-title" class="holdings-page__section-title">
+            持股明細<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（{{ holdingsCountHint }} 檔）</span><template v-else>（{{ holdings.length }} 檔）</template>
+          </h2>
+          <HoldingsSymbolTable
+            :skeleton-rows="loading ? holdingsCountHint : 0"
+            v-model:expanded="expanded"
+            :rows="baseRows"
+            :columns="columns"
+            default-sort="marketValue"
+            download-name="持股明細"
+            :toggle-labels="['明細', '收合']"
+            @open="loadTransactions"
           >
-            <template #default="{ item }">
-              <span>{{ item.code }}</span>
-              <span class="holdings-form__suggestion-name">{{ item.name }}</span>
-              <el-tag v-if="isCompanyEntry(item) && item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
-              <el-tag v-else-if="isCompanyEntry(item) && item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+            <template #toolbar>
+              <SharedShareButton
+                class="holdings-page__share"
+                kind="holdings"
+                :target-id="selectedPortfolio?.id ?? null"
+                :name="shareName"
+                :columns="SHARE_COLUMNS"
+                sensitive-heading="部位大小，預設不分享"
+              />
             </template>
-          </el-autocomplete>
-        </el-form-item>
-        <p v-else class="holdings-form__fixed">股票：{{ symbolLabel(dialogSymbol) }}</p>
-        <el-form-item v-if="!editing && portfolios.length > 1" label="帳戶" prop="portfolioId">
-          <el-select v-model="form.portfolioId" size="large">
-            <el-option v-for="portfolio in portfolios" :key="portfolio.id" :label="portfolio.name" :value="portfolio.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="買賣" prop="action">
-          <el-radio-group v-model="form.action" size="large">
-            <el-radio-button value="BUY">買進</el-radio-button>
-            <el-radio-button value="SELL">賣出</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="交易日期" prop="tradeDate">
-          <!-- 指令掛在外層 div：el-date-picker 的根節點不是單一元素（tooltip 包著），自訂指令掛不上去 -->
-          <div class="holdings-form__full" v-describedby="form.action === 'BUY' && !editing ? hintId.tradeDate : undefined">
-            <el-date-picker v-model="form.tradeDate" type="date" value-format="YYYY-MM-DD" format="YYYY/MM/DD" :disabled-date="disabledFutureDate" :clearable="false" class="holdings-form__full" />
+            <template #detail="{ row, variant }">
+              <HoldingsDetailPanel
+                :variant="variant"
+                :holding="row.holding"
+                :average-cost="averageCostText(row.holding)"
+                :price="row.figures.marketValue === null ? '－' : plainNumber(row.input.price!)"
+                :label="row.label"
+                :entries="transactions[row.symbol]"
+                :symbol-label="symbolLabel"
+                @record="openRecord(row.symbol)"
+                @remove-holding="removeHolding(row.holding, row.label)"
+                :reload="() => loadTransactions(row.symbol)"
+                @edit="openEditTransaction"
+                @remove-transaction="removeTransaction"
+              />
+            </template>
+          </HoldingsSymbolTable>
+
+          <!-- 讀的時候照上次有沒有這顆，畫一顆不能按的（2026-10-20）：有沒有要等帳戶清單（全部帳戶、又不只一個時沒有），晚出現會把
+               「計算方式」往下推 -->
+          <div v-if="loading ? clearButtonHint : writeTarget" class="holding-actions holdings-page__clear">
+            <el-button type="danger" plain :icon="Delete" :disabled="loading" @click="clearEverything">{{ !loading && writeTarget && portfolios.length > 1 ? `清除「${writeTarget.name}」的全部持股與交易紀錄` : '清除全部持股與交易紀錄' }}</el-button>
           </div>
-          <p v-if="form.action === 'BUY' && !editing" :id="hintId.tradeDate" class="holdings-form__hint">很久以前買、記不得每一筆？用最早的日期記一筆，價格填平均成本即可。</p>
-        </el-form-item>
-        <el-form-item label="股數（股）" prop="quantity">
-          <el-input-number v-model="form.quantity" class="holdings-form__full" :min="1" :max="2147483647" :precision="0" :controls="false" v-describedby="hintId.quantity" />
-          <p :id="hintId.quantity" class="holdings-form__hint">
-            1 張＝1,000 股；零股請直接輸入股數<template v-if="form.action === 'SELL' && form.symbol">。目前持有 {{ groupThousands(heldQuantity) }} 股</template>
-          </p>
-        </el-form-item>
-        <el-form-item label="成交價（元／股）" prop="price">
-          <el-input-number v-model="form.price" class="holdings-form__full" :min="0" :controls="false" :disabled="form.action === 'BUY' && form.costUnknown" v-describedby="form.action === 'BUY' ? hintId.price : undefined" />
-          <el-checkbox v-if="form.action === 'BUY'" v-model="form.costUnknown" size="large" class="holdings-form__cost-unknown">不知道成本（例如很久以前買的）</el-checkbox>
-          <p v-if="form.action === 'BUY'" :id="hintId.price" class="holdings-form__hint">
-            <template v-if="form.costUnknown">庫存照算，這批股票賣出時的損益不計入績效。</template>
-            <template v-else>除權配股會自動入帳，不用自己記。</template>
-          </p>
-        </el-form-item>
-        <el-form-item v-if="!(form.action === 'BUY' && form.costUnknown)" label="手續費（元）" prop="fee">
-          <el-input-number v-model="form.fee" class="holdings-form__full" :min="0" :controls="false" />
-        </el-form-item>
-        <el-form-item v-if="form.action === 'SELL'" label="交易稅（元）" prop="tax">
-          <el-input-number v-model="form.tax" class="holdings-form__full" :min="0" :controls="false" />
-        </el-form-item>
-        <el-form-item label="備註（選填）" prop="note">
-          <el-input v-model="form.note" maxlength="200" show-word-limit />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button size="large" @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" size="large" :loading="saving" @click="submit">儲存</el-button>
+
+          <details class="holdings-page__method holdings-details">
+            <summary>計算方式</summary>
+            <ul>
+              <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
+              <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
+              <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上櫃股票的收盤價當天傍晚就更新，上市股票目前要到隔天早上；還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
+              <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
+              <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
+            </ul>
+          </details>
+        </section>
+
       </template>
-    </el-dialog>
+
+      <HoldingsImportDialog v-model="importVisible" v-model:account-id="importAccountId" :accounts="portfolios" :import-trades="importIntoAccount" :symbol-label="symbolLabel" />
+
+      <el-dialog v-model="dialogVisible" :title="editing ? '編輯交易' : dialogSymbol ? `記一筆交易：${symbolLabel(dialogSymbol)}` : '記一筆交易'" width="min(520px, 92vw)">
+        <el-alert v-if="notice" type="warning" :closable="false" show-icon :title="notice" class="holdings-form__notice" />
+        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
+          <el-form-item v-if="!dialogSymbol" label="股票" prop="symbol">
+            <el-autocomplete
+              ref="symbolInputRef"
+              v-model="keyword"
+              :fetch-suggestions="fetchSuggestions"
+              class="holdings-form__full"
+              placeholder="輸入代號或名稱，例如 2330 或 台積電"
+              clearable
+              @select="selectStock"
+            >
+              <template #default="{ item }">
+                <span>{{ item.code }}</span>
+                <span class="holdings-form__suggestion-name">{{ item.name }}</span>
+                <el-tag v-if="isCompanyEntry(item) && item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+                <el-tag v-else-if="isCompanyEntry(item) && item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+              </template>
+            </el-autocomplete>
+          </el-form-item>
+          <p v-else class="holdings-form__fixed">股票：{{ symbolLabel(dialogSymbol) }}</p>
+          <el-form-item v-if="!editing && portfolios.length > 1" label="帳戶" prop="portfolioId">
+            <el-select v-model="form.portfolioId" size="large">
+              <el-option v-for="portfolio in portfolios" :key="portfolio.id" :label="portfolio.name" :value="portfolio.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="買賣" prop="action">
+            <el-radio-group v-model="form.action" size="large">
+              <el-radio-button value="BUY">買進</el-radio-button>
+              <el-radio-button value="SELL">賣出</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="交易日期" prop="tradeDate">
+            <!-- 指令掛在外層 div：el-date-picker 的根節點不是單一元素（tooltip 包著），自訂指令掛不上去 -->
+            <div class="holdings-form__full" v-describedby="form.action === 'BUY' && !editing ? hintId.tradeDate : undefined">
+              <el-date-picker v-model="form.tradeDate" type="date" value-format="YYYY-MM-DD" format="YYYY/MM/DD" :disabled-date="disabledFutureDate" :clearable="false" class="holdings-form__full" />
+            </div>
+            <p v-if="form.action === 'BUY' && !editing" :id="hintId.tradeDate" class="holdings-form__hint">很久以前買、記不得每一筆？用最早的日期記一筆，價格填平均成本即可。</p>
+          </el-form-item>
+          <el-form-item label="股數（股）" prop="quantity">
+            <el-input-number v-model="form.quantity" class="holdings-form__full" :min="1" :max="2147483647" :precision="0" :controls="false" v-describedby="hintId.quantity" />
+            <p :id="hintId.quantity" class="holdings-form__hint">
+              1 張＝1,000 股；零股請直接輸入股數<template v-if="form.action === 'SELL' && form.symbol">。目前持有 {{ groupThousands(heldQuantity) }} 股</template>
+            </p>
+          </el-form-item>
+          <el-form-item label="成交價（元／股）" prop="price">
+            <el-input-number v-model="form.price" class="holdings-form__full" :min="0" :controls="false" :disabled="form.action === 'BUY' && form.costUnknown" v-describedby="form.action === 'BUY' ? hintId.price : undefined" />
+            <el-checkbox v-if="form.action === 'BUY'" v-model="form.costUnknown" size="large" class="holdings-form__cost-unknown">不知道成本（例如很久以前買的）</el-checkbox>
+            <p v-if="form.action === 'BUY'" :id="hintId.price" class="holdings-form__hint">
+              <template v-if="form.costUnknown">庫存照算，這批股票賣出時的損益不計入績效。</template>
+              <template v-else>除權配股會自動入帳，不用自己記。</template>
+            </p>
+          </el-form-item>
+          <el-form-item v-if="!(form.action === 'BUY' && form.costUnknown)" label="手續費（元）" prop="fee">
+            <el-input-number v-model="form.fee" class="holdings-form__full" :min="0" :controls="false" />
+          </el-form-item>
+          <el-form-item v-if="form.action === 'SELL'" label="交易稅（元）" prop="tax">
+            <el-input-number v-model="form.tax" class="holdings-form__full" :min="0" :controls="false" />
+          </el-form-item>
+          <el-form-item label="備註（選填）" prop="note">
+            <el-input v-model="form.note" maxlength="200" show-word-limit />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button size="large" @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" size="large" :loading="saving" @click="submit">儲存</el-button>
+        </template>
+      </el-dialog>
+    </template>
   </HoldingsPageShell>
 </template>
 

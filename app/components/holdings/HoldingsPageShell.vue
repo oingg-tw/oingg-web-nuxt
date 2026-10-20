@@ -17,7 +17,8 @@ const props = withDefaults(defineProps<{
 // 內容的 slot 拿到 loading：還在讀（登入狀態未定、帳戶清單或頁面第一份資料還沒到）時，頁面照樣畫標題、說明、表頭，只把資料換成同樣大小
 // 的骨架（.app-skeleton）——2026-10-20 使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」。
 // 原本整塊換成一個轉圈，內容到齊才一起出來
-defineSlots<{ default?: (props: { loading: boolean }) => unknown; actions?: () => unknown }>()
+// 右上的動作區也拿得到（只有會員才是 true）：按鈕要從第一個畫面就在，手機上它們換行在標題下面，晚出現會把內容往下推
+defineSlots<{ default?: (props: { loading: boolean }) => unknown; actions?: (props: { loading: boolean }) => unknown }>()
 
 const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
@@ -60,7 +61,7 @@ const loading = computed(() => resolving.value || !ready.value || props.pending)
         <h1 class="app-page__title app-page__title--app">{{ props.title }}</h1>
         <p v-if="props.subtitle" class="holdings-shell__subtitle">{{ props.subtitle }}</p>
       </div>
-      <div v-if="$slots.actions" class="holdings-shell__actions"><slot name="actions" /></div>
+      <div v-if="$slots.actions" class="holdings-shell__actions"><slot name="actions" :loading="member && loading" /></div>
     </div>
 
     <HoldingsNav />

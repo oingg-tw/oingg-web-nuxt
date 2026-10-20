@@ -17,7 +17,7 @@ const isDev = (await (await fetch(base)).text()).includes('/@vite/client')
 // 頁面 → 第一個畫面要有的、內容出來的記號
 const PLACEHOLDER = ['.app-loading-placeholder']
 const ROUTES = {
-  '/holdings': { first: PLACEHOLDER, marker: '.holdings-page__overview' },
+  '/holdings': { first: ['#holdings-summary-title', '#holdings-list-title', '.app-skeleton'], marker: '.holdings-page__overview' },
   '/holdings/analysis': { first: ['#analysis-sector-title', '.holdings-traits__title', '.app-skeleton'], marker: '.holdings-traits__panel' },
   '/holdings/columns': { first: PLACEHOLDER, marker: '.formula-bar' },
   '/holdings/risk': { first: PLACEHOLDER, marker: '.risk-page__body' },

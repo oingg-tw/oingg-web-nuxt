@@ -53,11 +53,22 @@ const props = withDefaults(defineProps<{
   toggleLabels?: [string, string]
   // 給了就在表格上方放「下載」（檔名前半段，例如「持股明細」）。下載的是目前的排序
   downloadName?: string
-}>(), { toggleLabels: () => ['明細', '收合'], downloadName: undefined })
+  // 資料還沒到：畫這麼多列骨架（useLayoutHint 記住的列數），0＝資料到了（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」
+  //「然後不要閃動」）。表頭、卡片上的欄名、「明細」照畫，數字是骨架，大小跟資料到了一樣
+  skeletonRows?: number
+}>(), { toggleLabels: () => ['明細', '收合'], downloadName: undefined, skeletonRows: 0 })
 const emit = defineEmits<{ open: [symbol: string] }>()
 const expanded = defineModel<string[]>('expanded', { default: () => [] })
 // variant：明細畫在桌機的展開列（table）還是手機卡片裡（card）——卡片裡的排法不同（見 HoldingsDetailPanel）
 const slots = defineSlots<{ detail?: (props: { row: T; variant: 'table' | 'card' }) => unknown; toolbar?: () => unknown }>()
+
+// 名稱欄與明細欄的 min-width：el-table 與骨架表共用。el-table 把多出來的寬度照 min-width 的比例分給各欄，骨架表用同樣的比例
+const NAME_MIN_WIDTH = 170
+const DETAIL_MIN_WIDTH = 110
+const skeletonShare = (minWidth: number) => {
+  const total = NAME_MIN_WIDTH + props.columns.reduce((sum, column) => sum + column.minWidth, 0) + (slots.detail ? DETAIL_MIN_WIDTH : 0)
+  return `${(minWidth / total) * 100}%`
+}
 
 const sortKey = ref(props.defaultSort)
 const sortOptions = computed(() => [
@@ -128,7 +139,27 @@ function toggle(symbol: string, event?: MouseEvent) {
       <slot name="toolbar" />
     </div>
 
-    <el-table class="view-table" :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
+    <!-- 骨架表：el-table 在伺服器不畫列（欄位要 mount 才登記），所以自己畫一張。欄寬照 el-table 的分法、表頭與列高照它的樣式，
+         列高靠同一顆「明細」按鈕撐出來（觸控裝置按鈕 44px 時一起變高） -->
+    <table v-if="skeletonRows" class="view-table symbol-table__skeleton" aria-hidden="true">
+      <thead>
+        <tr>
+          <!-- 排序欄的表頭後面留 el-table 排序箭頭的寬（24px），靠右的欄名才在同一個位置 -->
+          <th :style="{ width: skeletonShare(NAME_MIN_WIDTH) }">名稱<span class="symbol-table__skeleton-caret" /></th>
+          <th v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num" :style="{ width: skeletonShare(column.minWidth) }">{{ column.label }}<span class="symbol-table__skeleton-caret" /></th>
+          <th v-if="slots.detail" :style="{ width: skeletonShare(DETAIL_MIN_WIDTH) }">明細</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="index in skeletonRows" :key="index">
+          <td><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /></td>
+          <td v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" /></td>
+          <td v-if="slots.detail"><el-button disabled tabindex="-1">{{ toggleLabels[0] }}</el-button></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <el-table v-else class="view-table" :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
       <!-- 展開列只拿來放明細；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
            免得同一件事有兩個開關 -->
       <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
@@ -136,7 +167,7 @@ function toggle(symbol: string, event?: MouseEvent) {
           <slot name="detail" :row="tableRow<T>(row)" :variant="'table'" />
         </template>
       </el-table-column>
-      <el-table-column label="名稱" prop="symbol" min-width="170" sortable :sort-method="compareBy('symbol')">
+      <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH" sortable :sort-method="compareBy('symbol')">
         <template #default="{ row }">
           <div class="symbol-table__name">
             <NuxtLink :to="tableRow<T>(row).link">{{ tableRow<T>(row).name }}</NuxtLink>
@@ -161,7 +192,7 @@ function toggle(symbol: string, event?: MouseEvent) {
         </template>
       </el-table-column>
       <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。 -->
-      <el-table-column v-if="slots.detail" label="明細" min-width="110">
+      <el-table-column v-if="slots.detail" label="明細" :min-width="DETAIL_MIN_WIDTH">
         <template #default="{ row }">
           <!-- 念出來的名稱＝看得到的字＋股票名（WCAG 2.5.3），狀態交給 aria-expanded -->
           <el-button :aria-expanded="expanded.includes(tableRow<T>(row).symbol)" @click="toggle(tableRow<T>(row).symbol)">
@@ -175,7 +206,22 @@ function toggle(symbol: string, event?: MouseEvent) {
          一列一項；展開後接著列下去，交易紀錄與動作在最後（HoldingsDetailPanel 的 card）。開關是卡片的頁尾（「明細按鈕放在右上角不太順，
          放在下面反而比較合理」）：字加箭頭、整張卡片寬，展開的內容長在它上面 -->
     <ul class="view-card symbol-table__cards">
-      <li v-for="row in sortedRows" :key="row.symbol" class="symbol-table__card holdings-card">
+      <!-- 骨架卡片：跟下面同一套排法，欄名與「明細」照畫，名稱與數字是骨架 -->
+      <template v-if="skeletonRows">
+        <li v-for="index in skeletonRows" :key="index" class="symbol-table__card holdings-card" aria-hidden="true">
+          <div class="symbol-table__name"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /></div>
+          <dl v-if="summaryColumns.length" class="symbol-table__rows">
+            <div v-for="column in summaryColumns" :key="column.key" class="symbol-table__row">
+              <dt>{{ column.label }}</dt>
+              <dd><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" /></dd>
+            </div>
+          </dl>
+          <el-button v-if="slots.detail" text type="primary" class="symbol-table__toggle" disabled tabindex="-1">
+            {{ toggleLabels[0] }}<el-icon class="symbol-table__chevron" aria-hidden="true"><ArrowDown /></el-icon>
+          </el-button>
+        </li>
+      </template>
+      <li v-for="row in sortedRows" v-else :key="row.symbol" class="symbol-table__card holdings-card">
         <div class="symbol-table__name">
           <NuxtLink :to="row.link">{{ row.name }}</NuxtLink>
           <span class="symbol-table__code">{{ row.symbol }}</span>
@@ -244,6 +290,46 @@ function toggle(symbol: string, event?: MouseEvent) {
 .symbol-table__code {
   color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
+}
+
+/* 骨架表：照 el-table 的樣子（表頭 8px 上下內距、23px 行高、次要字色；儲存格 0 12px 內距、下框線） */
+.symbol-table__skeleton {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background: var(--el-bg-color);
+}
+
+.symbol-table__skeleton th,
+.symbol-table__skeleton td {
+  padding: 8px 12px;
+  line-height: 23px;
+  text-align: left;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.symbol-table__skeleton th {
+  font-weight: 500;
+  color: var(--el-text-color-secondary);
+}
+
+.symbol-table__skeleton .symbol-table__skeleton-num {
+  text-align: right;
+}
+
+.symbol-table__skeleton-caret {
+  display: inline-block;
+  width: 24px;
+  height: 14px;
+  vertical-align: middle;
+}
+
+.symbol-table__skeleton-name {
+  width: 7em;
+}
+
+.symbol-table__skeleton-value {
+  width: 4.5em;
 }
 
 /* 數字欄用等寬數字，同一欄上下比較時位數對齊 */
