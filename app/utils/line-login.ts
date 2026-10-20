@@ -11,7 +11,8 @@ export const isLineInAppBrowser = () => import.meta.client && / Line\//.test(nav
 
 // intent（2026-10-20 帳號綁定）：login＝登入；link＝已登入 Google／email 的人把這個 LINE 綁到目前的帳號（回來時不重新登入，
 // 改打 POST /auth/line/link）。跟 state 存在一起，回呼頁照它分流——redirect_uri 不變，LINE 後台不用多登記網址。
-// scope 加 email：業務中台用 LINE 的 email 找同 email、已驗證的既有帳號（LINE Developers 核准 email 權限之前不會回 email，也不會壞）
+// 不拿 email（使用者 2026-10-20 聽完風險後決定不做 email 自動對應：LINE 不保證 email 驗證過，有人在自己的 LINE 填別人的 Gmail
+// 就能進到對方帳號）。連到既有帳號只靠主動綁定
 export type LineIntent = 'login' | 'link'
 
 export function startLineLogin(returnTo: string, intent: LineIntent = 'login') {
@@ -25,7 +26,7 @@ export function startLineLogin(returnTo: string, intent: LineIntent = 'login') {
     redirect_uri: lineRedirectUri(),
     state,
     nonce,
-    scope: 'openid profile email'
+    scope: 'openid profile'
   }).toString()
   location.assign(url.href)
 }

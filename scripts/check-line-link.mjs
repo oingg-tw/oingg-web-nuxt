@@ -1,8 +1,8 @@
 // 綁定 LINE（2026-10-20，使用者：「之前用 gmail 登入，現在用 Line 登入卻沒看到任何交易紀錄…該如何綁定？」，與業務中台共同設計）：
 //   - 個人資料「登入方式」：lineLinked false 有「綁定 LINE」、true 寫「已綁定」；舊版 業務中台（沒有這欄）不顯示 LINE 那一列
-//   - 按「綁定 LINE」導向 access.line.me：scope 含 email、sessionStorage 記著 intent link
+//   - 按「綁定 LINE」導向 access.line.me：scope 是 openid profile（不拿 email，使用者決定不做 email 自動對應）、sessionStorage 記著 intent link
 //   - 回呼頁的綁定那條：帶 Bearer 打 POST /auth/line/link、不打登入用的 /auth/line、uid 不變；成功回個人資料並提示；
-//     409 line_already_linked／line_account_has_data、401 reauth_required 各自說明
+//     409 line_already_linked／account_already_linked／line_account_has_data、400 line_account_cannot_link、401 reauth_required 各自說明
 // LINE 與 業務中台 全部攔截（測試帳號沒有 LINE）；其他寫入一律擋下。
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-line-link.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
@@ -82,7 +82,7 @@ console.log('個人資料「登入方式」')
   await button.click()
   await page.waitForURL(/access\.line\.me/, { timeout: 15000 })
   const authorize = new URL(page.url())
-  check(authorize.searchParams.get('scope') === 'openid profile email' && authorize.searchParams.get('redirect_uri') === `${base}/auth/line`, `導向 LINE：scope「${authorize.searchParams.get('scope')}」、redirect_uri 不變`)
+  check(authorize.searchParams.get('scope') === 'openid profile' && authorize.searchParams.get('redirect_uri') === `${base}/auth/line`, `導向 LINE：scope「${authorize.searchParams.get('scope')}」、redirect_uri 不變`)
   // 回到回呼頁（LINE 會帶 code 與同一個 state 回來）
   await page.goto(`${base}/auth/line?code=fake-code&state=${authorize.searchParams.get('state')}`, { waitUntil: 'networkidle', timeout: 180000 })
   await page.waitForURL('**/profile', { timeout: 30000 }); await page.waitForTimeout(800)
@@ -109,6 +109,8 @@ console.log('綁定失敗的說明')
 const problem = (status, code) => ({ status, json: { type: 'about:blank', title: 'x', status, code } })
 for (const [response, expected] of [
   [problem(409, 'line_already_linked'), '已經綁在另一個帳號上'],
+  [problem(409, 'account_already_linked'), '已經綁了另一個 LINE'],
+  [problem(400, 'line_account_cannot_link'), '請先改用 Google 或電子郵件'],
   [problem(409, 'line_account_has_data'), '沒辦法合併'],
   [problem(401, 'reauth_required'), '先驗證身分']
 ]) {

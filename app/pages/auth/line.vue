@@ -7,17 +7,19 @@ import type { LineIntent } from '~/utils/line-login'
 // 失敗分三種，各自說清楚發生了什麼，並給同一組出路（2026-10-18 使用者：「這一頁好好設計」）
 //
 // 綁定（2026-10-20，使用者：「之前用 gmail 登入，現在用 Line 登入卻沒看到任何交易紀錄…該如何綁定？」，與業務中台共同設計）：
-//   - intent login：照舊換 custom token 登入。業務中台會先找已記住的對應、再用 LINE 的 email 找同 email 已驗證的既有帳號。
-//     linkedNow（這次才連上原本的帳號）、newAccount（這次才建立 LINE 專屬帳號）各提示一次——後者正是使用者卡住的情況
+//   - intent login：照舊換 custom token 登入。綁定過的 LINE 會進到綁定的帳號（業務中台照對應簽 token）。不做 email 自動對應
+//     （使用者聽完風險後決定）。newAccount（這次才建立 LINE 專屬帳號）提示一次——那正是使用者卡住的情況
 //   - intent link：個人資料頁按「綁定 LINE」來的。**不重新登入**（換使用者會讓已載入的觀察清單等留在舊帳號），用目前的 token 打
 //     POST /auth/line/link，業務中台把這個 LINE 記到目前的帳號，之後用 LINE 登入就是這個帳號
-type Failure = 'cancelled' | 'expired' | 'unavailable' | 'signedOut' | 'alreadyLinked' | 'hasData' | 'reauth'
+type Failure = 'cancelled' | 'expired' | 'unavailable' | 'signedOut' | 'alreadyLinked' | 'accountLinked' | 'lineAccount' | 'hasData' | 'reauth'
 const FAILURES: Record<Failure, { title: string; detail: string }> = {
   cancelled: { title: '已取消 LINE 登入', detail: '沒有登入，也沒有存取你的 LINE 資料。' },
   expired: { title: '這次登入已經失效', detail: '登入連結只能用一次，請重新登入。' },
   unavailable: { title: '暫時無法完成登入', detail: '請稍後再試；一直失敗的話，可以先改用其他方式登入。' },
   signedOut: { title: '沒有綁定 LINE', detail: '要先登入原本的帳號，才能把 LINE 綁上去。' },
   alreadyLinked: { title: '沒有綁定 LINE', detail: '這個 LINE 已經綁在另一個帳號上了。' },
+  accountLinked: { title: '沒有綁定 LINE', detail: '你的帳號已經綁了另一個 LINE，一個帳號只能綁一個 LINE。' },
+  lineAccount: { title: '沒有綁定 LINE', detail: '現在登入的是 LINE 帳號，請先改用 Google 或電子郵件登入原本的帳號，再綁定 LINE。' },
   hasData: { title: '沒有綁定 LINE', detail: '這個 LINE 帳號已經有自己的持股或觀察清單，兩個帳號的資料沒辦法合併。' },
   reauth: { title: '沒有綁定 LINE', detail: '為了安全，請在個人資料頁再按一次「綁定 LINE」，先驗證身分。' }
 }
@@ -46,9 +48,6 @@ const failureText = computed(() => {
   return { title: '沒有綁定 LINE', detail: FAILURES[failure.value].detail }
 })
 
-// g***@gmail.com：提示裡只露第一個字與網域
-const maskedEmail = (email: string | null | undefined) => (email ? email.replace(/^(.)[^@]*/, '$1***') : '')
-
 const statusOf = (caught: unknown) => (caught as { status?: number; statusCode?: number }).status ?? (caught as { statusCode?: number }).statusCode
 const whenAuthResolved = () => new Promise<void>((resolve) => {
   if (authResolved.value) return resolve()
@@ -56,7 +55,7 @@ const whenAuthResolved = () => new Promise<void>((resolve) => {
 })
 
 async function signIn(code: string, nonce: string) {
-  const result = await $fetch<{ customToken: string; linkedNow?: boolean; newAccount?: boolean }>('/api/core/auth/line', {
+  const result = await $fetch<{ customToken: string; newAccount?: boolean }>('/api/core/auth/line', {
     method: 'POST',
     body: { code, redirectUri: lineRedirectUri(), nonce },
     timeout: BUSINESS_REQUEST_TIMEOUT_MS,
@@ -65,8 +64,7 @@ async function signIn(code: string, nonce: string) {
   await signInWithCustomToken(auth, result.customToken)
   armPostLoginLoader()
   await navigateTo(returnTo.value, { replace: true })
-  if (result.linkedNow) ElMessage.success(`已把 LINE 連到你原本的帳號${currentUser.value?.email ? `（${maskedEmail(currentUser.value.email)}）` : ''}，之後用 LINE 登入就是這個帳號。`)
-  else if (result.newAccount) {
+  if (result.newAccount) {
     ElMessage({ type: 'info', duration: 10000, showClose: true, message: '這是新的 LINE 帳號。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再到「個人資料」綁定 LINE，兩邊就是同一個帳號。' })
   }
 }
@@ -81,9 +79,14 @@ async function link(code: string, nonce: string) {
     await authedFetch('/auth/line/link', { method: 'POST', body: { code, redirectUri: lineRedirectUri(), nonce }, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
   } catch (caught) {
     const code = businessErrorCode(caught)
-    failure.value = code === 'line_already_linked'
-      ? 'alreadyLinked'
-      : code === 'line_account_has_data' ? 'hasData' : code === 'reauth_required' ? 'reauth' : statusOf(caught) === 401 ? 'expired' : 'unavailable'
+    const byCode: Record<string, Failure> = {
+      line_already_linked: 'alreadyLinked',
+      account_already_linked: 'accountLinked',
+      line_account_cannot_link: 'lineAccount',
+      line_account_has_data: 'hasData',
+      reauth_required: 'reauth'
+    }
+    failure.value = (code && byCode[code]) || (statusOf(caught) === 401 ? 'expired' : 'unavailable')
     return
   }
   await navigateTo(returnTo.value, { replace: true })

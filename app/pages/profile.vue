@@ -116,7 +116,7 @@ async function reauthenticate(password: string): Promise<string | null> {
 
 // ---- 登入方式與綁定 LINE（2026-10-20，使用者：「之前用 gmail 登入，現在用 Line 登入卻沒看到任何交易紀錄與持股明細。該如何綁定？」）----
 // 已用 Google／email 登入的人把 LINE 綁上來，之後用 LINE 登入就是這個帳號（業務中台 POST /auth/line/link 記下 LINE → 這個帳號）。
-// 另一條是業務中台用 LINE 的 email 自動找同 email 的帳號（不用按，但要 LINE 給 email、而且 email 一樣）。
+// 只有這一條：不做 email 自動對應（使用者聽完風險後決定——LINE 不保證 email 驗證過）。綁定成功後業務中台會刪掉空的 line:{sub}。
 // 綁定會讓帳號多一種登入方式，所以最近 5 分鐘內沒登入過要先重新驗證（同刪帳號；業務中台也會再檢查一次）。
 // lineLinked 來自 GET /users/me：舊版 業務中台 沒有這欄時是 undefined，就不顯示 LINE 那一列（按了也只會失敗）。
 // 這次不做解除綁定，也不做「LINE 帳號再綁 Google」（LINE 帳號只看到一句說明）

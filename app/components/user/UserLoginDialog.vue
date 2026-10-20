@@ -96,8 +96,6 @@ function handleClose() {
       <p v-if="inLine" class="login-dialog__note">在 LINE 裡無法用 Google 登入，請用 LINE 或電子郵件。</p>
       <!-- 捕獲階段攔 LINE 那顆（見 signInOptions 的註解）：LINE 登入是一般的網頁跳轉（app/utils/line-login.ts），不經過 FirebaseUI -->
       <div id="firebaseui-auth-container" @click.capture="interceptLine" @keydown.capture="interceptLine" />
-      <!-- LINE 的 email 用途（2026-10-20 帳號綁定）：按 LINE 之前就要看得到；申請 LINE Login 的 email 權限也是截這一段 -->
-      <p class="login-dialog__privacy">用 LINE 登入時，會取得你在 LINE 登記的電子郵件，只用來連到你用同一個電子郵件註冊的帳號。</p>
     </el-dialog>
   </ClientOnly>
 </template>
@@ -110,12 +108,6 @@ function handleClose() {
 
 .login-dialog__reason {
   margin: 0 0 12px;
-  line-height: 1.7;
-}
-
-.login-dialog__privacy {
-  margin: 8px 0 0;
-  color: var(--el-text-color-regular);
   line-height: 1.7;
 }
 
