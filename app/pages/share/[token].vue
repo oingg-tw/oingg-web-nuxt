@@ -16,6 +16,8 @@ interface PublicWatchlistShare {
 }
 interface PublicHoldingsShare {
   kind: 'holdings'
+  // 分享者自己填的名稱（業務中台 40b115c，2026-10-20），null 是沒填
+  displayName: string | null
   columns: ShareColumn[]
   // 算占比、報酬率用的收盤日；兩欄都沒勾時是 null
   asOf: string | null
@@ -47,57 +49,44 @@ const shortDate = (date: string | null | undefined) => (date ? `${date.slice(5).
 const dateText = computed(() => shortDate(holdings.value ? holdings.value.asOf : priceDate.value))
 const subject = computed(() => (holdings.value ? '持股' : '觀察清單'))
 
-const title = computed(() => (watchlist.value ? `${watchlist.value.name}・分享的觀察清單` : '分享的持股'))
+// 持股的標題是「○○分享的持股」（使用者 2026-10-20：「頁面要加上 XXX分享的持股 標題，好把整個分享持股放到觀察清單自動命名」），
+// 名字是分享者在分享對話框自己填的，沒填就是「分享的持股」。存成觀察清單時也用這個當清單名
+const heading = computed(() => (watchlist.value ? watchlist.value.name : `${holdings.value?.displayName ?? ''}分享的持股`))
+const title = computed(() => (watchlist.value ? `${watchlist.value.name}・分享的觀察清單` : heading.value))
 const description = computed(() => `安盈選股使用者分享的${subject.value}，共 ${count.value} 檔`)
 useSeoMeta({ title, ogTitle: title, description, ogDescription: description, robots: 'noindex, nofollow' })
 
 // ---- 存成我的觀察清單（2026-10-20，使用者：「分享的持股開放一個誘導註冊的按鈕，這個按鈕功能是把這個分享加到觀察清單」）----
 // 有帳號就按一下存好；沒有就開登入（對話框寫明登入或註冊後會存好），登入回來接著存——LINE 登入會離開再回到這一頁、Email 註冊要先
-// 驗證信箱，所以「要存」記在 sessionStorage。一次複製、之後不跟著分享變（使用者選的）。存過的記在這台瀏覽器（localStorage，
-// 只是方便），清單還在就改成連過去，免得重複存。觀察清單的名稱用分享的清單名；持股是「分享的持股」（等 業務中台 的顯示名稱上線後
-// 改成「XXX分享的持股」）
+// 驗證信箱，所以「要存」記在 sessionStorage。一次複製、之後不跟著分享變（使用者選的）。整批一次送，業務中台記住是從哪一條分享
+// 存的（sourceShareToken）：存過、清單也還在，換台電腦來也直接連過去，不會存兩份
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { open: openLogin } = useLoginDialog()
 const { watchlists, importToWatchlist } = useStocks()
 const PENDING_KEY = 'share-import-pending'
-const SAVED_KEY = 'share-imports'
-const listName = computed(() => (watchlist.value ? watchlist.value.name : '分享的持股'))
 const symbols = computed(() => (holdings.value ? holdings.value.holdings.map(holding => holding.symbol) : codes.value))
 const importing = ref(false)
-const savedListId = ref<string | null>(null)
-const savedList = computed(() => watchlists.value.find(list => list.id === savedListId.value) ?? null)
-
-function readSaved(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(SAVED_KEY) ?? '{}')
-  } catch {
-    return {}
-  }
-}
+const savedList = computed(() => watchlists.value.find(list => list.sourceShareToken === token) ?? null)
 
 async function saveToWatchlist() {
   if (importing.value) return
   importing.value = true
-  const result = await importToWatchlist(listName.value, symbols.value)
+  const result = await importToWatchlist(heading.value, symbols.value, token)
   importing.value = false
   if (result === 'signed-out') {
     try {
       sessionStorage.setItem(PENDING_KEY, token)
     } catch { /* 存不了就只是登入回來不會自動存 */ }
-    openLogin(`免費註冊或登入後，這份${subject.value}會存成你的觀察清單「${listName.value}」。`)
+    openLogin(`免費註冊或登入後，這份${subject.value}會存成你的觀察清單「${heading.value}」。`)
     return
   }
   if (!result) return
-  savedListId.value = result.list.id
-  try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify({ ...readSaved(), [token]: result.list.id }))
-  } catch { /* 只是方便：記不住就下次再顯示按鈕 */ }
-  ElMessage.success(`已存成觀察清單「${result.list.name}」，共 ${result.added} 檔`)
+  if (!result.created) ElMessage.info(`這份分享已經存過了：觀察清單「${result.list.name}」`)
+  else ElMessage.success(`已存成觀察清單「${result.list.name}」，共 ${result.added} 檔${result.skipped.length ? `（${result.skipped.join('、')} 已下市或查不到，沒有加入）` : ''}`)
 }
 
 onMounted(() => {
-  savedListId.value = readSaved()[token] ?? null
   watch([authResolved, currentUser], ([resolved, user]) => {
     if (!resolved || !user) return
     let pending: string | null = null
@@ -117,7 +106,7 @@ onMounted(() => {
   <div class="share-page">
     <header class="share-page__header">
       <div class="share-page__heading">
-        <h1 class="app-page__title">{{ watchlist ? watchlist.name : '分享的持股' }}</h1>
+        <h1 class="app-page__title">{{ heading }}</h1>
         <p class="share-page__meta">安盈選股使用者分享<template v-if="count">・共 {{ count }} 檔</template><template v-if="dateText">・{{ dateText }}</template></p>
       </div>
       <!-- 存過的連到那一組；高度固定，按鈕換成連結時不推動下面的內容 -->

@@ -15,6 +15,8 @@ export interface Share {
   // 持股：null ＝ 全部帳戶
   portfolioId: string | null
   columns: ShareColumn[]
+  // 持股分享頁的標題「○○分享的持股」，分享者自己填（業務中台 40b115c，2026-10-20）；沒填與觀察清單都是 null
+  displayName: string | null
   createdAt: string
   updatedAt: string
 }
@@ -45,9 +47,10 @@ export function useShares() {
   const shareOf = (kind: ShareKind, targetId: string | null) =>
     shares.value?.find(share => share.kind === kind && (kind === 'watchlist' ? share.watchlistId : share.portfolioId) === targetId) ?? null
 
-  async function saveShare(kind: ShareKind, targetId: string | null, columns: ShareColumn[]): Promise<Share | null> {
+  // 持股的 displayName 每次 PUT 整個換掉、沒送就變 null——只改欄位時也要帶著目前的名稱
+  async function saveShare(kind: ShareKind, targetId: string | null, columns: ShareColumn[], displayName: string | null = null): Promise<Share | null> {
     try {
-      const body = kind === 'watchlist' ? { kind, watchlistId: targetId, columns } : { kind, portfolioId: targetId, columns }
+      const body = kind === 'watchlist' ? { kind, watchlistId: targetId, columns } : { kind, portfolioId: targetId, columns, displayName }
       const { share } = await authedFetch<{ share: Share }>('/shares', { method: 'PUT', body })
       shares.value = [...(shares.value ?? []).filter(item => item.token !== share.token), share]
       return share

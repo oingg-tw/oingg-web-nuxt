@@ -43,7 +43,7 @@ export function useStocks() {
   const authResolved = useAuthResolved()
   const { open: openLogin } = useLoginDialog()
   const { quotaOf } = useEntitlement()
-  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchWatchlists, saveWatchlistName, deleteWatchlist, reorderWatchlists } = useUserWatchlist()
+  const { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchWatchlists, saveWatchlistName, createWatchlistWithItems, deleteWatchlist, reorderWatchlists } = useUserWatchlist()
 
   // currentUser 在 Firebase 的 onAuthStateChanged 首次觸發前是 null，而「確定沒登入」也是 null——
   // 只看它的話，已登入的人在頁面剛可互動的那幾百毫秒內按☆會被要求登入。所以先等解析完再判斷。
@@ -193,10 +193,12 @@ export function useStocks() {
   }
 
   // 把一份分享整份存成一組新的觀察清單（2026-10-20，使用者：「分享的持股開放一個誘導註冊的按鈕，這個按鈕功能是把這個分享加到觀察清單」）。
-  // 一次複製、之後不跟著分享變（使用者選的；跟著變就接近跟單）。清單名稱跟現有的撞了就加編號（名稱上限 20 字）；依分享的順序一檔
-  // 一次 POST（業務中台的端點不是冪等的，所以不並發）；額度滿了就停，回傳加了幾檔。沒登入回 'signed-out'（等登入狀態確定才判斷，
-  // 呼叫端去開登入）；其他失敗已經提示過，回 null
-  async function importToWatchlist(name: string, symbols: string[]): Promise<{ list: Watchlist; added: number; quotaHit: boolean } | 'signed-out' | null> {
+  // 一次複製、之後不跟著分享變（使用者選的；跟著變就接近跟單）。清單名稱跟現有的撞了就加編號（名稱上限 20 字）。整批一次 POST
+  // （業務中台 670db40，使用者：「加入觀察清單的 API 不對吧，沒有一次送整批的機制嗎」）：同一個交易、照分享的順序，不會留下半份；
+  // 同一條分享存過而且那組還在，回那一組（created false），不會存兩份。額度整批算，放不下就什麼都不建。沒登入回 'signed-out'
+  // （等登入狀態確定才判斷，呼叫端去開登入）；其他失敗已經提示過，回 null。
+  // ponytail: 超過 200 檔的分享會被 業務中台 擋下（400，提示「清單沒有建立」）；真的有人分享那麼多再分批送
+  async function importToWatchlist(name: string, symbols: string[], sourceShareToken: string): Promise<{ list: Watchlist; added: number; skipped: string[]; created: boolean } | 'signed-out' | null> {
     await whenAuthResolved()
     if (!currentUser.value) return 'signed-out'
     if (!(await applyServerWatchlist())) {
@@ -206,28 +208,19 @@ export function useStocks() {
     const taken = new Set(watchlists.value.map(list => list.name))
     let listName = name.slice(0, 20)
     for (let n = 2; taken.has(listName); n++) listName = `${name.slice(0, 19 - String(n).length)} ${n}`
-    const list = await createWatchlist(listName)
-    if (!list) return null
-    let added = 0
-    let quotaHit = false
-    const limit = quotaOf('watchlistItems')
-    for (const symbol of new Set(symbols)) {
-      if (typeof limit === 'number' && watchlistItems.value.length >= limit) {
-        quotaHit = true
-        break
-      }
-      const result = await addToWatchlist(list.id, symbol)
-      if (result.ok) {
-        watchlistItems.value = [...watchlistItems.value, result.item]
-        added++
-      } else if (result.reason === 'quota') {
-        quotaHit = true
-        break
-      }
-      // unknown（代號已下市）、duplicate、offline：跳過這一檔，繼續下一檔
+    const result = await createWatchlistWithItems(listName, symbols, sourceShareToken)
+    if (!result.ok) {
+      if (result.reason === 'items') showQuotaReached('觀察清單', `觀察清單還能再加 ${result.room} 檔，放不下這一份。可以刪掉不需要的，或之後升級專業版。`)
+      else if (result.reason === 'lists') showQuotaReached('觀察清單組數')
+      else showErrorMessage(result.reason === 'duplicate' ? `已經有一組叫「${listName}」` : '清單沒有建立，請稍後再試')
+      return null
     }
-    if (quotaHit) showQuotaReached('觀察清單')
-    return { list, added, quotaHit }
+    // 已經存過的那一組剛剛已經隨 applyServerWatchlist 讀進來了
+    if (result.created) {
+      watchlists.value = [...watchlists.value, result.watchlist]
+      watchlistItems.value = [...watchlistItems.value, ...result.items]
+    }
+    return { list: result.watchlist, added: result.items.length, skipped: result.skipped, created: result.created }
   }
 
   async function renameWatchlist(id: string, name: string) {

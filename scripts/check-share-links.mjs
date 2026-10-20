@@ -1,8 +1,10 @@
 // 分享連結（SharedShareButton、/share/[token]）的行為檢查，2026-10-19。業務中台 的 /shares 與 /public/shares 全部模擬，
 // 其他寫入一律擋下（測試帳號不會被寫入）：
 //   - 擁有者：預設勾表格上的欄、備註不勾；建立送出的 PUT；網址、焦點、念出狀態、複製；更新欄位；按鈕「分享／已分享」；
-//     關閉連結先關對話框、10 秒內不送 DELETE、按復原就不送；讀不到連結狀態時不出現；晚出現時沒有版面位移；axe。
-//   - 訪客：分享頁的標題、noindex、檔數、備註只在分享了才出現、沒有操作欄、找不到是 404；axe。
+//     關閉連結先關對話框、10 秒內不送 DELETE、按復原就不送；10 秒內又建立是先刪舊的再發新網址；讀不到連結狀態時不出現；
+//     晚出現時沒有版面位移；持股的「分享頁的標題」（displayName 每次 PUT 都帶）；axe。
+//   - 訪客：分享頁的標題（持股是「○○分享的持股」）、noindex、檔數、備註只在分享了才出現、沒有操作欄、找不到是 404；axe。
+//   - 加到我的觀察清單：一次 POST /watchlists 帶整批與 sourceShareToken；存過的靠帳號裡的清單認出來。
 // 分享頁用站內換頁打開（請求從瀏覽器發，才攔得到）；SSR 那一條要等 業務中台 上線後實際打一次。
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-share-links.mjs（要 A11Y_TEST_EMAIL／PASSWORD；DIR＝截圖目錄，可省略）
@@ -35,9 +37,9 @@ const TRAITS = {
 }
 const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000'), top3HoldingsPct: trait('44.97'), largeCapPct: trait('70.04'), ...box(['10.96', '50.20', '9.28', '5.91', '7.57', '6.43', '3.30', '3.43', '2.93'], '0.9945') } }
 const HOLDINGS_PAYLOAD = {
-  ratios: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }], traits: TRAITS },
-  market: { kind: 'holdings', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: '0.400000' }, { symbol: '2330', weight: '0.600000' }], traits: TRAITS_WITH_MARKET },
-  sizes: { kind: 'holdings', asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ symbol, quantity, averageCost, costUnknownQuantity }) => ({ symbol, quantity, averageCost, costUnknownQuantity })) }
+  ratios: { kind: 'holdings', displayName: null, asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }], traits: TRAITS },
+  market: { kind: 'holdings', displayName: '小明', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: '0.400000' }, { symbol: '2330', weight: '0.600000' }], traits: TRAITS_WITH_MARKET },
+  sizes: { kind: 'holdings', displayName: null, asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ symbol, quantity, averageCost, costUnknownQuantity }) => ({ symbol, quantity, averageCost, costUnknownQuantity })) }
 }
 let storedShares = []
 const issued = { watchlist: 0, holdings: 0 }
@@ -52,11 +54,16 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
     if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, createdAt: '2026-10-01T00:00:00Z' }, ...createdLists] } })
     if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items: [...items, ...createdItems] } })
+    // 整批建立（業務中台 670db40）：清單與項目一起建；同一條分享已經存過、那組還在，回那一組（200、created false）
     if (p === '/api/core/watchlists' && m === 'POST') {
-      const body = JSON.parse(req.postData()); calls.push(`POST /watchlists ${body.name}`)
-      const watchlist = { id: `w-new-${createdLists.length + 1}`, name: body.name, position: createdLists.length + 1, createdAt: '2026-10-20T00:00:00Z' }
+      const body = JSON.parse(req.postData()); calls.push(`POST /watchlists ${body.name} ${(body.symbols ?? []).join(',')} ${body.sourceShareToken ?? ''}`.trim())
+      const saved = body.sourceShareToken && createdLists.find(list => list.sourceShareToken === body.sourceShareToken)
+      if (saved) return route.fulfill({ json: { watchlist: saved, items: createdItems.filter(item => item.watchlistId === saved.id), skipped: [], created: false } })
+      const watchlist = { id: `w-new-${createdLists.length + 1}`, name: body.name, position: createdLists.length + 1, sourceShareToken: body.sourceShareToken ?? null, createdAt: '2026-10-20T00:00:00Z' }
       createdLists.push(watchlist)
-      return route.fulfill({ json: { watchlist } })
+      const newItems = (body.symbols ?? []).map(symbol => ({ id: `i-new-${createdItems.length + 1}-${symbol}`, watchlistId: watchlist.id, symbol, note: null, createdAt: 'x', updatedAt: 'y' }))
+      createdItems.push(...newItems)
+      return route.fulfill({ status: 201, json: { watchlist, items: newItems, skipped: [], created: true } })
     }
     if (p === '/api/core/watchlist' && m === 'POST') {
       const body = JSON.parse(req.postData()); calls.push(`POST /watchlist ${body.watchlistId} ${body.symbol}`)
@@ -75,7 +82,7 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
       const existing = storedShares.find(item => item.kind === body.kind && (item.watchlistId ?? item.portfolioId) === (body.watchlistId ?? body.portfolioId))
       const first = body.kind === 'holdings' ? TOKEN_H : TOKEN
       const token = existing?.token ?? (issued[body.kind]++ ? `${first}${issued[body.kind]}` : first)
-      const share = { token, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, createdAt: 'x', updatedAt: 'y' }
+      const share = { token, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, displayName: body.displayName?.trim() || null, createdAt: 'x', updatedAt: 'y' }
       storedShares = [...storedShares.filter(item => item.token !== share.token), share]
       return route.fulfill({ json: { share } })
     }
@@ -287,9 +294,18 @@ console.log('持股：擁有者（1440）')
   const dialogAxe = await axe(page)
   check(dialogAxe === '0', `對話框 axe 0（${dialogAxe}）`)
   await shot(page, 'share-holdings-dialog-1440')
+  // 分享頁的標題（2026-10-20）：名字接在「分享的持股」前面，預設帶帳號名稱、可以改
+  const nameInput = dialog.getByLabel('分享頁的標題')
+  check(await nameInput.getAttribute('maxlength') === '15' && (await dialog.locator('.share-dialog__name .el-input-group__append').innerText()).trim() === '分享的持股', '有「分享頁的標題」：名字最多 15 字，後面接著「分享的持股」')
+  await nameInput.fill('  小明 ')
   await dialog.getByRole('button', { name: '建立連結' }).click(); await page.waitForTimeout(600)
-  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"pnlPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}]}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄')
+  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"pnlPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}],"displayName":"小明"}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄、名稱去掉前後空白')
   check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}`, '網址就是這條連結')
+  // 業務中台每次 PUT 整個換掉 displayName、沒帶就變 null：只改欄位也要帶著名稱
+  await dialog.locator('.el-checkbox', { hasText: '今日漲跌' }).click(); await page.waitForTimeout(1200)
+  check(!calls.at(-1).includes('dayChange') && calls.at(-1).endsWith('"displayName":"小明"}'), '只改欄位：PUT 照樣帶著名稱「小明」')
+  await nameInput.fill(''); await page.waitForTimeout(1200)
+  check(calls.at(-1).endsWith('"displayName":null}') && (await dialog.locator('[role=status]').innerText()).trim() === '已儲存', '名稱清空：自己存一次、送 null（分享頁只寫「分享的持股」）')
   await dialog.getByRole('button', { name: '完成' }).click(); await page.waitForTimeout(400)
   check((await button.innerText()).trim() === '已分享', '按鈕變成「已分享」')
   // 關閉之後 10 秒內又建立（使用者 2026-10-20：「關閉分享以後再建立連結，就看不到連結了」）：舊的先真的刪掉、再發新網址
@@ -416,8 +432,10 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
   await page.waitForURL(`**/share/${TOKEN_H}`); await page.waitForLoadState('networkidle'); await page.waitForTimeout(2500)
   await page.addStyleTag({ content: '#nuxt-devtools-container{display:none!important}' })
   const label = `${width}／${payload}`
-  check((await page.locator('h1').innerText()).startsWith('分享的持股'), `${label}：h1 是「分享的持股」`)
-  check(await page.title() === '分享的持股｜安盈選股', `${label}：分頁標題`)
+  // 標題用分享者填的名稱（market 那份填了「小明」），沒填就是「分享的持股」
+  const heading = HOLDINGS_PAYLOAD[payload].displayName ? `${HOLDINGS_PAYLOAD[payload].displayName}分享的持股` : '分享的持股'
+  check((await page.locator('h1').innerText()).trim() === heading, `${label}：h1 是「${heading}」`)
+  check(await page.title() === `${heading}｜安盈選股`, `${label}：分頁標題`)
   check(await page.getByRole('button', { name: /明細/ }).count() === 0, `${label}：沒有「明細」展開`)
   const traitsBox = await page.locator('.holdings-traits').count() ? await page.locator('.holdings-traits').boundingBox() : null
   const tableBox = await page.locator(width >= 1280 ? '.view-table' : '.symbol-table__cards').boundingBox()
@@ -517,7 +535,7 @@ const posts = () => calls.filter(call => call.startsWith('POST /watchlist'))
   const saved = page.locator('.share-page__saved')
   await saved.waitFor({ timeout: 60000 })
   const created = posts().slice(before)
-  check(created[0] === 'POST /watchlists 存股名單 2' && created.length === 1 + symbols.length && created.slice(1).every((call, index) => call.endsWith(` ${symbols[index]}`)), `登入後自動存：建「存股名單 2」，照分享的順序加 ${symbols.length} 檔（${created.length} 次寫入）`)
+  check(JSON.stringify(created) === JSON.stringify([`POST /watchlists 存股名單 2 ${symbols.join(',')} ${TOKEN}`]), `登入後自動存：一次送整批，建「存股名單 2」、照分享的順序 ${symbols.length} 檔、記住是哪一條分享（${created.join('｜')}）`)
   check((await saved.innerText()).includes('已存成觀察清單「存股名單 2」') && (await saved.getAttribute('href')) === '/watchlist?list=w-new-1', '存好之後按鈕換成連到那一組的連結')
   check(await page.evaluate(() => sessionStorage.getItem('share-import-pending')) === null, '「要存」用過就清掉')
   await ctx.close()
@@ -531,16 +549,18 @@ const posts = () => calls.filter(call => call.startsWith('POST /watchlist'))
   await page.getByRole('button', { name: '加到我的觀察清單' }).click()
   await page.locator('.share-page__saved').waitFor({ timeout: 30000 })
   const created = posts().slice(before)
-  check(JSON.stringify(created) === '["POST /watchlists 分享的持股","POST /watchlist w-new-1 0056","POST /watchlist w-new-1 2330"]', `已登入：按一下存成「分享的持股」，0056、2330 照分享的順序（${created.join('｜')}）`)
+  check(JSON.stringify(created) === JSON.stringify([`POST /watchlists 小明分享的持股 0056,2330 ${TOKEN_H}`]), `已登入：按一下存成「小明分享的持股」（分享者填的名稱），0056、2330 照分享的順序、一次寫入（${created.join('｜')}）`)
   // 「已存成觀察清單」的提示正在淡入：等轉場結束再量（提示本身的對比照樣量）
   await page.mouse.move(0, 0); await page.waitForTimeout(1200)
   const violations = await axe(page)
   check(violations === '0', `存好之後 axe 0（${violations}）`)
-  // 離開再回來（站內換頁；重新整理會在伺服器端讀分享，攔不到）：這台瀏覽器記得存過、清單也還在，直接顯示連結，不會再存一次
+  // 離開再回來（站內換頁；重新整理會在伺服器端讀分享，攔不到）：存過、清單也還在（業務中台記著是從這條分享存的），直接顯示連結，
+  // 不會再存一次。先清掉這台瀏覽器的儲存，證明靠的是帳號裡的清單，不是本機記錄
+  await page.evaluate(() => localStorage.clear())
   await page.evaluate(() => window.useNuxtApp().$router.push('/calendar')); await page.waitForURL('**/calendar')
   await page.evaluate(target => window.useNuxtApp().$router.push(`/share/${target}`), TOKEN_H)
   await page.waitForURL(`**/share/${TOKEN_H}`); await page.waitForLoadState('networkidle'); await page.waitForTimeout(1500)
-  check(await page.locator('.share-page__saved').count() === 1 && await page.getByRole('button', { name: '加到我的觀察清單' }).count() === 0 && posts().length === before + 3, '回到這一頁直接顯示「已存成觀察清單」，不會重複存')
+  check(await page.locator('.share-page__saved').count() === 1 && await page.getByRole('button', { name: '加到我的觀察清單' }).count() === 0 && posts().length === before + 1, '回到這一頁（本機記錄清掉了）直接顯示「已存成觀察清單」，不會重複存')
   await ctx.close()
 }
 

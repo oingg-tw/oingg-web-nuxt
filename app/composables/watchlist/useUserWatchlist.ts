@@ -14,11 +14,21 @@ export interface UserWatchlistItem {
   note: string | null
 }
 
-// 一組清單（GET／POST／PATCH／DELETE /watchlists）。沒有任何一組時業務中台回 []、不自動建，第一次加入時前端先建「我的觀察清單」
+// 一組清單（GET／POST／PATCH／DELETE /watchlists）。沒有任何一組時業務中台回 []、不自動建，第一次加入時前端先建「我的觀察清單」。
+// sourceShareToken：從哪一條分享連結存下來的（業務中台 670db40，2026-10-20），自己建的是 null；分享頁拿它判斷「已經存過」
 export interface Watchlist {
   id: string
   name: string
+  sourceShareToken: string | null
 }
+
+const toWatchlist = ({ id, name, sourceShareToken }: Watchlist): Watchlist => ({ id, name, sourceShareToken: sourceShareToken ?? null })
+
+// 整批建立的結果（POST /watchlists 帶 symbols）：lists＝組數額度；items＝檔數額度，room＝還能加幾檔
+export type CreateWithItemsResult =
+  | { ok: true; watchlist: Watchlist; items: UserWatchlistItem[]; skipped: string[]; created: boolean }
+  | { ok: false; reason: 'duplicate' | 'lists' | 'failed' }
+  | { ok: false; reason: 'items'; room: number }
 
 // 建立、改名的結果：duplicate＝同名（409，檢查在額度之前）；invalid＝名稱 1～20 字以外（400）；quota＝FREE 3 組（403 quota_exceeded）
 export type WatchlistNameResult = { ok: true; watchlist: Watchlist } | { ok: false; reason: 'duplicate' | 'invalid' | 'quota' | 'failed' }
@@ -87,7 +97,7 @@ export function useUserWatchlist() {
     if (!currentUser.value) return undefined
     try {
       const response = await authedFetch<{ watchlists: Watchlist[] }>('/watchlists')
-      return (response.watchlists ?? []).map(({ id, name }) => ({ id, name }))
+      return (response.watchlists ?? []).map(toWatchlist)
     } catch (error) {
       devWarn('user-watchlist', 'GET /watchlists failed', error)
       return undefined
@@ -100,13 +110,35 @@ export function useUserWatchlist() {
       const response = id
         ? await authedFetch<{ watchlist: Watchlist }>(`/watchlists/${id}`, { method: 'PATCH', body: { name } })
         : await authedFetch<{ watchlist: Watchlist }>('/watchlists', { method: 'POST', body: { name } })
-      return { ok: true, watchlist: { id: response.watchlist.id, name: response.watchlist.name } }
+      return { ok: true, watchlist: toWatchlist(response.watchlist) }
     } catch (error) {
       const status = businessErrorStatus(error)
       if (status === 409) return { ok: false, reason: 'duplicate' }
       if (status === 400) return { ok: false, reason: 'invalid' }
       if (businessErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota' }
       devWarn('user-watchlist', 'POST/PATCH /watchlists failed', error)
+      return { ok: false, reason: 'failed' }
+    }
+  }
+
+  // 一次建好整批（POST /watchlists 帶 symbols 與 sourceShareToken，業務中台 670db40，2026-10-20）：清單與項目同一個交易、照 symbols
+  // 的順序，不在總表的跳過（skipped）；同一條分享已經存過而且那組還在，回那一組（created false）。額度整批算：放不下就 403、什麼都
+  // 不建，resource／limit／used 在 problem+json 的頂層
+  async function createWatchlistWithItems(name: string, symbols: string[], sourceShareToken: string): Promise<CreateWithItemsResult> {
+    if (!currentUser.value) return { ok: false, reason: 'failed' }
+    try {
+      const response = await authedFetch<{ watchlist: Watchlist; items: UserWatchlistItem[]; skipped: string[]; created: boolean }>('/watchlists', {
+        method: 'POST',
+        body: { name, symbols, sourceShareToken }
+      })
+      return { ok: true, watchlist: toWatchlist(response.watchlist), items: response.items ?? [], skipped: response.skipped ?? [], created: response.created }
+    } catch (error) {
+      if (businessErrorStatus(error) === 409) return { ok: false, reason: 'duplicate' }
+      if (businessErrorCode(error) === 'quota_exceeded') {
+        const data = (error as { data?: { resource?: string; limit?: number; used?: number } }).data
+        return data?.resource === 'watchlistItems' ? { ok: false, reason: 'items', room: Math.max(0, (data.limit ?? 0) - (data.used ?? 0)) } : { ok: false, reason: 'lists' }
+      }
+      devWarn('user-watchlist', 'POST /watchlists with symbols failed', error)
       return { ok: false, reason: 'failed' }
     }
   }
@@ -177,5 +209,5 @@ export function useUserWatchlist() {
     }
   }
 
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchColumns, saveColumns, fetchWatchlists, saveWatchlistName, deleteWatchlist, reorderWatchlists }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchColumns, saveColumns, fetchWatchlists, saveWatchlistName, createWatchlistWithItems, deleteWatchlist, reorderWatchlists }
 }

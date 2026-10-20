@@ -41,7 +41,13 @@ const chosen = ref<string[]>([])
 const saving = ref(false)
 const status = ref('')
 const inputId = useId()
+const nameId = useId()
+const nameHintId = useId()
 const copyButton = ref<{ ref?: HTMLElement } | null>(null)
+// 持股分享頁的標題「○○分享的持股」（使用者 2026-10-20：分享時自己填，預設帶帳號名稱）。帳號名稱常是本名，所以只當預設、由分享者
+// 看過再決定；已經有連結就用連結上存的（沒填是空的）。上限 15 字＝清單名 20 字扣掉「分享的持股」（訪客存成觀察清單時當清單名）
+const displayName = ref('')
+const nameToSend = () => (props.kind === 'holdings' ? displayName.value.trim() || null : null)
 // 系統分享選單只有部分瀏覽器有（手機），掛載後才知道，免得伺服器與瀏覽器畫的不一樣
 const canShare = ref(false)
 onMounted(() => (canShare.value = typeof navigator.share === 'function'))
@@ -49,13 +55,17 @@ onMounted(() => (canShare.value = typeof navigator.share === 'function'))
 function openDialog() {
   const stored = active.value?.columns.map(column => column.key)
   chosen.value = props.columns.filter(column => (stored ? stored.includes(column.key) : !column.sensitive)).map(column => column.key)
+  // 切 15 字時不把 emoji 切成半個（LINE 暱稱常有）
+  displayName.value = active.value ? (active.value.displayName ?? '') : (currentUser.value?.displayName ?? '').slice(0, 15).replace(/[\uD800-\uDBFF]$/, '')
   status.value = ''
   open.value = true
 }
 
 // 照畫面上的欄位順序存（觀察清單換了欄位順序，分享出去的也跟著換）
 const chosenColumns = () => props.columns.filter(column => chosen.value.includes(column.key)).map(({ key, label }) => ({ key, label }))
-const unchanged = computed(() => !!active.value && active.value.columns.map(column => column.key).join() === chosenColumns().map(column => column.key).join())
+const unchanged = computed(() => !!active.value
+  && active.value.columns.map(column => column.key).join() === chosenColumns().map(column => column.key).join()
+  && (active.value.displayName ?? null) === nameToSend())
 
 async function save() {
   const creating = !active.value
@@ -65,13 +75,16 @@ async function save() {
   // 同一條網址復活的話，拿到舊網址的人又看得到了
   if (creating) await pendingClose?.()
   if (!creating) status.value = '儲存中…'
-  const share = await saveShare(props.kind, props.targetId, chosenColumns())
+  const share = await saveShare(props.kind, props.targetId, chosenColumns(), nameToSend())
   saving.value = false
   if (!share) {
     status.value = ''
     showErrorMessage(creating ? '連結沒有建立，請稍後再試' : '沒有存到，請稍後再試')
     // 沒存到就回到連結上真正的那一份，畫面不說謊
-    if (active.value) chosen.value = active.value.columns.map(column => column.key)
+    if (active.value) {
+      chosen.value = active.value.columns.map(column => column.key)
+      displayName.value = active.value.displayName ?? ''
+    }
     return
   }
   status.value = creating ? '已建立連結，可以複製或傳送' : '已儲存'
@@ -79,9 +92,9 @@ async function save() {
   if (creating) nextTick(() => copyButton.value?.ref?.focus())
 }
 
-// 有連結之後改勾選就直接存；連點只送最後一次。一項都沒勾不存（連結至少要有一項內容）
+// 有連結之後改勾選、改標題就直接存；連點、連打只送最後一次。一項都沒勾不存（連結至少要有一項內容）
 let saveTimer: ReturnType<typeof setTimeout> | undefined
-watch(chosen, () => {
+watch([chosen, displayName], () => {
   clearTimeout(saveTimer)
   if (!open.value || !active.value || unchanged.value) return
   if (!chosen.value.length) {
@@ -140,6 +153,14 @@ function closeLink() {
       <div class="share-dialog__content-head">
         <p class="share-dialog__heading">要分享哪些內容？</p>
         <span class="share-dialog__status" role="status">{{ status }}</span>
+      </div>
+      <!-- 持股：名字接在「分享的持股」前面，看得到標題整句長怎樣 -->
+      <div v-if="kind === 'holdings'" class="share-dialog__name">
+        <label :for="nameId">分享頁的標題</label>
+        <el-input :id="nameId" v-model="displayName" maxlength="15" :aria-describedby="nameHintId">
+          <template #append>分享的持股</template>
+        </el-input>
+        <p :id="nameHintId" class="share-dialog__hint">預設是你的帳號名稱，有連結的人都看得到；留空就只寫「分享的持股」。</p>
       </div>
       <SharedColumnChecklist v-model="chosen" :columns="columns" label="要分享的內容" :sensitive-heading="sensitiveHeading" />
       <p class="share-dialog__hint">代號與名稱一定會分享。</p>
@@ -214,6 +235,24 @@ function closeLink() {
 
 .share-dialog__hint {
   margin: 8px 0 0;
+  color: var(--el-text-color-regular);
+}
+
+.share-dialog__name {
+  margin: 8px 0 16px;
+}
+
+.share-dialog__name label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.share-dialog__name :deep(.el-input__wrapper) {
+  min-height: 44px;
+}
+
+/* 「分享的持股」是標題的一部分：一般文字色（Element 附加格的 info 灰對比不到 4.5:1，axe 量到） */
+.share-dialog__name :deep(.el-input-group__append) {
   color: var(--el-text-color-regular);
 }
 
