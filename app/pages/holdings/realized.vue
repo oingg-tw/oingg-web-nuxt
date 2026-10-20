@@ -139,7 +139,7 @@ const tradingRows = computed(() => {
 </script>
 
 <template>
-  <HoldingsPageShell title="已實現損益" subtitle="選一段期間，看賣掉的股票賺賠多少、賣出的統計與交易成本" guest-title="登入後查看你的已實現損益" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
+  <HoldingsPageShell title="已實現損益" subtitle="選一段期間，看賣掉的股票賺賠多少、賣出的統計與交易成本" guest-title="登入後查看你的已實現損益" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !realized">
 
       <HoldingsRangePicker :pending="pending" />
 

@@ -77,7 +77,7 @@ const adjustedRows = computed(() => {
 </script>
 
 <template>
-  <HoldingsPageShell title="績效統計" subtitle="進階的統計數字：跟大盤的連動、經風險調整的報酬。不看也不影響使用其他功能" guest-title="登入後查看你的績效統計" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
+  <HoldingsPageShell title="績效統計" subtitle="進階的統計數字：跟大盤的連動、經風險調整的報酬。不看也不影響使用其他功能" guest-title="登入後查看你的績效統計" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !performance">
 
       <HoldingsRangePicker :pending="pending" />
 

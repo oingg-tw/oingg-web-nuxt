@@ -9,7 +9,7 @@ import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 // （投信投顧法）。同日稍晚加回第二段「這組持股有什麼特色？」（加權的本益比、Beta、ROE…加大盤對照與標籤，分享時可以一起帶出去），
 // 那一段的畫法在 HoldingsTraits、規則在 utils/holdings-traits.ts。
 //
-// 產業用證交所類股，資料是全市場目錄 /api/hub/directory（Nitro 每天快取一次，個股總表用同一份、同一個 key）。
+// 產業用證交所類股，資料是全市場目錄 /api/hub/directory（Nitro 每天快取一次，個股總表用同一份）。
 //
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
@@ -18,7 +18,15 @@ const authResolved = useAuthResolved()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchTraits } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
-const { data: directory } = useFetch<MarketDirectory>('/api/hub/directory', { key: 'hub-directory', lazy: true, server: false })
+// 產業分類整個 session 留著（2026-10-20）：Nuxt 4 在最後一個用到它的元件卸載時清掉 useFetch 的資料，側欄切回來要等重抓，先轉圈兩個畫面
+//（check-reload-flash 量到的）。有自訂 getCachedData 就不清，回來直接用手上那份。key 不跟個股總表共用：它用預設的 getCachedData，
+// 同一個 key 兩種選項 Nuxt 會警告（而且被清掉的資料本來就共用不到）
+const { data: directory, status: directoryStatus } = useFetch<MarketDirectory>('/api/hub/directory', {
+  key: 'holdings-directory',
+  lazy: true,
+  server: false,
+  getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key]
+})
 
 const sectorBySymbol = computed(() => {
   const map = new Map<string, string>()
@@ -76,6 +84,11 @@ async function loadTraits() {
   traitsFailed.value = result === null
 }
 watchLoadFailure('holdings-traits', () => traitsFailed.value, () => loadTraits(), { scope: 'section' })
+// 持股、產業分類、特色到齊才一起畫（2026-10-20，使用者：「卡片的部分顯示閃動」）：特色晚到的話，產業那段先畫好、特色的面板才從下面
+// 長出來；產業分類晚到（DEV 縮到 0 之後的冷快取）則是先寫「產業分類載入中…」，圖表再把特色往下推。讀不到的不等，交給全站彈窗。
+// 產業分類只等「還沒有」：側欄切過來時 useFetch 會重抓（status 是 pending），手上那份照用
+const firstPaintPending = computed(() => (pending.value && !holdings.value.length)
+  || (holdings.value.length > 0 && ((!traits.value && !traitsFailed.value) || (!directory.value && directoryStatus.value === 'pending'))))
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
@@ -83,6 +96,9 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) {
     ensureLoaded()
+    // 上一個帳戶的特色不留著，免得先畫舊的再換
+    traits.value = null
+    traitsFailed.value = false
     loadTraits()
   } else {
     clear()
@@ -92,12 +108,10 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析">
+  <HoldingsPageShell title="持股分析" subtitle="依市值看資金分布在哪些產業，以及這組持股的量化特色" guest-title="登入後查看你的持股分析" :pending="firstPaintPending">
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
     <template v-if="loadFailed" />
-
-    <div v-else-if="pending && !holdings.length" v-loading="true" class="app-loading-placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 

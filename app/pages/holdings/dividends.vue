@@ -97,8 +97,8 @@ const answer = computed(() => {
 </script>
 
 <template>
-  <HoldingsPageShell title="配息日程" subtitle="持股接下來要除權息、發放的，以及過去一年發放過的" guest-title="登入後查看你的配息日程" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
-    <section v-loading="pending && !result" aria-labelledby="dividends-title">
+  <HoldingsPageShell title="配息日程" subtitle="持股接下來要除權息、發放的，以及過去一年發放過的" guest-title="登入後查看你的配息日程" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !result">
+    <section aria-labelledby="dividends-title">
       <h2 id="dividends-title" class="dividends-page__section-title">接下來與過去一年的配息有哪些？</h2>
       <!-- 讀不到：彈窗會說明並自動重讀 -->
       <template v-if="failed" />

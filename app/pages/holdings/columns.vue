@@ -403,12 +403,10 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =A*C 就是「股數 × 收盤價」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。">
+  <HoldingsPageShell title="自訂欄位" subtitle="像 Excel 一樣用欄位字母寫公式，例如 =A*C 就是「股數 × 收盤價」" guest-title="登入後設定你的自訂欄位" guest-text="公式存在你的帳號裡，換電腦或手機都在。" :pending="pending && !holdings.length">
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
     <template v-if="loadFailed" />
-
-    <div v-else-if="pending && !holdings.length" v-loading="true" class="app-loading-placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股，先到持股總覽記一筆交易或匯入成交明細" :image-size="64" />
 

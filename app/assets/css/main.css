@@ -198,9 +198,33 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
   color: var(--el-text-color-secondary);
 }
 
-/* 資料還沒回來時的 v-loading 佔位：給 loading 遮罩一個高度，不然頁面會先縮成一條再撐開 */
+/* 資料還沒回來時的佔位：給一個高度，不然頁面會先縮成一條再撐開。轉圈用 CSS 畫、不用 v-loading（2026-10-20，使用者：「holdings/analysis
+   重新整理還是有閃一下」「像是卡片的部分顯示閃動」）：v-loading 的遮罩是 90% 白、hydration 之後才淡入 0.3 秒，在米色的頁面底上就是一張
+   白卡片淡入；持股頁外殼的佔位換成頁面的佔位時又從頭淡入一次。這個伺服器就畫好，沒有遮罩、不淡入。大小與位置同 v-loading 的轉圈 */
 .app-loading-placeholder {
+  position: relative;
   min-height: 200px;
+}
+
+.app-loading-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: calc(50% - 17px);
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-top-color: var(--el-color-primary);
+  border-right-color: var(--el-color-primary);
+  border-radius: 50%;
+  animation: app-loading-spin 1s linear infinite;
+}
+
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hub-disclaimer {

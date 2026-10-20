@@ -8,7 +8,10 @@ const props = withDefaults(defineProps<{
   subtitle?: string
   guestTitle: string
   guestText?: string
-}>(), { subtitle: undefined, guestText: '持股資料存在你的帳號裡，只有你看得到。' })
+  // 頁面第一份資料還沒到：同一個佔位一路轉到內容出來（2026-10-20，使用者：「重新整理還是有閃一下」）。原本外殼的佔位一收、頁面再畫
+  // 自己的佔位或區塊的 v-loading，轉圈（與白色遮罩）從頭淡入第二次。之後的重新讀取（換期間）照舊是頁面區塊自己的 v-loading
+  pending?: boolean
+}>(), { subtitle: undefined, guestText: '持股資料存在你的帳號裡，只有你看得到。', pending: false })
 
 const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
@@ -50,7 +53,7 @@ watch([ready, () => selected.value?.id ?? null], ([isReady, id]) => {
 
     <!-- 登入狀態還沒確定：不畫訪客卡也不畫內容，免得重新整理時先閃一下錯的那一個。hasHydrated 而不是 authResolved
          單獨：Firebase 可能在 hydration 前就解析完，client 第一次渲染就會跟 SSR 的「還不知道」不同（2026-10-05 Hydration node mismatch） -->
-    <div v-if="!hasHydrated || !authResolved || (currentUser && !ready)" v-loading="true" class="app-loading-placeholder" />
+    <div v-if="!hasHydrated || !authResolved || (currentUser && (!ready || props.pending))" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
 
     <section v-else-if="!currentUser" class="holdings-shell__guest">
       <h2 class="app-page__h2">{{ props.guestTitle }}</h2>

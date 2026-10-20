@@ -137,6 +137,15 @@ const guestListLoading = computed(() => isGuest.value && !marketCapRanking.value
 const listCodes = computed(() => (isGuest.value ? (marketCapRanking.value?.rows ?? []).slice(0, GUEST_LIST_SIZE).map(row => row.symbol) : watchlistCodes.value))
 
 const { rows, pending, priceDate } = useWatchlistStocks(listCodes, catalogFields)
+// 清單、報價到齊才一起畫，之前是轉圈（2026-10-20，使用者：「重新整理的時候會閃動，好像其他畫面也有」）：伺服器不知道是誰，原本先畫
+//「還沒有追蹤任何股票」，登入還原、清單讀到後換成只有名稱的表格，報價到了數字才補上——重新整理一次換三種畫面。清單是 app.vue 的
+// useWatchlistSync 讀的：synced 在開始讀時就是 true，讀完要看 sync-pending；讀不到時 synced 退回 false，轉圈留在全站彈窗底下等重試
+const hasHydrated = useHasHydrated()
+const synced = useState('watchlist-synced-from-server', () => false)
+const syncPending = useState('watchlist-sync-pending', () => false)
+const firstPaintPending = computed(() => !hasHydrated.value || !authResolved.value
+  || (currentUser.value ? !synced.value || syncPending.value : guestListLoading.value)
+  || (pending.value && !priceDate.value))
 const { keyword, fetchSuggestions, firstMatch } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
@@ -212,7 +221,7 @@ async function submitNote() {
       觀察清單
       <!-- 檔數跟在標題後面：這一頁沒有其他地方說得出「我追蹤了幾檔」，而那是使用者回到這一頁時
            第一個想知道的事。沒有任何一檔時不顯示，免得空狀態旁邊掛一個「共 0 檔」。 -->
-      <span v-if="listCodes.length" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
+      <span v-if="listCodes.length && !firstPaintPending" class="watchlist-page__count">共 {{ listCodes.length }} 檔<template v-if="priceDateText">・{{ priceDateText }}</template></span>
     </h1>
 
     <WatchlistNav />
@@ -238,8 +247,9 @@ async function submitNote() {
       目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
     </p>
 
-    <div v-loading="(pending && !rows.length) || guestListLoading" class="watchlist-page__content">
-      <el-empty v-if="!listCodes.length && !guestListLoading" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
+    <div v-if="firstPaintPending" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
+    <div v-else class="watchlist-page__content">
+      <el-empty v-if="!listCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <WatchlistTable
         v-else
         :rows="rows"

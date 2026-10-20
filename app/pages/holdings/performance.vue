@@ -142,7 +142,7 @@ const drawdownRows = computed(() => {
 </script>
 
 <template>
-  <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期加權指數" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。">
+  <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期加權指數" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="performancePending && !performance">
 
       <HoldingsRangePicker :pending="performancePending" />
 

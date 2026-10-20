@@ -8,8 +8,10 @@ const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
-// 清單是登入時由 app.vue 的 useWatchlistSync 讀進來的：讀到之前先不畫（不然會先閃「還沒有任何清單」）
+// 清單是登入時由 app.vue 的 useWatchlistSync 讀進來的：讀到之前先不畫（不然會先閃「還沒有任何清單」）。synced 在開始讀時就是 true，
+// 讀完要再看 sync-pending
 const synced = useState('watchlist-synced-from-server', () => false)
+const syncPending = useState('watchlist-sync-pending', () => false)
 const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWatchlists } = useStocks()
 </script>
 
@@ -20,7 +22,7 @@ const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWa
 
     <WatchlistNav />
 
-    <div v-if="!hasHydrated || !authResolved || (currentUser && !synced)" v-loading="true" class="app-loading-placeholder" />
+    <div v-if="!hasHydrated || !authResolved || (currentUser && (!synced || syncPending))" class="app-loading-placeholder" role="status"><span class="visually-hidden">載入中</span></div>
 
     <section v-else-if="!currentUser" class="watchlist-lists-page__guest">
       <h2 class="app-page__h2">登入後管理你的觀察清單</h2>

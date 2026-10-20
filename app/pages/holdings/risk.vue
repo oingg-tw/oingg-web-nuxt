@@ -154,7 +154,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 </script>
 
 <template>
-  <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價，看漲跌起伏有多大" guest-title="登入後查看你的持股風險指標">
+  <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價，看漲跌起伏有多大" guest-title="登入後查看你的持股風險指標" :pending="pending && !outcome">
 
       <!-- 交易日數寫在期間旁邊（業務中台 要求一併顯示；兩段共用。2026-10-19 從內容上方獨立的一句搬來） -->
       <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" />

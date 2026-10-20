@@ -358,7 +358,7 @@ async function submit() {
 </script>
 
 <template>
-  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股">
+  <HoldingsPageShell title="持股管理" guest-title="登入後開始記錄持股" :pending="pending && !holdings.length">
     <template #actions>
       <div v-if="currentUser && !loadFailed && holdings.length" class="holding-actions">
         <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
@@ -368,8 +368,6 @@ async function submit() {
 
     <!-- 讀不到：彈窗會說明並自動重讀；留空佔住這一支，免得落到下面的「還沒有持股」 -->
     <template v-if="loadFailed" />
-
-    <div v-else-if="pending && !holdings.length" v-loading="true" class="app-loading-placeholder" />
 
     <el-empty v-else-if="!holdings.length" description="還沒有記錄任何持股" :image-size="64">
       <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
