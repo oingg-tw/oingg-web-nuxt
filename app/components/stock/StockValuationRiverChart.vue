@@ -211,7 +211,8 @@ const formatMultiple = (value: number): string => `${value.toFixed(1)}倍`
 function bandTextFor(value: number): string | null {
   const multiples = levels.value
   if (!multiples) return null
-  const zone = riverZoneIndex(value, multiples)
+  // 先四捨五入到 2 位再比：篩選器的河道位置（analysis-ts）也是這樣算，剛好壓線的那幾天兩邊才會一致
+  const zone = riverZoneIndex(Math.round(value * 100) / 100, multiples)
   const name = RIVER_ZONE_NAMES[zone]
   if (zone === 0) return `${name}（低於 ${formatMultiple(multiples[0]!)}）`
   if (zone === multiples.length) return `${name}（高於 ${formatMultiple(multiples.at(-1)!)}）`
