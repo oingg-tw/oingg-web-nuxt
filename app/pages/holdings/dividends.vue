@@ -39,9 +39,16 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 const companyByCode = useCompanyLookup(() => result.value?.dividends.map(event => event.symbol) ?? [])
 
 const STATUS_TEXT: Record<HoldingDividendEvent['status'], string> = { paid: '已發放', awaiting_payment: '待發放', announced: '已公告', ex_rights_done: '已除權' }
-// 已經發生的：現金發放了，或只配股、已除權（股票在新股上市日入帳，日期上游沒有，見 holdings-model.ts）
+// 已經發生的：該發的都發了，或只配股、已除權而且沒有配股發放日（10/20 以前的配股，見 holdings-model.ts）
 const settled = (event: HoldingDividendEvent) => event.status === 'paid' || event.status === 'ex_rights_done'
 const slashDate = (date: string) => date.replaceAll('-', '/')
+function payTextOf(event: HoldingDividendEvent): string {
+  const stock = event.stockDividendDistributionDate
+  if (event.exType === '權') return stock ? slashDate(stock) : '新股上市日入帳'
+  if (event.exType === '息') return event.paymentDate ? slashDate(event.paymentDate) : '未公布'
+  const parts = [event.paymentDate ? `${slashDate(event.paymentDate)}（現金）` : null, stock ? `${slashDate(stock)}（配股）` : null].filter(Boolean)
+  return parts.length ? parts.join('、') : '未公布'
+}
 const money = (amount: number) => `${groupThousands(String(Math.round(amount)))} 元`
 
 // 還沒發放的（已公告、待發放）在前、依除息日由近到遠；已發放的在後、由新到舊
@@ -58,11 +65,9 @@ const events = computed(() => {
       name,
       link: entry ? routeFor(entry) : `/stock/${event.symbol}`,
       exText: `${slashDate(event.exDate)} ${EX_TYPE_LABELS[event.exType] ?? event.exType}`,
-      // 發放日只代表現金（2026-10-17「世紀 除權 未公布? 可是我都拿到了」→ 上游確認 mops 沒有配股入帳日）：只配股的寫入帳時點，
-      // 權息的日期標明是現金那一部分
-      payText: event.exType === '權'
-        ? '新股上市日入帳'
-        : event.paymentDate ? `${slashDate(event.paymentDate)}${event.exType === '權息' ? '（現金）' : ''}` : '未公布',
+      // paymentDate 只代表現金（2026-10-17「世紀 除權 未公布? 可是我都拿到了」）。配股的發放日 2026-10-20 起才有
+      //（stockDividendDistributionDate，之前的配股沒有）：有就寫日期，沒有的只配股照舊寫入帳時點；權息兩個日期各自標明
+      payText: payTextOf(event),
       // 每股：現金（元，最多四位小數——上游浮點數帶雜訊，2330 是 7.00000137）＋配股（每股配幾股）
       perShareText: [
         event.cashPerShare !== null ? `${Number(event.cashPerShare.toFixed(4))} 元` : event.exType === '權' ? null : '金額未公布',
@@ -87,7 +92,9 @@ const answer = computed(() => {
     ? `接下來 ${upcoming.length} 筆，最近的是 ${next.exText.slice(5)}的${next.name}${next.cashAmount !== null ? `，應收 ${money(next.cashAmount)}` : ''}`
     : '目前沒有已公告、還沒發放的配息'
   const paidTotal = paid.reduce((sum, event) => sum + (event.cashAmount ?? 0), 0)
-  const paidText = paid.length ? `過去一年發放 ${paid.length} 筆，現金合計應收 ${money(paidTotal)}` : '過去一年沒有發放的配息'
+  // 有配股發放日的配股（2026-10-20 起）發了也算 paid，股數一起說
+  const paidShares = paid.reduce((sum, event) => sum + (event.stockShares ?? 0), 0)
+  const paidText = paid.length ? `過去一年發放 ${paid.length} 筆，現金合計應收 ${money(paidTotal)}${paidShares ? `、配股 ${groupThousands(paidShares)} 股` : ''}` : '過去一年沒有發放的配息'
   // 只配股、已除權的：股數另外說（沒有現金，入帳日上游沒有）
   const exRights = events.value.filter(event => event.status === 'ex_rights_done')
   const exRightsShares = exRights.reduce((sum, event) => sum + (event.stockShares ?? 0), 0)

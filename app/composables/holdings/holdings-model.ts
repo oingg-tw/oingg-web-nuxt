@@ -109,11 +109,13 @@ export interface HoldingDividendEvent {
   symbol: string
   exDate: string
   exType: '息' | '權' | '權息'
-  // **只代表現金股利的發放日**（analysis-ts 確認）：配股在新股上市（上櫃）買賣日入帳，那個日期 mops 沒有，上游拿不到。
-  // 只配股的「權」一律 null；「權息」的這個日期是現金那一部分
+  // **只代表現金股利的發放日**（analysis-ts 確認）。只配股的「權」一律 null；「權息」的這個日期是現金那一部分
   paymentDate: string | null
-  // paid：發放日已過；awaiting_payment：已除息、還沒發放（或發放日未公布）；announced：除息日還沒到；
-  // ex_rights_done（業務中台 39b2f06）：只配股、已除權——股票在新股上市日入帳，但上游沒有那個日期，所以不說已入帳也不說未公布
+  // 配股發放日（業務中台 1070910，2026-10-20）：mops 從 10/20 才收、不回補，之前的配股一律 null（不代表沒發）
+  stockDividendDistributionDate?: string | null
+  // paid：該發的都發了（權息要現金與配股都發了）；awaiting_payment：已除息、還有沒發的（或發放日未公布）；announced：除息日還沒到；
+  // ex_rights_done（業務中台 39b2f06）：只配股、已除權、而且沒有配股發放日（10/20 以前的配股）——不說已入帳也不說未公布。
+  // 有配股發放日的照日期判斷成 paid／awaiting_payment
   status: 'paid' | 'awaiting_payment' | 'announced' | 'ex_rights_done'
   // 金額還沒公布是 null；ETF 是每單位配息（不跟 cashDividend 相加）
   cashPerShare: number | null

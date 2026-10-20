@@ -29,6 +29,8 @@ const itemsByDay = computed(() => {
   for (const event of props.events) {
     ;(map[event.exDate] ??= []).push({ key: `${event.key}-ex`, kind: 'ex', label: EX_TYPE_LABELS[event.exType] ?? event.exType, event })
     if (event.paymentDate && event.exType !== '權') (map[event.paymentDate] ??= []).push({ key: `${event.key}-pay`, kind: 'pay', label: '發放', event })
+    // 配股的發放日（2026-10-20 起才有）：權息的現金與配股可能不同天，各自一筆
+    if (event.stockDividendDistributionDate) (map[event.stockDividendDistributionDate] ??= []).push({ key: `${event.key}-stock`, kind: 'pay', label: '配股發放', event })
   }
   return map
 })

@@ -16,6 +16,8 @@ const props = defineProps<{
 const rows = computed(() => [...props.entries].sort((a, b) => b.fiscalYear - a.fiscalYear))
 const showYield = computed(() => rows.value.some(row => row.yieldAtExDate !== null))
 const showStock = computed(() => rows.value.some(row => row.stockDividend !== null && row.stockDividend !== 0))
+// 配股發放日（2026-10-20 起才有、不回補）：有一列有值才多一欄，「發放日」那一欄同時改叫「現金發放日」——paymentDate 只代表現金
+const showStockDistribution = computed(() => rows.value.some(row => row.stockDividendDistributionDate))
 
 function money(value: number | null): string {
   return value === null ? '－' : value.toFixed(2)
@@ -43,7 +45,8 @@ function date(value: string | null): string {
           <th v-if="showYield" scope="col" class="seo-table__num">除息日殖利率（%）</th>
           <th scope="col">除息日</th>
           <th v-if="showStock" scope="col">除權日</th>
-          <th scope="col">發放日</th>
+          <th scope="col">{{ showStockDistribution ? '現金發放日' : '發放日' }}</th>
+          <th v-if="showStockDistribution" scope="col">配股發放日</th>
           <th scope="col" class="seo-table__num">配息次數</th>
         </tr>
       </thead>
@@ -58,6 +61,7 @@ function date(value: string | null): string {
           <td>{{ date(row.exDividendDate) }}</td>
           <td v-if="showStock">{{ date(row.exRightsDate) }}</td>
           <td>{{ date(row.paymentDate) }}</td>
+          <td v-if="showStockDistribution">{{ date(row.stockDividendDistributionDate ?? null) }}</td>
           <td class="seo-table__num">{{ row.distributionCount }}</td>
         </tr>
       </tbody>

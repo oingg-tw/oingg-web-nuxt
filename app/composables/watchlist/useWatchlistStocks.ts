@@ -12,7 +12,8 @@ import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 //     /stocks/{code} 的 live*——後者是 analysis-ts 自算、虧損公司是負的本益比（1101 = -21.49，交易所
 //     為空值；業務中台 2026-10-06 確認兩者不同指標）。排行與產業頁也都用 exchange*。
 //   - 一次 GET /stocks/ex-dividend-notices（≤100 檔，經 /api/cached 快取一小時）。2026-10-06 起這支也回「已除息、
-//     還沒發放」的那幾筆（status realized，一定有 paymentDate），所以「除息／發放」欄寫得出發放日了——
+//     還沒發放」的那幾筆（status realized），所以「除息／發放」欄寫得出發放日了。2026-10-20 起現金或配股有一個還沒發就留著：
+//     現金看 paymentDate（只配股的是 null）、配股看 stockDividendDistributionDate，取還沒到的較早那天——
 //     共用的 useExDividendNotices 會把 realized 濾掉（它的呼叫端問的是下一次除息），這裡刻意不用它。
 //
 // 漲跌用 stock.previousClose（業務中台 527c68c）——前一個「真的有成交」的交易日收盤，是原始收盤價不是
@@ -55,7 +56,8 @@ export interface WatchlistRow {
 }
 
 export interface DividendEvent {
-  kind: 'ex' | 'pay'
+  // stock＝配股發放（2026-10-20 起才有日期），金額是 null：現金那一部分另有自己的發放日
+  kind: 'ex' | 'pay' | 'stock'
   date: string
   exType: ExDividendNotice['exType']
   // `distributionPerUnit ?? cashDividend`：ETF 的金額在前者（見 useExDividendNotices 的型別註解）
@@ -64,13 +66,17 @@ export interface DividendEvent {
 
 function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent | null {
   return notices
-    .map((notice): DividendEvent | null => {
-      const pay = notice.status === 'realized'
-      const date = pay ? notice.paymentDate : notice.exDate
-      if (!date || date < today) return null
-      return { kind: pay ? 'pay' : 'ex', date, exType: notice.exType, amount: notice.distributionPerUnit ?? notice.cashDividend }
+    .flatMap((notice): DividendEvent[] => {
+      const amount = notice.distributionPerUnit ?? notice.cashDividend
+      // 還沒除息看除息日；已除息看還沒到的發放日，現金與配股各自一筆（權息可能不同天）
+      const events: (DividendEvent | null)[] = notice.status === 'realized'
+        ? [
+            notice.paymentDate ? { kind: 'pay', date: notice.paymentDate, exType: notice.exType, amount } : null,
+            notice.stockDividendDistributionDate ? { kind: 'stock', date: notice.stockDividendDistributionDate, exType: notice.exType, amount: null } : null
+          ]
+        : [notice.exDate ? { kind: 'ex', date: notice.exDate, exType: notice.exType, amount } : null]
+      return events.filter((event): event is DividendEvent => !!event && event.date >= today)
     })
-    .filter((event): event is DividendEvent => event !== null)
     .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
 }
 

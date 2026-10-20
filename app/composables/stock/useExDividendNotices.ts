@@ -27,9 +27,12 @@ export interface ExDividendNotice {
   stockHoldingRatio: number | null
   // 2026-10-06 analysis-ts 改了這支（使用者核准），每一筆變成跟 ex-dividend-calendar 同形狀，多了下面這些。
   // PRD 上游還沒換之前可能沒有，所以都是選填。
-  // announced：還沒除息；realized：已除息、發放日還沒到（這種一定有 paymentDate）。
+  // announced：還沒除息；realized：已除息、現金或配股至少一個還沒發放（2026-10-20 起，業務中台 1070910；原本只看現金）。
+  // paymentDate 只代表現金，只配股的列是 null；配股的發放日在 stockDividendDistributionDate（只有個股的 realized 列可能有值，
+  // mops 從 10/20 才收、不回補）
   status?: 'announced' | 'realized'
   paymentDate?: string | null
+  stockDividendDistributionDate?: string | null
   // ETF 的每單位配息。金額一律讀 `distributionPerUnit ?? cashDividend`，**不要兩個相加**：未除息的 ETF 列可能兩個都有
   // （證交所預告的 cashDividend，analysis-ts 在 sitca 還沒有金額時拿它填 distributionPerUnit；DEV 量到 5 筆兩者相等，
   // 業務中台 2026-10-06）。securityType 已由 analysis-ts 從證券本身判定（fde1e48c），可以信，但這裡用不到它。

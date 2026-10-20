@@ -46,7 +46,7 @@ const exDividendText = (row: WatchlistRow) => {
   const event = row.nextDividendEvent
   if (!event) return '—'
   const date = event.date.slice(5).replace('-', '/')
-  const label = event.kind === 'pay' ? '發放' : EX_TYPE_LABELS[event.exType] ?? event.exType
+  const label = event.kind === 'stock' ? '配股發放' : event.kind === 'pay' ? '發放' : EX_TYPE_LABELS[event.exType] ?? event.exType
   return `${date} ${label}${event.amount !== null ? ` ${Number(event.amount.toFixed(4))} 元` : ''}`
 }
 // 卡片用：同一套格式化（型錄欄位走 formatScreenerValue，跟表格一致）

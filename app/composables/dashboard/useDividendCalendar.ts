@@ -25,7 +25,9 @@ export interface DividendCalendarEvent {
   // 現在 396/396 都有，那個條件永遠是 false。
   securityType: 'ETF' | 'COMMON' | null
   status: 'announced' | 'realized'
+  // 只代表現金；配股的發放日另外一欄（業務中台 1070910，2026-10-20 起才有，只有個股的 realized 列可能有值）
   paymentDate: string | null
+  stockDividendDistributionDate?: string | null
   fiscalYear: number | null
   exDate: string
   exType: DividendCalendarExType

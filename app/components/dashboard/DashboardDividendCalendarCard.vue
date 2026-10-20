@@ -113,7 +113,11 @@ function detailMeta(event: DividendCalendarEvent): string[] {
   if (amount !== null) parts.push(event.securityType === 'ETF' ? `每單位配息 ${amount} 元` : `現金股利 ${amount} 元`)
   if (event.fiscalYear !== null) parts.push(`${event.fiscalYear} 年度`)
   if (event.status === 'announced') parts.push('尚未除息（公司預告）')
-  else if (event.paymentDate) parts.push(`發放日 ${event.paymentDate}`)
+  else {
+    if (event.paymentDate) parts.push(`發放日 ${event.paymentDate}`)
+    // 配股的發放日（2026-10-20 起才有，只有個股）
+    if (event.stockDividendDistributionDate) parts.push(`配股發放日 ${event.stockDividendDistributionDate}`)
+  }
   return parts
 }
 </script>

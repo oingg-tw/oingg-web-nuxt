@@ -20,7 +20,10 @@ export interface DividendHistoryEvent {
   stockDividend: number | null
   exDividendDate: string | null
   exRightsDate: string | null
+  // paymentDate 只代表現金；配股另外看 stockDividendDistributionDate（業務中台 1070910，2026-10-20）。mops 從 10/20 才收、不回補，
+  // 之前的配股一律 null——null 不代表沒發。PRD 上游還沒有這欄時是 undefined
   paymentDate: string | null
+  stockDividendDistributionDate?: string | null
   announcementDate: string | null
   closeAtExDate: number | null
   yieldAtExDate: number | null
@@ -35,6 +38,8 @@ export interface DividendHistoryEntry {
   exDividendDate: string | null
   exRightsDate: string | null
   paymentDate: string | null
+  // 那一年最後一次配股的發放日（同上，2026-10-20 之前的配股沒有）
+  stockDividendDistributionDate?: string | null
   eps: number | null
   // 盈餘分配 ÷ 年報 EPS（2026-09-25 上游改定義，分子從「現金股利合計」換成「盈餘分配的那一塊」）。
   // 全部來自公積時是 0 不是 null；eps ≤ 0 或缺年報時是 null。注意這跟指標型錄的
