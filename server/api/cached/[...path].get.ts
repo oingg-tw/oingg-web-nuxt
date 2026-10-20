@@ -84,6 +84,8 @@ export default defineEventHandler(async event => {
   try {
     return await BY_TTL[rule.ttl](path, query)
   } catch (error) {
+    // 原因給 server/plugins/http-errors.ts 記（狀態碼照舊：沒有上游狀態的一律 502）
+    event.context.httpErrorReason = upstreamFailureReason(error)
     const status = typeof error === 'object' && error && 'statusCode' in error ? Number((error as { statusCode?: number }).statusCode) : 502
     throw createError({ statusCode: Number.isInteger(status) && status >= 400 ? status : 502, statusMessage: '業務中台 request failed' })
   }

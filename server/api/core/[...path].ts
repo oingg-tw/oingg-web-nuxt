@@ -64,6 +64,8 @@ export default defineEventHandler(async (event) => {
       responseType: 'text'
     })
     setResponseStatus(event, response.status, response.statusText)
+    // 上游的 5xx 原樣轉回；原因給 server/plugins/http-errors.ts 記
+    if (response.status >= 500) event.context.httpErrorReason = response.status === 504 ? 'upstream_timeout' : 'upstream_error'
     for (const name of PASSED_BACK) {
       const value = response.headers.get(name)
       if (value) setResponseHeader(event, name, value)
@@ -72,8 +74,9 @@ export default defineEventHandler(async (event) => {
     return response._data ?? null
   } catch (error) {
     // 沒拿到回應：逾時或連不上。用跟業務中台相同的代碼，前端的分類照常
-    const text = `${(error as Error)?.name ?? ''} ${(error as Error)?.message ?? ''}`
-    return /timeout|timed out|aborted/i.test(text)
+    const reason = upstreamFailureReason(error)
+    event.context.httpErrorReason = reason
+    return reason === 'upstream_timeout'
       ? problem(event, 504, 'Gateway Timeout', 'UPSTREAM_TIMEOUT', '伺服器回應逾時，請稍後再試')
       : problem(event, 502, 'Bad Gateway', 'UPSTREAM_UNAVAILABLE', '暫時連不上伺服器，請稍後再試')
   }
