@@ -123,8 +123,16 @@ function handleClose() {
   font-size: 1rem;
 }
 
-/* 按鈕用滿彈窗寬（使用者 2026-10-20：「Google 登入折行了」）：FirebaseUI 把按鈕鎖在 220px，字放到 16px 之後
-   「使用 Google 帳號登入」放不下、折成兩行；彈窗本身有 328px，問題不在彈窗寬度 */
+/* 三顆按鈕一樣寬，寬度跟著最長的那顆字（使用者 2026-10-20：「Google 登入折行了」；放寬成整個彈窗寬之後又「文字後面的留白
+   過多」）。FirebaseUI 把按鈕鎖在 220px，字放到 16px 之後「使用 Google 帳號登入」差幾 px 放不下。不寫死寬度：Mac、Windows
+   的字寬不一樣。清單照內容寬、置中，按鈕撐滿清單 */
+:deep(.firebaseui-idp-list) {
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 :deep(.firebaseui-idp-button) {
   max-width: none;
 }
