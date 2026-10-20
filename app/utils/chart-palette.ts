@@ -22,7 +22,7 @@ export const CHART_TOOLTIP_INK = {
 
 // 直接畫在圖表／卡片表面上的東西——軸標籤與軸線、格線，以及不綁漲跌方向或主色的資料線（例如杜邦分析的虛線淨利率、營收的年增率線）。
 // 2026-09-19 前只有一組只對深色面（#1e1e1e）調過的值，淺色面（#faf9f6）上中灰幾乎看不見（「線條顏色 在light mode 是否符合AA
-// 等級」——不符合）。淺色值沿用 main.css 已通過 AA 稽核的文字色階：muted → --el-text-color-secondary（#66686d，對卡片 5.30:1）、
+// 等級」——不符合）。淺色值沿用 theme.css 已通過 AA 稽核的文字色階：muted → --el-text-color-secondary（#66686d，對卡片 5.30:1）、
 // secondary → #606266（5.80:1）、primary → #303133（12.37:1）。`muted` 最要緊：它是真正的 axisLabel 文字（fontSize 11，低於大字
 // 門檻），要過 4.5:1 不是 3:1。深色 2026-10-14 從 #888888 改 #999999：原本 4.70:1 是對 #1e1e1e 算的，實際卡片是 #2a2a2a（見
 // CARD_SURFACE），量到只有 4.05:1；#999999 對卡片 5.04:1、對頁面底 #121212 6.58:1。淺色對卡片 5.58:1。gridline／baseline 是裝飾
@@ -42,15 +42,15 @@ export function getChartInk(mode: 'LIGHT' | 'DARK'): {
 // --- River chart (河流圖) valuation-band colors ---
 //
 // Dynamically matched to whichever price-up/down colors the user's own market convention
-// resolves to (--price-up-color/--price-down-color in main.css), instead of a fixed
+// resolves to (--price-up-color/--price-down-color in theme.css), instead of a fixed
 // red-low/green-high pair independent of that setting — requested after the two were found
 // to disagree under WESTERN convention (river chart still red-high/green-low while every
 // other up/down color in the app had flipped). ECharts options are plain JS and can't
-// consume CSS custom properties, so getPriceColors below is a manual mirror of main.css's
+// consume CSS custom properties, so getPriceColors below is a manual mirror of theme.css's
 // own --el-color-danger/--el-color-success (mode-dependent) and ACCESSIBLE resolution chain
-// — keep these hex values in sync with main.css whenever those change.
+// — keep these hex values in sync with theme.css whenever those change.
 const DANGER_BASE = { light: '#c62828', dark: '#f16862' }
-// 淺色的 #1e7e34 → #1d7832（2026-10-01 修）。main.css 在 2026-09-02 就把 `--el-color-success`
+// 淺色的 #1e7e34 → #1d7832（2026-10-01 修）。theme.css 在 2026-09-02 就把 `--el-color-success`
 // 從 #1e7e34 改成 #1d7832（對白底 5.14:1 → 5.55:1，那一段註解寫明它當時是淺色調色盤裡對比餘裕
 // 最緊的文字色），但這裡的常數沒跟著改——而上面那段註解宣稱它「dynamically matched to
 // --price-up-color/--price-down-color」，所以這是漂移不是刻意的差異。
@@ -172,7 +172,7 @@ export function riverColors(upHex: string, downHex: string, bandCount = 4): { li
 // magnitude bars/lines (e.g. revenue) that don't need a diverging/semantic color and don't
 // need to track the user's own accent-color choice either, since ECharts options can't read
 // CSS vars. Prefer getAccentColor() below for anything that SHOULD follow the user's chosen
-// accent color (main.css's --el-color-primary changes with it) — kept as a fallback constant
+// accent color (theme.css's --el-color-primary changes with it) — kept as a fallback constant
 // where a fixed brand color is genuinely the intent.
 export const CHART_ACCENT_GOLD = '#d4a72c'
 
@@ -182,10 +182,10 @@ export function getChartAccentGold(mode: 'LIGHT' | 'DARK'): string {
   return mode === 'DARK' ? CHART_ACCENT_GOLD : '#aa841f'
 }
 
-// Manual mirror of main.css's own html[data-theme-color='...'] --el-color-primary values (one
+// Manual mirror of theme.css's own html[data-theme-color='...'] --el-color-primary values (one
 // per ThemeColor × light/dark) — same "ECharts options are plain JS, can't consume CSS custom
 // properties" constraint getPriceColors above already works around. Keep these hex values in
-// sync with main.css whenever those change. Used for chart series that should track the
+// sync with theme.css whenever those change. Used for chart series that should track the
 // user's own accent-color choice (e.g. the PE/PB ratio history line — per direct request
 // "本益比河流圖的線 那條顏色要跟著網站主題色變動") rather than a fixed brand color.
 const ACCENT_HEX: Record<'LIGHT' | 'DARK', Record<string, string>> = {
@@ -198,7 +198,7 @@ const ACCENT_HEX: Record<'LIGHT' | 'DARK', Record<string, string>> = {
     RED: '#ee9baa',
     TEAL: '#5ac8c8'
   },
-  // Light values retuned 2026-09-19 to ≥4.5:1 against the page background (see main.css's own
+  // Light values retuned 2026-09-19 to ≥4.5:1 against the page background (see theme.css's own
   // light-mode accent comment) — BLUE/RED unchanged, the other five slightly darker.
   LIGHT: {
     GOLD: '#8a6823',

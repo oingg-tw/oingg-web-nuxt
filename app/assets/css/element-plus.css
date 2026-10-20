@@ -1,0 +1,283 @@
+/* Element Plus 的修正（2026-10-21 從 main.css 拆出來）：16px 字級地板、small 尺寸、el-tag、el-alert、全站提示（ElMessage）、
+   觸控 44px 下限、v-loading 轉圈的位置。載入順序在 nuxt.config 的 css：main.css → theme.css → 本檔。@element-plus/nuxt 隨用隨載
+   的元件 CSS 排在這些全部之後，下面幾條的 html 前綴與 !important 就是為了這個。 */
+
+/* Element Plus's `info` tag paints its text in --el-color-info (#909399) on a #f4f4f5 fill —
+   2.8:1, well under AA's 4.5:1 (axe flagged every el-select `multiple` chip and the 近四季/單季
+   tag on the stock pages, 2026-09-19). Regular body-text grey on the same fill is ≈5.3:1. Only
+   the text token changes; the fill and border stay Element Plus's own. The `html` prefix is
+   what makes this win: @element-plus/nuxt pulls el-tag.css in on demand AFTER this file, so an
+   equal-specificity `.el-tag.el-tag--info` override silently lost (measured — the chips stayed
+   #909399). */
+html .el-tag.el-tag--info {
+  --el-tag-text-color: var(--el-text-color-regular);
+}
+
+/* Element Plus 的 size="small" 是 12px 字面值，低於 16px 地板、iOS Safari 聚焦還會自動縮放；el-input-number 也經由巢狀 .el-input--small。
+   !important 是必要的：同特異性，@element-plus/nuxt 隨用隨載的元件 CSS 排在本檔之後會贏。下面幾條同理。 */
+.el-input--small {
+  font-size: 1rem !important;
+}
+
+/* el-select 關閉時的顯示值是 select.css 寫死的 14px（下拉項目才讀 --el-font-size-base），「選單文字要超過 16px」；large 變體另一條
+   同樣字面值、特異性更高，要分開蓋。2026-09-16 在 200% 字型量到文字被截：line-height:24px／min-height:32px 也是 px 字面值，改成
+   無單位 1.5 與 2rem／2.5rem 跟著字級走。 */
+.el-select__wrapper {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  min-height: 2rem !important;
+}
+
+.el-select--large .el-select__wrapper {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  min-height: 2.5rem !important;
+}
+
+/* .el-button--small 的 12px 與 height: 24px 都是字面值（2026-09-16「預設文字大小就太小」）。只放大字不放高會截字（16px 字＋上下 5px
+   內距要 30px），height: auto 讓內距決定高度。 */
+.el-button--small {
+  font-size: 1rem !important;
+  height: auto !important;
+}
+
+/* 上面的 height: auto 把圓形按鈕壓成橢圓（2026-09-17「右上角兩顆按鈕小而且看起來像是橢圓形」）：.is-circle 只寫死 width: 32px，高度跟
+   著變體。兩邊都定 2rem 讓盒子保持正方。 */
+.el-button--small.is-circle {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+/* Shared "關閉" button for a dialog's #footer slot (2026-09-19, interface-complexity review) —
+   the reference doc wants every modal to give the visitor a real, TEXT exit, not just an × in the
+   corner (which Element Plus's own close button still is; this is an addition, not a
+   replacement). Global, not scoped, since it's reused verbatim across several unrelated dialog
+   components (AppFeatureMenu.vue, AppMobileHeader.vue,
+   StockSummaryCard.vue's own QR dialog) rather than duplicating the same three rules in each. */
+.dialog-close-button {
+  min-height: 44px;
+  min-width: 120px;
+  font-size: 1rem;
+}
+
+/* .el-radio-button--small 的 0.75rem 也是字面值（size="small" 的 el-radio-group 是全站指標切換的標準寫法），同上 */
+.el-radio-button--small .el-radio-button__inner {
+  font-size: 1rem !important;
+}
+
+/* el-checkbox-button--small 的字也是 0.75rem 字面值，同上 */
+.el-checkbox-button--small .el-checkbox-button__inner {
+  font-size: 1rem !important;
+}
+
+/* .el-checkbox__label 的 0.875rem 也是字面值（2026-09-11 量到根元素 16px、label 14px），同上 */
+.el-checkbox__label {
+  font-size: 1rem !important;
+}
+
+/* el-tag 的字級是它自己的 --el-tag-font-size，在 .el-tag 規則上宣告又在同一條消費，:root 的覆寫根本不是候選（元素自己有直接宣告，
+   不走繼承）；要在同特異性直接重宣告＋!important。 */
+.el-tag {
+  --el-tag-font-size: 1rem !important;
+}
+
+/* el-tag 的關閉鈕是 14px 的 <button>（2026-10-08 check-a11y-pages 在 ETF 專區量到）：WCAG 2.5.8 的 24px 下限對滑鼠也適用，不只觸控。 */
+.el-tag__close {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* .el-popper is the shared popup shell behind el-tooltip, el-popover, and dropdown/select
+   menus — its font-size is a literal 12px in Element Plus's own CSS, not driven by
+   --el-font-size-base like the components covered by that var above, so it slipped under
+   the 16px floor everywhere a tooltip/popover renders. Same !important-for-load-order
+   reasoning as .el-input--small above: identical one-class specificity, and
+   @element-plus/nuxt's on-demand import of el-popper.css can load after this file. */
+.el-popper {
+  font-size: 1rem !important;
+}
+
+/* 頁面內提示框（el-alert）的唯一外觀，2026-10-10 統一（「alert 目前樣式不一致，請盤點後統一樣式」）。跟下面的全站浮動提示
+   （ElMessage）同一套語言：類型淡色底＋左側 4px 類型色條＋類型色圖示，文字一律主要文字色（類型不靠字色），圓角 8px。
+   量到的不一致：有插槽（重新載入按鈕）的三個被 Element Plus 換成 28px 大圖示、標題改讀沒被覆寫的 16px 寫死字級；
+   一個警告沒有圖示；圓角 4px 對上手刻提示框與浮動提示的 8px；三個手刻提示框各自的內距、底色、邊框。
+   用法：一律 show-icon、:closable="false"；訊息放 title，動作按鈕放預設插槽。頁面讀取失敗不用提示框，交給
+   watchLoadFailure() 的全站彈窗（2026-10-08）。Element Plus 根元素寫死 role="alert"：一進頁面就在的說明改傳
+   role="note"，隨操作變動的說明傳 role="status"。
+   html 前綴：Element Plus 的樣式隨用隨載、排在本檔之後，同權重會輸。字級也照 2026-10-07 的 16px 地板（原本只覆寫兩個）。 */
+html .el-alert {
+  --el-alert-title-font-size: 1rem;
+  --el-alert-description-font-size: 1rem;
+  --el-alert-title-with-description-font-size: 1rem;
+  --el-alert-icon-size: 1.25rem;
+  --el-alert-icon-large-size: 1.25rem;
+  --el-alert-padding: 12px 16px;
+  --el-alert-border-radius-base: 8px;
+  --app-alert-accent: var(--el-text-color-secondary);
+  align-items: flex-start;
+  border-left: 4px solid var(--app-alert-accent);
+}
+
+html .el-alert--primary { --app-alert-accent: var(--el-color-primary); }
+html .el-alert--success { --app-alert-accent: var(--el-color-success); }
+html .el-alert--warning { --app-alert-accent: var(--el-color-warning); }
+html .el-alert--error { --app-alert-accent: var(--el-color-error); }
+
+/* 色條與圖示用類型色（非文字，3:1 門檻）；圖示 20px 對齊 24px 行高的第一行 */
+html .el-alert .el-alert__icon,
+html .el-alert .el-alert__icon.is-big {
+  margin: 2px 12px 0 0;
+  color: var(--app-alert-accent);
+}
+
+html .el-alert.el-alert .el-alert__title,
+html .el-alert.el-alert .el-alert__description {
+  color: var(--el-text-color-primary);
+  line-height: 1.5;
+}
+
+/* 插槽裡的動作按鈕跟訊息之間 4px（加上 __content 自己的 4px gap） */
+html .el-alert.el-alert .el-alert__description {
+  margin-top: 4px;
+}
+
+.el-form-item__error,
+.el-input__count,
+.el-input .el-input__count .el-input__count-inner,
+.el-picker-panel__shortcut {
+  font-size: 1rem !important;
+}
+
+/* 觸控裝置的 44px 下限（2026-10-08，取代原本只在 el-alert 與對話框裡補 44px 的兩條規則）：手指才需要 44px；滑鼠裝置回到 Element
+   Plus 的 32／40px（文字 100% 對 default、110／120% 對 large，見 useTextScale），仍高於 WCAG 2.5.8 的 24×24。
+   ElDialog 與 ElMessage 掛到 <body>，所以只能寫在全站樣式。 */
+@media (pointer: coarse) {
+  .el-button,
+  .el-input__wrapper,
+  .el-select__wrapper,
+  /* 選單接手前的佔位框要跟真的選單一樣高，不然掛上去那一刻長 12px（2026-10-18 全站量測） */
+  .select-placeholder,
+  .el-input-number,
+  .el-radio-button__inner,
+  .el-checkbox-button__inner,
+  .el-checkbox,
+  .el-radio,
+  .el-dialog__headerbtn,
+  button:not(.el-button),
+  select,
+  [role='button'],
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not(.el-input__inner) {
+    /* !important：Element Plus 自己的 .el-select__wrapper 也寫 min-height，且它的樣式表載在這個檔之後（2026-10-08 實測篩選器的
+       類股下拉停在 32px）；這是無障礙的下限，不能輸給元件預設 */
+    min-height: 44px !important;
+  }
+
+  .el-button.is-circle {
+    min-width: 44px !important;
+  }
+}
+/* 全站提示（ElMessage）的外觀，2026-10-08 重新設計（「el-message__content 樣式請妥善設計，現在看起來怪怪的」）。量到的問題：
+   第一則蓋在頁首上、每則寬高與內距各不相同、Element Plus 把文字寫死 14px 行高 1（低於 16px 地板，換行時擠成一團）、
+   淡色底配各自的類型字色（info 灰字在灰底上偏低）、手機上「看方案」被擠成一字一行。
+   現在一種外觀：統一寬度、從頁首下方出現（top 是 Element Plus 逐則算的 inline style，所以用 margin-top 整組下移）、
+   浮層底＋左側 4px 類型色條、文字一律主要文字色（類型只靠色條、圖示與圖示形狀表達，不靠字色）。
+   全域因為 ElMessage teleport 到 body；html 前綴是為了贏過隨用隨載、排在本檔之後的 Element Plus 樣式。 */
+html .el-message {
+  --el-message-bg-color: var(--el-bg-color-overlay);
+  --el-message-border-color: var(--el-border-color-lighter);
+  --el-message-text-color: var(--el-text-color-secondary);
+  width: min(520px, calc(100% - 32px));
+  /* 58 = 44px 按鈕＋上下 6px＋邊框：有按鈕、沒按鈕的提示一樣高 */
+  min-height: 58px;
+  margin-top: calc(var(--app-header-height) + var(--app-banner-height));
+  padding: 6px 6px 6px 16px;
+  gap: 12px;
+  border-left: 4px solid var(--el-message-text-color);
+  border-radius: 8px;
+  box-shadow: var(--el-box-shadow-light);
+}
+
+html .el-message--success { --el-message-text-color: var(--el-color-success); }
+html .el-message--warning { --el-message-text-color: var(--el-color-warning); }
+html .el-message--error { --el-message-text-color: var(--el-color-danger); }
+html .el-message--info { --el-message-text-color: var(--el-text-color-secondary); }
+
+/* 色條與圖示用類型色（非文字，3:1 門檻）；文字用主要文字色 */
+html .el-message .el-message__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+
+html .el-message .el-message__content {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  color: var(--el-text-color-primary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* 自訂內容（錯誤提示、復原、額度）：文字佔滿、按鈕靠右不換行 */
+.app-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.app-toast__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 本站自己的關閉鈕，不用 Element Plus 的 showClose：那是一個 <i>，不可聚焦、沒有名字，duration: 0 的提示鍵盤關不掉 */
+.app-toast__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+}
+
+.app-toast__close:hover {
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+}
+
+.app-toast__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--el-color-primary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--el-color-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-toast__action:hover {
+  background: var(--el-color-primary-light-9);
+}
+
+/* 元素上的 v-loading 轉圈：貼著區塊頂端（留 12px），不是垂直置中。資料陸續到時區塊會長高，置中的轉圈就跟著往下移——2026-10-18 全站
+   量測持股各頁手機 0.015～0.047 全是這一段（.el-loading-spinner 從 y=409 移出畫面）；先試過 min(50%, 64px)，區塊一開始很矮時還是會
+   從置中移到 64px（0.006）。只管元素上的（.el-loading-parent--relative），全螢幕的載入不動；篩選結果表自己的 sticky 規則權重較高，照它的 */
+.el-loading-parent--relative .el-loading-spinner {
+  top: 0;
+  margin-top: 12px;
+}

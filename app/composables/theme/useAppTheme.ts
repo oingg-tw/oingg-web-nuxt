@@ -1,5 +1,5 @@
 // The parameters that drive the whole site's look — see the comment block at the top
-// of main.css for how each combination maps to actual CSS. Casing/values match the real
+// of theme.css for how each combination maps to actual CSS. Casing/values match the real
 // 業務中台 contract exactly on purpose — no translation layer between what the API sends and
 // what's stored here (see useUserTheme.ts for the actual GET/PUT calls, wired in below).
 //
@@ -14,15 +14,15 @@
 //
 // `ThemeColor` is a closed set of pre-approved, contrast-verified keys (never an arbitrary
 // hex from the backend) — all seven now have real, contrast-verified CSS values for BOTH
-// dark and light mode (see main.css's html.dark[data-theme-color='...'] and
+// dark and light mode (see theme.css's html.dark[data-theme-color='...'] and
 // html:not(.dark)[data-theme-color='...'] blocks). RED/GREEN sit in the same hue family as
 // this app's fixed price-up/down colors (--el-color-danger/success) — accepted as a real
-// but non-blocking tradeoff (see main.css's own comment for the reasoning), not excluded.
+// but non-blocking tradeoff (see theme.css's own comment for the reasoning), not excluded.
 export type ThemeMode = 'LIGHT' | 'DARK' | 'SYSTEM'
 export type ThemeColor = 'GOLD' | 'BLUE' | 'GREEN' | 'PURPLE' | 'ORANGE' | 'RED' | 'TEAL'
 
 // Which color means "price went up" — Taiwan/most of Asia reads red as up, green as down;
-// the US/Europe read it the other way round. See main.css's --price-up-color/
+// the US/Europe read it the other way round. See theme.css's --price-up-color/
 // --price-down-color for how components actually consume this — they were never meant to
 // hardcode --el-color-danger/success directly for an "up"/"down" class in the first place.
 //

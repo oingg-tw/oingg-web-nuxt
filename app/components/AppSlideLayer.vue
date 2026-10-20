@@ -96,7 +96,7 @@ function onKeydown(event: KeyboardEvent) {
     @keydown="onKeydown"
   >
     <!-- ICON ONLY, by direct decision（2026-09-23,「關閉改成合適的logo就好，不要放文字」）, which
-         reverses main.css's own .dialog-close-button rule for this surface — that rule wants「a
+         reverses element-plus.css's own .dialog-close-button rule for this surface — that rule wants「a
          real, TEXT exit, not just an × in the corner」, and the 2026-09-19 interface-complexity
          review ruled bare icon buttons out on the same grounds.
          What makes it defensible HERE and not on a plain dialog: the label sits immediately beside

@@ -11,7 +11,7 @@ import { Close } from '@element-plus/icons-vue'
 // the error page), an unrelated thing.
 //
 // 本站自己的關閉鈕，不用 showClose（2026-09-23「那個把訊息關掉的按鈕實在突兀地傷眼睛」）：Element Plus 的關閉鈕是 <i>，
-// 不可聚焦、沒有名字，配上 duration: 0 等於鍵盤使用者關不掉（WCAG 2.1.1）。外觀見 main.css 的全站提示段落。
+// 不可聚焦、沒有名字，配上 duration: 0 等於鍵盤使用者關不掉（WCAG 2.1.1）。外觀見 element-plus.css 的全站提示段落。
 export function toastCloseButton(close: () => void) {
   return h('button', { type: 'button', class: 'app-toast__close', 'aria-label': '關閉訊息', onClick: close }, h(ElIcon, null, () => h(Close)))
 }

@@ -27,7 +27,7 @@ useHeaderHeightMeasure(barRef)
     <!-- Icon + visible text, not icon-only, since 2026-09-19 (interface-complexity review): a
          bare icon circle failed the reference doc's "every functional icon needs a text label"
          rule, and its comment claiming "44px circle size" below was never true — Element Plus's
-         own small-size circle button is a fixed 32px (main.css's own .el-button--small.is-circle
+         own small-size circle button is a fixed 32px (element-plus.css's own .el-button--small.is-circle
          rule). min-height is now set explicitly rather than inherited from a size variant. -->
     <el-button class="mobile-header__btn" @click="toggle('menu')">
       <el-icon aria-hidden="true"><Menu /></el-icon>選單
@@ -75,7 +75,7 @@ useHeaderHeightMeasure(barRef)
    min-height/padding/font-size set explicitly (2026-09-19, replacing `circle size="small"`)
    since these are now icon+text buttons, not fixed-size circles — a ≥44px touch target per the
    reference doc, with the button's own content driving its actual height instead of a hardcoded
-   px number (main.css's own `.el-button--small { height: auto }` rule already does the same). */
+   px number (element-plus.css's own `.el-button--small { height: auto }` rule already does the same). */
 .mobile-header__btn {
   flex-shrink: 0;
   min-height: 44px;

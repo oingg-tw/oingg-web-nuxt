@@ -127,7 +127,7 @@ const infoId = useId()
 }
 
 /* --el-color-primary-dark-2, not --el-color-primary: the light-mode accents were tuned to the
-   3:1 UI-component bar (main.css's own light-mode accent comment — GOLD measures 4.34:1 on a
+   3:1 UI-component bar (theme.css's own light-mode accent comment — GOLD measures 4.34:1 on a
    card), which is fine for a filled button but under the 4.5:1 that 16px TEXT needs. dark-2 is
    6.2:1 for GOLD and clears 4.5:1 for every accent, in both modes (dark mode's dark-2 lightens). */
 .stock-card-title__badge-link {

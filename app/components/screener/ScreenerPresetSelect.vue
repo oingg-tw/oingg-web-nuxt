@@ -150,7 +150,7 @@ function onCommand(command: string) {
   color: var(--el-text-color-primary);
 }
 
-/* 手機：選單獨佔一行（名稱不會被按鈕擠掉），按鈕排在下一行。高度跟全站規則走：滑鼠 32px、觸控 44px（main.css 的 pointer: coarse） */
+/* 手機：選單獨佔一行（名稱不會被按鈕擠掉），按鈕排在下一行。高度跟全站規則走：滑鼠 32px、觸控 44px（element-plus.css 的 pointer: coarse） */
 .screener-preset-select__select {
   flex: 1 1 100%;
   min-width: 0;

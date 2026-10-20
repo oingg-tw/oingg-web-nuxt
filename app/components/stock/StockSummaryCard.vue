@@ -255,7 +255,7 @@ const qrDialogVisible = ref(false)
          corner group, an ancestor's own overflow/stacking context could otherwise clip it. -->
     <el-dialog v-model="qrDialogVisible" title="掃描開啟此頁面" width="min(280px, 90vw)" append-to-body>
       <img v-if="qrCodeUrl" :src="qrCodeUrl" width="200" height="200" alt="掃描 QR Code 開啟此頁面" class="summary-card__qr-image">
-      <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
+      <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see element-plus.css's own
            .dialog-close-button comment. -->
       <template #footer>
         <el-button class="dialog-close-button" @click="qrDialogVisible = false">關閉</el-button>

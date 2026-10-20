@@ -57,7 +57,7 @@ const MARKET_OPTIONS: { key: MarketConvention; top: string; bottom: string; labe
 // ECharts options are plain JS, not CSS — none of the 4 settings reach it "for free" the way a
 // real DOM element picks up var(--el-color-primary)/rem font-size through the cascade:
 // - 主題色/漲跌顏色: getAccentColor()/getPriceColors() (chart-palette.ts) are this app's
-//   standing manual mirror of main.css's own theme-color/price-color CSS vars, already used by
+//   standing manual mirror of theme.css's own theme-color/price-color CSS vars, already used by
 //   every other themed chart (river charts, etc.) for the same reason.
 // - 外觀模式: 軸線／刻度文字的墨色由 SharedChart 的主題給（2026-10-08 起不再在這裡手動設）。
 // - 字型大小: handled by SharedChart.vue now (2026-09-16, once "字體放大以後 發現圖表的字體沒有

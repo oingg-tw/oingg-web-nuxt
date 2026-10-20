@@ -96,8 +96,10 @@ export default defineNuxtConfig({
   elementPlus: { defaultLocale: 'zh-tw' },
   // vue-echarts 的樣式（x-vue-echarts 是 display:block）原本由它的 JS 在瀏覽器裡注入：伺服器輸出的圖表容器在那之前是行內元素、高度 0，
   // JS 到了才撐開成 320px，把下面整段往下推——2026-10-18 全站量測（scripts/check-layout-shift.mjs）有圖的頁面在 1440 寬幾乎都是這一段
-  //（0.07～0.16）。放進全站 CSS，第一次繪製就是對的高度
-  css: ['vue-echarts/style.css', '~/assets/css/main.css'],
+  //（0.07～0.16）。放進全站 CSS，第一次繪製就是對的高度。
+  // 本站的全站樣式分三個檔（2026-10-21）：main.css（版面與共用元件）→ theme.css（顏色）→ element-plus.css（Element Plus 的修正）。
+  // 順序有意義：同特異性時後面的贏，Element Plus 的修正要蓋過前兩個
+  css: ['vue-echarts/style.css', '~/assets/css/main.css', '~/assets/css/theme.css', '~/assets/css/element-plus.css'],
   // 連結只在滑鼠移上去或鍵盤聚焦時預先載入，不是一出現在畫面上就載（2026-10-16 DEV 的 Lighthouse）：ETF 篩選結果每一列都連到
   // 有圖表的 ETF 個別頁、頁首有外觀設定，可見即預載讓每一頁一進來就抓下並執行 575 KiB 的 ECharts（ETF 篩選頁 479 KiB 沒用到），
   // 跟這一頁真正要的資源搶頻寬與 CPU。滑過去才載，點下去時多半已經載好

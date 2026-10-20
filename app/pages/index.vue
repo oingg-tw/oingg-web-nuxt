@@ -299,7 +299,7 @@ useHead({
 
 /* Bordered, rounded panel — deliberately NOT trying to blend the image's own dark canvas into
    the page background (which varies by theme: this app's dark mode is #121212, but users can
-   switch to several light accent themes too, see main.css). A framed illustration reads as
+   switch to several light accent themes too, see theme.css). A framed illustration reads as
    intentional in every theme; an edge-bleeding image whose own background doesn't match the
    page's would only look right in one specific theme. */
 .landing-page__hero-visual {
