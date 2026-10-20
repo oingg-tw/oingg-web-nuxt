@@ -4,7 +4,7 @@
 useSeoMeta({ title: '個人資料設定', robots: 'noindex, nofollow' })
 
 import { SwitchButton } from '@element-plus/icons-vue'
-import { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, signOut } from 'firebase/auth'
+import { EmailAuthProvider, GoogleAuthProvider, linkWithPopup, reauthenticateWithCredential, reauthenticateWithPopup, signOut } from 'firebase/auth'
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
@@ -152,6 +152,45 @@ async function linkLine() {
   }
 }
 
+// ---- LINE 帳號加上 Google 登入（2026-10-20，使用者：「這樣對方初次登入就是用 Line 怎麼處理？」→「我想補上」）----
+// 第一次就用 LINE 的人原本只能用 LINE 登入（沒有 email、換用 Google 會變成另一個空帳號）。Firebase 可以把 Google 掛到同一個
+// uid 上（linkWithPopup），之後用 Google 登入就是這個帳號，業務中台不用改（GET /users/me 會把 email 補進 User 列）。
+// 只做 Google：Google 已經驗證過 email、而且要真的登入那個 Google 才掛得上。電子郵件＋密碼是先掛上再寄驗證信，別人可以在自己的
+// LINE 帳號掛上你的 email 搶先佔用——要做得先驗證再掛（email 連結登入），還沒做。
+// LINE 內建瀏覽器擋 Google 視窗：那裡只給「用外部瀏覽器開啟」（LINE 官方參數 openExternalBrowser）
+const inLineBrowser = ref(false)
+onMounted(() => (inLineBrowser.value = isLineInAppBrowser()))
+const googleBusy = ref(false)
+const googleMessage = ref('')
+async function addGoogle() {
+  const user = currentUser.value
+  if (!user) return
+  googleMessage.value = ''
+  googleBusy.value = true
+  try {
+    await linkWithPopup(user, new GoogleAuthProvider())
+    // linkWithPopup 不觸發 onAuthStateChanged：providerData 換了，要自己通知畫面（同 UserEmailVerificationGate 的作法）
+    await user.reload()
+    triggerRef(currentUser)
+    // 換新 token 再打 /users/me，業務中台才會把 Google 的 email 寫進 User 列
+    await user.getIdToken(true)
+    await authedFetch('/users/me').catch(() => undefined)
+    ElMessage.success('已加上 Google 登入，之後用 Google 或 LINE 登入都是這個帳號。')
+  } catch (error) {
+    const code = (error as { code?: string }).code ?? ''
+    if (code === 'auth/provider-already-linked') return
+    googleMessage.value = /credential-already-in-use|email-already-in-use|account-exists/.test(code)
+      ? '這個 Google 帳號已經是另一個帳號了（之前用它登入過），沒辦法加到這裡。'
+      : /requires-recent-login/.test(code)
+        ? '為了安全，請先重新用 LINE 登入，再按一次「加上 Google 登入」。'
+        : /popup-blocked/.test(code)
+          ? '瀏覽器擋住了 Google 視窗，請允許彈出視窗後再試一次。'
+          : /popup-closed|cancelled-popup/.test(code) ? 'Google 視窗關掉了，請再按一次。' : '沒有加上 Google 登入，請稍後再試。'
+  } finally {
+    googleBusy.value = false
+  }
+}
+
 async function reauthForDelete() {
   deleting.value = true
   const failed = await reauthenticate('')
@@ -226,13 +265,22 @@ const planName = computed(() => {
           <span v-if="lineAccount || lineLinked" class="profile-page__method-note">已綁定</span>
           <el-button v-else :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
         </li>
+        <!-- LINE 建立的帳號還沒有 Google：加上去之後上面就會多一列 Google -->
+        <li v-if="lineAccount && !providers.includes('google.com')" class="profile-page__method">
+          <span>Google</span>
+          <a v-if="inLineBrowser" href="/profile?openExternalBrowser=1" class="profile-page__method-link">用外部瀏覽器開啟</a>
+          <el-button v-else :loading="googleBusy" @click="addGoogle">加上 Google 登入</el-button>
+        </li>
       </ul>
+      <p v-if="googleMessage" class="profile-page__delete-message" role="alert">{{ googleMessage }}</p>
+      <el-button v-if="googleMessage.startsWith('為了安全')" @click="startLineLogin('/profile')">重新用 LINE 登入</el-button>
+      <p v-if="lineAccount && inLineBrowser && !providers.includes('google.com')" class="profile-page__plan-note">LINE 內建瀏覽器打不開 Google 的登入視窗：用外部瀏覽器開啟這一頁、用 LINE 登入後，再按「加上 Google 登入」。</p>
       <template v-if="linkNeedsPassword && !lineLinked">
         <label for="link-line-password" class="profile-page__delete-label">為了安全，綁定前請輸入密碼，再按一次「綁定 LINE」</label>
         <el-input id="link-line-password" v-model="linkPassword" type="password" show-password autocomplete="current-password" />
       </template>
       <p v-if="linkMessage" class="profile-page__delete-message" role="alert">{{ linkMessage }}</p>
-      <p v-if="lineAccount" class="profile-page__plan-note">這是用 LINE 建立的帳號。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再到這裡綁定 LINE，兩邊就是同一個帳號。</p>
+      <p v-if="lineAccount && !providers.includes('google.com')" class="profile-page__plan-note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
       <p v-else-if="lineLinked === false" class="profile-page__plan-note">綁定後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
     </section>
 
@@ -428,6 +476,13 @@ const planName = computed(() => {
 
 .profile-page__method .el-button {
   min-height: 44px;
+}
+
+.profile-page__method-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--el-color-primary-dark-2);
 }
 
 .profile-page__delete-list {

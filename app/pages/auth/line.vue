@@ -65,7 +65,8 @@ async function signIn(code: string, nonce: string) {
   armPostLoginLoader()
   await navigateTo(returnTo.value, { replace: true })
   if (result.newAccount) {
-    ElMessage({ type: 'info', duration: 10000, showClose: true, message: '這是新的 LINE 帳號。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再到「個人資料」綁定 LINE，兩邊就是同一個帳號。' })
+    // 對真正的新使用者先說歡迎；之前用過 Google／email 的人（使用者這次卡住的情況）接著告訴他怎麼回到原本的帳號
+    ElMessage({ type: 'info', duration: 10000, showClose: true, message: '已用 LINE 建立帳號。想換電腦也能登入，可以到「個人資料」加上 Google 登入。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再綁定 LINE。' })
   }
 }
 
