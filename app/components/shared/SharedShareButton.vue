@@ -60,6 +60,10 @@ const unchanged = computed(() => !!active.value && active.value.columns.map(colu
 async function save() {
   const creating = !active.value
   saving.value = true
+  // 關閉的那 10 秒內又按「建立連結」（使用者 2026-10-20：「關閉分享以後再建立連結，就看不到連結了」）：一個對象只有一條連結，
+  // 舊的還沒刪，PUT 會拿回同一個 token——畫面當它已關而不顯示，10 秒到了還把它刪掉。先真的關掉舊的，再建一條新網址：
+  // 同一條網址復活的話，拿到舊網址的人又看得到了
+  if (creating) await pendingClose?.()
   if (!creating) status.value = '儲存中…'
   const share = await saveShare(props.kind, props.targetId, chosenColumns())
   saving.value = false
@@ -88,19 +92,30 @@ watch(chosen, () => {
 })
 onBeforeUnmount(() => clearTimeout(saveTimer))
 
+// 真的送出 DELETE：提示收掉（逾時、Esc），或那 10 秒內又按了建立連結（save 會先收掉提示、等它刪完）。只送一次
+let pendingClose: (() => Promise<void>) | null = null
+
 function closeLink() {
   const target = active.value
   if (!target) return
   clearTimeout(saveTimer)
   open.value = false
   closing.value = target.token
-  undoToast(`已關閉「${props.name}」的分享連結`, () => (closing.value = null), async () => {
-    // 按了復原
-    if (closing.value !== target.token) return
-    const ok = await revokeShare(target.token)
+  let sent: Promise<void> | null = null
+  const commit = () => (sent ??= revokeShare(target.token).then((ok) => {
     closing.value = null
     if (!ok) showErrorMessage('分享連結沒有關掉，請稍後再試')
+  }))
+  const toast = undoToast(`已關閉「${props.name}」的分享連結`, () => (closing.value = null), () => {
+    pendingClose = null
+    // 按了復原就不送
+    if (closing.value === target.token) void commit()
   })
+  pendingClose = () => {
+    pendingClose = null
+    toast.close()
+    return commit()
+  }
 }
 </script>
 
@@ -108,7 +123,7 @@ function closeLink() {
   <!-- 包一層：呼叫端的 class 才套得上；對話框本身 teleport 到 body，不佔這裡的版面 -->
   <span v-if="shares" class="shared-share">
     <el-button class="shared-share__button" aria-haspopup="dialog" @click="openDialog">{{ active ? '已分享' : '分享' }}</el-button>
-    <el-dialog v-model="open" :title="`分享「${name}」`" width="min(480px, 92vw)" align-center>
+    <el-dialog v-model="open" :title="`分享「${name}」`" width="min(480px, 92vw)">
       <p class="share-dialog__note">有連結的人不用登入就能看，內容會即時更新。</p>
 
       <!-- 連結列：建立前是「建立連結」，建立後同一列換成網址與複製，高度一樣，下面不會跳 -->

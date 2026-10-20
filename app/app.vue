@@ -26,6 +26,10 @@ useAppTheme()
 // at the root" reasoning as the rem cascade right above it.
 const { elSize } = useTextScale()
 
+// 所有彈窗垂直置中（2026-10-20，使用者：「記一筆交易希望可以垂直置中，貼底很像做錯」）。Element Plus 預設離頂 15vh，加上 main.css
+// 的 85vh 上限，高的彈窗剛好貼到畫面底；原本是一個個加 align-center，漏了七個。要自己定位的（篩選條件的手機底部面板）寫 :align-center="false"
+const elDialog = { alignCenter: true }
+
 // zh-tw 語系檔裡 el-table 的無障礙名稱沒翻譯（"Sort by {column}" 等），螢幕閱讀器會念英文。2026-10-08 覆寫。
 const elLocale = { ...zhTw, el: { ...zhTw.el, table: { ...zhTw.el.table,
   sortLabel: '依「{column}」排序',
@@ -69,7 +73,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-config-provider :size="elSize" :locale="elLocale">
+  <el-config-provider :size="elSize" :locale="elLocale" :dialog="elDialog">
     <div>
       <NuxtRouteAnnouncer />
       <NuxtLayout :name="layoutName">

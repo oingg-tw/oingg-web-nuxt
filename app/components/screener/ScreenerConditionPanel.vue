@@ -59,6 +59,7 @@ const unit = computed(() => {
     width="min(960px, 100vw)"
     class="condition-panel"
     modal-class="condition-panel-overlay"
+    :align-center="false"
     lock-scroll
     @update:model-value="value => { if (!value) emit('close') }"
     @closed="emit('closed')"

@@ -152,7 +152,6 @@ function goHome() {
     :model-value="dialogVisible"
     class="load-failure"
     width="min(440px, calc(100vw - 32px))"
-    align-center
     append-to-body
     :show-close="false"
     :close-on-click-modal="false"

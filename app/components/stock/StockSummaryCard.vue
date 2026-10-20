@@ -253,7 +253,7 @@ const qrDialogVisible = ref(false)
          needed. append-to-body for the same reason every other dialog in this app uses it (see
          GuruBadgeCard.vue's own comment) — this button sits inside an absolutely-positioned
          corner group, an ancestor's own overflow/stacking context could otherwise clip it. -->
-    <el-dialog v-model="qrDialogVisible" title="掃描開啟此頁面" width="min(280px, 90vw)" align-center append-to-body>
+    <el-dialog v-model="qrDialogVisible" title="掃描開啟此頁面" width="min(280px, 90vw)" append-to-body>
       <img v-if="qrCodeUrl" :src="qrCodeUrl" width="200" height="200" alt="掃描 QR Code 開啟此頁面" class="summary-card__qr-image">
       <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see main.css's own
            .dialog-close-button comment. -->

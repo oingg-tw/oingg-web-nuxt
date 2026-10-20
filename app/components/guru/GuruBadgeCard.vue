@@ -48,7 +48,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   <!-- append-to-body：不被祖先的 overflow 裁掉；#header 用 el-dialog 給的 titleId，對話框的 aria-labelledby 才指到徽章名
        （沒有它，朗讀器只聽到「對話框」）。出處（署名）放在標題下當副標（2026-09-10 使用者：「這邊看起來亂」）。
        注意這裡的 CSS 不能用 v-bind()：Teleport 出去的內容繼承不到元件根元素上的變數。 -->
-  <el-dialog v-model="dialogVisible" width="min(600px, 92vw)" align-center append-to-body>
+  <el-dialog v-model="dialogVisible" width="min(600px, 92vw)" append-to-body>
     <template #header="{ titleId, titleClass }">
       <p :id="titleId" :class="[titleClass, 'guru-badge-card__dialog-title']">{{ badge.name }}</p>
       <p class="guru-badge-card__dialog-byline">

@@ -40,6 +40,7 @@ const HOLDINGS_PAYLOAD = {
   sizes: { kind: 'holdings', asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ symbol, quantity, averageCost, costUnknownQuantity }) => ({ symbol, quantity, averageCost, costUnknownQuantity })) }
 }
 let storedShares = []
+const issued = { watchlist: 0, holdings: 0 }
 const calls = []
 let failures = 0
 const check = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -70,11 +71,20 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
     if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: storedShares } })
     if (p === '/api/core/shares' && m === 'PUT') {
       const body = JSON.parse(req.postData()); calls.push(`PUT ${JSON.stringify(body)}`)
-      const share = { token: body.kind === 'holdings' ? TOKEN_H : TOKEN, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, createdAt: 'x', updatedAt: 'y' }
+      // 跟 業務中台 一樣：同一個對象已經有連結就沿用那個 token；關掉之後再建，發新的 token（第二條是 TOKEN 後面加 2）
+      const existing = storedShares.find(item => item.kind === body.kind && (item.watchlistId ?? item.portfolioId) === (body.watchlistId ?? body.portfolioId))
+      const first = body.kind === 'holdings' ? TOKEN_H : TOKEN
+      const token = existing?.token ?? (issued[body.kind]++ ? `${first}${issued[body.kind]}` : first)
+      const share = { token, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, createdAt: 'x', updatedAt: 'y' }
       storedShares = [...storedShares.filter(item => item.token !== share.token), share]
       return route.fulfill({ json: { share } })
     }
-    if (p === `/api/core/shares/${TOKEN}` && m === 'DELETE') { calls.push('DELETE'); storedShares = storedShares.filter(item => item.token !== TOKEN); return route.fulfill({ status: 204, body: '' }) }
+    if (p.startsWith('/api/core/shares/') && m === 'DELETE') {
+      const token = p.split('/').pop()
+      calls.push(token === TOKEN ? 'DELETE' : `DELETE ${token}`)
+      storedShares = storedShares.filter(item => item.token !== token)
+      return route.fulfill({ status: 204, body: '' })
+    }
     if (p === `/api/core/public/shares/${TOKEN}`) {
       const columns = [{ key: 'stock.price', label: '收盤價' }, { key: 'watchlist.change', label: '漲跌' }, { key: 'exchangePeRatio.EOD', label: '本益比' }, ...(withNote ? [{ key: 'note', label: '備註' }] : [])]
       return route.fulfill({ json: { kind: 'watchlist', name: '存股名單', columns, items: items.map(({ symbol, note }) => ({ symbol, ...(withNote && note ? { note } : {}) })) } })
@@ -282,6 +292,21 @@ console.log('持股：擁有者（1440）')
   check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}`, '網址就是這條連結')
   await dialog.getByRole('button', { name: '完成' }).click(); await page.waitForTimeout(400)
   check((await button.innerText()).trim() === '已分享', '按鈕變成「已分享」')
+  // 關閉之後 10 秒內又建立（使用者 2026-10-20：「關閉分享以後再建立連結，就看不到連結了」）：舊的先真的刪掉、再發新網址
+  // （舊網址復活的話，拿到它的人又看得到）；10 秒到了不會再刪一次
+  const deletesBefore = calls.filter(call => call.startsWith('DELETE')).length
+  await button.click(); await page.waitForTimeout(400)
+  await dialog.getByRole('button', { name: '關閉連結' }).click(); await page.waitForTimeout(500)
+  await button.click(); await page.waitForTimeout(400)
+  await dialog.getByRole('button', { name: '建立連結' }).click(); await page.waitForTimeout(800)
+  const [deleted, created] = calls.slice(-2)
+  check(deleted === `DELETE ${TOKEN_H}` && created.startsWith('PUT {"kind":"holdings"'), `10 秒內再建立：先刪舊的、再建新的（${deleted} → ${created.slice(0, 24)}…）`)
+  check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}2`, '看得到連結，而且是新的網址')
+  check(await page.locator('.el-message', { hasText: '已關閉' }).count() === 0, '「已關閉…復原」的提示收掉了')
+  await dialog.getByRole('button', { name: '完成' }).click()
+  await page.evaluate(() => document.activeElement?.blur()); await page.mouse.move(5, 5)
+  await page.waitForTimeout(11000)
+  check(calls.filter(call => call.startsWith('DELETE')).length === deletesBefore + 1 && (await button.innerText()).trim() === '已分享', '10 秒後沒有再刪（新連結還在），按鈕是「已分享」')
   await ctx.close()
 }
 {

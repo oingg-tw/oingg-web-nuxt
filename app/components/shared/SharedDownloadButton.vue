@@ -59,7 +59,7 @@ function download() {
   <!-- 包一層：呼叫端的 class（靠右之類）才套得上；對話框本身 teleport 到 body，不佔這裡的版面 -->
   <span v-if="SHOWN" class="shared-download">
   <el-button class="shared-download__button" :disabled="!rows.length" @click="openDialog">下載</el-button>
-  <el-dialog v-model="open" title="下載成 CSV" width="min(480px, 92vw)" align-center>
+  <el-dialog v-model="open" title="下載成 CSV" width="min(480px, 92vw)">
     <p class="download-dialog__note">
       勾選要下載的欄位。<template v-if="hasSensitive">下半部的股數與金額會透露部位大小，預設不下載，需要時自己勾回來。</template>檔案在你的瀏覽器裡產生，不會上傳。
     </p>

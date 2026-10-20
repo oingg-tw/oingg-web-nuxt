@@ -49,7 +49,6 @@ function chooseTemplate(template: ColumnPresetTemplate) {
     :model-value="modelValue"
     :title="step === 'choose' ? '新增欄位組合' : '官方精選欄位組合'"
     :width="isDesktop ? '560px' : '92%'"
-    align-center
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >

@@ -321,7 +321,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
         </button>
         </div>
-        <el-dialog v-model="pickerOpen" title="加入指標" width="min(720px, 92vw)" align-center>
+        <el-dialog v-model="pickerOpen" title="加入指標" width="min(720px, 92vw)">
           <p class="stock-quick-view-page__picker-status" aria-live="polite">
             已加入 {{ pinnedSlugs.length }} / {{ PINNED_METRIC_LIMIT }} 個{{ isFull ? '，已到上限，先取消一個才能再加' : '' }}
           </p>

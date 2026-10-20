@@ -92,7 +92,6 @@ const activeTemplates = computed(() => {
     :model-value="modelValue"
     :title="step === 'grid' ? '新增篩選' : selectedCategory!"
     :width="isDesktop ? '560px' : '92%'"
-    align-center
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
