@@ -1,6 +1,7 @@
 // 持股特色（2026-10-19，使用者：「PER 多少、BETA 多少、ROE 多少…有些是低 Beta、有些是景氣循環專精，分享的時候可以一起帶出去，
 // 造訪的人就可以看出這一組持股的特色」）。數字都由 業務中台 算（GET /holdings/traits，業務中台 bd8a4e9；分享頁的公開資料是同一份）：
-// 組合依市值占比加權（本益比、股價淨值比用調和平均），Beta 是近一年回推、跟風險頁同一支；大盤是全市場普通股依市值、同一套算法
+// 組合依市值占比加權（本益比、股價淨值比用調和平均），Beta 是近一年回推（2026-10-20 起只在這裡，風險頁不再列：使用者
+// 「做好資訊分工 避免重複」）；大盤是全市場普通股依市值、同一套算法
 // （analysis-ts 算，上線前 market 是 null）。前三大占比借基金月報的前幾大占比（業務中台 a5cae2b）；規模與風格九宮格借 Morningstar
 // Style Box（使用者：「要做 而且要九宮格」，業務中台 b7ffbc5／analysis-ts 841ee654）。這裡只管三件事：每一列怎麼寫、九宮格的格子、
 // 標籤怎麼貼——持股分析頁與分享頁共用（HoldingsTraits）。
@@ -34,7 +35,7 @@ export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; m
   { key: 'dividendYield', name: '殖利率', unit: 'pct', meaning: '交易所公布的殖利率，依市值加權平均' },
   { key: 'roe', name: 'ROE', unit: 'pct', meaning: '近四季股東權益報酬率，依市值加權平均' },
   { key: 'revenueGrowth', name: '營收成長率', unit: 'pct', meaning: '近四季營收年增率，依市值加權平均' },
-  { key: 'beta', name: 'Beta（近一年）', unit: 'ratio', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %；用近一年的股價回推，ETF 也算在內，跟風險頁「近一年」的 Beta（回推）是同一個數字' },
+  { key: 'beta', name: 'Beta（近一年）', unit: 'ratio', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %；用現在的持股比例套近一年的股價回推，ETF 也算在內' },
   { key: 'revenueYoyVolatility', name: '營收年增率波動', unit: 'pct', meaning: '營收年增率起伏的大小，越大代表營收越跟著景氣起落；依市值加權平均' },
   { key: 'top3HoldingsPct', name: '前三大持股占比（ETF 除外）', unit: 'pct', meaning: '市值最大的三檔占整組持股的比例，分母包含 ETF；ETF 本身已分散、這裡拆不到它的成分股，不算進前三（0050 裡的台積電看不到）；特別股算一檔' }
 ]
