@@ -317,18 +317,19 @@ export interface PeriodOption {
   label: string
 }
 
-// Every field within fieldId's own metric that shares its name — i.e. every period variant
-// of "the same thing" (ROE TTM/單季/近四季), sorted by periodSortRank so the most useful one
-// leads. Powers the range editor's period switcher: picking a condition's field no longer
-// asks for a period up front (see ScreenerIndicatorPickerBody's condition-mode collapsing),
-// so this is the one place left to change it, as a refinement alongside min/max/exclude
-// rather than a totally separate field choice.
+// Every field of fieldId's own metric — each one is a period variant of the same thing (ROE 單季／近四季／年度) — sorted by
+// periodSortRank so the most useful one leads. Powers the range editor's period switcher: picking a condition's field no
+// longer asks for a period up front (see ScreenerIndicatorPickerBody's condition-mode collapsing), so this is the one place
+// left to change it, as a refinement alongside min/max/exclude rather than a totally separate field choice.
+//
+// 2026-10-21（使用者：「篩選條件 要可以 調整區間 比如單季 變成 TTM」）：這裡原本只留跟 fieldId 同 field.name 的欄位，但 field.name
+// 一律就是期別代碼（Q、TTM、FY，見 ScreenerIndicatorPickerBody 的 expandFields）——76 個多期別指標沒有一個欄位同名，永遠只找到自己，
+// 範圍編輯器的期別切換（periods.length > 1 才畫）從來沒出現過。改成跟 collapseFields 一樣：同一個指標的欄位都是期別變體
 export function periodSiblingsOf(categories: MetricCategory[], fieldId: string | null): PeriodOption[] {
   if (!fieldId) return []
   const location = locateFieldInSchema(categories, fieldId)
   if (!location) return []
   return location.metric.fields
-    .filter(field => field.name === location.field.name)
     .map(field => ({
       fieldId: `${location.metric.key}.${field.key}`,
       period: field.period,

@@ -83,8 +83,12 @@ const page = await context.newPage()
 
 const pageErrors = []
 page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+// 送出的查詢內容（換期別要看真的送了哪個欄位）
+const sentBodies = []
 page.on('response', response => {
-  if (response.request().method() === 'POST' && response.url().includes('/screener')) upstream.push(response.status())
+  if (response.request().method() !== 'POST' || !response.url().includes('/screener')) return
+  upstream.push(response.status())
+  sentBodies.push(response.request().postData() ?? '')
 })
 
 // 2026-10-15 起兩排分頁換成「我的篩選」「顯示欄位」兩組選單（ScreenerPresetSelect，三組篩選共用）
@@ -207,6 +211,45 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const backStatus = upstream[upstream.length - 1]
     expect('條件', '移除條件後結果回來', back.now.count > 0 && backStatus === 200,
       `${beforeRemove.count}列 → ${back.now.count}列/${back.now.first}，業務中台 ${backStatus}，等了 ${back.ms}ms`)
+  }
+}
+
+// ── 3b. 換期別（2026-10-21，使用者：「篩選條件 要可以 調整區間 比如單季 變成 TTM」）──────────────────────────
+// periodSiblingsOf 原本只留跟條件同 field.name 的欄位，而 field.name 就是期別代碼，所以範圍編輯器的期別切換從來沒出現過
+{
+  await page.locator('.screener-filters__add-slot').first().click()
+  const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+  if (picker.ok) {
+    await page.locator('.condition-panel .indicator-dialog__search input').fill('股東權益報酬率')
+    await page.waitForTimeout(600)
+    await page.locator('.indicator-dialog__metric', { hasText: '股東權益報酬率' }).first().click()
+    const editor = await waitFor(page.locator('.condition-panel .range-editor'), 15000)
+    const periods = page.locator('.condition-panel .range-editor__period')
+    const labels = (await periods.allTextContents()).map(text => text.trim())
+    expect('換期別', '股東權益報酬率可以換單季、近四季、年度', editor.ok && ['單季', '近四季', '年度'].every(label => labels.includes(label)), labels.join('／') || '沒有期別按鈕')
+    if (labels.includes('單季')) {
+      const quarter = periods.filter({ hasText: '單季' })
+      await quarter.click()
+      await page.waitForTimeout(300)
+      expect('換期別', '按「單季」就換過去', await quarter.getAttribute('aria-pressed') === 'true')
+      const sent = sentBodies.length
+      // 同上一段：輸入框要按 Enter 才寫進去，關閉面板才算一個條件
+      const input = page.locator('.condition-panel input[role="spinbutton"]').first()
+      await input.fill('0')
+      await input.press('Enter')
+      await page.waitForTimeout(600)
+      await page.keyboard.press('Escape')
+      const start = Date.now()
+      while (sentBodies.length === sent && Date.now() - start < 30000) await page.waitForTimeout(300)
+      const pillText = (await page.locator('.condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? ''
+      expect('換期別', '膠囊寫「單季」', pillText.includes('單季'), pillText)
+      expect('換期別', '送出的條件是 roe.Q', sentBodies.slice(sent).some(body => body.includes('"roe.Q"')), `${sentBodies.length - sent} 次查詢`)
+      await page.locator('.condition-pill').last().locator('.condition-pill__remove').click()
+      await page.waitForTimeout(1500)
+    } else {
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(800)
+    }
   }
 }
 
