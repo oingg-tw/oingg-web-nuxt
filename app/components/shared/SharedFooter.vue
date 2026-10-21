@@ -76,7 +76,7 @@ async function reopenConsent() {
                as 總經特區 directly below: a zone's sole entry point has to sit somewhere that
                renders on every page, or the zone orphans. -->
           <li>
-            <NuxtLink to="/industries" class="shared-footer__nav-link">產業追蹤</NuxtLink>
+            <NuxtLink to="/industries" class="shared-footer__nav-link">產業索引</NuxtLink>
           </li>
           <!-- 總經特區 2026-09-22 — same move 大師徽章/部落格 made below: it spent a few hours as a
                top-nav leaf and came out again（「總經特區從top nav移除」）. This is the zone's only

@@ -21,7 +21,8 @@ export const APP_FEATURES: AppFeature[] = [
   // 個股總表 2026-09-19 (the SEO build) — /stock, every listed company grouped by 證交所類股, the
   // browse-by-list counterpart to the screener right above it.
   { key: 'stock-directory', label: '個股總表', icon: Collection, to: '/stock' },
-  { key: 'industries', label: '產業追蹤', icon: OfficeBuilding, to: '/industries' },
+  // 產業追蹤 → 產業索引（2026-10-21，同頁首選單）：「追蹤」像是能關注某個產業，點進去其實是 34 個類股的索引頁
+  { key: 'industries', label: '產業索引', icon: OfficeBuilding, to: '/industries' },
   // 總經特區 2026-09-21（當時叫大盤與升降息，在 /rate-cycle），2026-09-22 成立特區後改指 /macro。列在這裡而不只在 sitemap：
   // 個股導覽永遠不會通到全市場頁，沒有這一筆它只剩 /sitemap 一個入口，check-click-depth 量到的會是孤兒。
   { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro' },

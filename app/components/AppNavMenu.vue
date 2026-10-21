@@ -61,13 +61,16 @@
     <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
   </el-menu-item>
 
+  <!-- 名稱對齊點進去的內容（2026-10-21，使用者：「app-header-menu 請讓 item name 對得起點進去後的內容」，看過對照表後「照建議改」）：
+       下拉原本叫「股票篩選」，但底下四項只有一項是篩選、又跟子項「篩選」重複 → 找股票；子項照各頁的標題與手機選單（app-features.ts）：
+       找股票 → 個股總表、篩選 → 股票篩選、產業 → 產業索引。排行對得上，不動 -->
   <el-sub-menu index="stock-group">
-    <template #title>股票篩選</template>
+    <template #title>找股票</template>
     <el-menu-item index="/stock">
-      <NuxtLink to="/stock" class="app-nav-menu__link" tabindex="-1">找股票</NuxtLink>
+      <NuxtLink to="/stock" class="app-nav-menu__link" tabindex="-1">個股總表</NuxtLink>
     </el-menu-item>
     <el-menu-item index="/screener/common">
-      <NuxtLink to="/screener/common" class="app-nav-menu__link" tabindex="-1">篩選</NuxtLink>
+      <NuxtLink to="/screener/common" class="app-nav-menu__link" tabindex="-1">股票篩選</NuxtLink>
     </el-menu-item>
     <el-menu-item index="/rank">
       <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>
@@ -78,7 +81,7 @@
          而且會動到 2026-09-19「收斂到 2 個頂層下拉」的結果。改成一個入口指向索引頁之後，兩個
          問題都不見了——選單維持 3 個頂層項目，類股清單回到它該在的地方（一個頁面）。 -->
     <el-menu-item index="/industries">
-      <NuxtLink to="/industries" class="app-nav-menu__link" tabindex="-1">產業</NuxtLink>
+      <NuxtLink to="/industries" class="app-nav-menu__link" tabindex="-1">產業索引</NuxtLink>
     </el-menu-item>
   </el-sub-menu>
 

@@ -78,19 +78,20 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
       <h2 id="industries-table-heading" class="stock-page-section__title">每個類股的數字是多少？</h2>
       <el-input v-model="keyword" class="industries-page__search" placeholder="搜尋類股名稱，例如 半導體" aria-label="搜尋類股名稱" clearable />
       <p v-if="keyword.trim()" class="visually-hidden" role="status">{{ filteredRows.length }} 個類股符合</p>
-      <SharedTableScroll label="各證交所類股的公司家數、殖利率中位數與股利成長率">
+      <!-- 欄位簡化（2026-10-21，使用者：「industries 表格欄位請簡化」）：8 欄 → 6 欄。「有值家數」兩欄拿掉（是中位數的分母，不是讀者要比
+           的數字；各類股頁與散佈圖的提示框仍有），「中位數」三個字從每個欄名收進表格說明——每一欄都是中位數，說一次就好 -->
+      <p class="hub-answer">除了公司家數，每一欄都是該類股的中位數。</p>
+      <SharedTableScroll label="各證交所類股的公司家數、殖利率與成長率中位數">
         <table class="seo-table" data-ssr-table>
-          <caption>證交所類股的股利統計（殖利率為 {{ summary?.dividendYieldTradeDate ?? '' }} 收盤價計算，未配息以 0% 計入）</caption>
+          <caption>證交所類股的中位數（殖利率為 {{ summary?.dividendYieldTradeDate ?? '' }} 收盤價計算，未配息以 0% 計入）</caption>
           <thead>
             <tr>
               <th scope="col">類股</th>
-              <th scope="col">公司家數</th>
-              <th scope="col">殖利率中位數</th>
-              <th scope="col">殖利率有值家數</th>
-              <th scope="col">股利 3 年成長率中位數</th>
-              <th scope="col">成長率有值家數</th>
-              <th scope="col">營收年增率中位數</th>
-              <th scope="col">淨利年增率中位數</th>
+              <th scope="col">家數</th>
+              <th scope="col">殖利率</th>
+              <th scope="col">股利 3 年成長</th>
+              <th scope="col">營收年增</th>
+              <th scope="col">淨利年增</th>
             </tr>
           </thead>
           <tbody>
@@ -98,9 +99,7 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
               <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
               <td>{{ row.companyCount }}</td>
               <td>{{ yieldText(row.dividendYield.median) }}</td>
-              <td>{{ row.dividendYield.count }}</td>
               <td>{{ growthText(row.dividendGrowthRate3y.median) }}</td>
-              <td>{{ row.dividendGrowthRate3y.count }}</td>
               <td>{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
               <td>{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
             </tr>
@@ -114,9 +113,8 @@ const pathFor = (code: string) => sectorPath(code) ?? '/stock'
       <h2 id="industries-notes-heading" class="stock-page-section__title">看這些數字要注意什麼？</h2>
       <ul class="industries-page__notes">
         <li>殖利率把沒有配息的公司以 0% 計入。證交所從 2026-08-28 起把沒配息的公司從 0.00 改成空白，這裡一律當 0，所以上市與上櫃的算法一致。中位數是 0 代表該類股過半公司沒有配息。</li>
-        <li>兩個欄位的家數不一樣，因為各自只算該欄位有值的公司。公司家數不是平均或中位數的分母，拿它反推總額會算錯。</li>
-        <li>股利 3 年成長率全市場約 57% 的公司有數值。</li>
-        <li>兩欄都用中位數。成長率有極端值，34 個類股裡有 8 個的平均與中位數正負號相反，而正負號就是這個欄位在講的事。</li>
+        <li>中位數只算該欄有數值的公司，所以每一欄的分母不一定等於家數（股利 3 年成長率全市場約 57% 的公司有數值）；拿家數反推總額會算錯。各類股實際算進幾家，點類股名稱看。</li>
+        <li>都用中位數，不用平均。成長率有極端值，34 個類股裡有 8 個的平均與中位數正負號相反，而正負號就是這個欄位在講的事。</li>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>
     </section>
