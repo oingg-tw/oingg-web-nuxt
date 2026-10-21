@@ -20,9 +20,9 @@ const baseUrl = process.env.SCREENER_CHECK_URL ?? 'http://localhost:3000'
 // SCREENER_CHECK_ONLY=特別股,ETF 只跑其中幾頁
 const only = process.env.SCREENER_CHECK_ONLY?.split(',')
 const PAGES = [
-  { name: '普通股', path: '/screener/common?template=value', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
-  { name: '特別股', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率' },
-  { name: 'ETF', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '規模' }
+  { name: '普通股', universe: 'common', path: '/screener/common?template=value', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
+  { name: '特別股', universe: 'preferred', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率' },
+  { name: 'ETF', universe: 'etf', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '規模' }
 ].filter(target => !only || only.includes(target.name))
 
 const failures = []
@@ -321,6 +321,24 @@ for (const target of isDevServer ? [] : PAGES) {
     expect(target.name, `${width} 寬載入時沒有版面位移（CLS ${total.toFixed(3)}）`, counted.ok && total <= CLS_LIMIT, detail)
     await context.close()
   }
+}
+
+// ── 6. 除權息月覽的「在篩選器打開」（2026-10-22）：?exDividendMonth=7 打開一組只有「除權息月份：包含 7 月」的篩選、網址參數用完拿掉。
+// 檔數跟月覽的 7 月比：篩選只含還在交易的，已下市、已收回的不算（analysis-ts 2026-10-22 量 DEV：普通股、特別股 7 月各差 1、ETF 一致），
+// 所以只能比月覽少、最多少 3。還沒到的月份兩邊都用去年同月（上游對過 9～12 月），這裡不重複
+const july = (await (await fetch(`${baseUrl}/api/hub/ex-dividend-months`)).json()).cells.find(cell => cell.month.endsWith('-07'))
+for (const target of PAGES) {
+  console.log(`\n== ${target.name} /screener/${target.universe}?exDividendMonth=7`)
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  await page.goto(`${baseUrl}/screener/${target.universe}?exDividendMonth=7`, { waitUntil: 'load', timeout: 180000 })
+  const counted = await waitForCount(page, text => /符合上述條件 \d+ 檔/.test(text), 90000)
+  const pills = (await page.locator('.condition-pill').allTextContents()).map(text => text.replace(/\s+/g, ''))
+  expect(target.name, '打開「除權息月份：包含 7 月」、網址參數拿掉', pills.join('|') === '除權息月份包含7月' && !page.url().includes('?'), `${pills.join('|')} ${page.url()}`)
+  const found = Number(counted.text.match(/(\d+) 檔/)?.[1])
+  const listed = july.counts[target.universe]
+  expect(target.name, '檔數比月覽 7 月少 0～3 檔（已下市、已收回的不算）', counted.ok && listed - found >= 0 && listed - found <= 3, `篩選 ${found}、月覽 ${listed}`)
+  await context.close()
 }
 
 await browser.close()

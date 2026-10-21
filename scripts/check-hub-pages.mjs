@@ -32,7 +32,7 @@ const BACKEND_OWNED = []
 // 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數；
 // 景氣時鐘 2026-10-21 起是 /macro）
 // 除權息月覽的熱力格是那個月清單的連結（?month=，2026-10-21，canonical 不帶參數）
-const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}$/]
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/screener\/(common|etf|preferred)\?exDividendMonth=\d{1,2}$/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}$/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [

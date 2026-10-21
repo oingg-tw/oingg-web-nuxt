@@ -10,7 +10,8 @@ import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetric
 // 原本的三個固定分頁（全部／非累積型／累積型）變成「股息累積性」這個類別型條件；三組欄位預設變成「新增欄位組合」的範本。
 // 每股淨值那些償債欄位（利息保障倍數、負債比…）上游一直是 null，不放。
 
-type PreferredValue = string | number | boolean | null
+// 陣列只有除權息月份（[6, 7]，analysis-ts 617ba6bb）
+type PreferredValue = string | number | boolean | null | number[]
 
 interface PreferredStockEntry {
   symbol: string
@@ -25,7 +26,9 @@ const CATEGORIES = [
   snapshotCategory('yield', '股息與殖利率', 0, [
     { field: 'nominalDividendRatePct', name: '票面利率', unit: '%' },
     { field: 'currentYieldPct', name: '殖利率', unit: '%' },
-    { field: 'ytwPct', name: '最差殖利率 YTW', unit: '%' }
+    { field: 'ytwPct', name: '最差殖利率 YTW', unit: '%' },
+    // 還沒到的月份看去年同月（同普通股、ETF 的上游定義，跟除權息月覽一致）
+    { field: 'exDividendMonths', name: '除權息月份', kind: 'categorical', options: EX_DIVIDEND_MONTH_OPTIONS }
   ]),
   snapshotCategory('price', '價格', 1, [
     { field: 'latestClosePrice', name: '現價', unit: '元' },
@@ -70,7 +73,7 @@ const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
 function formatValue(field: string, raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
   const metric = METRICS.get(field)
-  if (metric?.kind === 'categorical') return metric.options?.find(option => option.value === raw)?.label ?? raw
+  if (metric?.kind === 'categorical') return labelEachValue(raw, value => metric.options?.find(option => option.value === value)?.label)
   const value = Number(raw)
   if (!metric || !Number.isFinite(value)) return raw
   return metric.unit === '%' ? `${value.toFixed(2)}%` : groupThousands(value.toFixed(2))
@@ -79,7 +82,8 @@ function formatValue(field: string, raw: string | null | undefined): string {
 function matches(entry: PreferredStockEntry, filter: FilterCriterion): boolean {
   const raw = entry[filter.field]
   if (filter.values) {
-    const hit = raw !== null && raw !== undefined && filter.values.includes(String(raw))
+    // 陣列（除權息月份）任一個在選的項目裡就算有；排除＝一個都沒有，沒有除權息的也留下（同上游普通股、ETF 的語意）
+    const hit = [raw].flat().some(value => value !== null && value !== undefined && filter.values!.includes(String(value)))
     return filter.exclude ? !hit : hit
   }
   if (typeof raw !== 'number') return false
@@ -91,9 +95,10 @@ function toRow(entry: PreferredStockEntry): ScreenerResultRow {
   return {
     symbol: entry.symbol,
     name: entry.name,
+    // 陣列寫成跟 ETF、普通股上游一樣的「6、7」，空的是 null
     values: Object.fromEntries(Object.entries(entry).map(([field, value]) => [
       snapshotFieldId(field),
-      { value: value === null ? null : String(value), knowledgeDate: '', nullReason: null }
+      { value: Array.isArray(value) ? value.join('、') || null : value === null ? null : String(value), knowledgeDate: '', nullReason: null }
     ]))
   }
 }

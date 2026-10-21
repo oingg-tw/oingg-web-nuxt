@@ -9,7 +9,6 @@ const route = useRoute()
 const router = useRouter()
 const hasHydrated = useHasHydrated()
 const showPeriod = useScreenerShowPeriod()
-const currentUser = useCurrentUser()
 
 // <head> (2026-09-19): the canonical is the bare path — `?template=`/`?sector=` are entry points that open a screen, not
 // separate pages, and the query is dropped from the URL once applied (see the deep-link watchers below).
@@ -50,27 +49,34 @@ const { open: openLogin } = useLoginDialog()
 // ---- 深層連結（2026-09-19）：條件頁的「套用至篩選器」帶 ?template={slug}、產業頁的「想用更多條件篩選？」帶 ?sector={code}。
 // 2026-10-15 起兩者都打開一組「未儲存」的篩選，不替登入的人新建（原本每點一次就多一組、吃三組合計的額度），也不改到已存的那一組。
 // 套用一次之後把 query 拿掉（畫面狀態不留在網址裡）。
+// 除權息月覽的 ?exDividendMonth（2026-10-22）跟 ?template 走同一條路：打開一組「除權息月份：包含 N 月」的未儲存篩選
 const templateQuery = computed(() => (typeof route.query.template === 'string' ? route.query.template : null))
+const monthQuery = computed(() => exDividendMonthOf(route.query.exDividendMonth))
 const sectorQuery = computed(() => (typeof route.query.sector === 'string' && linkedSectors.value.some(sector => sector.code === route.query.sector) ? route.query.sector : null))
 
 function clearDeepLinkQuery() {
-  if (templateQuery.value || route.query.sector !== undefined) router.replace({ query: {} })
+  if (templateQuery.value || route.query.sector !== undefined || route.query.exDividendMonth !== undefined) router.replace({ query: {} })
 }
+
+const deepLinkSelection = () => (templateQuery.value ? guest.templateBySlug(templateQuery.value) : monthQuery.value ? guest.exDividendMonthSelection(monthQuery.value) : null)
 
 // ?template 還在解析時外殼維持骨架（2026-10-16）：不然選範本會先出現約 0.8 秒（「載入中…」→ 範本格子），再被結果整塊換掉，手機 CLS 0.112。
 // 範本代號不存在或讀失敗（templateMissing）才退回選範本。宣告在下面的 watcher 之前：站內切頁進來時它的 immediate 會在 setup 當下就跑
 const templateMissing = ref(false)
-const templatePending = computed(() => !!templateQuery.value && !screener.activeTab && !templateMissing.value)
+const templatePending = computed(() => !!(templateQuery.value || monthQuery.value) && !screener.activeTab && !templateMissing.value)
 
 // 訪客、還沒有任何一組：?template 直接打開那個範本（條件頁就是他的選擇——那個選擇步驟的合規重點是「訪客自己選」，他選了）；
 // 沒有就顯示選範本
+let deepLinkOpened = false
 watch(
   () => hasHydrated.value && screener.ready && !screener.activeTab,
   async (needsTab) => {
     if (!needsTab) return
-    const selection = templateQuery.value ? await guest.templateBySlug(templateQuery.value) : null
-    if (selection) await screener.addLocalTab(selection.filters, selection.fieldKeys, selection.name)
-    else {
+    const selection = await deepLinkSelection()
+    if (selection) {
+      deepLinkOpened = true
+      await screener.addLocalTab(selection.filters, selection.fieldKeys, selection.name)
+    } else {
       templateMissing.value = true
       guest.loadTemplates()
     }
@@ -78,17 +84,17 @@ watch(
   { immediate: true }
 )
 
-// 有一組在畫面上之後：登入的人的 ?template 打開一組未儲存的；?sector 加上「類股：包含 X」——目前這組已存的話先複製成未儲存的
+// 有一組在畫面上之後：?template／?exDividendMonth 另外打開一組未儲存的（上面那個 watcher 已經開過就不再開）。訪客也是：頁籤存在
+// useState，站內換頁回來時訪客已經有一組，原本只給登入的人，訪客點了連結什麼都不會發生（2026-10-22）。
+// ?sector 加上「類股：包含 X」——目前這組已存的話先複製成未儲存的
 let deepLinkApplied = false
 watch(
   () => hasHydrated.value && screener.ready && !!screener.activeTab,
   async (ready) => {
     if (!ready || deepLinkApplied) return
     deepLinkApplied = true
-    if (templateQuery.value && currentUser.value) {
-      const selection = await guest.templateBySlug(templateQuery.value)
-      if (selection) await screener.addLocalTab(selection.filters, selection.fieldKeys, selection.name)
-    }
+    const selection = deepLinkOpened ? null : await deepLinkSelection()
+    if (selection) await screener.addLocalTab(selection.filters, selection.fieldKeys, selection.name)
     if (sectorQuery.value) applySector(sectorQuery.value)
     clearDeepLinkQuery()
   },

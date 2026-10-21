@@ -8,11 +8,17 @@
 // 2026-10-01：「殖利率 0%」改寫成「不配息」。**只在個股層級**——類股中位數是 0 不等於整個類股不配息。
 export const NO_DIVIDEND_TEXT = '不配息'
 
+// 多值的類別欄位（除權息月份，上游寫成「1、7、11」，2026-10-22）逐項換成選項的名稱：「1 月、7 月、11 月」。三組篩選共用
+export const labelEachValue = (raw: string, labelOf: (value: string) => string | undefined) => raw.split('、').map(value => labelOf(value) ?? value).join('、')
+
+// 除權息月份的選項（特別股、ETF 的值是字串 '1'～'12'；普通股的選項由型錄給，值是整數、名稱同樣是「1 月」）
+export const EX_DIVIDEND_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({ value: String(index + 1), label: `${index + 1} 月` }))
+
 // options：類別型欄位（型錄的 kind categorical，例如河道位置）的選項。上游的值一律是十進位字串（"0"），選項的 value 是數字，
 // 所以用字串比對後顯示中文（破底…破頂）；對不到的照原值（2026-10-21）
 export function formatScreenerValue(raw: string | null | undefined, unit: string | undefined, field?: string, options?: { value: string | number; label: string }[] | null): string {
   if (raw === null || raw === undefined) return '—'
-  if (options?.length) return options.find(option => String(option.value) === String(raw))?.label ?? raw
+  if (options?.length) return labelEachValue(raw, value => options.find(option => String(option.value) === value)?.label)
   if (field === 'dividendYield.EOD' && Number(raw) === 0) return NO_DIVIDEND_TEXT
   if (unit === '%') return `${raw}%`
   const value = Number(raw)

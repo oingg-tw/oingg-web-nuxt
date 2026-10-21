@@ -567,6 +567,10 @@ export function useUniverseScreener(source: UniverseSource) {
     unsaved: !set.saved && set.fields.join('|') !== source.defaultColumns.join('|')
   })))
 
+  // 除權息月覽的 ?exDividendMonth（2026-10-22）：第一次載入時內建那一組換成「除權息月份：包含 N 月」、選它，用完把網址的參數拿掉
+  const router = useRouter()
+  let deepLinkMonth = exDividendMonthOf(useRoute().query.exDividendMonth)
+
   // ---- 載入：登入狀態確定、型錄到了才開始。登入或登出後重讀，但內建那兩組的修改留著（訪客按「存成…」登入之後還在）----
   let bootSeq = 0
   watch(
@@ -587,9 +591,15 @@ export function useUniverseScreener(source: UniverseSource) {
       const builtInTab = tabs.value.find(tab => !tab.saved) ?? makeTab(BUILT_IN_ID, source.allName, false, [])
       builtInTab.columns = columnsOf(activeColumnSet.value?.fields ?? source.defaultColumns)
       builtInTab.searched = false
+      const month = deepLinkMonth
+      deepLinkMonth = null
+      if (month) {
+        builtInTab.slots = slotsOf([{ field: 'exDividendMonths', min: null, max: null, exclude: false, values: [String(month)] }])
+        router.replace({ query: {} })
+      }
       tabs.value = [builtInTab, ...presets.map(presetToTab)]
       const rememberedTab = rememberedChoice(tabKey)
-      activeTabId.value = tabs.value.find(tab => tab.id === rememberedTab)?.id ?? BUILT_IN_ID
+      activeTabId.value = month ? BUILT_IN_ID : tabs.value.find(tab => tab.id === rememberedTab)?.id ?? BUILT_IN_ID
       ready.value = true
       if (activeTab.value) search(activeTab.value)
     },

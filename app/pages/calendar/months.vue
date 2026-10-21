@@ -83,6 +83,13 @@ const previewOf = (rowsOfDay: ExDividendRow[]) => {
   return `${names.slice(0, PREVIEW_NAMES).join('、')}${names.length > PREVIEW_NAMES ? ' 等' : ''}`
 }
 
+// 到篩選器打開這個月除權息的標的、再加其他條件（2026-10-22，使用者：「或許是 帶去 股票篩選作為條件? 那麼是不是就要先建立 對應的指標?」
+// → analysis-ts 617ba6bb 的「除權息月份」，還沒到的月份同樣看去年同月）。跟著上面的種類切換，那個月沒有的種類不給連結
+const SCREENER_LABEL: Record<ExDividendKind, string> = { common: '普通股', etf: 'ETF', preferred: '特別股' }
+const screenerLinks = computed(() => (Object.keys(SCREENER_LABEL) as ExDividendKind[])
+  .filter(key => (kind.value === 'all' || kind.value === key) && selected.value.counts[key])
+  .map(key => ({ key, label: SCREENER_LABEL[key], to: exDividendMonthScreenerPath(key, monthNumber(selected.value.month)) })))
+
 const cashText = (cash: number) => String(Number(cash.toFixed(4)))
 const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Number((row.stockPerShare * 1000).toFixed(2))} 股` : row.rightsOffering ? '現金增資' : '－')
 </script>
@@ -118,6 +125,9 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
     </StockQuestionSection>
 
     <StockQuestionSection id="ex-months-list" :question="`${year} 年 ${monthNumber(selected.month)} 月有哪些除權息？`" :answer="monthAnswer">
+      <p v-if="screenerLinks.length" class="hub-answer">
+        在篩選器打開這個月除權息的標的，再加其他條件：<template v-for="(link, index) in screenerLinks" :key="link.key">{{ index ? '、' : '' }}<NuxtLink :to="link.to" class="hub-inline-link">{{ link.label }}</NuxtLink></template>。
+      </p>
       <ul v-if="rows.length" class="ex-days">
         <li v-for="day in days" :key="day.date">
           <details class="app-disclosure ex-day">
@@ -165,6 +175,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
         <li>上市櫃公司的股東常會多在 5、6 月召開，通過配息之後才訂除權息日，所以除權息集中在夏天；季配、月配的公司與 ETF 則分散在各月。</li>
         <li>檔數是那個月有除權息（除息、除權或兩者）的不重複代號數，包含已經公告、還沒除息的。</li>
         <li v-if="estimatedMonths.length">{{ estimatedMonths.join('、') }} 月還沒到，用 {{ year - 1 }} 年同月的檔數與名單試算；到了那個月就換成今年的資料。</li>
+        <li>篩選器的「除權息月份」用同樣的算法，但只含現在還在交易的標的：已下市、已收回的不算，檔數可能比這裡少一兩檔。</li>
       </ul>
       <p class="hub-answer hub-sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心的除權息預告，公開資訊觀測站的股利分派公告，以及投信投顧公會的 ETF 收益分配。</p>
     </section>

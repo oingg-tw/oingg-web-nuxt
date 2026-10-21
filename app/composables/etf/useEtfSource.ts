@@ -47,7 +47,8 @@ interface EtfScreenerResponse {
 const VALUE_LABELS: Record<string, Record<string, string>> = {
   market: { sii: '上市', otc: '上櫃' },
   isActive: { true: '主動式', false: '被動式（追蹤指數）' },
-  belowStatutoryThreshold: { true: '是', false: '否' }
+  belowStatutoryThreshold: { true: '是', false: '否' },
+  exDividendMonths: Object.fromEntries(EX_DIVIDEND_MONTH_OPTIONS.map(option => [option.value, option.label]))
 }
 
 // 畫面上的名稱（欄位名照上游，不改）：「主動式ETF：包含 被動式」讀不通。近 12 個月總費用率是估算（analysis-ts 803f6cd9：分母用
@@ -105,7 +106,7 @@ function displayLabel(field: EtfFilterField): string {
 
 function formatValue(field: EtfFilterField | undefined, raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
-  if (field?.kind === 'categorical') return valueLabel(field.field, raw)
+  if (field?.kind === 'categorical') return labelEachValue(raw, value => valueLabel(field.field, value))
   const value = Number(raw)
   if (!Number.isFinite(value)) return raw
   if (field?.unit === '元') return field.field === 'nav' ? groupThousands(value.toFixed(2)) : formatMoney(value)
