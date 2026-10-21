@@ -59,7 +59,7 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
     symbol: row.symbol,
     name,
     label: `${name} ${row.symbol}`,
-    link: entry ? routeFor(entry) : `/stock/${row.symbol}`,
+    link: entry ? routeFor(entry) : securityPath(row.symbol),
     value: Number(row.realizedProfitLoss),
     price: quote?.price == null ? null : Number(quote.price),
     priceDate: quote?.priceDate ?? null,

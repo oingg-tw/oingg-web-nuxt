@@ -192,7 +192,8 @@ function detailMeta(event: DividendCalendarEvent): string[] {
     <el-dialog v-model="detailVisible" :title="detailDay ? `${detailDay} 除權息事件` : ''" width="min(360px, calc(100vw - 32px))" append-to-body>
       <ul class="dividend-calendar-card__detail-list">
         <li v-for="event in detailEvents" :key="event.symbol" class="dividend-calendar-card__detail-row">
-          <NuxtLink :to="`/stock/${event.symbol}`" class="dividend-calendar-card__detail-link">
+          <!-- ETF、特別股各有自己的頁（securityPath）：原本一律連 /stock/{代號}，00931B 這類 ETF 點下去是「找不到這檔股票」 -->
+          <NuxtLink :to="securityPath(event.symbol)" class="dividend-calendar-card__detail-link">
             {{ event.symbol }}<template v-if="event.companyName"> {{ event.companyName }}</template>
           </NuxtLink>
           <el-tag size="small" :type="EX_TYPE_TAG_KIND[event.exType]">{{ event.exType }}</el-tag>

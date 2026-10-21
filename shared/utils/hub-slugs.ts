@@ -206,6 +206,17 @@ export function etfPath(code: string): string {
   return `/etf/${code.toLowerCase()}`
 }
 
+// 一個證券代號該去哪一頁（2026-10-21，使用者：「從配息月曆 點選 00931B 會跑出 找不到這檔股票」——行事曆一律連 /stock/{代號}，ETF 與
+// 特別股都落到個股頁的「找不到」）。只看代號：2026-10-21 全部 2,725 檔證券量過，ETF（353 檔）都以 00 開頭、普通股沒有一檔是；特別股
+//（28 檔）都是四碼加字母、普通股沒有一檔帶字母。連結用這個，/stock/{代號} 也用它把走錯的轉過去（server/middleware/legacy-redirects.ts）。
+// ponytail: 靠證交所的代號規則；哪天出現 00 開頭的普通股或帶字母的普通股，改讀 /securities 目錄的 type（useCompanyIndex 已經有）。
+// scripts/check-security-path.mjs
+export function securityPath(code: string): string {
+  if (code.startsWith('00')) return etfPath(code)
+  if (/[a-z]/i.test(code)) return preferredStockPath(code)
+  return `/stock/${code}`
+}
+
 // /screener/common/{slug} 條件說明頁（2026-10-15 前是 /screener/{slug}） — keyed by the template's NAME because GET /screener/templates ids
 // are seeded UUIDs (not URL material). A template whose name isn't listed here has no page.
 export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {

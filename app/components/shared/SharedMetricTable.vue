@@ -93,7 +93,7 @@ const props = withDefaults(defineProps<{
   followColumnOrder: false,
   cards: true,
   toolbar: true,
-  rowLink: (symbol: string) => `/stock/${symbol}`,
+  rowLink: (symbol: string) => securityPath(symbol),
   total: undefined,
   sticky: false,
   loading: false

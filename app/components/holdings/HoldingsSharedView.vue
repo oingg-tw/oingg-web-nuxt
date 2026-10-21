@@ -42,7 +42,7 @@ const rows = computed(() => props.holdings.map((holding) => {
     name: entry?.name ?? holding.symbol,
     label: entry ? `${entry.name} ${holding.symbol}` : holding.symbol,
     kind: entry?.kind ?? 'common',
-    link: entry ? routeFor(entry) : `/stock/${holding.symbol}`,
+    link: entry ? routeFor(entry) : securityPath(holding.symbol),
     weight: holding.weight == null ? null : Number(holding.weight),
     pnlPct: holding.pnlPct == null ? null : Number(holding.pnlPct),
     quantity,

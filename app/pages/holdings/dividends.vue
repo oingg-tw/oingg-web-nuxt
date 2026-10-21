@@ -63,7 +63,7 @@ const events = computed(() => {
       ...event,
       key: `${event.symbol}-${event.exDate}-${event.exType}`,
       name,
-      link: entry ? routeFor(entry) : `/stock/${event.symbol}`,
+      link: entry ? routeFor(entry) : securityPath(event.symbol),
       exText: `${slashDate(event.exDate)} ${EX_TYPE_LABELS[event.exType] ?? event.exType}`,
       // paymentDate 只代表現金（2026-10-17「世紀 除權 未公布? 可是我都拿到了」）。配股的發放日 2026-10-20 起才有
       //（stockDividendDistributionDate，之前的配股沒有）：有就寫日期，沒有的只配股照舊寫入帳時點；權息兩個日期各自標明

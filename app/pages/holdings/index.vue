@@ -80,7 +80,7 @@ const baseRows = computed(() => holdings.value.map((holding) => {
     name: entry?.name ?? holding.symbol,
     label: symbolLabel(holding.symbol),
     kind: entry?.kind ?? 'common',
-    link: entry ? routeFor(entry) : `/stock/${holding.symbol}`,
+    link: entry ? routeFor(entry) : securityPath(holding.symbol),
     input,
     figures: holdingRowFigures(input),
     dayInput: { quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose, date: quote?.dayPriceDate }
