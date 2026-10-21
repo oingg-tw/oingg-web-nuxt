@@ -719,20 +719,24 @@ export const getExDividendMonth = defineCachedFunction(
   { name: 'hub-ex-dividend-month', getKey: (month: string) => month, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-export function countExDividendSymbols(rows: ExDividendRow[]): ExDividendMonthCell['counts'] {
-  const distinct = (kind?: ExDividendKind) => new Set(rows.filter(row => !kind || row.kind === kind).map(row => row.symbol)).size
-  return { all: distinct(), common: distinct('common'), preferred: distinct('preferred'), etf: distinct('etf') }
-}
+// 每個月有幾檔除權息（業務中台 00329e4 轉發 analysis-ts GET /stocks/ex-dividend-calendar/monthly-counts，跟行事曆同一批列、同一個分類；
+// 兩端都含，最多 24 個月）。unclassified ＝ securityType 是 null
+const getExDividendMonthlyCounts = defineCachedFunction(
+  async (from: string, to: string) =>
+    (await businessFetch<{ months: { month: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } })).months,
+  { name: 'hub-ex-dividend-monthly-counts', getKey: (from: string, to: string) => `${from}:${to}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
 
 // 今年 12 個月各有幾檔除權息。還沒到的月份（current 之後）整個月用去年同月試算（使用者：「今年日期未到的才用去年模擬試算」）；這個月用今年的實際資料，
-// 含已公告、還沒除息的。
-// ponytail: 12 次 getExDividendMonth（各自快取）；analysis-ts 的每月檔數端點經業務中台轉發之後改成一次（2026-10-21 已請求）
-export function getExDividendMonthCells(current: string): Promise<ExDividendMonthCell[]> {
+// 含已公告、還沒除息的。一次讀去年 1 月到今年 12 月
+export async function getExDividendMonthCells(current: string): Promise<ExDividendMonthCell[]> {
   const year = Number(current.slice(0, 4))
-  return Promise.all(Array.from({ length: 12 }, async (_, index) => {
+  const byMonth = new Map((await getExDividendMonthlyCounts(`${year - 1}-01`, `${year}-12`)).map(entry => [entry.month, entry]))
+  return Array.from({ length: 12 }, (_, index) => {
     const month = `${year}-${String(index + 1).padStart(2, '0')}`
     const estimated = month > current
     const source = estimated ? `${year - 1}${month.slice(4)}` : month
-    return { month, source, estimated, counts: countExDividendSymbols(await getExDividendMonth(source)) }
-  }))
+    const { common = 0, preferred = 0, etf = 0, unclassified = 0 } = byMonth.get(source) ?? {}
+    return { month, source, estimated, counts: { all: common + preferred + etf + unclassified, common, preferred, etf } }
+  })
 }

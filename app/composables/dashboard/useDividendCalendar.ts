@@ -23,7 +23,8 @@ export interface DividendCalendarEvent {
   // 'ETF' | 'COMMON'（2026-09-30）。**判斷是不是 ETF 一律用這個欄位。**
   // 舊的判斷方式（companyName === null）已經失效：2026-09-10 業務中台 說 ETF 沒有名稱是對的，
   // 現在 396/396 都有，那個條件永遠是 false。
-  securityType: 'ETF' | 'COMMON' | null
+  // PREFERRED（特別股）2026-10-21 起（analysis-ts 8b4c5f69、業務中台 00329e4）；預告列裡不在 GET /securities 的是 null
+  securityType: 'ETF' | 'COMMON' | 'PREFERRED' | null
   status: 'announced' | 'realized'
   // 只代表現金；配股的發放日另外一欄（業務中台 1070910，2026-10-20 起才有，只有個股的 realized 列可能有值）
   paymentDate: string | null
