@@ -19,7 +19,10 @@ const { watchlistItems, activeWatchlist, activeWatchlistId, watchlistCodes, watc
 // 重新整理還在）。欄位設定所有清單共用一套（使用者的決定）。一組都沒有時，第一次加入時 addStock 先建「我的觀察清單」
 const route = useRoute()
 const router = useRouter()
-if (typeof route.query.list === 'string') activeWatchlistId.value = route.query.list
+// 跟著網址走（2026-10-21）：側欄的每一組是 /watchlist?list=… 的連結，在這一頁點另一組只換參數、頁面不重掛
+watch(() => route.query.list, (list) => {
+  if (typeof list === 'string') activeWatchlistId.value = list
+}, { immediate: true })
 watch(() => activeWatchlist.value?.id, (id) => {
   if (id && route.query.list !== id) void router.replace({ query: { ...route.query, list: id } })
 })
