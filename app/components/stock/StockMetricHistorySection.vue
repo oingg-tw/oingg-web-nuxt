@@ -29,6 +29,22 @@ const text = computed(() => {
 })
 // 只有一期時不寫涵蓋期間（同 metricHistoryAnswer 的 < 2 門檻）
 const answer = computed(() => (points.value.length < 2 ? null : text.value.answer))
+
+// 連續幾期都因為同一個原因算不出來，合成一列「2021 Q3～2025 Q4（18 期）」（2026-10-21，使用者看 6741 現金轉換循環：「為什麼歷史資料
+// 要出現這麼多 "無法計算"」，選了先只合併顯示）。原因照舊放 title；只有一期的照舊一列。期數（答句的「共 N 期」）不變
+const rows = computed(() => {
+  const groups: (typeof points.value)[] = []
+  for (const entry of points.value) {
+    const head = groups.at(-1)?.[0]?.point
+    if (entry.point?.value === null && head?.value === null && head.nullReason === entry.point.nullReason) groups.at(-1)!.push(entry)
+    else groups.push([entry])
+  }
+  return groups.map((group) => {
+    const newest = group[0]!
+    const label = periodLabel(newest, props.timeframe)
+    return { key: `${newest.fiscalYear}-${newest.fiscalQuarter}`, entry: newest, period: group.length > 1 ? `${periodLabel(group.at(-1)!, props.timeframe)}～${label}（${group.length} 期）` : label }
+  })
+})
 </script>
 
 <template>
@@ -45,8 +61,8 @@ const answer = computed(() => (points.value.length < 2 ? null : text.value.answe
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in points" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-            <th scope="row">{{ periodLabel(entry, timeframe) }}</th>
+          <tr v-for="{ key, entry, period } in rows" :key="key">
+            <th scope="row">{{ period }}</th>
             <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ metricCellText(entry.point, unit) }}</td>
             <!-- 算不出數值的列不寫資料時間（2026-10-17「沒上市 那為什麼會有資料時間?」）：那個日期是分母的財報公布日，不是這個數字的 -->
             <td>{{ entry.point?.value != null ? entry.point.knowledgeDate ?? '—' : '—' }}</td>
