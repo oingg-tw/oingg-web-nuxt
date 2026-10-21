@@ -3,6 +3,7 @@ import { use } from 'echarts/core'
 import { BoxplotChart, ScatterChart } from 'echarts/charts'
 import type { HubSector, IndustryPageData } from '#shared/types/hub'
 import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMultiSeriesLineChart.vue'
+import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
 // /industry/{code}-{slug} — one 證交所類股's company table (2026-09-19, the SEO build): every
 // company the screener has fundamentals for, with the day's price/PE/PB/殖利率 and 近四季 ROE /
 // 單季負債比率, plus the sector's distribution (median/quartiles) and the listed members that have
@@ -14,10 +15,9 @@ import type { LineSeriesSpec, LineChartEntry } from '~/components/stock/StockMul
 // unknown code or an empty sector is a real 404 (never an empty 200). Fewer than 5 ranked rows →
 // `noindex, follow`: still useful to a person, too thin to be worth an index entry.
 //
-// Wording is the compliance register: counts, medians and quartiles, no adjectives. Column
-// sorting is not offered here on purpose — the table is a static reference sorted by 代號 and
-// sort state must never become a URL variant; the screener（/screener/common?sector=NN）is where you
-// sort and filter.
+// Wording is the compliance register: counts, medians and quartiles, no adjectives. 公司表原本刻意不給排序（排序狀態不能變成網址
+// 變體）；2026-10-21 起用 SharedSortableTable：伺服器照代號輸出，排序只在瀏覽器、不進網址，那個顧慮不成立了（使用者：「表格欄位
+// 要可以排序 這邊請抽成共用元件 盤點整個專案是否有可以共用的地方」）。要加條件篩選仍是去篩選器（/screener/common?sector=NN）
 // 散佈圖只有產業兩頁用，自己註冊（SharedChart 只註冊共用的零件）
 use([ScatterChart, BoxplotChart])
 
@@ -39,6 +39,17 @@ if (error.value || !data.value) throw createError({ statusCode: 503, statusMessa
 const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 
 const rows = computed(() => data.value?.companies.rows ?? [])
+type CompanyRow = IndustryPageData['companies']['rows'][number]
+const COMPANY_COLUMNS: SortableColumn<CompanyRow>[] = [
+  { key: 'symbol', label: '代號', sortValue: row => row.symbol },
+  { key: 'name', label: '名稱', sortValue: row => row.name },
+  { key: 'price', label: '股價（元）', num: true, sortValue: row => row.price },
+  { key: 'pe', label: '本益比（倍）', num: true, sortValue: row => row.peRatio },
+  { key: 'pb', label: '股價淨值比（倍）', num: true, sortValue: row => row.pbRatio },
+  { key: 'yield', label: '殖利率（%）', num: true, sortValue: row => row.dividendYield },
+  { key: 'roe', label: 'ROE（近四季，%）', num: true, sortValue: row => row.roe },
+  { key: 'debt', label: '負債比率（單季，%）', num: true, sortValue: row => row.debtRatio }
+]
 const stats = computed(() => data.value?.companies.stats ?? null)
 const unranked = computed(() => data.value?.unranked ?? [])
 const catalogCount = computed(() => data.value?.sector.companyCount ?? 0)
@@ -324,40 +335,31 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="industry-companies-heading">
       <h2 id="industry-companies-heading" class="stock-page-section__title">{{ sectorName }}有哪些上市櫃公司？</h2>
       <p class="hub-answer">
-        證交所歸在{{ sectorName }}的上市櫃公司共 {{ catalogCount }} 家。有財報指標數值的 {{ rows.length }} 家列於下表，依代號排序；
+        證交所歸在{{ sectorName }}的上市櫃公司共 {{ catalogCount }} 家。有財報指標數值的 {{ rows.length }} 家列於下表，依代號排列（點表頭可以換排序）；
         <template v-if="quoteDate">股價與估值為 {{ quoteDate }} 的收盤資料</template><template v-if="quoteDate && fundamentalsDate">，</template><template v-if="fundamentalsDate">財報數據至 {{ fundamentalsDate }}</template>。
         點代號看該公司的個股頁。
       </p>
-      <SharedTableScroll v-if="rows.length" :label="`${sectorName}公司名單`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ sectorName }}上市櫃公司的股價、本益比、股價淨值比、殖利率、近四季 ROE 與單季負債比率</caption>
-          <thead>
-            <tr>
-              <th scope="col">代號</th>
-              <th scope="col">名稱</th>
-              <th scope="col" class="seo-table__num">股價（元）</th>
-              <th scope="col" class="seo-table__num">本益比（倍）</th>
-              <th scope="col" class="seo-table__num">股價淨值比（倍）</th>
-              <th scope="col" class="seo-table__num">殖利率（%）</th>
-              <th scope="col" class="seo-table__num">ROE（近四季，%）</th>
-              <th scope="col" class="seo-table__num">負債比率（單季，%）</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.symbol">
-              <th scope="row"><NuxtLink :to="`/stock/${row.symbol}`" class="seo-table__link">{{ row.symbol }}</NuxtLink></th>
-              <td>{{ row.name }}</td>
-              <td class="seo-table__num">{{ num(row.price) }}</td>
-              <td class="seo-table__num">{{ num(row.peRatio) }}</td>
-              <td class="seo-table__num">{{ num(row.pbRatio) }}</td>
-              <!-- 個股的 0 寫成「不配息」；上面類股中位數那幾句維持數字（中位數 0 不代表整個類股不配息） -->
-              <td class="seo-table__num">{{ row.dividendYield === 0 ? NO_DIVIDEND_TEXT : num(row.dividendYield) }}</td>
-              <td class="seo-table__num">{{ num(row.roe) }}</td>
-              <td class="seo-table__num">{{ num(row.debtRatio) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedSortableTable
+        v-if="rows.length"
+        :rows="rows"
+        :columns="COMPANY_COLUMNS"
+        :row-key="row => row.symbol"
+        :label="`${sectorName}公司名單`"
+        :caption="`${sectorName}上市櫃公司的股價、本益比、股價淨值比、殖利率、近四季 ROE 與單季負債比率`"
+        caption-hidden
+      >
+        <template #row="{ row }">
+          <th scope="row"><NuxtLink :to="`/stock/${row.symbol}`" class="seo-table__link">{{ row.symbol }}</NuxtLink></th>
+          <td>{{ row.name }}</td>
+          <td class="seo-table__num">{{ num(row.price) }}</td>
+          <td class="seo-table__num">{{ num(row.peRatio) }}</td>
+          <td class="seo-table__num">{{ num(row.pbRatio) }}</td>
+          <!-- 個股的 0 寫成「不配息」；上面類股中位數那幾句維持數字（中位數 0 不代表整個類股不配息） -->
+          <td class="seo-table__num">{{ row.dividendYield === 0 ? NO_DIVIDEND_TEXT : num(row.dividendYield) }}</td>
+          <td class="seo-table__num">{{ num(row.roe) }}</td>
+          <td class="seo-table__num">{{ num(row.debtRatio) }}</td>
+        </template>
+      </SharedSortableTable>
       <p v-else class="hub-answer">這個類股目前沒有任何一家公司有財報指標數值。</p>
       <template v-if="unranked.length">
         <h3 class="industry-page__subtitle">本類股其他公司（沒有指標數值，{{ unranked.length }} 家）</h3>

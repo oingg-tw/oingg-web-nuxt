@@ -813,21 +813,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   cursor: grab;
 }
 
-/* 排序箭頭的點擊範圍 24×24（WCAG 2.5.8；2026-10-08 a11y 證據量到只有 14px）。Element 的兩個三角形是絕對定位在 14px 高的框裡，
-   框拉高之後把它們各自往內推：各 5px 高、中間留 Element 原本的 2px，整組置中（上 6～11、下 13～18）。原本各推 2px，兩個三角形
-   在 12px 相接，2026-10-15 使用者：「排序icon中間沒有任何間隔 看起來就像一個菱形」 */
-.screener-result-table :deep(.caret-wrapper) {
-  height: 24px;
-  width: 24px;
-}
-
-.screener-result-table :deep(.sort-caret.ascending) {
-  top: 1px;
-}
-
-.screener-result-table :deep(.sort-caret.descending) {
-  bottom: 1px;
-}
+/* 排序箭頭的大小、間距、排序中只留一個：全站一條，在 element-plus.css 的「排序箭頭」（2026-10-21 從這裡搬過去） */
 
 /* 欄位多到超出右邊（2026-10-15 使用者：「篩選的欄位太多 破版了」）：表格本來就在自己的框裡左右捲、代號與名稱固定在左邊，但右邊
    被切一刀、捲軸只在滑鼠停留時出現（現在 scrollbar-always-on），看起來就像破版。右緣淡出＝右邊還有欄位，捲到最右就消失。

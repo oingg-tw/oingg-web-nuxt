@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MarketEventsPageData } from '#shared/types/hub'
 import type { MarketPhase } from '#shared/utils/market-phases'
+import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
 // /macro/market-events — 大事件年表（2026-09-22）: the重大事件 timeline and what the index itself
 // did, on one page.
 //
@@ -71,6 +72,17 @@ const contextFor = (phase: MarketPhase) => PHASE_CONTEXT[phase.peakPeriod] ?? nu
 // is the one a reader would most have missed above.
 const dailyPoints = computed(() => (data.value?.days ?? []).map(day => ({ period: day.tradeDate, value: day.close })))
 const dailyPhases = computed(() => findMarketPhases(dailyPoints.value))
+
+// 兩張下跌段表都可以點表頭排序（2026-10-21，SharedSortableTable）。跌幅用絕對值：第一下由大到小＝跌最深的在最上面
+const phaseColumns = (duration: (phase: MarketPhase) => number): SortableColumn<MarketPhase>[] => [
+  { key: 'peak', label: '高點', sortValue: phase => phase.peakPeriod },
+  { key: 'trough', label: '低點', sortValue: phase => phase.troughPeriod },
+  { key: 'decline', label: '跌幅', sortValue: phase => Math.abs(phase.declinePct) },
+  { key: 'duration', label: '下跌歷時', sortValue: duration },
+  { key: 'recovery', label: '回到前高', sortValue: phase => phase.recoveryPeriod }
+]
+const MONTHLY_PHASE_COLUMNS = phaseColumns(phase => monthsBetween(phase.peakPeriod, phase.troughPeriod))
+const DAILY_PHASE_COLUMNS = phaseColumns(phase => daysBetween(phase.peakPeriod, phase.troughPeriod))
 const firstDay = computed(() => dailyPoints.value[0]?.period ?? '')
 
 // Its own context table, keyed by peak DATE — see FAST_PHASE_CONTEXT for why it can't reuse the
@@ -330,33 +342,25 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
       <!-- The summary table stays as the one data table（sortable at a glance, one row per phase）;
            what each phase was living through follows it as a list, one item per phase, because
            several dated lines per row would not survive as a table cell at phone width. -->
-      <SharedTableScroll label="加權指數歷次回落超過 20% 的下跌段">
-        <table class="seo-table" data-ssr-table>
-          <caption>加權股價指數月平均從高點回落超過 {{ BEAR_THRESHOLD_PCT }}% 的每一段，由舊到新</caption>
-          <thead>
-            <tr>
-              <th scope="col">高點</th>
-              <th scope="col">低點</th>
-              <th scope="col">跌幅</th>
-              <th scope="col">下跌歷時</th>
-              <th scope="col">回到前高</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="phase in phases" :key="phase.peakPeriod">
-              <!-- The whole cell is the link, not just the month: an inline element boundary
-                   mid-cell trips the SSR-vs-live table comparison（tag stripping inserts a space
-                   there, innerText does not）, and a link reading「1987-10（3,590）」is the better
-                   link text anyway. -->
-              <th scope="row"><a :href="`#phase-${phase.peakPeriod}`">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</a></th>
-              <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
-              <td>{{ pctText(phase.declinePct) }}</td>
-              <td>{{ monthsBetween(phase.peakPeriod, phase.troughPeriod) }} 個月</td>
-              <td>{{ phase.recoveryPeriod ?? '尚未' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedSortableTable
+        :rows="phases"
+        :columns="MONTHLY_PHASE_COLUMNS"
+        :row-key="phase => phase.peakPeriod"
+        label="加權指數歷次回落超過 20% 的下跌段"
+        :caption="`加權股價指數月平均從高點回落超過 ${BEAR_THRESHOLD_PCT}% 的每一段，由舊到新`"
+      >
+        <template #row="{ row: phase }">
+          <!-- The whole cell is the link, not just the month: an inline element boundary
+               mid-cell trips the SSR-vs-live table comparison（tag stripping inserts a space
+               there, innerText does not）, and a link reading「1987-10（3,590）」is the better
+               link text anyway. -->
+          <th scope="row"><a :href="`#phase-${phase.peakPeriod}`">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</a></th>
+          <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
+          <td>{{ pctText(phase.declinePct) }}</td>
+          <td>{{ monthsBetween(phase.peakPeriod, phase.troughPeriod) }} 個月</td>
+          <td>{{ phase.recoveryPeriod ?? '尚未' }}</td>
+        </template>
+      </SharedSortableTable>
     </StockQuestionSection>
 
     <!-- 當時發生了什麼（2026-09-22,「只看階段對用戶沒意義」→「每一段都請上網找…蒐集起來呈現」）.
@@ -395,29 +399,21 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
         上面的下跌段用月平均計算，一個月內急跌急彈的走勢會被平均削掉一半。這裡改用<strong>每日收盤</strong>再算一次，同樣的 {{ BEAR_THRESHOLD_PCT }}% 門檻，就抓得到那些走得快的。
         日收盤資料從 {{ firstDay }} 起，比月平均晚十二年。兩張表的算法不同，同一段時期的數字不能互相比較。
       </p>
-      <SharedTableScroll label="按日收盤計算的下跌段">
-        <table class="seo-table" data-ssr-table>
-          <caption>加權股價指數每日收盤自 {{ firstDay }} 起，從高點回落超過 {{ BEAR_THRESHOLD_PCT }}% 的每一段</caption>
-          <thead>
-            <tr>
-              <th scope="col">高點</th>
-              <th scope="col">低點</th>
-              <th scope="col">跌幅</th>
-              <th scope="col">下跌歷時</th>
-              <th scope="col">回到前高</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="phase in dailyPhases" :key="phase.peakPeriod">
-              <th scope="row"><a :href="`#fast-${phase.peakPeriod}`">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</a></th>
-              <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
-              <td>{{ pctText(phase.declinePct) }}</td>
-              <td>{{ daysBetween(phase.peakPeriod, phase.troughPeriod) }} 天</td>
-              <td>{{ phase.recoveryPeriod ?? '尚未' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedSortableTable
+        :rows="dailyPhases"
+        :columns="DAILY_PHASE_COLUMNS"
+        :row-key="phase => phase.peakPeriod"
+        label="按日收盤計算的下跌段"
+        :caption="`加權股價指數每日收盤自 ${firstDay} 起，從高點回落超過 ${BEAR_THRESHOLD_PCT}% 的每一段`"
+      >
+        <template #row="{ row: phase }">
+          <th scope="row"><a :href="`#fast-${phase.peakPeriod}`">{{ phase.peakPeriod }}（{{ indexText(phase.peakValue) }}）</a></th>
+          <td>{{ phase.troughPeriod }}（{{ indexText(phase.troughValue) }}）<template v-if="phase.open">，仍在下跌</template></td>
+          <td>{{ pctText(phase.declinePct) }}</td>
+          <td>{{ daysBetween(phase.peakPeriod, phase.troughPeriod) }} 天</td>
+          <td>{{ phase.recoveryPeriod ?? '尚未' }}</td>
+        </template>
+      </SharedSortableTable>
 
       <!-- The same context treatment the monthly list gets, off its own table（2026-09-22,「一兩個
            月內就跌完的急跌 是為什麼？也可以標註上去嗎？」）. Same rule as there: dated facts from the

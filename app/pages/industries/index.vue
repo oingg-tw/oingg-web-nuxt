@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SectorDividendSummaryPageData, SectorGrowthSummary } from '#shared/types/hub'
+import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
 
 // 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
 // /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
@@ -61,6 +62,17 @@ const filteredRows = computed(() => {
 })
 
 const pathFor = (code: string) => sectorPath(code) ?? '/industries'
+
+// 欄位可以點表頭排序（2026-10-21，SharedSortableTable）
+type SectorRow = SectorDividendSummaryPageData['sectors'][number]
+const COLUMNS: SortableColumn<SectorRow>[] = [
+  { key: 'sector', label: '類股', sortValue: row => row.sectorCode },
+  { key: 'count', label: '家數', num: true, sortValue: row => row.companyCount },
+  { key: 'yield', label: '殖利率', num: true, sortValue: row => row.dividendYield.median },
+  { key: 'dividendGrowth', label: '股利 3 年成長', num: true, sortValue: row => row.dividendGrowthRate3y.median },
+  { key: 'revenueGrowth', label: '營收年增', num: true, sortValue: row => growthByCode.value.get(row.sectorCode)?.revenueGrowthRate.median },
+  { key: 'netIncomeGrowth', label: '淨利年增', num: true, sortValue: row => growthByCode.value.get(row.sectorCode)?.netIncomeGrowthRate.median }
+]
 </script>
 
 <template>
@@ -81,31 +93,22 @@ const pathFor = (code: string) => sectorPath(code) ?? '/industries'
       <!-- 欄位簡化（2026-10-21，使用者：「industries 表格欄位請簡化」）：8 欄 → 6 欄。「有值家數」兩欄拿掉（是中位數的分母，不是讀者要比
            的數字；各類股頁與散佈圖的提示框仍有），「中位數」三個字從每個欄名收進表格說明——每一欄都是中位數，說一次就好 -->
       <p class="hub-answer">除了公司家數，每一欄都是該類股的中位數。</p>
-      <SharedTableScroll label="各證交所類股的公司家數、殖利率與成長率中位數">
-        <table class="seo-table" data-ssr-table>
-          <caption>證交所類股的中位數（殖利率為 {{ summary?.dividendYieldTradeDate ?? '' }} 收盤價計算，未配息以 0% 計入）</caption>
-          <thead>
-            <tr>
-              <th scope="col">類股</th>
-              <th scope="col">家數</th>
-              <th scope="col">殖利率</th>
-              <th scope="col">股利 3 年成長</th>
-              <th scope="col">營收年增</th>
-              <th scope="col">淨利年增</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in filteredRows" :key="row.sectorCode">
-              <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
-              <td>{{ row.companyCount }}</td>
-              <td>{{ yieldText(row.dividendYield.median) }}</td>
-              <td>{{ growthText(row.dividendGrowthRate3y.median) }}</td>
-              <td>{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
-              <td>{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedSortableTable
+        :rows="filteredRows"
+        :columns="COLUMNS"
+        :row-key="row => row.sectorCode"
+        label="各證交所類股的公司家數、殖利率與成長率中位數"
+        :caption="`證交所類股的中位數（殖利率為 ${summary?.dividendYieldTradeDate ?? ''} 收盤價計算，未配息以 0% 計入）`"
+      >
+        <template #row="{ row }">
+          <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
+          <td class="seo-table__num">{{ row.companyCount }}</td>
+          <td class="seo-table__num">{{ yieldText(row.dividendYield.median) }}</td>
+          <td class="seo-table__num">{{ growthText(row.dividendGrowthRate3y.median) }}</td>
+          <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
+          <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
+        </template>
+      </SharedSortableTable>
       <SharedEmptyState v-if="!filteredRows.length" description="沒有符合的類股名稱" />
     </section>
 

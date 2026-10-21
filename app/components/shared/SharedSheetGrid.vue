@@ -109,7 +109,6 @@ function toggleSort(column: SheetColumn<R>) {
   announce(sort.value ? `依${column.label}${sort.value.order === 'ascending' ? '由小到大' : '由大到小'}排序` : `取消${column.label}的排序`)
 }
 const ariaSort = (column: SheetColumn<R>) => (sort.value?.key === column.key ? sort.value.order : column.sortValue ? 'none' : undefined)
-const sortGlyph = (column: SheetColumn<R>) => (sort.value?.key !== column.key ? '↕' : sort.value.order === 'ascending' ? '▲' : '▼')
 
 // ---- 欄寬 ----
 // 預設照內容估（伺服器與瀏覽器算出同一個數）；拖過或自動貼合過的存在這個瀏覽器
@@ -639,7 +638,7 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
             >
               <span class="sheet__head">
                 <slot name="header" :column="column" :index="c">{{ column.label }}</slot>
-                <span v-if="column.sortValue" class="sheet__sort" aria-hidden="true">{{ sortGlyph(column) }}</span>
+                <SharedSortIcon v-if="column.sortValue" :state="sort?.key === column.key ? sort.order : null" />
               </span>
               <!-- 滑鼠用的把手；鍵盤在表頭上按 +／−／0（見 onHeaderKey），所以把手本身不給輔助科技 -->
               <span
@@ -731,11 +730,6 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
   align-items: center;
   gap: 4px;
   max-width: 100%;
-}
-
-.sheet__sort {
-  color: var(--el-text-color-regular);
-  font-size: 0.875em;
 }
 
 .sheet__cell:focus-visible {

@@ -281,3 +281,47 @@ html .el-message .el-message__content {
   top: 0;
   margin-top: 12px;
 }
+
+/* 排序箭頭（2026-10-21，使用者：「排序的icon 請統一用兩個三角形 有排序的時候只呈現一個三角形 往上 或是往下 這個 icon的規範請整個專案
+   統一」）。全站的 el-table 一起（篩選結果、持股、交易紀錄、財報），自己畫表頭的表格用 SharedSortIcon，兩邊大小、間距、顏色一樣：
+   - 點擊範圍 24×24（WCAG 2.5.8；2026-10-08 量到原本只有 14px，原本只有篩選結果表調過）。Element 的兩個三角形絕對定位在框裡，框拉高後
+     各自往內推：各 5px 高、中間留 2px，整組置中（2026-10-15「排序icon中間沒有任何間隔 看起來就像一個菱形」）
+   - 沒排序的灰色用次要文字色（非文字 3:1），Element 預設的 placeholder 色太淡
+   - 排序中只留那個方向的一個（th 上 Element 自己掛的 ascending／descending）
+   html 前綴：Element 的 el-table.css 隨用隨載、排在本檔之後，同權重會蓋掉這裡（框的高度被蓋回 14px，2026-10-21 量到） */
+html .el-table .caret-wrapper {
+  height: 24px;
+  width: 24px;
+}
+
+html .el-table .sort-caret.ascending {
+  top: 1px;
+  border-bottom-color: var(--el-text-color-secondary);
+}
+
+html .el-table .sort-caret.descending {
+  bottom: 1px;
+  border-top-color: var(--el-text-color-secondary);
+}
+
+html .el-table .ascending .sort-caret.ascending {
+  border-bottom-color: var(--el-color-primary);
+}
+
+html .el-table .descending .sort-caret.descending {
+  border-top-color: var(--el-color-primary);
+}
+
+html .el-table .ascending .sort-caret.descending,
+html .el-table .descending .sort-caret.ascending {
+  display: none;
+}
+
+/* 剩下的那一個移到中間（同 SharedSortIcon 只剩一個時置中）：三角形是 10px 框裡有顏色的那一半，看得到的 5px 落在 24px 框的 9.5～14.5 */
+html .el-table .ascending .sort-caret.ascending {
+  top: 4.5px;
+}
+
+html .el-table .descending .sort-caret.descending {
+  bottom: 4.5px;
+}

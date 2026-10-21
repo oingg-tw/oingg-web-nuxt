@@ -3,6 +3,7 @@ import { use } from 'echarts/core'
 import { ScatterChart } from 'echarts/charts'
 import { LabelLayout } from 'echarts/features'
 import type { SectorCycleRow, SectorCycleSummary } from '#shared/types/hub'
+import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
 // 類股景氣敏感度（2026-10-10，「請設計圖表，讓用戶可以看出來那些公司或是產業屬於景氣循環股」）：每個點一個證交所類股，
 // X＝近三個月累計營收年增率的起伏幅度（標準差）、Y＝它跟景氣同時指標（去趨勢）的相關係數。右上方＝營收大起大落、又跟著
 // 整體景氣一起動，就是一般說的景氣循環的樣子——但頁面**不替任何一個類股下結論、不貼標籤、不排序**（conductor
@@ -29,6 +30,15 @@ const MIN_SAMPLE = 5
 const STRONG = 0.5
 
 const rows = computed(() => [...(summary.value?.sectors ?? [])].sort((a, b) => a.code.localeCompare(b.code)))
+// 欄位可以點表頭排序（2026-10-21，SharedSortableTable）
+const COLUMNS: SortableColumn<SectorCycleRow>[] = [
+  { key: 'sector', label: '類股', sortValue: row => row.code },
+  { key: 'amplitude', label: '起伏幅度', num: true, sortValue: row => row.amplitude },
+  { key: 'correlation', label: '相關係數', num: true, sortValue: row => row.correlation },
+  { key: 'months', label: '月數', num: true, sortValue: row => row.months || null },
+  { key: 'lowest', label: '最低', num: true, sortValue: row => row.lowest?.value },
+  { key: 'highest', label: '最高', num: true, sortValue: row => row.highest?.value }
+]
 const plotted = computed(() => rows.value.filter(row => row.companyCount >= MIN_SAMPLE && row.amplitude !== null && row.correlation !== null))
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
 
@@ -129,31 +139,23 @@ const chartOption = computed(() => {
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card">
         <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股營收年增率起伏幅度與景氣同時指標相關係數的散佈圖" />
       </el-card>
-      <SharedTableScroll v-if="rows.length" label="各證交所類股的營收起伏幅度與景氣同步程度">
-        <table class="seo-table" data-ssr-table>
-          <caption>各類股近三個月累計營收年增率（{{ summary?.firstMonth }}～{{ summary?.lastMonth }}，依類股代號排列）</caption>
-          <thead>
-            <tr>
-              <th scope="col">類股</th>
-              <th scope="col">起伏幅度</th>
-              <th scope="col">相關係數</th>
-              <th scope="col">月數</th>
-              <th scope="col">最低</th>
-              <th scope="col">最高</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.code">
-              <th scope="row"><NuxtLink :to="sectorPath(row.code) ?? '/industries'">{{ row.name }}</NuxtLink></th>
-              <td class="seo-table__num">{{ points(row.amplitude) }}</td>
-              <td class="seo-table__num">{{ corr(row.correlation) }}</td>
-              <td class="seo-table__num">{{ row.months || '－' }}</td>
-              <td class="seo-table__num">{{ row.lowest ? `${pct(row.lowest.value)}（${row.lowest.yearMonth}）` : '－' }}</td>
-              <td class="seo-table__num">{{ row.highest ? `${pct(row.highest.value)}（${row.highest.yearMonth}）` : '－' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedSortableTable
+        v-if="rows.length"
+        :rows="rows"
+        :columns="COLUMNS"
+        :row-key="row => row.code"
+        label="各證交所類股的營收起伏幅度與景氣同步程度"
+        :caption="`各類股近三個月累計營收年增率（${summary?.firstMonth}～${summary?.lastMonth}，依類股代號排列）`"
+      >
+        <template #row="{ row }">
+          <th scope="row"><NuxtLink :to="sectorPath(row.code) ?? '/industries'">{{ row.name }}</NuxtLink></th>
+          <td class="seo-table__num">{{ points(row.amplitude) }}</td>
+          <td class="seo-table__num">{{ corr(row.correlation) }}</td>
+          <td class="seo-table__num">{{ row.months || '－' }}</td>
+          <td class="seo-table__num">{{ row.lowest ? `${pct(row.lowest.value)}（${row.lowest.yearMonth}）` : '－' }}</td>
+          <td class="seo-table__num">{{ row.highest ? `${pct(row.highest.value)}（${row.highest.yearMonth}）` : '－' }}</td>
+        </template>
+      </SharedSortableTable>
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-cycle-notes-heading">
