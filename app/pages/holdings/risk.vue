@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import type { RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
+import type { PerformanceOutcome, RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
 // 持股的風險指標（2026-10-05）：使用者在 業務中台 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，業務中台 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。
+//
+// 2026-10-21 加上實際經歷的跌幅，放第一段（使用者問「用現在的持股比例回推…這個合理嗎? 如果不用我持有期間去看，這樣真的能反映我
+// 真實持有的風險與壓力嗎?」，同意「照這樣改」）：回推答的是「現在這組持股接下來大概怎麼晃」，實際經歷的壓力要看每天真的持股——
+// 那四列原本在報酬與大盤的「跌幅與回到前高」，搬過來、那一頁拿掉（同一個數字只出現一次）。資料是 GET /holdings/performance 的
+// drawdown，跟報酬與大盤共用期間快取
 //
 // 業務中台 要求照實呈現的四件事，這頁都做到：
 //   1. 沒有報酬率與夏普比率（持股是事後選的，回推的報酬會偏高；真實報酬看交易績效）。
@@ -15,21 +20,38 @@ useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
-const { fetchRisk } = useHoldings()
+const { fetchRisk, fetchPerformance } = useHoldings()
 
 // 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
 const range = useHoldingsRange()
 const outcome = ref<RiskOutcome | null>(null)
+const performance = ref<PerformanceOutcome | null>(null)
 const pending = ref(false)
 
-// 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框
+// 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框。實際跌幅是次要的一段
 watchLoadFailure('holdings-risk', () => (outcome.value && !outcome.value.ok ? outcome.value.error ?? null : null), () => loadRisk())
+watchLoadFailure('holdings-risk-drawdown', () => (performance.value && !performance.value.ok ? performance.value.error ?? null : null), () => loadRisk(), { scope: 'section' })
 
 async function loadRisk() {
   pending.value = true
-  outcome.value = await fetchRisk(range.value[0], range.value[1])
+  const [risk, ledger] = await Promise.all([fetchRisk(range.value[0], range.value[1]), fetchPerformance(range.value[0], range.value[1])])
+  outcome.value = risk
+  performance.value = ledger
   pending.value = false
 }
+
+// 實際經歷的跌幅：每天真的持股（買進、賣出都算進去）。期間內沒有持股時（twr 是 null）不列；第一次讀的時候列名與意思照畫、數值是骨架
+const ledgerDrawdown = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result.drawdown : null))
+const drawdownRows = computed(() => {
+  const d = ledgerDrawdown.value
+  if (!d && performance.value) return []
+  return [
+    { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
+    { name: '低於前高的天數', value: d ? `${d.underwaterDays} 天` : '', meaning: '收盤低於前高的交易日合計' },
+    { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
+    { name: '目前距前高', value: !d ? '' : Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
+  ]
+})
 
 const report = computed(() => (outcome.value?.ok ? outcome.value.result : null))
 const companyByCode = useCompanyLookup(() => report.value?.holdings.map(holding => holding.symbol) ?? [])
@@ -160,12 +182,15 @@ const { holdingsScope } = useHoldingsPortfolios()
 watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadRisk()
-  else outcome.value = null
+  else {
+    outcome.value = null
+    performance.value = null
+  }
 }, { immediate: true })
 </script>
 
 <template>
-  <HoldingsPageShell title="風險" subtitle="用現在的持股比例回推過去的股價，看漲跌起伏有多大" guest-title="登入後查看你的持股風險指標" :pending="pending && !outcome">
+  <HoldingsPageShell title="風險" subtitle="你實際經歷過的跌幅，以及現在這組持股的漲跌起伏" guest-title="登入後查看你的持股風險指標" :pending="pending && !outcome">
     <template #default="{ loading }">
 
       <!-- 交易日數寫在期間旁邊（業務中台 要求一併顯示；兩段共用。2026-10-19 從內容上方獨立的一句搬來） -->
@@ -180,6 +205,14 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
         </el-alert>
 
         <template v-else-if="loading || report">
+
+          <section v-if="drawdownRows.length" aria-labelledby="risk-actual-title">
+            <h2 id="risk-actual-title" class="risk-page__section-title">你實際經歷過多大的跌幅？</h2>
+            <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" :loading="loading" />
+          </section>
+
+          <!-- 回推的假設寫在它的第一句（2026-10-21）：下面不是你經歷過的，是現在這組持股放回這段期間 -->
+          <p class="risk-page__lead">下面假設這段期間一直持有現在這組股票，看漲跌起伏會有多大。</p>
 
           <section v-if="loading ? contributionCountHint : contributionRows.length" aria-labelledby="risk-contribution-title">
             <h2 id="risk-contribution-title" class="risk-page__section-title">哪幾檔占了大部分的波動？</h2>
@@ -224,7 +257,8 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
           <details class="holdings-details">
             <summary>計算方式</summary>
             <ul class="risk-page__notes">
-              <li>用現在每一檔的市值比例<template v-if="report?.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>實際經歷的跌幅：依你每天實際的持股計算，買進、賣出都算進去；期間內沒有持股就不列。</li>
+              <li>其餘用現在每一檔的市值比例<template v-if="report?.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
               <li>波動占比（風險貢獻）：每一檔占整體波動的比例，合計約 100%。</li>
               <li>除權配股已還原，現金股利未還原，與價格型加權指數相同。</li>
               <li v-if="report && drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
@@ -263,6 +297,11 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
 .risk-page__note {
   margin: 0 0 12px;
+  color: var(--el-text-color-regular);
+}
+
+.risk-page__lead {
+  margin: 0;
   color: var(--el-text-color-regular);
 }
 

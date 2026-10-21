@@ -5,9 +5,10 @@ import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMul
 // 報酬與大盤（2026-10-05 起的「交易績效」；使用者：「主動交易的績效也要呈現」「不依年度拆開，要讓用戶選擇日期回測
 // 特定區間」「sidebar 要有選項，可以跟大盤比對驗證特定日期間的績效，預設過去一年」）。
 //
-// 2026-10-07 拆頁（「performance 這一頁太亂了，請把指標拆去別的畫面」）：這頁只留「這段期間賺了多少、跟大盤比、
-// 怎麼漲跌過來的」——與大盤比較、逐年與逐月報酬、跌幅與回到前高。已實現損益、賣出統計、交易成本搬到
-// /holdings/realized；捕獲率、Beta、Sharpe 那些進階統計搬到 /holdings/statistics。路徑沒改（改名不改路徑）。
+// 2026-10-07 拆頁（「performance 這一頁太亂了，請把指標拆去別的畫面」）：這頁只留「這段期間賺了多少、跟大盤比」——
+// 與大盤比較、逐年與逐月報酬。已實現損益、賣出統計、交易成本搬到 /holdings/realized；捕獲率、Beta、Sharpe 那些進階統計
+// 搬到 /holdings/statistics。路徑沒改（改名不改路徑）。原本的「跌幅與回到前高」2026-10-21 搬到風險頁第一段「你實際經歷過多大的
+// 跌幅？」（跟回推的放在一起，讀者分得出哪個是經歷過的）。
 //
 // 中性呈現：不排名、不慶祝、不寫「勝過／領先」這類比較字眼；報酬用正負號，不只靠顏色。
 //
@@ -138,16 +139,6 @@ watch(yearlyRows, (rows) => {
 })
 const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value }, () => ({ skeleton: true, name: '2026', value: '+12.34%', market: '+12.34%', meaning: '240 天' })))
 
-const drawdownRows = computed(() => {
-  const d = report.value?.drawdown
-  if (!d && !firstLoad.value) return []
-  return [
-    { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
-    { name: '低於前高的天數', value: d ? `${d.underwaterDays} 天` : '', meaning: '收盤低於前高的交易日合計' },
-    { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
-    { name: '目前距前高', value: !d ? '' : Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
-  ]
-})
 </script>
 
 <template>
@@ -207,12 +198,6 @@ const drawdownRows = computed(() => {
             <summary>逐月報酬<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（12 個月）</span><template v-else>（{{ monthlyRows.length }} 個月）</template></summary>
             <HoldingsMetricTable caption="持股與加權指數的逐月報酬" :rows="monthlyRows" name-label="月份" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
           </details>
-        </section>
-
-        <section aria-labelledby="performance-drawdown-title">
-          <h2 id="performance-drawdown-title" class="performance-page__section-title">跌幅與回到前高</h2>
-          <p class="performance-page__note">依實際帳本計算，與「風險」頁用現在持股回推的不同。</p>
-          <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" :loading="loading" />
         </section>
 
       </template>
