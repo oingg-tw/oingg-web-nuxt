@@ -607,7 +607,7 @@ export const getFilterSchemaCatalog = defineCachedFunction(
           const badge = metric.badge as LooseRecord | null | undefined
           return {
             // formulaLatex 不帶：公式改由 getFormulaHtml 在伺服器排好（/api/hub/formula/[key]），瀏覽器用不到原始 LaTeX
-            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'nameEn', 'unit', 'sort', 'description', 'referenceUrl', 'sources', 'kind', 'options', 'conditionOnly', 'hasProvenance']),
+            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'nameEn', 'searchAliases', 'unit', 'sort', 'description', 'referenceUrl', 'sources', 'kind', 'options', 'conditionOnly', 'hasProvenance']),
             fields: (metric.fields as LooseRecord[]).map(field => pickKeys(field, ['key', 'name', 'period', 'description', 'aliases', 'unit', 'sort'])),
             ...(badge
               ? {

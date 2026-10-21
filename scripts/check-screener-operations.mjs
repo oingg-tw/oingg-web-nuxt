@@ -267,10 +267,16 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     }
     const pbr = await found('PBR')
     expect('英文搜尋', 'PBR 找得到淨值比河道位置', pbr.includes('淨值比河道位置') && pbr.some(name => name.endsWith('股價淨值比')), pbr.join('、'))
-    const per = await found('PER')
-    expect('英文搜尋', 'PER 只找到本益比那一組', per.includes('本益比河道位置') && !per.some(name => name.startsWith('每股')), per.join('、'))
+    // 英文名 2026-10-22 補齊後，Non-Performing Loan Ratio、Personnel Expense per Share 也是 per 開頭：查詢是縮寫的開頭就只比對縮寫
+    const per = await found('per')
+    expect('英文搜尋', 'per 只找到本益比那一組', per.includes('本益比河道位置') && !per.some(name => name.startsWith('每股') || name.includes('逾期放款')), per.join('、'))
     const psr = await found('PSR')
     expect('英文搜尋', 'PSR 用代碼找得到股價營收比', psr.includes('股價營收比') && psr.includes('股價營收比河道位置'), psr.join('、'))
+    // 只在上游搜尋別名裡的叫法（searchAliases，analysis-ts 9236756d）：縮寫與中文俗稱
+    for (const [query, name] of [['GM', '毛利率'], ['CCC', '現金轉換循環'], ['配息月份', '除權息月份']]) {
+      const hits = await found(query)
+      expect('別名搜尋', `${query} 找得到${name}`, hits.includes(name), hits.join('、'))
+    }
     await page.keyboard.press('Escape')
     await page.waitForTimeout(800)
   }
