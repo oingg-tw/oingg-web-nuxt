@@ -531,7 +531,8 @@ body {
   background: var(--el-bg-color);
 }
 
-.seo-table__num {
+/* 數字欄靠右（2026-10-21，使用者：「CSS要改」）：原本只寫 .seo-table__num，權重輸給上面的 .seo-table td 的 text-align: left，全站數字欄其實都靠左 */
+.seo-table .seo-table__num {
   text-align: right;
 }
 

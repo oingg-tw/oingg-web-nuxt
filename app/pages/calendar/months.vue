@@ -359,10 +359,9 @@ html.dark .ex-heat__legend {
     display: inline;
   }
 
-  /* 金額欄固定寬、靠右，各列的「息」對齊 */
+  /* 金額欄固定寬，各列的「息」對齊 */
   .ex-month-table td.seo-table__num {
     min-width: 6em;
-    text-align: right;
   }
 }
 </style>
