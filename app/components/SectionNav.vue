@@ -39,28 +39,24 @@
 // No `current` prop: the pages passed one from the day this component was written and nothing ever
 // read it — the active state has always come from the router. Dropped 2026-09-22 along with the
 // three call sites that were feeding it.
-type Props = {
+const props = defineProps<{
   // 地標名稱，例如「總經特區」；釘選那份會接上「導覽（釘選）」
   label: string
   // divided：這一項上面加一條分隔線（2026-10-19 使用者：「帳戶管理上面希望有條分隔線」——設定類的頁面跟上面的內容頁分開）
   // heading：從這一項開始是新的一組，上面加組標題與分隔線（2026-10-19 持股：「把現在持有的與期間持有的分開看」）
-  // current：呼叫端自己決定哪一項是目前位置（2026-10-21 觀察清單的每一組都是 /watchlist?list=…，路由只看路徑分不出是哪一組）；
-  // 不給就照路由。skeleton：還在讀的列，畫同樣高的骨架（to 只當 key）
-  items: { label: string; to: string; divided?: boolean; heading?: string; current?: boolean; skeleton?: boolean }[]
+  items: { label: string; to: string; divided?: boolean; heading?: string }[]
   // 不在清單上的頁面（例如新手專區的指標頁）要標成哪一項底下：那一項加 aria-current="true"（2026-10-12）
   activeTo?: string
   // 手機底部條「目前：」後面再接的狀態（2026-10-19，持股的帳戶：「目前：持股總覽・元大」）。手機看不到側欄，這是唯一看得到的地方
   currentDetail?: string | null
-}
-const props = defineProps<Props>()
+}>()
 
 // 2026-10-07 手機改用全站共用的底部固定條（AppBottomNav），原本是頁首一排會被捲走的按鈕
 const route = useRoute()
 // 物件綁定而不是 :aria-current="… : undefined"：undefined 也會蓋掉 router 在完全符合那一項設的 aria-current="page"
 const parentMark = (to: string) => (to === props.activeTo && to !== route.path ? { 'aria-current': 'true' as const } : {})
-const mark = (item: Props['items'][number]) => (item.current === undefined ? parentMark(item.to) : { 'aria-current': item.current ? 'page' as const : undefined })
 const current = computed(() => {
-  const page = (props.items.find(item => item.current) ?? props.items.find(item => item.current === undefined && (item.to === route.path || item.to === props.activeTo)))?.label ?? null
+  const page = props.items.find(item => item.to === route.path || item.to === props.activeTo)?.label ?? null
   return page && props.currentDetail ? `${page}・${props.currentDetail}` : page
 })
 </script>
@@ -73,9 +69,8 @@ const current = computed(() => {
       <ul class="rail-list">
         <template v-for="item in items" :key="item.to">
           <li v-if="item.heading" class="rail-heading">{{ item.heading }}</li>
-          <li :class="{ 'rail-divided': item.divided }" :aria-hidden="item.skeleton || undefined">
-            <span v-if="item.skeleton" class="rail-item"><span class="app-skeleton app-skeleton--inline section-nav__skeleton" /></span>
-            <NuxtLink v-else :to="item.to" class="rail-item" v-bind="mark(item)">{{ item.label }}</NuxtLink>
+          <li :class="{ 'rail-divided': item.divided }">
+            <NuxtLink :to="item.to" class="rail-item" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
           </li>
         </template>
       </ul>
@@ -89,9 +84,8 @@ const current = computed(() => {
       <ul class="rail-list">
         <template v-for="item in items" :key="item.to">
           <li v-if="item.heading" class="rail-heading">{{ item.heading }}</li>
-          <li :class="{ 'rail-divided': item.divided }" :aria-hidden="item.skeleton || undefined">
-            <span v-if="item.skeleton" class="rail-item"><span class="app-skeleton app-skeleton--inline section-nav__skeleton" /></span>
-            <NuxtLink v-else :to="item.to" class="rail-item" v-bind="mark(item)">{{ item.label }}</NuxtLink>
+          <li :class="{ 'rail-divided': item.divided }">
+            <NuxtLink :to="item.to" class="rail-item" v-bind="parentMark(item.to)">{{ item.label }}</NuxtLink>
           </li>
         </template>
       </ul>
@@ -99,10 +93,3 @@ const current = computed(() => {
     <slot name="after" />
   </AppNavRail>
 </template>
-
-<style scoped>
-/* 讀取中的列（清單名稱還沒到）：一個名稱長的骨架，列高跟真的列一樣（.rail-item） */
-.section-nav__skeleton {
-  width: 5em;
-}
-</style>

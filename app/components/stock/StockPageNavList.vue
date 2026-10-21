@@ -35,13 +35,17 @@ const trailingItems = computed(() => props.items.filter(item => item.trailing))
 // PresetFolder.vue（篩選器分頁拖曳）調過的那一組：forceFallback（連結的原生拖曳會搶走手勢）、30ms 延遲、8px 容忍讓點連結仍是
 // 點連結；粗指標（手機）不掛，免得跟捲動底部清單打架。鍵盤與單指替代路徑由呼叫端提供（個股是指標速覽表格的上移／下移，WCAG 2.5.7）。
 // onEnd 先還原 sortable 自己搬的 DOM，交給 Vue 依呼叫端的新順序重畫，同 PresetFolder 的理由。
+// 呼叫端指定目前位置時照它（物件綁定：undefined 也要蓋掉路由在完全符合那一列設的 aria-current，見 SectionNav）
+const mark = (item: StockNavNode) => (item.current === undefined ? {} : { 'aria-current': item.current ? 'page' as const : undefined })
+// 只有一列（或還在讀）就沒有東西可排：不畫握把、不掛拖曳
+const draggable = computed(() => props.sortableItems.length > 1 && !props.sortableItems.some(item => item.skeleton))
 const sortableList = ref<HTMLElement>()
 let sortable: Sortable | undefined
 
-watch(sortableList, (el) => {
+watch([sortableList, draggable], ([el, enabled]) => {
   sortable?.destroy()
   sortable = undefined
-  if (!el || matchMedia('(pointer: coarse)').matches) return
+  if (!el || !enabled || matchMedia('(pointer: coarse)').matches) return
   sortable = Sortable.create(el, {
     animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150,
     delay: 30,
@@ -64,7 +68,7 @@ onUnmounted(() => sortable?.destroy())
     <!-- 釘選那一段不包 ClientOnly：useState 的預設值兩邊一致，那些列是帳號同步完成後才長出來的狀態變化，不是 hydration 不匹配。 -->
     <ul class="rail-list">
       <li v-for="item in leadingItems" :key="item.label">
-        <NuxtLink :to="item.to!(code)" class="rail-item">
+        <NuxtLink :to="item.to!(code)" class="rail-item" v-bind="mark(item)">
           <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
         </NuxtLink>
       </li>
@@ -74,14 +78,15 @@ onUnmounted(() => sortable?.destroy())
              原本線畫在小標題上，ETF 不給小標題就連線也沒了。上面沒有骨幹列時不畫 -->
         <li :class="{ 'rail-divided': !sortableHeading && leadingItems.length }">
           <ul ref="sortableList" class="stock-page-nav__sublist">
-            <li v-for="item in sortableItems" :key="item.label" class="stock-page-nav__pinned">
+            <li v-for="(item, index) in sortableItems" :key="item.skeleton ? `skeleton-${index}` : item.label" class="stock-page-nav__pinned" :aria-hidden="item.skeleton || undefined">
+              <span v-if="item.skeleton" class="rail-item"><span class="app-skeleton app-skeleton--inline stock-page-nav__skeleton" /></span>
               <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->
-              <NuxtLink :to="item.to!(code)" class="rail-item" draggable="false">
+              <NuxtLink v-else :to="item.to!(code)" class="rail-item" draggable="false" v-bind="mark(item)">
                 <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
                 <!-- 靠右的拖曳記號（2026-10-13「sidebar 靠右加上 icon 讓用戶知道他可以操作」）：整列都能拖，這只是提示；
                      aria-hidden，title 給滑鼠停留的人。粗指標（手機）不能拖，所以 CSS 一起藏起來 -->
                 <!-- 六點握把（同日「換一個 icon」：十字箭頭 Rank 讀起來像「移動畫面」）；Element Plus 沒有這個圖示，所以內嵌 -->
-                <el-icon class="stock-page-nav__drag" aria-hidden="true" title="拖曳調整順序">
+                <el-icon v-if="draggable" class="stock-page-nav__drag" aria-hidden="true" title="拖曳調整順序">
                   <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg>
                 </el-icon>
               </NuxtLink>
@@ -90,7 +95,7 @@ onUnmounted(() => sortable?.destroy())
         </li>
       </template>
       <li v-for="(item, index) in trailingItems" :key="item.label" :class="{ 'rail-divided': index === 0 }">
-        <NuxtLink :to="item.to!(code)" class="rail-item">
+        <NuxtLink :to="item.to!(code)" class="rail-item" v-bind="mark(item)">
           <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
         </NuxtLink>
       </li>
@@ -133,6 +138,11 @@ onUnmounted(() => sortable?.destroy())
   .stock-page-nav__drag {
     display: none;
   }
+}
+
+/* 名稱還沒讀到的列 */
+.stock-page-nav__skeleton {
+  width: 5em;
 }
 
 /* 拖曳中留在原位的那一列（sortable 的預設 ghostClass） */

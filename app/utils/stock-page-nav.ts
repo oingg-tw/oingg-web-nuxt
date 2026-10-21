@@ -37,6 +37,10 @@ export interface StockNavNode {
   // 是占比）、Promotion 刪除（紙飛機＝傳送）、TrendCharts 移到成長動能、獲利能力改 Histogram；試過 Money／Wallet／Stamp 都退掉。
   // 現在十個輪廓互不重疊：燈泡／漏斗／日曆／三直柱／圓餅／折線／鎖／硬幣堆／標籤／文件——再加第一層項目時先確認不撞形。
   icon?: Component
+  // 側欄列的狀態（2026-10-21 觀察清單也用 StockPageNavList）：current＝呼叫端決定這一列是不是目前位置（清單都是 /watchlist?list=…，
+  // 路由只看路徑分不出是哪一組；不給就照路由）；skeleton＝名稱還沒讀到，畫同樣高的骨架
+  current?: boolean
+  skeleton?: boolean
 }
 
 // 2026-09-26：側邊欄只留固定幾列，其餘目的地搬到 /stock/{code}/metrics 目錄頁（STOCK_METRIC_INDEX），使用者再從那裡釘回側邊欄
