@@ -29,8 +29,9 @@ const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 // clean with this list empty. Kept as an empty hook rather than deleted, since the next piece of
 // compliance-reviewed backend phrasing that trips the regex will need it again.
 const BACKEND_OWNED = []
-// 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數）
-const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\/business-cycle-clock\?cycle=\d+/]
+// 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數；
+// 景氣時鐘 2026-10-21 起是 /macro）
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\?cycle=\d+/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
@@ -67,8 +68,7 @@ const ROUTES = [
   { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/equity-risk-premium', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 自己有 route file 的總經頁逐一列出：它們不在 [slug] 模板上，抽樣模板成員碰不到。
-  // 景氣時鐘（2026-10-11）：自己的 route file，表格 24 列是可索引內容
-  { path: '/macro/business-cycle-clock', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  // 景氣時鐘（2026-10-11）2026-10-21 起就是 /macro（上面那一列），舊網址 301 過去
   { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // [slug] 模板上剩下的一頁（2026-10-11 精簡後）。
   { path: '/macro/bond-yield', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },

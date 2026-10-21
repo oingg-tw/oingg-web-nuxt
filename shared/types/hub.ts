@@ -125,7 +125,7 @@ export interface BusinessCyclePeriod {
   to: string | null
 }
 
-// 國家發展委員會景氣指標的兩個去趨勢值（100＝長期趨勢），逐月，舊的在前。/macro/business-cycle-clock 與
+// 國家發展委員會景氣指標的兩個去趨勢值（100＝長期趨勢），逐月，舊的在前。景氣時鐘（/macro）與
 // /industries/cycle（只用同時指標）共用一份快取。
 export interface BusinessCycleIndicatorPoint {
   period: string

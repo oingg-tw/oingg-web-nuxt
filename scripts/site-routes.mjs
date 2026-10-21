@@ -13,7 +13,7 @@ export const ALL_ROUTES = [
   ...ETF_FACETS.map(path => `/etf/0050${path}`), '/etf/00400a',
   '/preferred/2881a', '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms',
   '/screener/common', '/screener/common?template=value', '/screener/etf', '/screener/preferred',
-  '/macro', '/macro/business-cycle-clock', '/macro/business-cycle-clock?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
+  '/macro', '/macro?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
   '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', ...INDUSTRY_FACETS.map(facet => `/industry/24-semiconductor${facet.suffix}`),
   '/rank', '/rank/dividend-yield', '/learn', '/learn/dupont', '/learn/dividend-source/2330', '/blog', '/blog/low-pe-ratio-trap-cyclical-stocks',
   '/calendar', '/watchlist', '/watchlist/lists', '/holdings', '/holdings/dividends', '/holdings/columns', '/holdings/accounts', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/profile'

@@ -7,7 +7,9 @@
 //   - ETF 與特別股走錯到個股頁（2026-10-21「從配息月曆 點選 00931B 會跑出 找不到這檔股票」）：/stock/{ETF 或特別股代號}（含底下的子頁）
 //     → 它自己的頁（securityPath）。子頁不帶過去：ETF／特別股的面向跟個股的指標頁不是同一組
 //   - 特別股專區（2026-10-18 同日拆掉，使用者：「我要的不是專區」）：/preferred 與五個比較頁 → /screener/preferred（28 檔的清單在那裡）
+//   - 景氣時鐘（2026-10-21 成為總經特區首頁）：/macro/business-cycle-clock → /macro，?cycle=N 照樣帶著（下面一律附上原本的 search）
 const REDIRECTS: [RegExp, (match: RegExpExecArray) => string][] = [
+  [/^\/macro\/business-cycle-clock\/?$/, () => '/macro'],
   [/^\/screener\/preferred\/(\d{4}[a-z][a-z0-9]?)\/?$/i, match => `/preferred/${match[1]!.toLowerCase()}`],
   [/^\/stock\/([^/]+)\/quick-view\/?$/, match => `/stock/${match[1]}`],
   [/^\/screener\/etf\/(\d{4,6}[a-z]?)\/?$/i, match => `/etf/${match[1]!.toLowerCase()}`],
