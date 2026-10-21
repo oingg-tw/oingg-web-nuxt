@@ -91,6 +91,9 @@ export interface RankPageDefinition {
   valueScale?: number
   // ETF 的排行：值是投信投顧公會基金月報的月底數字，資料日期用月報月份（上游的 ETF 篩選結果不帶日期）
   monthlyReport?: boolean
+  // ETF 的排行：值是最近一個完整年度的全年數字（上游另有 {field}2025 這種各年一欄），表頭標出是哪一年（2026-10-21，使用者問
+  //「總費用率 只有 0.3% 嗎? 這是過去12個月 或是 年化過了的結果嗎」）
+  fullYear?: boolean
   // 這個欄位的說明（「是什麼？怎麼算？」與「要注意什麼」）。普通股的排行讀 /metrics 型錄自己的說明，ETF 的型錄沒有，寫在這裡
   note?: string
   // 年增率排行的基期門檻（2026-10-01，使用者選加門檻而不是撤頁）：/rank/revenue-growth 前 50 名全部 ≥100%、榜首 24852%，
@@ -186,7 +189,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-holders', universe: 'etf', field: 'holders', direction: 'desc', label: '受益人數', unit: '人', monthlyReport: true, note: '受益人數是投信投顧公會基金月報公布的月底人數，每月更新一次。' },
   { slug: 'etf-distribution-yield', universe: 'etf', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
   { slug: 'etf-return-1y', universe: 'etf', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
-  { slug: 'etf-expense-ratio-low', universe: 'etf', field: 'expenseRatio', direction: 'asc', label: '總費用率', unit: '%', note: '總費用率是最近完整年度的官方數字，從淨值裡每天扣、不另外收；今年才成立的 ETF 還沒有完整年度，不在列（近 12 個月的估算看各檔的「費用」頁）。' }
+  { slug: 'etf-expense-ratio-low', universe: 'etf', field: 'expenseRatio', direction: 'asc', label: '總費用率', unit: '%', fullYear: true, note: '總費用率是投信投顧公會公布的最近完整年度全年數字，從淨值裡扣、不另外收；它含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。今年才成立的 ETF 還沒有完整年度，不在列（近 12 個月的估算看各檔的「費用」頁）。' }
 ]
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位

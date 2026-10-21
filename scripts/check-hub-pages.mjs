@@ -444,12 +444,14 @@ await browser.close()
 const rankSlugs = [...(await (await fetch(`${baseUrl}/rank`)).text()).matchAll(/href="\/rank\/([a-z0-9-]+)"/g)].map(match => match[1])
 expect('/rank', 'rank slugs discovered', rankSlugs.length > 0, `${rankSlugs.length}`)
 for (const slug of new Set(rankSlugs)) {
-  const { rows = [], groups, direction } = await (await fetch(`${baseUrl}/api/hub/rank/${slug}`)).json()
+  const { rows = [], groups, direction, valueYear } = await (await fetch(`${baseUrl}/api/hub/rank/${slug}`)).json()
   const distinct = new Set(rows.map(row => row.value).filter(value => value !== null)).size
   expect(`/rank/${slug}`, 'top 50 spans ≥ 3 distinct values', distinct >= 3, `${distinct} distinct in ${rows.length} rows`)
   // ETF 排行的資產類型篩選（2026-10-21）：每一類是自己的前 50 檔——名次從 1 連號、依排行方向排好；第一名不能比全部的第一名更前面
   if (!slug.startsWith('etf-')) continue
   expect(`/rank/${slug}`, 'asset-class groups ≥ 2', (groups?.length ?? 0) >= 2, `${groups?.length ?? 0}`)
+  // 總費用率是全年數字，表頭要標年度（RANK_PAGES 的 fullYear）：最近一個完整年度，不會比兩年前還舊
+  if (slug === 'etf-expense-ratio-low') expect(`/rank/${slug}`, 'valueYear is a recent full year', valueYear >= new Date().getFullYear() - 2 && valueYear < new Date().getFullYear(), `${valueYear}`)
   for (const group of groups ?? []) {
     const values = group.rows.map(row => row.value)
     const ordered = values.every((value, index) => index === 0 || (direction === 'asc' ? value >= values[index - 1] : value <= values[index - 1]))

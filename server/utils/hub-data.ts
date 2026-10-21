@@ -486,7 +486,14 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     .map(name => ({ name, rows: toRows(ranked.filter(entry => entry.result.values.assetClass === name)) }))
   // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
   //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
-  const reportMonth = definition.monthlyReport && rows[0] ? String((await businessFetch<{ yearMonth?: string }>(`/etfs/${rows[0].symbol}`)).yearMonth ?? '') : ''
+  const leader = (definition.monthlyReport || definition.fullYear) && rows[0] ? await businessFetch<{ yearMonth?: string; values?: Record<string, unknown> }>(`/etfs/${rows[0].symbol}`) : null
+  const reportMonth = definition.monthlyReport ? String(leader?.yearMonth ?? '') : ''
+  // 全年數字（總費用率）：第一名有值的最近一年（上游：「expenseRatio 只用最新一個完整年度」），跟排行用的值對得上才標，不猜
+  const leaderValues = leader?.values ?? {}
+  const latestYear = Math.max(0, ...Object.keys(leaderValues)
+    .filter(key => key.length === definition.field.length + 4 && key.startsWith(definition.field) && /\d{4}$/.test(key) && typeof leaderValues[key] === 'number')
+    .map(key => Number(key.slice(-4))))
+  const valueYear = definition.fullYear && latestYear && leaderValues[`${definition.field}${latestYear}`] === leaderValues[definition.field] ? latestYear : null
   return {
     slug: definition.slug,
     field: definition.field,
@@ -496,6 +503,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     unit: definition.unit ?? null,
     rows,
     groups,
+    valueYear,
     asOf: /^\d{6}$/.test(reportMonth) ? `${reportMonth.slice(0, 4)}-${reportMonth.slice(4)}` : null
   }
 }

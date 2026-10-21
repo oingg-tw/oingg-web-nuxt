@@ -17,8 +17,9 @@ const trailingNote = computed(() => {
   return months !== null && months < 12 ? `估算；只有 ${months} 個月，已換算成一年` : '估算'
 })
 
+// 各項費用不是契約費率，是最近一個完整年度的實際比率（analysis-ts 從 SITCA 全年報表讀，跟歷年表的第一列同一年；sitca-ts 2026-10-21）
 const fees = computed<FactItem[]>(() => [
-  ...ETF_FEE_FIELDS.flatMap(({ field, label }) => (num(field) === null ? [] : [{ label, value: etfPct(num(field)) }])),
+  ...ETF_FEE_FIELDS.flatMap(item => (num(item.field) === null ? [] : [{ label: item.label, value: etfPct(num(item.field)), note: 'note' in item ? item.note : undefined }])),
   { label: '近 12 個月總費用率', value: etfPct(trailing.value), note: trailingNote.value }
 ])
 
@@ -54,7 +55,8 @@ const answer = computed(() => {
           </tbody>
         </table>
       </SharedTableScroll>
-      <SharedFactList :items="fees" :label="`${shortName}目前的各項費率`" />
+      <p v-if="years.length" class="hub-answer">各項費用是 {{ years[0]!.year }} 年全年的實際比率，不是契約費率。總費用率含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。</p>
+      <SharedFactList :items="fees" :label="years.length ? `${shortName} ${years[0]!.year} 年各項費用` : `${shortName}各項費用`" />
     </StockQuestionSection>
   </EtfPage>
 </template>

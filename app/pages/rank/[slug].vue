@@ -117,7 +117,7 @@ const { breadcrumbs } = useHubPageSeo({
               <th scope="col" class="seo-table__num">名次</th>
               <th scope="col">代號</th>
               <th scope="col">名稱</th>
-              <th scope="col" class="seo-table__num">{{ label }}<template v-if="unit">（{{ unit }}）</template></th>
+              <th scope="col" class="seo-table__num"><span v-if="data?.valueYear" class="rank-page__year">{{ data.valueYear }} 年</span>{{ label }}<template v-if="unit">（{{ unit }}）</template></th>
               <th v-if="hasRowDates" scope="col">資料日期</th>
             </tr>
           </thead>
@@ -197,6 +197,11 @@ const { breadcrumbs } = useHubPageSeo({
 
   .rank-page__filter :deep(.el-radio-button__inner) {
     width: 100%;
+  }
+
+  /* 表頭的年度自己一行：「2025 年總費用率（%）」一行要 189px，表格多捲 69px */
+  .rank-page__year {
+    display: block;
   }
 }
 </style>

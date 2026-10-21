@@ -56,7 +56,8 @@ export const ETF_FEE_FIELDS = [
   { field: 'otherFeeRate', label: '其他費用' },
   { field: 'commissionRate', label: '交易手續費' },
   { field: 'transactionTaxRate', label: '交易稅' },
-  { field: 'etfTradingFeeRate', label: 'ETF 交易費' }
+  // 參與券商申購買回時付給基金的交易費，SITCA 的總費用率是「扣掉」它（sitca-ts 2026-10-21：合計＝手續費＋交易稅－這一項＋經理費＋保管費＋保證費＋其他）
+  { field: 'etfTradingFeeRate', label: 'ETF 申購買回交易費', note: '從總費用率扣除' }
 ] as const
 
 export const etfYuan = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${formatSignificantDigits(value, 4)} 元`)
