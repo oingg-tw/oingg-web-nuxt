@@ -1,16 +1,15 @@
 // 總經特區的側邊欄（2026-09-22「可以成立總經特區了，Sidebar 就放不同指標跟大盤比較」）。序列型的頁面從 MACRO_PAGES 推導，頁面與
 // 導覽不會脫鉤；前五項各自有 route file（離散的決議事件、多算法對照，進不了序列模板），手列在前面：大事件年表最前（不需要先懂任何
-// 指標）、三個政策利率頁欄位不對應所以沒合併成註冊表（gov-ts 建議）、股票風險溢酬連時間軸都沒有。description 是 /macro 索引頁每列的
-// 一句話——有它索引頁才值得被索引，不是導覽的複本（2026-10-08 從 macro/index.vue 搬來）。
+// 指標）、三個政策利率頁欄位不對應所以沒合併成註冊表（gov-ts 建議）、股票風險溢酬連時間軸都沒有。原本每一項還帶一句說明給 /macro
+// 索引頁的表用；2026-10-21 那一頁改成各項的最新數值（那張表跟側欄是重複資訊），說明一起拿掉
 export interface MacroNavNode {
   label: string
   to: string
-  description: string
 }
 
 export const MACRO_NAV_ITEMS: MacroNavNode[] = [
-  { label: '大事件年表', to: '/macro/market-events', description: '1987 年以來的重大事件，對照大盤自己算出的每一段下跌：高點、低點、跌幅、回到前高的時間，以及當時發生了什麼。' },
-  { label: '景氣時鐘', to: '/macro/business-cycle-clock', description: '國家發展委員會景氣領先指標與同時指標畫在 OECD 景氣時鐘上：是否高於長期趨勢、比上個月是增是減，最近 24 個月的軌跡，以及國家發展委員會認定的歷次循環。' },
-  { label: '股票風險溢酬', to: '/macro/equity-risk-premium', description: '股票比公債多賺多少：歷史法與供給面模型兩種算法，四個窗口長度並排。' },
-  ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug), description: page.description }))
+  { label: '大事件年表', to: '/macro/market-events' },
+  { label: '景氣時鐘', to: '/macro/business-cycle-clock' },
+  { label: '股票風險溢酬', to: '/macro/equity-risk-premium' },
+  ...MACRO_PAGES.map(page => ({ label: page.topic, to: macroPagePath(page.slug) }))
 ]

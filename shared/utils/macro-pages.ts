@@ -27,8 +27,6 @@ export interface MacroPageDefinition {
   // <title> phrase. Budget is the same 32 CJK-equivalent characters check-hub-pages holds every
   // hub title to, minus「｜安盈選股」— verify per entry.
   titleKeywords: string
-  // /macro 索引頁每列的一句話（MACRO_NAV_ITEMS 也帶著它）。
-  description: string
   // The 業務中台 path, including any fixed query this page always sends.
   endpoint: string
   // 一支序列對照加權指數（模板也能畫兩支，2026-10-11 貨幣供給頁刪除後目前沒有兩支的頁）。
@@ -44,7 +42,6 @@ export const MACRO_PAGES: MacroPageDefinition[] = [
   {
     slug: 'bond-yield',
     topic: '10 年期公債殖利率',
-    description: '10 年期公債殖利率，一般作為無風險利率的參考。',
     titleKeywords: '10 年期公債殖利率與大盤',
     endpoint: '/macro/gov-bond-yield-10y-history',
     series: [{ key: 'yieldPct', name: '10 年期公債殖利率', lineType: 'solid', symbol: 'circle' }],
