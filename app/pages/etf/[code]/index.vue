@@ -33,7 +33,7 @@ const facts = computed<FactItem[]>(() => {
 
 // 卡片順序跟側欄一樣（useEtfFacetOrder，讀者拖曳過就照讀者的）；填息沒有圖，不出卡片
 const { order } = useEtfFacetOrder()
-const chartFacets = computed(() => order.value.filter((key): key is Exclude<typeof key, 'fill' | 'overview'> => key !== 'fill' && key !== 'overview'))
+const chartFacets = computed(() => order.value.filter((key): key is Exclude<typeof key, 'fill'> => key !== 'fill'))
 const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.label
 </script>
 

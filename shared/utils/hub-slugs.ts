@@ -70,6 +70,24 @@ export function parseSectorParam(param: string): { code: string; slug: string } 
   return { code: match[1]!, slug: match[2]! }
 }
 
+// 類股個別頁的面向（2026-10-21，使用者：「個別產業 比照 個股瀏覽 他的sidebar也是 最上面是速覽 中間是好多個指標 這樣用戶體驗 UIUX
+// 比較一致 也不會有好多圖表擠在同一個內容的問題」）。原本一頁四張圖三張表；現在同 ETF 個別頁：側欄最上面是指標速覽（類股首頁），其餘
+// 面向各一頁、可以拖曳排序。放在這裡而不是 app/utils：sitemap（伺服器端）也要列這些網址
+export const INDUSTRY_FACETS = [
+  { key: 'overview', label: '指標速覽', suffix: '' },
+  { key: 'companies', label: '公司名單', suffix: '/companies' },
+  { key: 'revenue', label: '月營收', suffix: '/revenue' },
+  { key: 'margins', label: '獲利能力', suffix: '/margins' },
+  { key: 'distribution', label: '指標分布', suffix: '/distribution' },
+  { key: 'dividend', label: '殖利率與股利成長', suffix: '/dividend' }
+] as const
+
+export type IndustryFacetKey = typeof INDUSTRY_FACETS[number]['key']
+
+export function industryFacetPath(code: string, key: IndustryFacetKey): string {
+  return `${sectorPath(code) ?? '/industries'}${INDUSTRY_FACETS.find(facet => facet.key === key)!.suffix}`
+}
+
 // /rank/{slug} — one objective screener field each, ranked by GET /screener/ranking. The
 // wording is deliberately statistical（由高到低／由低到高）; the pages carry the compliance
 // disclaimer directly above the table. No sector-scoped variants: 業務中台 rejects sectorCodes on

@@ -35,7 +35,10 @@ const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\/
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
   { path: '/', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0 },
-  { path: '/industry/24-semiconductor', stockLinksMin: 100, industryLinksMin: 30, tablesMin: 1 },
+  // 2026-10-21 起類股首頁是指標速覽（圖卡），有指標的公司表在 /companies 那一面，所以速覽沒有 SSR 表格；全部公司的連結留在收起來的清單裡
+  //（爬蟲層數，check-click-depth），個股連結仍然 ≥ 100
+  { path: '/industry/24-semiconductor', stockLinksMin: 100, industryLinksMin: 30, tablesMin: 0 },
+  { path: '/industry/24-semiconductor/companies', stockLinksMin: 100, industryLinksMin: 0, tablesMin: 1 },
   // /industry/13-electronics-legacy was listed here as the thin-sector case（noindex, ≥5 stock
   // links）until 2026-09-22, when it became a real 404. Not a regression: twse-ts found its
   // company_profile held both listed（source='COMPANY_PROFILE'）and unlisted-public

@@ -17,9 +17,10 @@ export default defineEventHandler(async () => {
 
   const sectors = (await settle(getSectors())) ?? []
   const companies = await Promise.all(sectors.map(sector => settle(getSectorCompanies(sector.code))))
+  // 類股首頁（指標速覽）與每個面向一頁（2026-10-21，INDUSTRY_FACETS）
   sectors.forEach((sector, index) => {
-    const path = sectorPath(sector.code)
-    if (path && (companies[index]?.rows.length ?? 0) >= INDEXABLE_ROW_FLOOR) urls.push({ loc: path })
+    if (!sectorPath(sector.code) || (companies[index]?.rows.length ?? 0) < INDEXABLE_ROW_FLOOR) return
+    for (const facet of INDUSTRY_FACETS) urls.push({ loc: industryFacetPath(sector.code, facet.key) })
   })
 
   for (const page of RANK_PAGES) {
