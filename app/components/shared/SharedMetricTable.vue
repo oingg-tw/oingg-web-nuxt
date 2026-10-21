@@ -138,6 +138,27 @@ function formatValue(column: ScreenerResultTableColumn, raw: string | null | und
   return formatScreenerValue(raw, located?.field.unit, column.field, located?.metric.options)
 }
 
+// 河道位置的格子（2026-10-21，使用者：「淨值比河道位置 要上色 破頂 要用紅色 破底要用綠色 比照 河流圖顏色」「剛才說的是篩選的欄位值的
+// 部分」）：前面一塊跟河流圖同色的色塊——破底是最下面那條線（跌色）、破頂是最上面那條線（漲色）、中間五層是河道的填色，跟著使用者的
+// 漲跌色慣例。破頂、破底的字再用漲跌色；中間幾層是黃綠、黃，當字色過不了 4.5:1，只上色塊。字本身就寫是哪一層，顏色不是唯一線索
+const { resolvedMode, market } = useAppTheme()
+const riverPalette = computed(() => {
+  const colors = getPriceColors(resolvedMode.value, market.value)
+  return riverColors(colors.up, colors.down, RIVER_ZONE_NAMES.length - 2)
+})
+function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | undefined): { color: string; textClass: string } | null {
+  const metric = locateFieldInSchema(props.categories, column.field)?.metric
+  if (raw == null || metric?.kind !== 'categorical' || !metric.key.endsWith('RiverBand')) return null
+  const zone = Number(raw)
+  const last = RIVER_ZONE_NAMES.length - 1
+  if (!Number.isInteger(zone) || zone < 0 || zone > last) return null
+  const { lines, fills } = riverPalette.value
+  return {
+    color: zone === 0 ? lines[0]! : zone === last ? lines.at(-1)! : fills[zone - 1]!,
+    textClass: zone === 0 ? priceDirectionClass(-1) : zone === last ? priceDirectionClass(1) : ''
+  }
+}
+
 const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
@@ -568,7 +589,10 @@ watch(() => props.loading, (loading, wasLoading) => {
           <!-- 共用時加的 #cell：觀察清單的「漲跌」「下次除權息」是自己算的欄位，要自己畫 -->
           <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
           <div class="screener-result-table__cell">
-            <span>{{ formatValue(column, row.values[column.field]?.value) }}</span>
+            <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
+              <i class="screener-result-table__zone-swatch" :style="{ background: riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true" />{{ formatValue(column, row.values[column.field]?.value) }}
+            </span>
+            <span v-else>{{ formatValue(column, row.values[column.field]?.value) }}</span>
             <!-- The actual per-row knowledgeDate this specific number describes (renamed from
                  asOfDate 2026-09-14) — different symbols can legitimately show different dates
                  for the same field (e.g. one hasn't filed this quarter's report yet), so this
@@ -622,7 +646,10 @@ watch(() => props.loading, (loading, wasLoading) => {
               <dt>{{ displayLabel(column) }}</dt>
               <dd>
                 <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
-                  {{ formatValue(column, row.values[column.field]?.value) }}
+                  <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
+                    <i class="screener-result-table__zone-swatch" :style="{ background: riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true" />{{ formatValue(column, row.values[column.field]?.value) }}
+                  </span>
+                  <template v-else>{{ formatValue(column, row.values[column.field]?.value) }}</template>
                   <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ row.values[column.field]!.knowledgeDate }}</span>
                 </slot>
               </dd>
@@ -966,6 +993,18 @@ watch(() => props.loading, (loading, wasLoading) => {
   flex-direction: column;
   align-items: flex-end;
   line-height: 1.3;
+}
+
+.screener-result-table__zone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.screener-result-table__zone-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
 }
 
 .screener-result-table__cell-date {
