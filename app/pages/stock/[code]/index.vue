@@ -218,7 +218,8 @@ function valueText(field: string | null, slug?: string): string {
   // 還沒讀完就是「…」。看 status 不看 pending（2026-10-08 server: false 時量到 hydration 警告 ×5；現在伺服器端也抓，仍照這個判斷）
   if (valuesStatus.value !== 'success' && valuesStatus.value !== 'error' && !cell) return '…'
   if (cell?.value == null) return '－'
-  return `${(slug && VALUE_PREFIX[slug]) ?? ''}${formatScreenerValue(cell.value, locateFieldInSchema(schema.value?.categories ?? [], field)?.field.unit, field)}`
+  const located = locateFieldInSchema(schema.value?.categories ?? [], field)
+  return `${(slug && VALUE_PREFIX[slug]) ?? ''}${formatScreenerValue(cell.value, located?.field.unit, field, located?.metric.options)}`
 }
 function periodText(field: string | null): string {
   if (!field) return '整頁內容'

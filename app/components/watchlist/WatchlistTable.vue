@@ -56,7 +56,8 @@ const exDividendText = (row: WatchlistRow) => {
 function cellText(row: WatchlistRow, field: string): string {
   if (field === WATCHLIST_CHANGE) return changeText(row)
   if (field === WATCHLIST_EX_DIVIDEND) return exDividendText(row)
-  return formatScreenerValue(row.values[field]?.value, locateFieldInSchema(schema.value.categories, field)?.field.unit, field)
+  const located = locateFieldInSchema(schema.value.categories, field)
+  return formatScreenerValue(row.values[field]?.value, located?.field.unit, field, located?.metric.options)
 }
 // ---- 試算表的欄位（SharedSheetGrid）----
 // 代號與名稱凍結在左邊；型錄欄位畫面上照 formatScreenerValue，複製出去的是原始數字（百分比換成比例並帶 Excel 的 0.00% 格式，
@@ -73,13 +74,14 @@ const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
     // 複製與下載給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，下載時會被當成公式擋掉（toCsv）
     if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
     if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
-    const unit = locateFieldInSchema(schema.value.categories, column.field)?.field.unit
+    const located = locateFieldInSchema(schema.value.categories, column.field)
+    const unit = located?.field.unit
     const percent = unit === '%'
     return {
       key: column.field,
       label: column.label,
       numeric: props.rows.some(row => rawNumber(row, column.field) !== null),
-      text: row => formatScreenerValue(row.values[column.field]?.value, unit, column.field),
+      text: row => formatScreenerValue(row.values[column.field]?.value, unit, column.field, located?.metric.options),
       value: (row) => {
         const value = rawNumber(row, column.field)
         return value === null ? null : percent ? value / 100 : value

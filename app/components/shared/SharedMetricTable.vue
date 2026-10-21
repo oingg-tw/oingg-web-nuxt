@@ -39,7 +39,7 @@ const props = withDefaults(defineProps<{
   sortField?: string | null
   sortOrder?: 'ascending' | 'descending' | null
   // /filters schema (not the result columns themselves — those don't carry unit) — used
-  // purely to look up each displayed field's unit (see unitFor below) so percent metrics
+  // purely to look up each displayed field's unit (see formatValue below) so percent metrics
   // can show a % suffix. column.field already matches the schema's own
   // "<metricKey>.<fieldKey>" id format (see locateFieldInSchema).
   categories: MetricCategory[]
@@ -122,13 +122,6 @@ function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
     : ['descending', 'ascending', null]
 }
 
-// Only percent ('%') gets special formatting right now (the actual request) — every other unit
-// ('currency', 'times', 'ratio', 'days', 'score', or an unrecognized future value) just
-// falls through to the bare value, unchanged.
-function unitFor(field: string): string | undefined {
-  return locateFieldInSchema(props.categories, field)?.field.unit
-}
-
 // Real bug fixed 2026-09-11 (reported live: "上市櫃篩選 的 市值請保留有效數字4位元就好 不然數字
 // 太多會跑版") — 市值 (marketCap) came back as a raw, un-formatted integer (e.g.
 // "62108026310465"), blowing out the column width same as this app's own guru-badge chips did
@@ -141,7 +134,8 @@ function unitFor(field: string): string | undefined {
 function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
   if (column.format) return column.format(raw)
   // 上面三段理由（市值有效數字、千分位、尾零保留）的實作在 app/utils/screener-value.ts，觀察清單共用
-  return formatScreenerValue(raw, unitFor(column.field), column.field)
+  const located = locateFieldInSchema(props.categories, column.field)
+  return formatScreenerValue(raw, located?.field.unit, column.field, located?.metric.options)
 }
 
 const emit = defineEmits<{

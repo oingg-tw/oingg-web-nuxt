@@ -19,7 +19,7 @@ const props = defineProps<{
   max: number | null
   exclude: boolean
   // 類別型條件選的項目（2026-10-15）；數字型不帶
-  values?: string[]
+  values?: (string | number)[]
   categories: MetricCategory[]
 }>()
 

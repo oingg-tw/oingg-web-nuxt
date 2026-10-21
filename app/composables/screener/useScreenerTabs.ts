@@ -75,22 +75,24 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       fieldLabel: labelForField(filter.field),
       min: filter.min,
       max: filter.max,
-      exclude: filter.exclude
+      exclude: filter.exclude,
+      // 類別型條件（河道位置，2026-10-21）：存進帳號的組合讀回來帶 values（數字型是 null）
+      values: filter.values?.length ? [...filter.values] : undefined
     }))
   }
 
   // Empty placeholder slots (fieldId still null, waiting on the condition panel's picker)
   // never reach the API — they're not a real criterion yet.
   // 類股不是指標條件，另外轉成 sectorCodes／excludeSectorCodes（sectorScopeFor）
+  // 類別型（河道位置，2026-10-21）同特別股／ETF 的 useUniverseScreener.filtersOf：勾了項目才送 values、min／max 一律 null；還沒勾任何
+  // 項目的不送（業務中台 對沒有 values 的類別型條件回 400）
   function filtersOfTab(tab: ScreenerTab): FilterCriterion[] {
-    return tab.slots
-      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
-      .map(slot => ({
-        field: slot.fieldId,
-        min: slot.min,
-        max: slot.max,
-        exclude: slot.exclude
-      }))
+    return tab.slots.flatMap((slot): FilterCriterion[] => {
+      if (slot.fieldId === null || slot.fieldId === SECTOR_FIELD_ID) return []
+      if (slot.values?.length) return [{ field: slot.fieldId, min: null, max: null, exclude: slot.exclude, values: [...slot.values] }]
+      if (slot.values !== undefined) return []
+      return [{ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }]
+    })
   }
 
   // 伺服器上每一組目前存的條件（2026-10-16）：handleSearch 每次重查前都 PATCH 條件，而登入後第一次載入時那正是剛讀回來、一模一樣的東西，

@@ -17,7 +17,7 @@ const props = defineProps<{
   visible: boolean
   // 類別型條件（2026-10-15 三組篩選共用）：勾選項目＋包含／排除，取代數字範圍。數字型照舊
   kind?: 'numeric' | 'categorical'
-  options?: { value: string, label: string }[]
+  options?: { value: string | number, label: string }[]
   // 輸入框後面的單位（元、%、倍…）；舊的 ETF 編輯器有、共用之後要保留（2026-10-15）
   unit?: string
 }>()
@@ -30,10 +30,10 @@ const emit = defineEmits<{
 const min = defineModel<number | null>('min', { default: null })
 const max = defineModel<number | null>('max', { default: null })
 const exclude = defineModel<boolean>('exclude', { default: false })
-const values = defineModel<string[] | undefined>('values', { default: undefined })
+const values = defineModel<(string | number)[] | undefined>('values', { default: undefined })
 const categorical = computed(() => props.kind === 'categorical')
 // el-checkbox-group 要一個陣列：還沒選過（undefined）就當成空的
-const checkedValues = computed<string[]>({
+const checkedValues = computed<(string | number)[]>({
   get: () => values.value ?? [],
   set: next => { values.value = next }
 })

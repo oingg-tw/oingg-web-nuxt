@@ -126,7 +126,8 @@ export interface Metric {
   // 類別型條件（2026-10-15 三組篩選共用同一套條件元件）：特別股的累積／非累積、ETF 的資產類型這類「選項目」的欄位。
   // GET /metrics 的普通股指標都是數字型，不帶這兩個欄位；特別股與 ETF 的型錄由各自的資料來源轉成這個形狀時才會帶。
   kind?: 'numeric' | 'categorical'
-  options?: { value: string, label: string }[]
+  // value 是字串（特別股、ETF 的型錄）或數字（GET /metrics 的類別型欄位，例如河道位置 0～6，2026-10-21）；條件原樣送回上游
+  options?: { value: string | number, label: string }[]
   // 只能當條件、不能加成結果表的欄位（普通股的「類股」，2026-10-15）
   conditionOnly?: boolean
 }
@@ -240,10 +241,14 @@ const PERIOD_SORT_ORDER: Record<string, number> = {
   Q: 2,
   EOD: 3,
   FY: 4,
-  '1Y_1D': 5,
-  '2Y_1W': 6,
-  '3Y_1W': 7,
-  '5Y_1M': 8
+  // 河道位置（2026-10-21）預設 5 年：跟河流圖預設的「近5年」是同一格位置。Beta 沒有 5Y_1D，它的預設照舊是 1Y_1D
+  '5Y_1D': 5,
+  '1Y_1D': 6,
+  '2Y_1D': 7,
+  '3Y_1D': 8,
+  '2Y_1W': 9,
+  '3Y_1W': 10,
+  '5Y_1M': 11
 }
 
 export function periodSortRank(period: string): number {

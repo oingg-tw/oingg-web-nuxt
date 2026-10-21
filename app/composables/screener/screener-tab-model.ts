@@ -34,7 +34,7 @@ export interface TabFilterSlot {
   max: number | null
   exclude: boolean
   // 類別型條件選了哪些項目（2026-10-15）；數字型條件不帶。exclude 對類別型的意思是「排除這些」
-  values?: string[]
+  values?: (string | number)[]
 }
 
 // 條件編輯（useScreenerConditionEditor）只碰頁籤的這三個欄位——普通股、特別股、ETF 三組的頁籤都滿足它，共用同一套條件流程
@@ -295,7 +295,8 @@ export function sectorSlot(id: number, codes: string[], exclude: boolean): TabFi
 // request that says what it means doesn't depend on its auto-clear.
 export function sectorScopeFor(tab: Pick<ScreenerTab, 'slots'>): { sectorCodes: string[]; excludeSectorCodes: string[] } {
   const slot = tab.slots.find(item => item.fieldId === SECTOR_FIELD_ID)
-  const codes = slot?.values ?? []
+  // 類股代碼是字串（選項目的值也可能是數字，例如河道位置，但那不是這一格）
+  const codes = (slot?.values ?? []).map(String)
   return slot?.exclude ? { sectorCodes: [], excludeSectorCodes: codes } : { sectorCodes: codes, excludeSectorCodes: [] }
 }
 

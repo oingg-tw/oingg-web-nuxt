@@ -34,7 +34,7 @@ export interface SnapshotMetric {
   name: string
   unit?: string
   kind?: 'numeric' | 'categorical'
-  options?: { value: string; label: string }[]
+  options?: { value: string | number; label: string }[]
   description?: string
 }
 
