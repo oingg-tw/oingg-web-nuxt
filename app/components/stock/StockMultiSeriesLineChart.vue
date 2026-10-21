@@ -60,6 +60,10 @@ export interface LineSeriesSpec {
   //（useMetricHistoryChartOption 的 itemStyle：按數值正負上色、跟著使用者的市場慣例翻轉，2026-10-01 使用者定的）。只對
   // type 'bar' 有效；圖例小方塊用漲色。零線（baseline）與柱子朝上朝下本身就說明正負，顏色不是唯一線索。
   signColored?: boolean
+  // 年增率畫成「是去年的幾倍」的對數（2026-10-21，5314 月營收的年增率 +49,675% 把其餘月份壓成細條，使用者在真資料方案頁選了 A）：
+  // 這條所在的那一軸整條換成這種刻度，刻度標回百分比；營收 0（−100%）沒有倍數，畫到最底、灰色。提示框照舊寫原始的百分比。
+  // 換算與刻度在 app/utils/growth-log-scale.ts
+  growthLog?: boolean
 }
 
 // What this chart needs from a row, which is less than a MetricsHistoryEntry carries. Widened
@@ -169,9 +173,21 @@ const periodFill = computed(() => ({ color: chartInk.value.muted, opacity: 0.16 
 
 interface AxisTooltipParam { dataIndex?: number }
 
+const axisIndexOf = (series: LineSeriesSpec) => (series.axis === 'right' ? 1 : 0)
+
 const chartOption = computed(() => {
   const list = props.entries
   const legendCount = props.series.length + periodNames.value.length
+  // 有 growthLog 序列的軸：刻度從這段畫得到的值算（左軸、右軸各自）
+  const logAxis = [0, 1].map((axisIndex) => {
+    const growth = props.series.filter(series => series.growthLog && axisIndexOf(series) === axisIndex)
+    if (!growth.length) return {}
+    const ticks = growthLogTicks(list.flatMap(entry => growth.flatMap((series) => {
+      const value = entry.values[series.code]?.value
+      return value == null ? [] : [value]
+    })))
+    return { min: ticks[0], max: ticks.at(-1), axisLabel: { customValues: ticks, formatter: growthLogLabel }, axisTick: { customValues: ticks }, splitLine: { show: false } }
+  })
   return {
     // Top space reserved for the LEGEND, which wraps. 48 was a constant tuned when both consumers
     // had three short names（two rows at 375px）; 杜邦's four names with units take five rows there
@@ -208,12 +224,14 @@ const chartOption = computed(() => {
       {
         type: 'value',
         name: props.unit,
+        ...logAxis[0]
       },
       ...(props.unitRight
         ? [{
             type: 'value',
             name: props.unitRight,
             splitLine: { show: false },
+            ...logAxis[1]
           }]
         : [])
     ],
@@ -284,9 +302,10 @@ const chartOption = computed(() => {
         : {}),
       data: list.map((entry) => {
         const value = entry.values[series.code]?.value ?? null
-        return series.type === 'bar' && series.signColored && value !== null
-          ? { value, itemStyle: { color: value < 0 ? priceColors.value.down : priceColors.value.up } }
-          : value
+        const plotted = value !== null && series.growthLog ? growthLogValue(value) : value
+        if (value === null || !(series.type === 'bar' && series.signColored)) return plotted
+        const color = series.growthLog && value <= -100 ? chartInk.value.muted : value < 0 ? priceColors.value.down : priceColors.value.up
+        return { value: plotted, itemStyle: { color } }
       })
     }]), ...periodNames.value.map(name => ({
       // 只承載區段的灰底（與圖例那一項），沒有資料、不進提示框；灰底跨整個繪圖區的高度，所以掛在哪一軸都一樣

@@ -10,7 +10,8 @@ const props = defineProps<{
   priceBreakMonths: string[]
 }>()
 
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
+// −100% 是那個月營收 0：對數刻度上沒有倍數，柱子畫到最底、灰色（growthLog），提示框寫出來
+const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%${value <= -100 ? '（營收 0）' : ''}`)
 const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
 
 const YOY_CODE = 'yoy'
@@ -45,9 +46,9 @@ const chartSeries = computed<LineSeriesSpec[]>(() =>
   hasPrice.value
     ? [
         { code: PRICE_CODE, name: '月均價', lineType: 'solid', symbol: 'circle', format: priceText },
-        { code: YOY_CODE, name: '月營收年增率', type: 'bar', signColored: true, lineType: 'solid', symbol: 'rect', axis: 'right', format: rateText, baseline: true }
+        { code: YOY_CODE, name: '月營收年增率', type: 'bar', signColored: true, growthLog: true, lineType: 'solid', symbol: 'rect', axis: 'right', format: rateText, baseline: true }
       ]
-    : [{ code: YOY_CODE, name: '月營收年增率', type: 'bar', signColored: true, lineType: 'solid', symbol: 'rect', format: rateText, baseline: true }]
+    : [{ code: YOY_CODE, name: '月營收年增率', type: 'bar', signColored: true, growthLog: true, lineType: 'solid', symbol: 'rect', format: rateText, baseline: true }]
 )
 </script>
 
