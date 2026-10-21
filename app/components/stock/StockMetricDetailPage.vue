@@ -4,7 +4,6 @@ import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 // Explicit, not auto-imported: a newly added file under shared/ isn't picked up until the dev
 // server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
 // this component's own helpers are imported explicitly too.
-import type { CachedHistory } from '~/composables/stock/useMetricsHistory'
 // The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
 // no threshold to judge against and no 符合/未符合 anywhere on the page. Built from the direct
 // request「stock/2330/eps 這樣的，我希望造訪的人除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」,
@@ -114,28 +113,9 @@ const availableTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
   return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
 })
 
-// Pre-warms StockMetricHistoryChartInteractive's own useMetricsHistory() cache from the series
-// this page already fetched server-side, so its DEFAULT state (metricPage.timeframe, 近5年) still
-// renders real content in the SSR HTML instead of a loading placeholder — same prewarm()
-// mechanism useStockPageDigest.ts already established for exactly this purpose (see that file's
-// own comment on why this needs an explicit call right after the await, not just a watcher: SSR
-// only ever runs an `immediate` watcher once, with the pre-await null data). Registers into the
-// SUPERSET index rather than the exact 近5年 key directly — this page's own 40-period server fetch
-// covers every window up to 近8年 (32 periods), so one registration serves all of them via
-// useMetricsHistory's own projectFromSuperset(), not just the one the chart happens to open on.
-const metricsHistoryCache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
-const metricsHistorySupersetIndex = useMetricsHistorySupersetIndex()
-function prewarmMetricHistoryChart(payload: StockMetricPageResponse | null) {
-  const series = payload?.series
-  if (!series) return
-  const key = metricsHistoryCacheKey(code.value, series.codes, series.timeframe, series.limit)
-  metricsHistoryCache.value[key] = { entries: series.entries, total: series.total }
-  if (!metricsHistorySupersetIndex.value.some(entry => entry.key === key)) {
-    metricsHistorySupersetIndex.value.push({ symbol: code.value, timeframe: series.timeframe, codes: series.codes, limit: series.limit, key })
-  }
-}
-prewarmMetricHistoryChart(metricData.value)
-watch(metricData, prewarmMetricHistoryChart)
+// 這裡原本把伺服器抓的序列預熱進目前值圖表的快取（prewarmMetricHistoryChart），2026-10-21 刪掉：這一頁抓 20 期（STOCK_HISTORY_LIMIT，
+// 「任何指標的歷史，放五年就好」），圖表要 40 期（近8年要 32 季），預熱從來沒對上過。圖本來就是瀏覽器掛載後才畫（vue-echarts），
+// 伺服器畫佔位；資料晚到的 hydration 不一致由 useMetricsHistory 擋（hydration 結束前拿到的資料先不套用）
 
 // 業務中台 returns oldest-first; newest-first is what both the lead sentence and the table want.
 // 讀失敗 vs 真的沒資料（2026-09-30）。這兩件事在畫面上一直長得一模一樣——「目前沒有這檔股票的

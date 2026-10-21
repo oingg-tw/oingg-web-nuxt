@@ -8,9 +8,8 @@ import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChar
 // useMetricHistoryChartOption。
 // 單季／近四季切換只在指標真的兩種都有時出現——`availableTimeframes` 來自型錄（GET /metrics 的 `fields`），不從 metricCode 的
 // 名字猜；只有一種期別的指標不顯示只有一個選項的切換。
-// 資料走 useMetricsHistory（全站回溯窗卡片共用的 composable），不是 StockMetricDetailPage 做 SSR 用的伺服器路由；父層用 SSR
-// 的結果預熱這個 composable 的快取（同 useStockPageDigest 的 prewarm()），預設狀態（defaultTimeframe、近5年）在伺服器 HTML
-// 裡就有內容，只有訪客真的切換到的狀態才多一次瀏覽器請求。
+// 資料走 useMetricsHistory（全站回溯窗卡片共用的 composable），在瀏覽器抓 40 期（近8年要 32 季）。伺服器畫同樣高度的讀取中佔位，
+// 圖本來就是掛載後才畫（vue-echarts）。
 const props = defineProps<{
   symbol: string
   metricCode: string
@@ -147,7 +146,7 @@ const { period, shown: points, fittedWindow, active: customActive } = useChartPe
 
 // 預設期別畫不成線（不到兩期有值）而還有別的期別時，自動換一次（2026-10-18，使用者：「7711 股東總回饋率 期間沒有足夠的資料可以畫圖?」——
 // 股東總回饋率預設年度，剛上市的 7711 年度只有 2025 一年，近四季有 3 季）。只在還停在預設期別時換、換過就不再動，不跟讀者自己的選擇搶。
-// immediate：快取預熱過的資料在 setup 就有，伺服器與瀏覽器在第一次渲染前做同一個決定，不會 hydration 不一致
+// immediate：快取裡已經有這一份時（同一頁裡切回來）在第一次渲染前就決定；第一次進頁時伺服器與瀏覽器都還沒有資料，兩邊都不換
 let fellBack = false
 watch(allPoints, () => {
   if (fellBack || pending.value || !data.value?.length || timeframe.value !== props.defaultTimeframe || valuedCount.value >= 2) return
@@ -158,7 +157,10 @@ watch(allPoints, () => {
 }, { immediate: true })
 
 // Shown INSTEAD of the chart when the chosen window reaches further back than this company goes.
+// 讀取中不判斷（2026-10-21）：換期別時 data 還是上一個期別的，近四季全空的 6741 現金轉換循環自動換成單季那一刻，會先跳出
+//「這家公司沒有現金轉換循環的單季數字」，單季到了才換成圖
 const shortfall = computed(() => {
+  if (pending.value) return null
   // 這個期別一期都沒有值（請求成功、entries 回來了、但值全是 null）。興櫃公司的單季就是這種：
   // 他們依法只申報半年報與年報，所以單季**永久**是空的，不是還沒回填。期別切換鈕是從型錄長出來的，
   // 而型錄說的是「這支指標有哪些期別」不是「這家公司有哪些期別」，所以按鈕擋不掉——改在這裡說明白。
@@ -261,7 +263,10 @@ const { chartOption } = useMetricHistoryChartOption(
       </el-radio-group>
     </template>
     <!-- Needs ≥2 bars to read as a trend at all; a single-period window (or a fetch that hasn't
-         resolved yet) renders nothing rather than a one-bar chart. -->
+         resolved yet) renders nothing rather than a one-bar chart.
+         讀取中（最後的 v-else）先佔一張圖的高度：資料在瀏覽器才抓，原本這段時間什麼都不畫，圖到了把下面整段推下 320px（2026-10-18 全站
+         量測 /stock/2330/roe、eps 等 1440 寬 0.077）。這段註解不能放在 v-else-if 與 v-else 中間（2026-10-21）：開發模式的瀏覽器編譯會把夾在
+         分支間的註解併進 v-else 變成 Fragment，伺服器編譯卻丟掉它，只要畫的是佔位就 hydration 不一致 -->
     <SharedEmptyState v-if="shortfall" :description="shortfall" />
     <StockMultiSeriesLineChart
       v-else-if="comparePoints.length > 1"
@@ -288,8 +293,6 @@ const { chartOption } = useMetricHistoryChartOption(
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
-    <!-- 讀取中：先佔一張圖的高度。資料在瀏覽器才抓（快取沒命中時），原本這段時間什麼都不畫，圖到了把下面整段推下 320px
-         （2026-10-18 全站量測 /stock/2330/roe、eps 等 1440 寬 0.077） -->
     <div v-else class="stock-metric-history-chart-interactive__chart" aria-hidden="true" />
 
   </SharedChartCard>
