@@ -81,6 +81,12 @@ html .el-tag.el-tag--info {
   --el-tag-font-size: 1rem !important;
 }
 
+/* 字級拉到 16px 之後，small 的 20px 高放不下（2026-10-21，使用者：「tags 或是說膠囊 的樣式好像略微跑版」：月曆的代號標籤，字貼到
+   上緣）。small 跟預設一樣 24px，左右照 small 的 7px。html 前綴同上面 .el-tag--info 的理由：el-tag.css 晚於這個檔載入 */
+html .el-tag.el-tag--small {
+  height: 24px;
+}
+
 /* el-tag 的關閉鈕是 14px 的 <button>（2026-10-08 check-a11y-pages 在 ETF 專區量到）：WCAG 2.5.8 的 24px 下限對滑鼠也適用，不只觸控。 */
 .el-tag__close {
   min-width: 24px;

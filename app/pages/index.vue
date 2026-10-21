@@ -215,7 +215,7 @@ useHead({
         <summary>展開 {{ sectors.length }} 個類股</summary>
         <ul class="hub-chip-list">
           <li v-for="sector in sectors" :key="sector.code">
-            <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+            <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }} <span class="hub-chip__count">{{ sector.companyCount }}<span class="visually-hidden"> 家</span></span></NuxtLink>
           </li>
         </ul>
       </details>

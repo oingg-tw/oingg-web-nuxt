@@ -403,6 +403,19 @@ body {
   color: var(--el-color-primary-dark-2);
 }
 
+/* 膠囊裡的家數（2026-10-21，使用者：「tags 或是說膠囊 的樣式好像略微跑版」）：原本寫「水泥工業（7）」，全形括號自帶左右空白，數字
+   浮在「（ 7 ）」中間、右邊看起來比左邊寬。改成名稱後面一個較淡的數字；朗讀器念「水泥工業 7 家」 */
+.hub-chip__count {
+  margin-left: 6px;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-chip:hover .hub-chip__count,
+.hub-chip:focus-visible .hub-chip__count {
+  color: inherit;
+}
+
 /* Closed-by-default <details> wrapper for a page's "more of the same, not the point of this
    page" content (2026-09-19, interface-complexity review) — first use: industry/[sector].vue's
    own "其他類股" chip list. Native disclosure widget: no JS, fully in the SSR HTML regardless of

@@ -55,7 +55,7 @@ const description = computed(() => clampDescription(`${sectorName}（證交所�
       <h2 id="industry-other-sectors-heading" class="stock-page-section__title">其他類股</h2>
       <ul class="hub-chip-list">
         <li v-for="sector in otherSectors" :key="sector.code">
-          <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+          <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }} <span class="hub-chip__count">{{ sector.companyCount }}<span class="visually-hidden"> 家</span></span></NuxtLink>
         </li>
       </ul>
     </nav>
