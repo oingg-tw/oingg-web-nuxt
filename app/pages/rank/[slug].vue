@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RankingPageData } from '#shared/types/hub'
+import type { RankingPageData, RankingRow } from '#shared/types/hub'
 import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // /rank/{slug} — one objective screener field, the market's top 50 by that field alone
 // (2026-09-19, the SEO build; variant A of the ranking pages the user chose). Data from
@@ -20,13 +20,20 @@ if (error.value?.statusCode === 404) throw createError({ statusCode: 404, status
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '排行資料暫時無法取得', fatal: true })
 const { data: catalog } = await useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
 
-const rows = computed(() => data.value?.rows ?? [])
+// 資產類型的簡易篩選（ETF 排行，2026-10-21，使用者：「總費用率 rank要給簡易篩選 因為債券明顯費用率比較低」）：'' 是全部。標題、
+// description 與 h1 照全部；問句、答句與表格跟著篩選——答句寫「前 17 檔」，表格就是 17 列。頁內狀態、不進網址（見最上面：一個欄位一個網址）
+const assetClass = ref('')
+const groups = computed(() => data.value?.groups ?? [])
+const allRows = computed(() => data.value?.rows ?? [])
+const rows = computed(() => (assetClass.value && groups.value.find(group => group.name === assetClass.value)?.rows) || allRows.value)
 const asOf = computed(() => data.value?.asOf ?? null)
 const orderWord = definition.direction === 'desc' ? '由高到低' : '由低到高'
 const label = definition.label
 // ETF 的排行（2026-10-21，使用者：「rank 希望 sidebar 區分 普通股與 etf」）：標題寫「台股 ETF 規模排行」，母體是 ETF，說明用 RANK_PAGES 的 note
 const isEtf = definition.universe === 'etf'
 const subject = isEtf ? ` ETF ${label}` : label
+// 篩過的表寫「槓桿型 ETF 總費用率」，同交易所的類別名稱「槓桿型ETF」
+const tableSubject = computed(() => (assetClass.value ? `${assetClass.value} ETF ${label}` : subject))
 const metric = computed(() => (definition.metricCode ? findMetricInSchema(catalog.value?.categories ?? [], definition.metricCode)?.metric ?? null : null))
 const metricPageIndexable = !!definition.metricCode && isIndexableMetricSlug(metricSlug(definition.metricCode))
 
@@ -44,7 +51,7 @@ const floorNote = definition.growthBaseFloor
 // 資料的公司」就是錯的。
 const populationNote = definition.screener?.population ?? ''
 // 篩過族群時連那句開頭也要改：那些頁面不是「全市場有資料的公司」。
-const universeText = isEtf ? `有${label}資料的 ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`
+const universeText = computed(() => (isEtf ? `有${label}資料的${assetClass.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
 
 // 單位與換算照 RANK_PAGES（市值、ETF 規模回來是元，換成億元才讀得進句子；受益人數是整數要千分位）；其他照上游的單位
 const unit = computed(() => definition.unit ?? data.value?.unit ?? '')
@@ -67,11 +74,12 @@ const FIELD_NOTES: Record<string, string> = {
   'revenue-growth': '單季營收年增率與去年同季比較，季節性明顯或有併購、處分事業的公司，單季數字與長期趨勢可能不同。'
 }
 
-const topThree = computed(() => rows.value.slice(0, 3).map(row => `第 ${row.rank} 名 ${row.name}（${row.symbol}）${valueText(row.value)}${unit.value === '%' ? '%' : unit.value ? ` ${unit.value}` : ''}`).join('、'))
+const topThreeOf = (list: RankingRow[]) => list.slice(0, 3).map(row => `第 ${row.rank} 名 ${row.name}（${row.symbol}）${valueText(row.value)}${unit.value === '%' ? '%' : unit.value ? ` ${unit.value}` : ''}`).join('、')
+const topThree = computed(() => topThreeOf(rows.value))
 
 const { breadcrumbs } = useHubPageSeo({
-  title: () => `台股${subject}排行：${orderWord}前 ${shownCount.value} 檔`,
-  description: () => clampDescription(`${asOf.value ? `${asOf.value} ` : ''}台股${subject}${orderWord}前 ${shownCount.value} 檔：${topThree.value}。名次為數值排序位置，附資料日期與指標說明。`),
+  title: () => `台股${subject}排行：${orderWord}前 ${allRows.value.length} 檔`,
+  description: () => clampDescription(`${asOf.value ? `${asOf.value} ` : ''}台股${subject}${orderWord}前 ${allRows.value.length} 檔：${topThreeOf(allRows.value)}。名次為數值排序位置，附資料日期與指標說明。`),
   path: rankPath(slug),
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -84,19 +92,26 @@ const { breadcrumbs } = useHubPageSeo({
 
 <template>
   <div class="app-page rank-page">
-    <h1 class="app-page__title rank-page__title">台股{{ subject }}排行：{{ orderWord }}前 {{ shownCount }} 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
+    <h1 class="app-page__title rank-page__title">台股{{ subject }}排行：{{ orderWord }}前 {{ allRows.length }} 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <RankNav :etf="isEtf" />
 
     <section class="stock-page-section" aria-labelledby="rank-table-heading">
-      <h2 id="rank-table-heading" class="stock-page-section__title">{{ subject.trim() }}{{ orderWord }}的前 {{ shownCount }} 檔是哪些？</h2>
+      <h2 id="rank-table-heading" class="stock-page-section__title">{{ tableSubject.trim() }}{{ orderWord }}的前 {{ shownCount }} 檔是哪些？</h2>
+      <div v-if="groups.length > 1" class="rank-page__filter">
+        <span aria-hidden="true">資產類型</span>
+        <el-radio-group v-model="assetClass" aria-label="資產類型">
+          <el-radio-button value="">全部</el-radio-button>
+          <el-radio-button v-for="group in groups" :key="group.name" :value="group.name">{{ group.name }}</el-radio-button>
+        </el-radio-group>
+      </div>
       <p class="hub-answer">
 {{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
       </p>
       <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
-      <SharedTableScroll v-if="rows.length" :label="`${subject.trim()}排行`">
+      <SharedTableScroll v-if="rows.length" :label="`${tableSubject.trim()}排行`">
         <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">台股{{ subject }}{{ orderWord }}前 {{ shownCount }} 檔</caption>
+          <caption class="visually-hidden">台股{{ tableSubject }}{{ orderWord }}前 {{ shownCount }} 檔</caption>
           <thead>
             <tr>
               <th scope="col" class="seo-table__num">名次</th>
@@ -138,7 +153,11 @@ const { breadcrumbs } = useHubPageSeo({
 
     <section class="stock-page-section" aria-labelledby="rank-notes-heading">
       <h2 id="rank-notes-heading" class="stock-page-section__title">看這份排行要注意什麼？</h2>
-      <p v-if="isEtf" class="hub-answer">名次只反映數值排序，不含任何評等；同一數值並列時依代號排序；股票型、債券型、槓桿與反向型 ETF 的{{ label }}水準本來就不同，跨類型比較時請一併看各檔的資產類型。</p>
+      <template v-if="isEtf">
+        <p class="hub-answer">名次只反映數值排序，不含任何評等；同一數值並列時依代號排序；股票型、債券型、槓桿與反向型 ETF 的{{ label }}水準本來就不同，要比較同一類時用排行表的「資產類型」篩選。</p>
+        <!-- 2026-10-21 實測：債券成分的 94 檔全是上櫃；上市的債券 ETF（代號 B 結尾的 9 檔）上游歸在國外成分證券。這是交易所的分類，不是我們改得了的 -->
+        <p class="hub-answer">資產類型照上市、上櫃的 ETF 分類：「債券成分」是上櫃的類別，在上市掛牌的債券 ETF 歸在「國外成分證券」。</p>
+      </template>
       <template v-else>
         <p class="hub-answer">名次只反映資料日期當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
         <p class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
@@ -156,5 +175,28 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
+/* 資產類型的篩選列：說明字在前，選項多，手機上會折行 */
+.rank-page__filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  color: var(--el-text-color-secondary);
+}
 
+/* 手機：折行後每一行撐滿，兩行右緣對齊（同 SharedChartCard 窄卡片的期別切換） */
+@media (max-width: 767px) {
+  .rank-page__filter :deep(.el-radio-group) {
+    width: 100%;
+  }
+
+  .rank-page__filter :deep(.el-radio-button) {
+    flex: 1 1 auto;
+  }
+
+  .rank-page__filter :deep(.el-radio-button__inner) {
+    width: 100%;
+  }
+}
 </style>

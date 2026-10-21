@@ -219,6 +219,8 @@ export interface RankingPageData {
   fieldName: string
   unit: string | null
   rows: RankingRow[]
+  // ETF 排行才有：資產類型（上游 assetClass）各自的前 50 檔，名次從 1 起算（排行頁的簡易篩選）
+  groups?: { name: string; rows: RankingRow[] }[]
   // Latest knowledgeDate among the rows.
   asOf: string | null
 }

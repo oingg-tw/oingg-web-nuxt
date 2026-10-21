@@ -444,9 +444,18 @@ await browser.close()
 const rankSlugs = [...(await (await fetch(`${baseUrl}/rank`)).text()).matchAll(/href="\/rank\/([a-z0-9-]+)"/g)].map(match => match[1])
 expect('/rank', 'rank slugs discovered', rankSlugs.length > 0, `${rankSlugs.length}`)
 for (const slug of new Set(rankSlugs)) {
-  const rows = (await (await fetch(`${baseUrl}/api/hub/rank/${slug}`)).json()).rows ?? []
+  const { rows = [], groups, direction } = await (await fetch(`${baseUrl}/api/hub/rank/${slug}`)).json()
   const distinct = new Set(rows.map(row => row.value).filter(value => value !== null)).size
   expect(`/rank/${slug}`, 'top 50 spans ≥ 3 distinct values', distinct >= 3, `${distinct} distinct in ${rows.length} rows`)
+  // ETF 排行的資產類型篩選（2026-10-21）：每一類是自己的前 50 檔——名次從 1 連號、依排行方向排好；第一名不能比全部的第一名更前面
+  if (!slug.startsWith('etf-')) continue
+  expect(`/rank/${slug}`, 'asset-class groups ≥ 2', (groups?.length ?? 0) >= 2, `${groups?.length ?? 0}`)
+  for (const group of groups ?? []) {
+    const values = group.rows.map(row => row.value)
+    const ordered = values.every((value, index) => index === 0 || (direction === 'asc' ? value >= values[index - 1] : value <= values[index - 1]))
+    const leadOk = direction === 'asc' ? values[0] >= rows[0].value : values[0] <= rows[0].value
+    expect(`/rank/${slug}`, `group ${group.name} ranks 1…n, ordered, ≤ 50`, group.rows.every((row, index) => row.rank === index + 1) && ordered && leadOk && group.rows.length <= 50, `${group.rows.length} rows`)
+  }
 }
 
 // 類股家數的三方對帳（2026-10-01）。畫面上同一個類股的家數出現在三個地方，而它們來自三個不同的

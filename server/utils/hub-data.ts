@@ -454,18 +454,36 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
   }
 }
 
-// ETF 的排行（2026-10-21）：ETF 篩選同一支 POST /etf-screener，依一個欄位排序。一次拿 100 筆再去掉沒有值的，取前 50。
-// 上游的 ETF 篩選結果不帶日期：基金月報的欄位用第一名的月報月份（每檔 ETF 頁同一支 /etfs/{代號}），其他欄位不寫日期
+// ETF 的排行（2026-10-21）：ETF 篩選同一支 POST /etf-screener，依一個欄位排序，去掉沒有值的取前 50。
+// 上游的 ETF 篩選結果不帶日期：基金月報的欄位用第一名的月報月份（每檔 ETF 頁同一支 /etfs/{代號}），其他欄位不寫日期。
+// 資產類型的簡易篩選（同日，使用者：「總費用率 rank要給簡易篩選 因為債券明顯費用率比較低」；實測總費用率前 50 檔有 43 檔債券成分）：
+// groups 是每一類自己的前 50 檔、名次從 1 起算，所以全部 ETF 都要拿（約 340 檔，上游每頁最多 200）。類型照上游 assetClass 的原字，
+// 跟 ETF 篩選的「資產類型」同一組
+const ETF_PAGE_SIZE = 200
+// 每份排行的選項順序都一樣，照業務中台 openapi 的列法；上游新增的類型排最後
+const ETF_ASSET_CLASS_ORDER = ['國內成分證券', '國外成分證券', '債券成分', '槓桿型', '反向型', '多資產', '連結式']
+
 async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPageData> {
-  const response = await businessFetch<{ results: { symbol: string; shortName: string; values: Record<string, string | number | boolean | null> }[] }>('/etf-screener', {
-    method: 'POST',
-    body: { columns: [{ field: definition.field }], sortField: definition.field, order: definition.direction, page: 1, pageSize: 100 }
-  })
-  const rows: RankingRow[] = response.results
+  type EtfResult = { symbol: string; shortName: string; values: Record<string, string | number | boolean | null> }
+  const results: EtfResult[] = []
+  for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
+    const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
+      method: 'POST',
+      body: { columns: [{ field: definition.field }, { field: 'assetClass' }], sortField: definition.field, order: definition.direction, page, pageSize: ETF_PAGE_SIZE }
+    })
+    results.push(...response.results)
+    totalPages = response.totalPages
+  }
+  const ranked = results
     .map(result => ({ result, value: parseDecimal(result.values[definition.field] as string | number | null) }))
-    .filter((entry): entry is { result: typeof entry.result; value: number } => entry.value !== null)
-    .slice(0, RANKING_LIMIT)
+    .filter((entry): entry is { result: EtfResult; value: number } => entry.value !== null)
+  const toRows = (entries: typeof ranked): RankingRow[] => entries.slice(0, RANKING_LIMIT)
     .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.shortName, value: entry.value, knowledgeDate: null }))
+  const rows = toRows(ranked)
+  const classOrder = (name: string) => (ETF_ASSET_CLASS_ORDER.includes(name) ? ETF_ASSET_CLASS_ORDER.indexOf(name) : ETF_ASSET_CLASS_ORDER.length)
+  const groups = [...new Set(ranked.map(entry => entry.result.values.assetClass).filter((name): name is string => typeof name === 'string'))]
+    .sort((a, b) => classOrder(a) - classOrder(b))
+    .map(name => ({ name, rows: toRows(ranked.filter(entry => entry.result.values.assetClass === name)) }))
   // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
   //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
   const reportMonth = definition.monthlyReport && rows[0] ? String((await businessFetch<{ yearMonth?: string }>(`/etfs/${rows[0].symbol}`)).yearMonth ?? '') : ''
@@ -477,6 +495,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     fieldName: '',
     unit: definition.unit ?? null,
     rows,
+    groups,
     asOf: /^\d{6}$/.test(reportMonth) ? `${reportMonth.slice(0, 4)}-${reportMonth.slice(4)}` : null
   }
 }
