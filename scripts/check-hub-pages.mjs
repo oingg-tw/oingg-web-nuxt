@@ -31,7 +31,8 @@ const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 const BACKEND_OWNED = []
 // 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數；
 // 景氣時鐘 2026-10-21 起是 /macro）
-const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\?cycle=\d+/]
+// 除權息月覽的熱力格是那個月清單的連結（?month=，2026-10-21，canonical 不帶參數）
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}$/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
@@ -50,6 +51,7 @@ const ROUTES = [
   // Goes back to 8 with that page, ~2027 Q1.
   // 8 → 13 on 2026-10-21: five ETF rankings（RANK_PAGES 的 universe: 'etf'）。
   { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 13 },
+  { path: '/calendar/months', stockLinksMin: 10, industryLinksMin: 0, tablesMin: 1 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
   // ETF 排行的列連到 /etf/{code}，連到 /stock/{code} 會被 301 轉走（securityPath）
   { path: '/rank/etf-aum', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
@@ -492,6 +494,19 @@ for (const sector of hubSectors) {
   expect(`/industry/${sector.code}`, 'chip count within 4 of the page', Math.abs(sector.companyCount - listed) <= 4, `chip ${sector.companyCount} vs page ${listed}`)
   const summary = summaryCounts.get(sector.code)
   expect(`/industry/${sector.code}`, 'upstream dividend-summary count agrees', summary === undefined || summary === sector.companyCount, `summary ${summary} vs chip ${sector.companyCount}`)
+}
+
+// 除權息月覽（2026-10-21）的試算規則與檔數：今年 1～12 月各一格；這個月之後的格子是試算、來源是去年同月，其餘是今年自己。每一格的檔數
+// 要等於那個月清單裡的不重複代號數——現在兩者出自同一份清單，analysis-ts 的每月檔數端點接上之後，這一條就是兩支端點的對帳
+const exMonths = await (await fetch(`${baseUrl}/api/hub/ex-dividend-months`)).json()
+const exYear = Number(exMonths.current.slice(0, 4))
+expect('/calendar/months', '12 cells of this year, in order', exMonths.cells.length === 12 && exMonths.cells.every((cell, index) => cell.month === `${exYear}-${String(index + 1).padStart(2, '0')}`))
+for (const cell of exMonths.cells) {
+  const estimated = cell.month > exMonths.current
+  expect('/calendar/months', `${cell.month} estimated iff after ${exMonths.current}, from last year`, cell.estimated === estimated && cell.source === (estimated ? `${exYear - 1}${cell.month.slice(4)}` : cell.month), `${cell.estimated} ${cell.source}`)
+  const { month, rows } = await (await fetch(`${baseUrl}/api/hub/ex-dividend-months?month=${cell.month}`)).json()
+  const distinct = kind => new Set(rows.filter(row => !kind || row.kind === kind).map(row => row.symbol)).size
+  expect('/calendar/months', `${cell.month} counts == distinct symbols in its list`, month === cell.month && cell.counts.all === distinct() && ['common', 'preferred', 'etf'].every(kind => cell.counts[kind] === distinct(kind)), JSON.stringify(cell.counts))
 }
 
 if (failures.length) {

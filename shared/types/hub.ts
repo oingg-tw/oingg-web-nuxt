@@ -408,3 +408,39 @@ export interface SectorDividendSummaryPageData {
   dividendYieldTradeDate: string
   sectors: SectorDividendSummary[]
 }
+
+// 除權息月覽（/calendar/months，2026-10-21）。kind 是 null：不在 GET /securities 的三種裡（受益證券、ETN），不連結、只算進「全部」
+export type ExDividendKind = 'common' | 'preferred' | 'etf'
+
+export interface ExDividendRow {
+  exDate: string
+  symbol: string
+  name: string
+  kind: ExDividendKind | null
+  exType: '息' | '權' | '權息'
+  // 個股是每股現金股利、ETF 是每單位分配金額
+  cash: number | null
+  // 每股配幾股
+  stockPerShare: number | null
+  rightsOffering: boolean
+  paymentDate: string | null
+  announced: boolean
+}
+
+export interface ExDividendMonthCell {
+  month: string
+  // 還沒到的月份是去年同月（estimated）
+  source: string
+  estimated: boolean
+  // 那個月有除權息的不重複代號數
+  counts: Record<'all' | ExDividendKind, number>
+}
+
+export interface ExDividendMonthsPageData {
+  year: number
+  current: string
+  cells: ExDividendMonthCell[]
+  // 選定的月份與它的清單（試算月份是去年同月的清單）
+  month: string
+  rows: ExDividendRow[]
+}

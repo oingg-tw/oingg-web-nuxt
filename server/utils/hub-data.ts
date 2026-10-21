@@ -1,4 +1,4 @@
-import type { BusinessCycleIndicatorPoint, BusinessCyclePeriod, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { BusinessCycleIndicatorPoint, BusinessCyclePeriod, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, ExDividendKind, ExDividendMonthCell, ExDividendRow, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -676,3 +676,70 @@ export const getSectorDividendSummary = defineCachedFunction(
     businessFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
   { name: 'hub-sector-dividend-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
+
+// ---- 除權息月覽（/calendar/months，2026-10-21）----
+
+interface ExDividendCalendarEntry {
+  symbol: string
+  companyName: string | null
+  securityType: string | null
+  status: 'announced' | 'realized'
+  exDate: string
+  exType: ExDividendRow['exType']
+  cashDividend: number | null
+  distributionPerUnit: number | null
+  stockDividendRatio: number | null
+  subscriptionRatio: number | null
+  paymentDate: string | null
+}
+
+// 上游的分類是 ETF／PREFERRED／COMMON，不在 GET /securities 裡的是 null。
+// ponytail: analysis-ts 還沒把特別股標成 PREFERRED（2026-10-21 已請求，改成跟 GET /securities 一致）。在那之前，COMMON 裡四碼＋字母的當特別股
+//（2881A、2887Z1）、其他非四碼的不分類（01007T 受益證券、020036 ETN）；上游上線後 COMMON 只剩四碼，這兩個判斷可以拿掉
+function exDividendKind(securityType: string | null, symbol: string): ExDividendKind | null {
+  if (securityType === 'ETF') return 'etf'
+  if (securityType === 'PREFERRED') return 'preferred'
+  if (securityType !== 'COMMON') return null
+  return /^\d{4}$/.test(symbol) ? 'common' : /^\d{4}[A-Z]/.test(symbol) ? 'preferred' : null
+}
+
+// 一個月的全市場除權息（業務中台轉發 analysis-ts GET /stocks/ex-dividend-calendar；realized 是公開資訊觀測站的分派公告，announced 是證交所、
+// 櫃買中心的預告）。依除權息日、代號排序
+export const getExDividendMonth = defineCachedFunction(
+  async (month: string): Promise<ExDividendRow[]> => {
+    const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { month } })
+    return response.entries
+      .map(entry => ({
+        exDate: entry.exDate,
+        symbol: entry.symbol,
+        name: entry.companyName ?? entry.symbol,
+        kind: exDividendKind(entry.securityType, entry.symbol),
+        exType: entry.exType,
+        cash: entry.distributionPerUnit ?? entry.cashDividend,
+        stockPerShare: entry.stockDividendRatio,
+        rightsOffering: !!entry.subscriptionRatio,
+        paymentDate: entry.paymentDate,
+        announced: entry.status === 'announced'
+      }))
+      .sort((a, b) => a.exDate.localeCompare(b.exDate) || a.symbol.localeCompare(b.symbol))
+  },
+  { name: 'hub-ex-dividend-month', getKey: (month: string) => month, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
+
+export function countExDividendSymbols(rows: ExDividendRow[]): ExDividendMonthCell['counts'] {
+  const distinct = (kind?: ExDividendKind) => new Set(rows.filter(row => !kind || row.kind === kind).map(row => row.symbol)).size
+  return { all: distinct(), common: distinct('common'), preferred: distinct('preferred'), etf: distinct('etf') }
+}
+
+// 今年 12 個月各有幾檔除權息。還沒到的月份（current 之後）整個月用去年同月試算（使用者：「今年日期未到的才用去年模擬試算」）；這個月用今年的實際資料，
+// 含已公告、還沒除息的。
+// ponytail: 12 次 getExDividendMonth（各自快取）；analysis-ts 的每月檔數端點經業務中台轉發之後改成一次（2026-10-21 已請求）
+export function getExDividendMonthCells(current: string): Promise<ExDividendMonthCell[]> {
+  const year = Number(current.slice(0, 4))
+  return Promise.all(Array.from({ length: 12 }, async (_, index) => {
+    const month = `${year}-${String(index + 1).padStart(2, '0')}`
+    const estimated = month > current
+    const source = estimated ? `${year - 1}${month.slice(4)}` : month
+    return { month, source, estimated, counts: countExDividendSymbols(await getExDividendMonth(source)) }
+  }))
+}
