@@ -280,7 +280,7 @@ const dialogSymbol = computed(() => editing.value?.symbol ?? lockedSymbol.value)
 const heldQuantity = computed(() => holdings.value.find(holding => holding.symbol === form.symbol)?.quantity ?? 0)
 
 const rules: FormRules = {
-  symbol: [{ validator: (_rule, _value, callback) => (form.symbol ? callback() : callback(new Error('請從清單中選擇一檔股票'))) }],
+  symbol: [{ validator: (_rule, _value, callback) => (form.symbol ? callback() : callback(new Error('請輸入完整代號，或從清單中選擇一檔股票'))) }],
   tradeDate: [{ required: true, message: '請選擇交易日期' }],
   quantity: [{ required: true, message: '請輸入股數' }],
   price: [{ validator: (_rule, _value, callback) => (form.price != null || (form.action === 'BUY' && form.costUnknown) ? callback() : callback(new Error('請輸入成交價'))) }]
@@ -293,9 +293,17 @@ function disabledFutureDate(date: Date): boolean {
 }
 
 // 選好之後又改了文字＝那個選擇已經不算數
+// 打完完整的代號（例如 2330）就直接帶入，不用再點清單（2026-10-21，使用者：「如果用戶輸入了 4碼 而且找的到 公司 就直接帶入 用戶省一個點選的
+// 步驟」）。輸入框的字不改寫：特別股的代號是普通股代號再加字母（1101 → 1101B），打到 1101 就把字換掉的話，要記 1101B 的人打不下去；
+// 照常往下打，帶入的會先取消，打完 1101B 再帶入那一檔。帶入了什麼寫在輸入框下面（autoFilledLabel）
 watch(keyword, (value) => {
-  if (!dialogSymbol.value && value !== selectedLabel) form.symbol = ''
+  if (dialogSymbol.value || value === selectedLabel) return
+  const code = value.trim().toUpperCase()
+  form.symbol = code.length >= 4 && companyByCode.value.has(code) ? code : ''
+  // 先前離開欄位時可能已經標了「請輸入代號…」：帶入了就拿掉，不必等下一次驗證
+  if (form.symbol) formRef.value?.clearValidate('symbol')
 })
+const autoFilledLabel = computed(() => (form.symbol && keyword.value !== selectedLabel ? symbolLabel(form.symbol) : null))
 
 function selectStock(item: Record<string, unknown>) {
   const suggestion = item as unknown as StockSuggestion
@@ -529,6 +537,7 @@ async function submit() {
                 <el-tag v-else-if="isCompanyEntry(item) && item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
               </template>
             </el-autocomplete>
+            <p class="holdings-form__hint" role="status">{{ autoFilledLabel ? `已帶入：${autoFilledLabel}` : '' }}</p>
           </el-form-item>
           <p v-else class="holdings-form__fixed">股票：{{ symbolLabel(dialogSymbol) }}</p>
           <el-form-item v-if="!editing && portfolios.length > 1" label="帳戶" prop="portfolioId">
