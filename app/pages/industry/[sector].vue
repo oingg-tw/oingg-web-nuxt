@@ -27,11 +27,11 @@ const route = useRoute()
 const parsed = parseSectorParam(String(route.params.sector))
 const known = parsed ? SECTORS[parsed.code] : undefined
 if (!parsed || !known) throw createError({ statusCode: 404, statusMessage: '找不到這個類股', fatal: true })
-if (parsed.slug !== known.slug) await navigateTo(sectorPath(parsed.code) ?? '/stock', { redirectCode: 301 })
+if (parsed.slug !== known.slug) await navigateTo(sectorPath(parsed.code) ?? '/industries', { redirectCode: 301 })
 
 const code = parsed.code
 const sectorName = known.name
-const canonicalPath = sectorPath(code) ?? '/stock'
+const canonicalPath = sectorPath(code) ?? '/industries'
 
 const { data, error } = await useFetch<IndustryPageData>(`/api/hub/industry/${code}`, { key: `hub-industry-${code}` })
 if (error.value?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: '這個類股目前沒有任何公司', fatal: true })
@@ -424,11 +424,11 @@ const { breadcrumbs } = useHubPageSeo({
         <nav aria-label="其他類股">
           <ul class="hub-chip-list">
             <li v-for="sector in otherSectors" :key="sector.code">
-              <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+              <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
             </li>
           </ul>
         </nav>
-        <p class="hub-answer"><NuxtLink to="/stock" class="hub-inline-link">回個股總表</NuxtLink></p>
+        <p class="hub-answer"><NuxtLink to="/industries" class="hub-inline-link">回產業索引</NuxtLink></p>
       </details>
     </section>
 

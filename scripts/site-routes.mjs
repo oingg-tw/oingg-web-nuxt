@@ -6,7 +6,7 @@ const STOCK_FIXED = ['/dividend', '/dividend-fill', '/margins', '/solvency', '/d
   '/income-statement', '/cash-flow-statement']
 const ETF_FACETS = ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders']
 export const ALL_ROUTES = [
-  '/', '/stock', '/stock/2330', '/stock/2330/roe', '/stock/2330/pe-ratio', '/stock/2330/eps', '/stock/7711/shareholder-yield',
+  '/', '/stock/2330', '/stock/2330/roe', '/stock/2330/pe-ratio', '/stock/2330/eps', '/stock/7711/shareholder-yield',
   ...STOCK_FIXED.map(path => `/stock/2330${path}`),
   ...ETF_FACETS.map(path => `/etf/0050${path}`), '/etf/00400a',
   '/preferred/2881a', '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms',

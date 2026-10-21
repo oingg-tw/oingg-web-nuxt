@@ -61,9 +61,6 @@ async function reopenConsent() {
                one set of links a crawler (and a keyboard user who scrolled to the end) can count
                on regardless of which page it landed on. -->
           <li>
-            <NuxtLink to="/stock" class="shared-footer__nav-link">個股總表</NuxtLink>
-          </li>
-          <li>
             <NuxtLink to="/screener/common" class="shared-footer__nav-link">股票篩選</NuxtLink>
           </li>
           <li>

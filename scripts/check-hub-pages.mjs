@@ -35,9 +35,6 @@ const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/macro\/
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
   { path: '/', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0 },
-  // Rebuilt 2026-09-19 (interface-complexity review) into a 35-row sector table — no more
-  // per-company links on this page (they moved entirely to /industry/…), hence stockLinksMin: 0.
-  { path: '/stock', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1 },
   { path: '/industry/24-semiconductor', stockLinksMin: 100, industryLinksMin: 30, tablesMin: 1 },
   // /industry/13-electronics-legacy was listed here as the thin-sector case（noindex, ≥5 stock
   // links）until 2026-09-22, when it became a real 404. Not a regression: twse-ts found its

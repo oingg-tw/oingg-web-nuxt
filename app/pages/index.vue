@@ -209,13 +209,13 @@ useHead({
       <h2 id="landing-sectors-heading" class="landing-page__section-title">依類股瀏覽上市櫃公司</h2>
       <p class="landing-page__section-lead">
         證交所每個類股各有一頁，列出該類股每家公司的股價、本益比、殖利率與 ROE。
-        <NuxtLink to="/stock" class="landing-page__inline-link">看完整個股總表</NuxtLink>
+        <NuxtLink to="/industries" class="landing-page__inline-link">看產業索引</NuxtLink>
       </p>
       <details class="hub-details landing-page__sectors">
         <summary>展開 {{ sectors.length }} 個類股</summary>
         <ul class="hub-chip-list">
           <li v-for="sector in sectors" :key="sector.code">
-            <NuxtLink :to="sectorPath(sector.code) ?? '/stock'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+            <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
           </li>
         </ul>
       </details>

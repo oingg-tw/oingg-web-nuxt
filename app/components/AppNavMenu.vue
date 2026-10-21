@@ -63,12 +63,10 @@
 
   <!-- 名稱對齊點進去的內容（2026-10-21，使用者：「app-header-menu 請讓 item name 對得起點進去後的內容」，看過對照表後「照建議改」）：
        下拉原本叫「股票篩選」，但底下四項只有一項是篩選、又跟子項「篩選」重複 → 找股票；子項照各頁的標題與手機選單（app-features.ts）：
-       找股票 → 個股總表、篩選 → 股票篩選、產業 → 產業索引。排行對得上，不動 -->
+       篩選 → 股票篩選、產業 → 產業索引。排行對得上，不動。個股總表同日拿掉（使用者：「個股總表 與 產業差異 有做好資訊分工嗎 我擔心
+       相似度過高」「省略 刪除 也是可以的」）：它只剩一張類股表，產業索引那張每一列都有、還多了數字，/stock 301 到 /industries -->
   <el-sub-menu index="stock-group">
     <template #title>找股票</template>
-    <el-menu-item index="/stock">
-      <NuxtLink to="/stock" class="app-nav-menu__link" tabindex="-1">個股總表</NuxtLink>
-    </el-menu-item>
     <el-menu-item index="/screener/common">
       <NuxtLink to="/screener/common" class="app-nav-menu__link" tabindex="-1">股票篩選</NuxtLink>
     </el-menu-item>

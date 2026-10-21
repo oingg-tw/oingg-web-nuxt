@@ -17,7 +17,7 @@ useSeoMeta({ title, robots: 'noindex, nofollow' })
 
 const LINKS = [
   { label: '首頁', to: '/' },
-  { label: '個股總表', to: '/stock' },
+  { label: '產業索引', to: '/industries' },
   { label: '股票篩選', to: '/screener/common' },
   { label: '排行', to: '/rank' }
 ]

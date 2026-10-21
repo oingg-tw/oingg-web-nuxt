@@ -144,7 +144,7 @@ const chartOption = computed(() => {
           </thead>
           <tbody>
             <tr v-for="row in rows" :key="row.code">
-              <th scope="row"><NuxtLink :to="sectorPath(row.code) ?? '/stock'">{{ row.name }}</NuxtLink></th>
+              <th scope="row"><NuxtLink :to="sectorPath(row.code) ?? '/industries'">{{ row.name }}</NuxtLink></th>
               <td class="seo-table__num">{{ points(row.amplitude) }}</td>
               <td class="seo-table__num">{{ corr(row.correlation) }}</td>
               <td class="seo-table__num">{{ row.months || '－' }}</td>

@@ -60,7 +60,7 @@ const filteredRows = computed(() => {
   return rows.value.filter(row => row.sectorName.includes(trimmed))
 })
 
-const pathFor = (code: string) => sectorPath(code) ?? '/stock'
+const pathFor = (code: string) => sectorPath(code) ?? '/industries'
 </script>
 
 <template>
