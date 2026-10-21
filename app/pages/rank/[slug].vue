@@ -20,20 +20,21 @@ if (error.value?.statusCode === 404) throw createError({ statusCode: 404, status
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '排行資料暫時無法取得', fatal: true })
 const { data: catalog } = await useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
 
-// 資產類型的簡易篩選（ETF 排行，2026-10-21，使用者：「總費用率 rank要給簡易篩選 因為債券明顯費用率比較低」）：'' 是全部。標題、
-// description 與 h1 照全部；問句、答句與表格跟著篩選——答句寫「前 17 檔」，表格就是 17 列。頁內狀態、不進網址（見最上面：一個欄位一個網址）
-const assetClass = ref('')
+// 基金類型的簡易篩選（ETF 排行，2026-10-21，使用者：「總費用率 rank要給簡易篩選 因為債券明顯費用率比較低」）：'' 是全部。標題、
+// description 與 h1 照全部；問句、答句與表格跟著篩選——答句寫「前 17 檔」，表格就是 17 列。頁內狀態、不進網址（見最上面：一個欄位一個網址）。
+// 分組是上游的 fundType（投信投顧公會的基金類型），同日從掛牌分類 assetClass 換過來
+const fundType = ref('')
 const groups = computed(() => data.value?.groups ?? [])
 const allRows = computed(() => data.value?.rows ?? [])
-const rows = computed(() => (assetClass.value && groups.value.find(group => group.name === assetClass.value)?.rows) || allRows.value)
+const rows = computed(() => (fundType.value && groups.value.find(group => group.name === fundType.value)?.rows) || allRows.value)
 const asOf = computed(() => data.value?.asOf ?? null)
 const orderWord = definition.direction === 'desc' ? '由高到低' : '由低到高'
 const label = definition.label
 // ETF 的排行（2026-10-21，使用者：「rank 希望 sidebar 區分 普通股與 etf」）：標題寫「台股 ETF 規模排行」，母體是 ETF，說明用 RANK_PAGES 的 note
 const isEtf = definition.universe === 'etf'
 const subject = isEtf ? ` ETF ${label}` : label
-// 篩過的表寫「槓桿型 ETF 總費用率」，同交易所的類別名稱「槓桿型ETF」
-const tableSubject = computed(() => (assetClass.value ? `${assetClass.value} ETF ${label}` : subject))
+// 篩過的表寫「債券型 ETF 總費用率」
+const tableSubject = computed(() => (fundType.value ? `${fundType.value} ETF ${label}` : subject))
 const metric = computed(() => (definition.metricCode ? findMetricInSchema(catalog.value?.categories ?? [], definition.metricCode)?.metric ?? null : null))
 const metricPageIndexable = !!definition.metricCode && isIndexableMetricSlug(metricSlug(definition.metricCode))
 
@@ -51,7 +52,7 @@ const floorNote = definition.growthBaseFloor
 // 資料的公司」就是錯的。
 const populationNote = definition.screener?.population ?? ''
 // 篩過族群時連那句開頭也要改：那些頁面不是「全市場有資料的公司」。
-const universeText = computed(() => (isEtf ? `有${label}資料的${assetClass.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
+const universeText = computed(() => (isEtf ? `有${label}資料的${fundType.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
 
 // 單位與換算照 RANK_PAGES（市值、ETF 規模回來是元，換成億元才讀得進句子；受益人數是整數要千分位）；其他照上游的單位
 const unit = computed(() => definition.unit ?? data.value?.unit ?? '')
@@ -99,8 +100,8 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="rank-table-heading">
       <h2 id="rank-table-heading" class="stock-page-section__title">{{ tableSubject.trim() }}{{ orderWord }}的前 {{ shownCount }} 檔是哪些？</h2>
       <div v-if="groups.length > 1" class="rank-page__filter">
-        <span aria-hidden="true">資產類型</span>
-        <el-radio-group v-model="assetClass" aria-label="資產類型">
+        <span aria-hidden="true">基金類型</span>
+        <el-radio-group v-model="fundType" aria-label="基金類型">
           <el-radio-button value="">全部</el-radio-button>
           <el-radio-button v-for="group in groups" :key="group.name" :value="group.name">{{ group.name }}</el-radio-button>
         </el-radio-group>
@@ -154,9 +155,7 @@ const { breadcrumbs } = useHubPageSeo({
     <section class="stock-page-section" aria-labelledby="rank-notes-heading">
       <h2 id="rank-notes-heading" class="stock-page-section__title">看這份排行要注意什麼？</h2>
       <template v-if="isEtf">
-        <p class="hub-answer">名次只反映數值排序，不含任何評等；同一數值並列時依代號排序；股票型、債券型、槓桿與反向型 ETF 的{{ label }}水準本來就不同，要比較同一類時用排行表的「資產類型」篩選。</p>
-        <!-- 2026-10-21 實測：債券成分的 94 檔全是上櫃；上市的債券 ETF（代號 B 結尾的 9 檔）上游歸在國外成分證券。這是交易所的分類，不是我們改得了的 -->
-        <p class="hub-answer">資產類型照上市、上櫃的 ETF 分類：「債券成分」是上櫃的類別，在上市掛牌的債券 ETF 歸在「國外成分證券」。</p>
+        <p class="hub-answer">名次只反映數值排序，不含任何評等；同一數值並列時依代號排序；股票型、債券型、槓桿型／反向型 ETF 的{{ label }}水準本來就不同，要比較同一類時用排行表的「基金類型」篩選（投信投顧公會的分類）。</p>
       </template>
       <template v-else>
         <p class="hub-answer">名次只反映資料日期當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
@@ -175,7 +174,7 @@ const { breadcrumbs } = useHubPageSeo({
 </template>
 
 <style scoped>
-/* 資產類型的篩選列：說明字在前，選項多，手機上會折行 */
+/* 基金類型的篩選列：說明字在前，選項多，手機上會折行 */
 .rank-page__filter {
   display: flex;
   flex-wrap: wrap;

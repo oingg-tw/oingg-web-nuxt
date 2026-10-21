@@ -4,7 +4,7 @@
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: 'ETF 篩選：依規模、費用率、配息頻率比較',
-  description: '依資產類型、規模、總費用率、配息頻率、折溢價與各期報酬篩選上市櫃 ETF；可存成自己的篩選與欄位組合。'
+  description: '依基金類型、規模、總費用率、配息頻率、折溢價與各期報酬篩選上市櫃 ETF；可存成自己的篩選與欄位組合。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}${SCREENER_PATHS.etf}` }] })
 

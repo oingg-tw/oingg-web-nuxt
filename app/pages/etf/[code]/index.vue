@@ -10,10 +10,11 @@ const { code, data, etf, values, text, num, shortName } = etfData
 
 const description = computed(() => {
   if (!etf.value) return null
-  const assetClass = text('assetClass')
+  // 基金類型（投信投顧公會的分類，上游 fundType，2026-10-21 取代掛牌分類 assetClass）
+  const fundType = text('fundType')
   const aum = num('aum')
   const style = etf.value.trackingIndex ? `被動式 ETF，追蹤「${etf.value.trackingIndex}」` : values.value.isActive === true ? '主動式 ETF' : ' ETF'
-  return `${shortName.value}（${code.value}）是${etf.value.issuerName}發行的${style}${assetClass ? `，資產類型為${assetClass}` : ''}${aum !== null ? `；規模 ${formatMoney(aum)}` : ''}。配息、配息組成、填息、費用、含息報酬率、規模、折溢價、成交量與持有人結構的圖。`
+  return `${shortName.value}（${code.value}）是${etf.value.issuerName}發行的${style}${fundType ? `，基金類型為${fundType}` : ''}${aum !== null ? `；規模 ${formatMoney(aum)}` : ''}。配息、配息組成、填息、費用、含息報酬率、規模、折溢價、成交量與持有人結構的圖。`
 })
 
 const MARKETS: Record<string, string> = { sii: '上市', otc: '上櫃' }
@@ -23,7 +24,7 @@ const facts = computed<FactItem[]>(() => {
   return [
     { label: '管理方式', value: etf.value.trackingIndex ? `被動式，追蹤「${etf.value.trackingIndex}」` : values.value.isActive === true ? '主動式，由經理人選股、不追蹤指數' : '－' },
     { label: '發行投信', value: etf.value.issuerName },
-    { label: '資產類型', value: text('assetClass') ?? '－' },
+    { label: '基金類型', value: text('fundType') ?? '－' },
     { label: '市場', value: MARKETS[text('market') ?? ''] ?? '－' },
     { label: '成立日', value: text('establishedDate') ?? '－', note: years ? `成立 ${years} 年` : undefined },
     { label: '配息頻率', value: text('distributionFrequency') ?? '－' },

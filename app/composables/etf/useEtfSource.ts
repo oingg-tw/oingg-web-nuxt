@@ -68,24 +68,26 @@ const EXPENSE_RATIO_YEAR = /^expenseRatio(\d{4})$/
 const EXPENSE_RATIO_YEARS = Array.from({ length: 25 }, (_, index) => 2025 - index)
 const TRAILING_EXPENSE = ['trailing12MonthExpenseRatioPct', 'trailing12MonthExpenseRatioMonths']
 
-const ASSET_CLASSES = ['債券成分', '反向型', '國內成分證券', '國外成分證券', '多資產', '槓桿型', '連結式']
+// 基金類型（2026-10-21 起用上游 fundType：投信投顧公會基金類型的第二層，analysis-ts 8dad5785）。原本是 assetClass——那是上市／上櫃的
+// 掛牌分類，上市的 9 檔債券 ETF 被歸在「國外成分證券」（使用者：「請業務中台提供真正的資產類型欄位」）
+const FUND_TYPES = ['股票型', '債券型', '槓桿型／反向型', '平衡型', '不動產證券化／其他']
 
 const FILTER_TEMPLATES: UniverseTemplate[] = [
-  ...ASSET_CLASSES.map(assetClass => ({
-    id: `asset-${assetClass}`,
-    name: assetClass,
-    category: '資產類型',
-    description: `資產類型為「${assetClass}」的 ETF`,
+  ...FUND_TYPES.map(fundType => ({
+    id: `fund-type-${fundType}`,
+    name: fundType,
+    category: '基金類型',
+    description: `基金類型為「${fundType}」的 ETF`,
     status: 'AVAILABLE' as const,
     pendingReason: null,
-    filters: [{ field: 'assetClass', min: null, max: null, exclude: false, values: [assetClass] }]
+    filters: [{ field: 'fundType', min: null, max: null, exclude: false, values: [fundType] }]
   })),
   { id: 'passive', name: '被動式', category: '主動或被動', description: '追蹤指數的被動式 ETF', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'isActive', min: null, max: null, exclude: false, values: ['false'] }] },
   { id: 'active', name: '主動式', category: '主動或被動', description: '由經理人選股的主動式 ETF', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'isActive', min: null, max: null, exclude: false, values: ['true'] }] }
 ]
 
 // 總費用率（最近完整年度，官方值）旁邊放近 12 個月估算：今年才成立的 ETF 沒有完整年度，只有後者（使用者 2026-10-15「新增近 12 個月總費用率欄位」）
-const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'nav', 'market', 'assetClass'].map(snapshotFieldId)
+const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'nav', 'market', 'fundType'].map(snapshotFieldId)
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: ['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y'].map(snapshotFieldId) },
@@ -159,12 +161,16 @@ export function useEtfSource(): UniverseSource {
   }
 
   // 排除（exclude）兩種都直接送（analysis-ts 17079ab，本機與 DEV 2026-10-15 都上線）。對 null 的處理不同，照上游：類別型排除保留 null
-  // （排除槓桿型＝322 檔＝339−17，含 40 檔沒有資產類型的），數字型排除 null 一律不留（不知道 null 在不在範圍外）
+  // （2026-10-15 量：排除掛牌分類「槓桿型」＝322 檔＝339−17，含 40 檔沒有分類的），數字型排除 null 一律不留（不知道 null 在不在範圍外）
+  // 存起來的篩選還寫 assetClass 的（2026-10-21 以前的「資產類型」範本），送出時換成改名後的 listingCategory：值一模一樣，上游 2026-11-04
+  // 移除 assetClass 之後照樣能用。ponytail: 存的篩選不改寫；確定沒有人還存著 assetClass 時拿掉這一行
+  const RENAMED_FIELDS: Record<string, string> = { assetClass: 'listingCategory' }
   function toEtfFilter(filter: FilterCriterion) {
     const exclude = filter.exclude ? { exclude: true } : {}
+    const field = RENAMED_FIELDS[filter.field] ?? filter.field
     return filter.values
-      ? { field: filter.field, values: filter.values, ...exclude }
-      : { field: filter.field, min: filter.min, max: filter.max, ...exclude }
+      ? { field, values: filter.values, ...exclude }
+      : { field, min: filter.min, max: filter.max, ...exclude }
   }
 
   function toRow(row: EtfScreenerRow): ScreenerResultRow {

@@ -15,5 +15,5 @@ export interface ScreenerZoneItem {
 export const SCREENER_ZONE_ITEMS: ScreenerZoneItem[] = [
   { key: 'common', subject: '普通股', label: '普通股篩選', to: SCREENER_PATHS.common, description: '用 ROE、負債比率、殖利率等財報指標設條件，從上市櫃公司裡篩出符合的；可限定或排除證交所類股，也可以從官方範本開始。' },
   { key: 'preferred', subject: '特別股', label: '特別股篩選', to: SCREENER_PATHS.preferred, description: '比較上市櫃特別股的票面利率、殖利率、最差殖利率（YTW）、溢價率，與累積、參加、可轉換、公司可收回等契約條件。' },
-  { key: 'etf', subject: 'ETF', label: 'ETF 篩選', to: SCREENER_PATHS.etf, description: '依資產類型、規模、總費用率、配息頻率、折溢價與各期報酬篩選上市櫃 ETF。' }
+  { key: 'etf', subject: 'ETF', label: 'ETF 篩選', to: SCREENER_PATHS.etf, description: '依基金類型、規模、總費用率、配息頻率、折溢價與各期報酬篩選上市櫃 ETF。' }
 ]

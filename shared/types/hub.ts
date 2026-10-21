@@ -236,7 +236,7 @@ export interface RankingPageData {
   fieldName: string
   unit: string | null
   rows: RankingRow[]
-  // ETF 排行才有：資產類型（上游 assetClass）各自的前 50 檔，名次從 1 起算（排行頁的簡易篩選）
+  // ETF 排行才有：基金類型（上游 fundType）各自的前 50 檔，名次從 1 起算（排行頁的簡易篩選）
   groups?: { name: string; rows: RankingRow[] }[]
   // 全年數字的排行（RANK_PAGES 的 fullYear，例如總費用率）：值是哪一年的，表頭寫「2025 年總費用率」
   valueYear?: number | null
