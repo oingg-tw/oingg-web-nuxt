@@ -19,7 +19,7 @@ import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener
 //     每一個建立路徑都在登入閘門後面（openLogin()），而那需要一個登入的 session。
 //     這幾個只有 `nuxt typecheck` 在保護。動它們之前要有人手動走一遍。
 //
-// ## ctx 的七個
+// ## ctx
 //
 // 全部是核心擁有的狀態或行為，沒有一個是為了這次搬家發明的。傳的是 **ref 本身而不是 .value**——
 // 傳值進來就斷了反應性，而那種壞法不會有任何錯誤訊息。
@@ -39,6 +39,9 @@ export function useScreenerTabCrud(ctx: {
   stopAutoSearch: (tabId: string) => void
   // 把後端的 filters 轉成畫面上的條件 slot。
   buildSlots: (filters: FilterCriterion[]) => TabFilterSlot[]
+  // 反方向：畫面上的條件 → 送給後端的 filters（核心的 filtersOfTab，查詢也用它）。存成我的篩選、複製原本各自手寫一份、沒帶類別型的
+  // values，存進去的市場別／河道位置會被 業務中台 拒絕（2026-10-22）
+  filtersOf: (tab: ScreenerTab) => FilterCriterion[]
   // 全新的自訂頁籤一律從「總覽」這個欄位預設開始，而不是使用者在其他頁籤設成 isDefault 的那一個。
   // 它住在 useScreenerTabColumnPresets，由核心轉接過來——這裡不直接呼叫那一支，否則兩個子
   // composable 會各自建立一份它的狀態。
@@ -131,11 +134,8 @@ export function useScreenerTabCrud(ctx: {
     if (!tab.unsaved) return
     const name = await promptPresetName('存成我的篩選', tab.name)
     if (!name) return
-    const filters = tab.slots
-      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
-      .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
     // 類股範圍建立時就帶：只有類股的組合 filters 是空的，不帶的話 業務中台 會自動補「ROE > 30」（見 useScreenerPresets 的 create）
-    const created = await create(filters, sectorScopeFor(tab))
+    const created = await create(ctx.filtersOf(tab), sectorScopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(lastErrorMessage.value ?? '儲存失敗，請稍後再試')
@@ -169,10 +169,7 @@ export function useScreenerTabCrud(ctx: {
       openLogin()
       return
     }
-    const filters = tab.slots
-      .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null && slot.fieldId !== SECTOR_FIELD_ID)
-      .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }))
-    const created = await create(filters, sectorScopeFor(tab))
+    const created = await create(ctx.filtersOf(tab), sectorScopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')

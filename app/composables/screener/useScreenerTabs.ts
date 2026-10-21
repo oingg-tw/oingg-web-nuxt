@@ -485,6 +485,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     watchTabForAutoSearch: tab => watchTabForAutoSearch(tab),
     stopAutoSearch: tabId => stopAutoSearch(tabId),
     buildSlots: filters => buildSlots(filters),
+    filtersOf: tab => filtersOfTab(tab),
     ensureOverviewColumnPreset: () => ensureOverviewColumnPreset(),
     resolveDefaultColumnPresetId: () => resolveDefaultColumnPresetId(),
     columnFieldsOf: id => columnFieldsOf(id)
