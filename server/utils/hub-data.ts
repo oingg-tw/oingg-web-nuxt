@@ -693,15 +693,8 @@ interface ExDividendCalendarEntry {
   paymentDate: string | null
 }
 
-// 上游的分類是 ETF／PREFERRED／COMMON，不在 GET /securities 裡的是 null。
-// ponytail: analysis-ts 還沒把特別股標成 PREFERRED（2026-10-21 已請求，改成跟 GET /securities 一致）。在那之前，COMMON 裡四碼＋字母的當特別股
-//（2881A、2887Z1）、其他非四碼的不分類（01007T 受益證券、020036 ETN）；上游上線後 COMMON 只剩四碼，這兩個判斷可以拿掉
-function exDividendKind(securityType: string | null, symbol: string): ExDividendKind | null {
-  if (securityType === 'ETF') return 'etf'
-  if (securityType === 'PREFERRED') return 'preferred'
-  if (securityType !== 'COMMON') return null
-  return /^\d{4}$/.test(symbol) ? 'common' : /^\d{4}[A-Z]/.test(symbol) ? 'preferred' : null
-}
+// 上游的分類（analysis-ts 8b4c5f69）：特別股是 PREFERRED（含已收回的）；預告列裡不在 GET /securities 的（01007T 受益證券、020036 ETN）是 null
+const EX_DIVIDEND_KINDS: Record<string, ExDividendKind> = { COMMON: 'common', PREFERRED: 'preferred', ETF: 'etf' }
 
 // 一個月的全市場除權息（業務中台轉發 analysis-ts GET /stocks/ex-dividend-calendar；realized 是公開資訊觀測站的分派公告，announced 是證交所、
 // 櫃買中心的預告）。依除權息日、代號排序
@@ -713,7 +706,7 @@ export const getExDividendMonth = defineCachedFunction(
         exDate: entry.exDate,
         symbol: entry.symbol,
         name: entry.companyName ?? entry.symbol,
-        kind: exDividendKind(entry.securityType, entry.symbol),
+        kind: EX_DIVIDEND_KINDS[entry.securityType ?? ''] ?? null,
         exType: entry.exType,
         cash: entry.distributionPerUnit ?? entry.cashDividend,
         stockPerShare: entry.stockDividendRatio,
