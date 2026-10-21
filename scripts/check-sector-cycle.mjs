@@ -38,6 +38,9 @@ for (const code of SECTORS) {
   // 熱度圖的一列（2026-10-21）：逐月年增率跟上面自己算的一致（小數一位），沒有值的月份是 null
   const byMonth = new Map(yoy.map(p => [p.ym, Math.round(p.v * 10) / 10]))
   summary.months.forEach((month, i) => assert.equal(row.yoy[i], byMonth.get(month) ?? null, `${code} yoy ${month}`))
+  // 類股頁的月營收圖（2026-10-21 起畫近三個月累計年增率）：同一份數字
+  const industryPage = await get(`${APP}/api/hub/industry/${code}`)
+  for (const [month, value] of byMonth) assert.equal(industryPage.revenueYoy3m[month], value, `${code} industry revenueYoy3m ${month}`)
   console.log(`ok ${code} ${row.name}: amplitude ${row.amplitude}, r ${row.correlation} (${row.months} months), heatmap row matches`)
 }
 

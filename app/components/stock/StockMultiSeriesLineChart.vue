@@ -95,11 +95,8 @@ const props = defineProps<{
   // indexing every line to a common base, breaks on a loss-making year because a negative base
   // flips the sign of everything after it.
   unitRight?: string
-  // 右軸不從 0 起（2026-10-21，類股頁的景氣同時指標在 100 上下，從 0 起整條線是平的）。不給＝照舊從 0 起
-  scaleRight?: boolean
-  // 時間上的區段，畫成虛線框、不填色（2026-10-21，類股頁營收圖的「景氣收縮期」，使用者選「B＋類股頁加景氣線」）：填色已經是
-  // negativeBand 的「年增率為負」，兩種區段要一眼分得開。from／to 是 x 軸上的標籤，to 是 null 就畫到最後一期；圖例多一項（說明每個
-  // 框，連太窄寫不下字的那種），提示框標出這一期落在哪一段
+  // 時間上的區段，畫成灰底（2026-10-21，類股月營收圖的「景氣收縮期」）：跟 negativeBand 的漲跌色淡底用色相分開。from／to 是 x 軸上的
+  // 標籤，to 是 null 就畫到最後一期；圖例多一項（說明每一段，連太窄寫不下字的那種），提示框標出這一期落在哪一段
   periods?: { from: string; to: string | null; label: string }[]
 }>()
 
@@ -168,7 +165,7 @@ const periodRanges = computed(() => {
   })
 })
 const periodNames = computed(() => [...new Set(periodRanges.value.map(range => range.label))])
-const dashedBox = computed(() => ({ color: 'transparent', borderColor: chartInk.value.primary, borderWidth: 1.5, borderType: 'dashed' as const }))
+const periodFill = computed(() => ({ color: chartInk.value.muted, opacity: 0.16 }))
 
 interface AxisTooltipParam { dataIndex?: number }
 
@@ -186,8 +183,8 @@ const chartOption = computed(() => {
       top: 0,
       data: [
         ...props.series.map(series => series.name),
-        // 圖例的小圖示也是虛線框，跟圖上的框一樣
-        ...periodNames.value.map(name => ({ name, icon: 'rect', itemStyle: dashedBox.value }))
+        // 圖例的小圖示也是灰底，跟圖上的一樣
+        ...periodNames.value.map(name => ({ name, icon: 'rect', itemStyle: periodFill.value }))
       ]
     },
     tooltip: {
@@ -217,7 +214,6 @@ const chartOption = computed(() => {
             type: 'value',
             name: props.unitRight,
             splitLine: { show: false },
-            ...(props.scaleRight ? { scale: true } : {})
           }]
         : [])
     ],
@@ -293,16 +289,16 @@ const chartOption = computed(() => {
           : value
       })
     }]), ...periodNames.value.map(name => ({
-      // 只承載區段的框（與圖例那一項），沒有資料、不進提示框；框跨整個繪圖區的高度，所以掛在哪一軸都一樣
+      // 只承載區段的灰底（與圖例那一項），沒有資料、不進提示框；灰底跨整個繪圖區的高度，所以掛在哪一軸都一樣
       name,
       type: 'line',
       data: [],
       silent: true,
       tooltip: { show: false },
-      itemStyle: dashedBox.value,
+      itemStyle: periodFill.value,
       markArea: {
         silent: true,
-        itemStyle: dashedBox.value,
+        itemStyle: periodFill.value,
         data: periodRanges.value.filter(range => range.label === name).map(range => [{ xAxis: range.from - 0.5 }, { xAxis: range.to + 0.5 }])
       }
     }))]

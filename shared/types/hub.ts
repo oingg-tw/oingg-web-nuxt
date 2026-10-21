@@ -213,7 +213,9 @@ export interface IndustryPageData {
   // 讀不到時是 null，頁面那兩段就不顯示（settle）
   revenueTrend: SectorMonthlyRevenue | null
   marginTrend: Record<SectorMarginCode, SectorMetricHistory | null>
-  // 營收圖疊的景氣同時指標（去趨勢，鍵是月份，只留營收有資料的區間）與景氣收縮期（2026-10-21）；讀不到是 null，圖就只畫營收
+  // 近三個月累計營收年增率（%，小數一位），鍵是月份（月營收圖畫這個；算法同 /industries/cycle）
+  revenueYoy3m: Record<string, number>
+  // 景氣同時指標（去趨勢，鍵是月份，只留營收有資料的區間；月營收表的一欄）與景氣收縮期（圖的灰底）（2026-10-21）；讀不到是 null
   businessCycle: { coincident: Record<string, number>; contractions: BusinessCyclePeriod[] } | null
 }
 

@@ -311,7 +311,8 @@ export function contractionPeriods(cycles: BusinessCycleReferenceCycle[], first:
 
 // 近三個月累計營收年增率（%）：三個月營收加總 ÷ 去年同三個月加總 − 1。單月年增率會被農曆年落在一月或二月拉成暴衝，
 // 三個月累計把它攤平。缺任一個月就不算。上游每月用「兩年都有申報的同一批公司」，三個月的家數可能差一兩家，誤差可忽略。
-function rollingThreeMonthYoy(entries: SectorMonthlyRevenue['entries']): { yearMonth: string; value: number }[] {
+// /industries/cycle 的熱度圖與類股頁的月營收圖（2026-10-21）共用這一份算法
+export function rollingThreeMonthYoy(entries: SectorMonthlyRevenue['entries']): { yearMonth: string; value: number }[] {
   const byMonth = new Map(entries.map(entry => [entry.yearMonth, entry]))
   return entries.flatMap(entry => {
     const window = [0, 1, 2].map(back => byMonth.get(previousMonth(entry.yearMonth, back)))

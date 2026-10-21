@@ -18,22 +18,15 @@ const { resolvedMode, color: accentColorName } = useAppTheme()
 const isDesktop = useIsDesktop()
 const accent = computed(() => getAccentColor(resolvedMode.value, accentColorName.value))
 
-// ---- 月營收：合計營收年增率（上游用「當月與去年同月都有營收」的同一批公司相加後算）＋景氣同時指標（右軸）＋景氣收縮期的虛線框 ----
-// （景氣線 2026-10-21，使用者在 /industries/cycle 選「B＋類股頁加景氣線」：單一類股跟景氣的對照放在這裡）
-const coincidentByMonth = computed(() => props.data.businessCycle?.coincident ?? {})
-const hasCycle = computed(() => Object.keys(coincidentByMonth.value).length > 0)
-const revenueEntries = computed<LineChartEntry[]>(() => (props.data.revenueTrend?.entries ?? []).map(entry => ({
-  label: entry.yearMonth,
-  values: { yoy: { value: entry.yoyChangePct }, coincident: { value: coincidentByMonth.value[entry.yearMonth] ?? null } }
-})))
-const revenueSeries = computed<LineSeriesSpec[]>(() => [
-  { code: 'yoy', name: '營收年增率', lineType: 'solid', symbol: 'circle', negativeBand: true },
-  ...(hasCycle.value
-    ? [{ code: 'coincident', name: '景氣同時指標', lineType: 'dashed', symbol: 'diamond', axis: 'right', format: (value: number | null) => (value === null ? '－' : `${value.toFixed(1)}（100＝長期趨勢）`) } as const]
-    : [])
-])
+// ---- 月營收：近三個月累計年增率的柱（成長、衰退照漲跌色）＋景氣收縮期的灰底 ----
+// 2026-10-21 改（使用者：「這張圖表實在過度複雜 連我讀起來都很吃力」，看過三種改法選「A」）：原本是單月年增率折線＋右軸景氣同時指標＋
+// 負成長綠底＋收縮期虛線框，兩條線各看一條縱軸，單月年增率又被農曆年拉成忽高忽低（水泥 2025-02 +52%、隔月 +0.6%）。現在一條縱軸、
+// 一種記號，畫法同個股月營收頁的年增率柱；景氣同時指標的數字留在面向頁的表格
+const revenueEntries = computed<LineChartEntry[]>(() => Object.keys(props.data.revenueYoy3m).sort()
+  .map(month => ({ label: month, values: { yoy3m: { value: props.data.revenueYoy3m[month] ?? null } } })))
+const REVENUE_SERIES: LineSeriesSpec[] = [{ code: 'yoy3m', name: '近三個月累計年增率', type: 'bar', lineType: 'solid', symbol: 'rect', signColored: true, baseline: true }]
 const { period: revenuePeriod, shown: revenueShown } = useChartPeriod({ all: revenueEntries, keyOf: entry => entry.label ?? '', perYear: 12 })
-// 收縮期夾在畫出來的月份裡（框的兩端要是 x 軸上的月份）
+// 收縮期夾在畫出來的月份裡（灰底的兩端要是 x 軸上的月份）
 const revenuePeriods = computed(() => {
   const first = revenueShown.value[0]?.label
   const last = revenueShown.value.at(-1)?.label
@@ -119,16 +112,7 @@ const scatterOption = computed(() => ({
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <StockMultiSeriesLineChart
-      :entries="revenueShown"
-      :series="revenueSeries"
-      palette="accent"
-      unit="%"
-      :unit-right="hasCycle ? '指數' : undefined"
-      scale-right
-      :periods="revenuePeriods"
-      :format="industrySignedPct"
-    />
+    <StockMultiSeriesLineChart :entries="revenueShown" :series="REVENUE_SERIES" palette="accent" unit="%" :periods="revenuePeriods" :format="industrySignedPct" />
   </SharedChartCard>
   <SharedChartCard v-else-if="facet === 'margins' && marginRows.length > 1" :period="marginPeriod">
     <template v-if="$slots.header" #header>

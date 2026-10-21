@@ -59,6 +59,8 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
     unranked,
     revenueTrend,
     marginTrend: Object.fromEntries(SECTOR_MARGIN_CODES.map((metricCode, i) => [metricCode, margins[i] ?? null])) as IndustryPageData['marginTrend'],
+    // 月營收圖畫的是近三個月累計年增率（2026-10-21，使用者看過三種改法選「A」：單月年增率被農曆年拉成忽高忽低），跟 /industries/cycle 同一份算法
+    revenueYoy3m: revenueTrend ? Object.fromEntries(rollingThreeMonthYoy(revenueTrend.entries).map(point => [point.yearMonth, Math.round(point.value * 10) / 10])) : {},
     businessCycle
   }
 })
