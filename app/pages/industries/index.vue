@@ -54,13 +54,6 @@ const latestAnswer = computed(() => {
   return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
 })
 
-const keyword = ref('')
-const filteredRows = computed(() => {
-  const trimmed = keyword.value.trim()
-  if (!trimmed) return rows.value
-  return rows.value.filter(row => row.sectorName.includes(trimmed))
-})
-
 const pathFor = (code: string) => sectorPath(code) ?? '/industries'
 
 // 欄位可以點表頭排序（2026-10-21，SharedSortableTable）
@@ -88,13 +81,12 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 
     <section class="stock-page-section" aria-labelledby="industries-table-heading">
       <h2 id="industries-table-heading" class="stock-page-section__title">每個類股的數字是多少？</h2>
-      <el-input v-model="keyword" class="industries-page__search" placeholder="搜尋類股名稱，例如 半導體" aria-label="搜尋類股名稱" clearable />
-      <p v-if="keyword.trim()" class="visually-hidden" role="status">{{ filteredRows.length }} 個類股符合</p>
+      <!-- 類股名稱搜尋 2026-10-21 拿掉（使用者：「這個搜尋 是多餘的」）：34 列、表頭可排序，搜尋只是多一個框 -->
       <!-- 欄位簡化（2026-10-21，使用者：「industries 表格欄位請簡化」）：8 欄 → 6 欄。「有值家數」兩欄拿掉（是中位數的分母，不是讀者要比
            的數字；各類股頁與散佈圖的提示框仍有），「中位數」三個字從每個欄名收進表格說明——每一欄都是中位數，說一次就好 -->
       <p class="hub-answer">除了公司家數，每一欄都是該類股的中位數。</p>
       <SharedSortableTable
-        :rows="filteredRows"
+        :rows="rows"
         :columns="COLUMNS"
         :row-key="row => row.sectorCode"
         label="各證交所類股的公司家數、殖利率與成長率中位數"
@@ -109,7 +101,6 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
           <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
         </template>
       </SharedSortableTable>
-      <SharedEmptyState v-if="!filteredRows.length" description="沒有符合的類股名稱" />
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
@@ -128,11 +119,6 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 
 .industries-page__title {
   font-weight: 600;
-}
-
-.industries-page__search {
-  max-width: 360px;
-  margin-bottom: 12px;
 }
 
 .industries-page__notes {
