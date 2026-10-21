@@ -652,13 +652,61 @@ body.has-bottom-nav-bar .load-failure-notice {
   font-variant-numeric: tabular-nums;
 }
 
-/* 持股頁收起來的 <details>（計算方式、各檔數字、逐月報酬）。summary 保持原生的 display:list-item，
-   瀏覽器的展開三角形才會出現——原本三處各寫 display:flex，三角形不見，看起來像普通標題（2026-10-08）。 */
+/* 持股頁收起來的 <details>（計算方式、各檔數字、逐月報酬、持股特色的計算方式）。2026-10-08 起靠原生三角形表示可以展開（三處各寫
+   display:flex 時三角形不見，看起來像普通標題）；2026-10-21 換成自己畫的箭頭（使用者：「計算方式看起來就像是沒設計過」——原生的是
+   黑色小三角，大小、顏色都跟站上不搭）：收起來朝右、展開朝下，跟著字的顏色；文字段落的行寬留在好讀的範圍 */
 .holdings-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-height: 44px;
   padding: 10px 0;
   cursor: pointer;
   font-weight: 600;
+  color: var(--el-text-color-primary);
+  list-style: none;
+}
+
+.holdings-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.holdings-details > summary::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin: 0 3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.2s;
+}
+
+.holdings-details[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.holdings-details > summary:hover {
+  color: var(--el-color-primary);
+}
+
+.holdings-details > summary:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 只限制文字的行寬；各檔數字、逐月報酬裡面是表格，照舊全寬 */
+.holdings-details > ul,
+.holdings-details > p {
+  max-width: 72ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holdings-details > summary::before {
+    transition: none;
+  }
 }
 
 /* 原生下拉選單的外觀（2026-10-20，使用者截圖「symbol-table__select 這個元件樣式好像跑掉了」：黑色系統箭頭、6px 圓角、實線邊框，

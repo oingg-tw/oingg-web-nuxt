@@ -495,12 +495,6 @@ async function submit() {
             </template>
           </HoldingsSymbolTable>
 
-          <!-- 讀的時候照上次有沒有這顆，畫一顆不能按的（2026-10-20）：有沒有要等帳戶清單（全部帳戶、又不只一個時沒有），晚出現會把
-               「計算方式」往下推 -->
-          <div v-if="loading ? clearButtonHint : writeTarget" class="holding-actions holdings-page__clear">
-            <el-button type="danger" plain :icon="Delete" :disabled="loading" @click="clearEverything">{{ !loading && writeTarget && portfolios.length > 1 ? `清除「${writeTarget.name}」的全部持股與交易紀錄` : '清除全部持股與交易紀錄' }}</el-button>
-          </div>
-
           <details class="holdings-page__method holdings-details">
             <summary>計算方式</summary>
             <ul>
@@ -511,6 +505,13 @@ async function submit() {
               <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
             </ul>
           </details>
+
+          <!-- 清除全部放在最後（2026-10-21，使用者：「底下的 "清除按鈕" 還有計算方式看起來就像是沒設計過」）：很少用、又會刪資料的動作，
+               不擋在讀完表格的路上；分隔線下一顆文字按鈕，不再是一整塊粉紅底。按下去有 10 秒可以復原（clearAll 的 undoToast）。
+               讀的時候照上次有沒有這顆，畫一顆不能按的（2026-10-20）：有沒有要等帳戶清單（全部帳戶、又不只一個時沒有） -->
+          <div v-if="loading ? clearButtonHint : writeTarget" class="holdings-page__clear">
+            <el-button type="danger" link :icon="Delete" :disabled="loading" @click="clearEverything">{{ !loading && writeTarget && portfolios.length > 1 ? `清除「${writeTarget.name}」的全部持股與交易紀錄` : '清除全部持股與交易紀錄' }}</el-button>
+          </div>
         </section>
 
       </template>
@@ -738,7 +739,13 @@ async function submit() {
 }
 
 .holdings-page__clear {
-  margin-top: 16px;
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.holdings-page__clear .el-button {
+  min-height: 44px;
 }
 
 .holding-actions--center {
