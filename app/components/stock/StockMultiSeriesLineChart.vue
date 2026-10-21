@@ -181,12 +181,12 @@ const chartOption = computed(() => {
   // 有 growthLog 序列的軸：刻度從這段畫得到的值算（左軸、右軸各自）
   const logAxis = [0, 1].map((axisIndex) => {
     const growth = props.series.filter(series => series.growthLog && axisIndexOf(series) === axisIndex)
-    if (!growth.length) return {}
-    const ticks = growthLogTicks(list.flatMap(entry => growth.flatMap((series) => {
-      const value = entry.values[series.code]?.value
-      return value == null ? [] : [value]
-    })))
-    return { min: ticks[0], max: ticks.at(-1), axisLabel: { customValues: ticks, formatter: growthLogLabel }, axisTick: { customValues: ticks }, splitLine: { show: false } }
+    return growth.length
+      ? growthLogAxis(list.flatMap(entry => growth.flatMap((series) => {
+          const value = entry.values[series.code]?.value
+          return value == null ? [] : [value]
+        })))
+      : {}
   })
   return {
     // Top space reserved for the LEGEND, which wraps. 48 was a constant tuned when both consumers

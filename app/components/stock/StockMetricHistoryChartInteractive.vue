@@ -246,7 +246,9 @@ const { chartOption } = useMetricHistoryChartOption(
   points,
   computed(() => props.topic),
   computed(() => props.unit),
-  timeframe
+  timeframe,
+  // 營收這類年增率的柱子用對數刻度（GROWTH_LOG_METRICS）；指標頁、指標速覽、自選釘選的都經過這裡
+  GROWTH_LOG_METRICS.has(props.metricCode)
 )
 
 </script>

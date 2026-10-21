@@ -14,7 +14,9 @@ export function useMetricHistoryChartOption(
   points: Ref<MetricHistoryPoint[]>,
   topic: Ref<string>,
   unit: Ref<string>,
-  timeframe: Ref<MetricsHistoryTimeframe>
+  timeframe: Ref<MetricsHistoryTimeframe>,
+  // 營收這類年增率畫成「是去年的幾倍」的對數（GROWTH_LOG_METRICS，app/utils/growth-log-scale.ts）；營收 0（−100%）畫到最底、灰色
+  growthLog = false
 ) {
   const periodLabel = (fiscalYear: number, fiscalQuarter: number | null): string =>
     timeframe.value === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
@@ -23,6 +25,7 @@ export function useMetricHistoryChartOption(
 
   const { resolvedMode, market } = useAppTheme()
   const priceColors = computed(() => getPriceColors(resolvedMode.value, market.value))
+  const mutedInk = computed(() => getChartInk(resolvedMode.value).muted)
 
   interface BarTooltipParam { dataIndex?: number }
 
@@ -47,6 +50,7 @@ export function useMetricHistoryChartOption(
       yAxis: {
         type: 'value',
         name: unit.value,
+        ...(growthLog ? growthLogAxis(list.flatMap(entry => (entry.value === null ? [] : [entry.value]))) : {})
       },
       series: [
         {
@@ -67,9 +71,10 @@ export function useMetricHistoryChartOption(
           // **最後一柱不再用特別的顏色**（同日指示）。原本把它染成墨色當「現在在這裡」的提示，
           // 但 X 軸最右邊本來就是最新一期，而那個染色會跟正負上色打架：一根虧損的最新期會變成墨色，
           // 讀者看不出它是負的。
+          // growthLog：營收 0（−100%）沒有倍數，畫到最底、灰色
           data: list.map(entry => ({
-            value: entry.value,
-            itemStyle: { color: (entry.value ?? 0) < 0 ? priceColors.value.down : priceColors.value.up }
+            value: growthLog && entry.value !== null ? growthLogValue(entry.value) : entry.value,
+            itemStyle: { color: growthLog && entry.value !== null && entry.value <= -100 ? mutedInk.value : (entry.value ?? 0) < 0 ? priceColors.value.down : priceColors.value.up }
           }))
         }
       ]

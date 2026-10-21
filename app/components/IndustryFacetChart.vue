@@ -24,7 +24,7 @@ const accent = computed(() => getAccentColor(resolvedMode.value, accentColorName
 // 一種記號，畫法同個股月營收頁的年增率柱；景氣同時指標的數字留在面向頁的表格
 const revenueEntries = computed<LineChartEntry[]>(() => Object.keys(props.data.revenueYoy3m).sort()
   .map(month => ({ label: month, values: { yoy3m: { value: props.data.revenueYoy3m[month] ?? null } } })))
-const REVENUE_SERIES: LineSeriesSpec[] = [{ code: 'yoy3m', name: '近三個月累計年增率', type: 'bar', lineType: 'solid', symbol: 'rect', signColored: true, baseline: true }]
+const REVENUE_SERIES: LineSeriesSpec[] = [{ code: 'yoy3m', name: '近三個月累計年增率', type: 'bar', lineType: 'solid', symbol: 'rect', signColored: true, growthLog: true, baseline: true }]
 const { period: revenuePeriod, shown: revenueShown } = useChartPeriod({ all: revenueEntries, keyOf: entry => entry.label ?? '', perYear: 12 })
 // 收縮期夾在畫出來的月份裡（灰底的兩端要是 x 軸上的月份）
 const revenuePeriods = computed(() => {
