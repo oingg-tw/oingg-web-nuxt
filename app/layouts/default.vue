@@ -213,22 +213,9 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
     display: block;
   }
 
-  /* The desktop header used to get the rail-width offset here too (2026-09-19), so that the
-     header bar and the page content shared one visual left edge. Removed 2026-09-21 after that
-     alignment was reported as a visible gap（「Menu上面網站導覽與Logo距離不同，是為什麼」）and
-     measured: the logo is position: absolute at x:16–120（see AppHeaderMenu.vue's own comment on
-     why）, so it never moved with this padding. On layouts/landing.vue the header's own base
-     140px put the first menu item 20px past the logo; here the override pushed it to 264px and
-     left a 144px hole between the two — the reserved rail column, with the logo stranded in it.
-
-     So the header never actually had ONE left edge to share: it had the logo's at 16px and the
-     menu's at 264px. Dropping the override gives it a real one（logo 16, menu 140 on every
-     layout）, at the cost of the menu no longer lining up with the content below it. That is the
-     trade the user chose when asked which of the two gaps mattered（「意的是 logo 跟選單之間的
-     空白」）— the content area's own rail-width reservation below is deliberately untouched.
-
-     Nothing replaces these rules: AppHeaderMenu.vue's own padding-left: 140px is the base for
-     both layouts now, and it is already tuned to clear the absolute logo's 120px right edge. */
+  /* 頁首不跟著側欄寬度內縮（2026-09-21「Menu上面網站導覽與Logo距離不同」，使用者選的是 logo 與選單之間不留洞）：logo 在頁首最左、
+     導覽緊接在後，內容區自己保留側欄的寬度。2026-10-21 頁首重新設計後 logo 回到正常排版流，原本靠 140px 左內距閃開絕對定位 logo 的
+     做法一起拿掉，見 AppHeaderMenu.vue */
 
   /* Content sits to the right of the rail; 20px bottom margin instead of the floating
      button's clearance (that button is hidden here). */

@@ -1,128 +1,125 @@
 <script setup lang="ts">
-// Shared nav-item set 2026-09-16, extracted out of AppHeaderMenu.vue per direct request
-// ("desktop 這邊的 menu 改成我們的 AppHeaderMenu" → clarified as landing.vue's own minimal header
-// → "搜尋 滿版切換不出現沒關係 但是我希望其他的功能 要出現 比如剛才說的月曆") — landing.vue's own
-// top-of-file comment explicitly says it deliberately does NOT reuse app-shell chrome (no
-// sidebar, no search bar, avoids burying marketing content), so AppHeaderMenu.vue itself (search
-// autocomplete + width toggle bundled into one fixed-position header) can't just be dropped in
-// wholesale. What CAN be shared without that conflict is just the nav items themselves
-// (網站導覽/月曆/篩選) — this component is that shared slice, meant to be rendered as DIRECT
-// children inside SOMEONE ELSE's <el-menu> (a multi-root fragment component, no wrapping element
-// of its own), since Element Plus's horizontal-item styling is scoped by a direct-child
-// combinator (`.el-menu--horizontal>.el-menu-item`, confirmed in el-menu.css) — nesting these one
-// level deeper inside a wrapper would silently drop that styling, same reasoning AppHeaderMenu.vue
-// itself already documented for why these aren't wrapped in an extra <div>.
-//
-// No `useRoute()`/`default-active` here — that prop lives on whichever PARENT <el-menu> element
-// actually renders these items (AppHeaderMenu.vue's own, or landing.vue's own), since default-
-// active is an el-menu-level prop, not a per-item one.
-//
-// Real <a> links inside every item since 2026-09-19 (the SEO build): el-menu's `router` mode
-// navigates with vue-router's push() from a click/Enter on the <li role="menuitem">, so the
-// server-rendered header used to contain NO anchor at all — a crawler reading any page found no
-// path to /screener, let alone to the new hub pages, and every stock page was reachable only from
-// the sitemap (measured: the home page's SSR HTML had 5 internal links, /screener's had 0). The
-// NuxtLink renders the href crawlers follow; `tabindex="-1"` keeps it out of the tab order so the
-// menubar's own roving focus (arrow keys, Enter → router push) stays the single keyboard path and
-// the item doesn't become two tab stops. A mouse click hits the link and el-menu's handler for the
-// same path — vue-router treats the second push as a redundant navigation, not a second load.
-//
-// Collapsed to 4 flat top-level items 2026-09-19 (interface-complexity review), then
-// re-consolidated to 2 dropdowns 2026-09-20 per direct follow-up ("按照這個邏輯，找股票應該要與
-// 篩選排行合併成下拉選單，因為我們還會有找ETF 找特別股等等") — 找股票/篩選/排行 were flat items
-// for one day, but the same "group related destinations" reasoning that put 觀察清單/持股管理/
-// 配息月曆 under 我的▾ applies here too, and more so once ETF/特別股 screener variants exist:
-// those will be siblings inside THIS group (股票篩選-group), not more flat top-level items. Only
-// 2 top-level nav entries now (股票篩選▾/我的▾); the items still parked entirely outside both
-// (網站導覽/部落格/大師徽章/指標說明) keep their existing homes — SharedFooter.vue's nav on
-// desktop, AppFeatureMenu.vue's fullscreen dialog on phone.
-//
-// 配息月曆 moved to the FRONT of 我的▾ 2026-09-20 per direct request ("我的 配息月曆要放前面一
-// 點，他是很重要的功能核心") — was last of the three. 2026-10-19 moved out of 我的股票 altogether
-// （「配息月曆從我的股票移出去」, the user chose its own top-level item over the 股票篩選▾ group): it
-// is the whole market's calendar, not the visitor's own stocks — those have 持股管理's 配息日程.
+import { ArrowDown } from '@element-plus/icons-vue'
+import type { AppNavGroup } from '~/utils/app-features'
+// 桌機頁首的導覽（AppHeaderMenu 裡）。2026-10-21 重寫（使用者：「app-header-menu 我懷疑 這邊的樣式也是不一致的 請重新設計 並確保 UIUX 使用
+// 體驗順暢，手機優先並且要符合a11y」，選了「保留下拉分組」）：原本是 Element Plus 的水平選單（el-menu），量到三件事——
+//   - 鍵盤打不開下拉：在「找股票」「我的股票」上按 Enter、空白鍵、方向鍵都沒反應，aria-expanded 也沒有值；只用鍵盤的人從頁首到不了
+//     股票篩選、排行、產業索引、觀察清單、持股管理（WCAG 2.1.1）
+//   - 語意錯：role="menubar"／menuitem 是應用程式的選單列，網站導覽應該是一組連結；目前頁也只標在藏起來的內層連結上
+//   - 樣式自成一套：60px 高的純文字，跟同一列 44px 的按鈕、48px 的搜尋框、側欄的列都不一樣
+// 現在照 ARIA 的「可展開的導覽」模式：<nav> 裡一份 <ul>，直接的目的地是連結，分組是 <button aria-expanded> 控制緊接在後的一份連結清單
+//（Tab 順序自然走進去）。Enter／空白鍵開關（原生按鈕）、Esc 關閉並回到按鈕、焦點離開這一組或點外面就關、換頁或捲動也關（2026-09-20
+// 「下拉選單點外面或是滾動卷軸要讓他自動收起」）、一次只開一個（2026-09-26）。只用點的、不用滑過（2026-09-20 起的規則）。
+// 清單一直在伺服器輸出的 HTML 裡（v-show），check-click-depth 讀得到每一個 href。項目與順序在 app-features.ts（手機圖示格讀同一份）。
+const route = useRoute()
+const openKey = ref<string | null>(null)
+const close = () => { openKey.value = null }
+
+function toggle(key: string) {
+  openKey.value = openKey.value === key ? null : key
+}
+
+// 分組裡任何一頁（含它底下的頁，例如 /industry/24 屬於產業索引）是目前頁：按鈕標成目前所在
+const isCurrentGroup = (group: AppNavGroup) => group.items.some(item => route.path === item.to || route.path.startsWith(`${item.match ?? item.to}`))
+
+function onKeydown(event: KeyboardEvent, key: string) {
+  if (event.key !== 'Escape' || openKey.value !== key) return
+  close()
+  document.getElementById(`header-nav-${key}-button`)?.focus()
+}
+
+// 焦點移到這一組外面（Tab 走出清單）就收起
+function onFocusout(event: FocusEvent, key: string) {
+  const group = event.currentTarget as HTMLElement
+  if (openKey.value === key && !group.contains(event.relatedTarget as Node | null)) close()
+}
+
+const navRef = ref<HTMLElement>()
+function onPointerdown(event: PointerEvent) {
+  if (openKey.value && !navRef.value?.contains(event.target as Node)) close()
+}
+watch(() => route.fullPath, close)
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointerdown)
+  window.addEventListener('scroll', close, { passive: true })
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointerdown)
+  window.removeEventListener('scroll', close)
+})
 </script>
 
 <template>
-  <!-- FIRST top-level entry, immediately after the logo（「導覽順位要在Logo後面 也就是第一位」,
-       2026-09-20）. Added to this menu the same day（「網站導覽呢 請放回 top menu」）— it had gone
-       into APP_FEATURES earlier, which is the phone fullscreen dialog and the 網站導覽 page's own
-       list, not this header. Flat rather than filed under either dropdown because it belongs to
-       neither: it is not a way to find stocks, and it is not one of the visitor's own pages. It
-       stays in APP_FEATURES too — 配息月曆/觀察清單/持股管理 are all in both, since that array is
-       what phone users get in place of this menu. -->
-  <el-menu-item index="/sitemap">
-    <NuxtLink to="/sitemap" class="app-nav-menu__link" tabindex="-1">網站導覽</NuxtLink>
-  </el-menu-item>
-
-  <!-- 配息月曆：自己一個頂層項目（2026-10-19，從我的股票▾移出來）。全市場的除權息，不屬於「我的股票」，
-       又是網站的核心（「那才是人家沒有我們有的東西」），所以不收進股票篩選▾、放在一眼看得到的地方 -->
-  <el-menu-item index="/calendar">
-    <NuxtLink to="/calendar" class="app-nav-menu__link" tabindex="-1">配息月曆</NuxtLink>
-  </el-menu-item>
-
-  <!-- 名稱對齊點進去的內容（2026-10-21，使用者：「app-header-menu 請讓 item name 對得起點進去後的內容」，看過對照表後「照建議改」）：
-       下拉原本叫「股票篩選」，但底下四項只有一項是篩選、又跟子項「篩選」重複 → 找股票；子項照各頁的標題與手機選單（app-features.ts）：
-       篩選 → 股票篩選、產業 → 產業索引。排行對得上，不動。個股總表同日拿掉（使用者：「個股總表 與 產業差異 有做好資訊分工嗎 我擔心
-       相似度過高」「省略 刪除 也是可以的」）：它只剩一張類股表，產業索引那張每一列都有、還多了數字，/stock 301 到 /industries -->
-  <el-sub-menu index="stock-group">
-    <template #title>找股票</template>
-    <el-menu-item index="/screener/common">
-      <NuxtLink to="/screener/common" class="app-nav-menu__link" tabindex="-1">股票篩選</NuxtLink>
-    </el-menu-item>
-    <el-menu-item index="/rank">
-      <NuxtLink to="/rank" class="app-nav-menu__link" tabindex="-1">排行</NuxtLink>
-    </el-menu-item>
-    <!-- 產業（2026-09-30「menubar 要有地方可以選產業」→「產業不要獨立成這樣，選項太多了，不適合
-         dropdown menu，放在股票篩選底下就好。點下去以後，才攤開每個產業的統計資料」）。
-         做過一版是第三個頂層下拉、底下列 34 個類股：34 項在一欄會超過畫面高度，得用三欄排版，
-         而且會動到 2026-09-19「收斂到 2 個頂層下拉」的結果。改成一個入口指向索引頁之後，兩個
-         問題都不見了——選單維持 3 個頂層項目，類股清單回到它該在的地方（一個頁面）。 -->
-    <el-menu-item index="/industries">
-      <NuxtLink to="/industries" class="app-nav-menu__link" tabindex="-1">產業索引</NuxtLink>
-    </el-menu-item>
-  </el-sub-menu>
-
-  <!-- 總經特區 was a fourth top-level LEAF here for a few hours on 2026-09-22 and was removed the
-       same day（「總經特區從top nav移除」）, to SharedFooter.vue's nav — the home 大師徽章 and 部落格
-       already got when this menu was trimmed on 2026-09-19, and for the same reason: the footer is
-       on every page, so the zone keeps a permanent, crawlable entry point without spending one of
-       the few slots at the top. That matters here because it is the ONLY entry point outside the
-       zone itself; dropping the link without rehoming it would have orphaned all seven pages from
-       the site graph and failed check-click-depth.mjs. Verified after the move: still 2 clicks. -->
-
-  <!-- 我的 → 我的股票 2026-09-22（「幫調整」）. It was the only one of the three top-level entries
-       that did not say what it contained: 網站導覽 and 股票篩選 both name their own subject, while
-       「我的」names a possessive with no noun. Someone looking for the stocks they saved has no
-       reason to read「我的」as the place for them. The children（觀察清單／持股管理; 配息月曆 left
-       for its own top-level item 2026-10-19）are both about the visitor's own stocks, so the noun is
-       the honest addition rather than a rename of what is inside. -->
-  <el-sub-menu index="mine-group">
-    <template #title>我的股票</template>
-    <el-menu-item index="/watchlist">
-      <NuxtLink to="/watchlist" class="app-nav-menu__link" tabindex="-1">觀察清單</NuxtLink>
-    </el-menu-item>
-    <el-menu-item index="/holdings">
-      <NuxtLink to="/holdings" class="app-nav-menu__link" tabindex="-1">持股管理</NuxtLink>
-    </el-menu-item>
-  </el-sub-menu>
+  <nav ref="navRef" class="header-nav" aria-label="主要功能">
+    <ul class="header-nav__list">
+      <li v-for="entry in APP_NAV" :key="entry.key" class="header-nav__entry">
+        <template v-if="isNavGroup(entry)">
+          <div class="header-nav__group" @keydown="onKeydown($event, entry.key)" @focusout="onFocusout($event, entry.key)">
+            <button
+              :id="`header-nav-${entry.key}-button`"
+              type="button"
+              class="app-bar-item"
+              :class="{ 'is-current': isCurrentGroup(entry) }"
+              :aria-expanded="openKey === entry.key"
+              :aria-controls="`header-nav-${entry.key}`"
+              @click="toggle(entry.key)"
+            >
+              {{ entry.label }}
+              <el-icon class="header-nav__chevron" :class="{ 'is-open': openKey === entry.key }" aria-hidden="true"><ArrowDown /></el-icon>
+            </button>
+            <ul v-show="openKey === entry.key" :id="`header-nav-${entry.key}`" class="rail-list header-nav__panel">
+              <li v-for="item in entry.items" :key="item.key">
+                <NuxtLink :to="item.to" class="rail-item">
+                  <el-icon aria-hidden="true" class="header-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+        </template>
+        <NuxtLink v-else :to="entry.to" class="app-bar-item">{{ entry.label }}</NuxtLink>
+      </li>
+    </ul>
+  </nav>
 </template>
 
 <style scoped>
-/* The link fills its <li> so the whole item stays the click target Element Plus styles (its
-   padding is 0 20px in both the horizontal bar and the dropdown). Colour/underline come from the
-   item — the menu's own active/hover colours must keep applying, so the anchor is visually inert. */
-.app-nav-menu__link {
+.header-nav__list {
   display: flex;
   align-items: center;
-  align-self: stretch;
-  margin: 0 -20px;
-  padding: 0 20px;
-  color: inherit;
-  text-decoration: none;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.app-nav-menu__link:focus {
-  outline: none;
+.header-nav__group {
+  position: relative;
+}
+
+.header-nav__chevron {
+  transition: transform 0.15s ease;
+}
+
+.header-nav__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* 下拉的那一份清單：列的樣子跟側欄一樣（.rail-item，48px），掛在按鈕正下方 */
+.header-nav__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1;
+  min-width: 200px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background: var(--el-bg-color-overlay);
+  box-shadow: var(--el-box-shadow-light);
+}
+
+.header-nav__icon {
+  flex-shrink: 0;
+  font-size: 1.125rem;
+  color: var(--el-color-primary-dark-2);
 }
 </style>

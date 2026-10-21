@@ -1,17 +1,21 @@
 <script setup lang="ts">
-// 登入後是連到 /profile 的頭像；登出時是「登入」按鈕（外觀設定的入口在 AppHeaderMenu／AppFeatureMenu 各自的按鈕，
-// 2026-09-16 起是連到 /appearance 的連結）。原本還有一個 popover 版的帳號選單給側欄用，側欄 2026-09-21 刪除後
-// 兩個呼叫端都只用連結版，2026-10-08 連 popover 一起刪。
-import { User } from '@element-plus/icons-vue'
+// 登入後是連到 /profile 的帳號入口；登出時是「登入」按鈕。兩個版型（2026-10-21 頁首重新設計時整理，使用者：「app-header-menu 我懷疑
+// 這邊的樣式也是不一致的 請重新設計」）：
+//   - bar：頁首那一顆，.app-bar-item 的樣子。登入前「登入」、登入後「頭像＋帳號」，兩個一樣寬——原本「登入」86px、登入後只剩 32px
+//     的頭像，登入狀態一換搜尋框就跟著移位。登入後不顯示名稱（2026-09-24「登入後的名稱在電腦版不用顯示」），「帳號」兩個字是給人
+//     知道這顆是什麼
+//   - row：手機選單層最上面整列寬的一列：頭像、名稱、「個人資料與設定」、箭頭；登出時是整列寬的「登入」按鈕。原本登入後是一行帶底線的
+//     email 連結
+// 外觀設定的入口在 AppHeaderMenu／AppFeatureMenu 各自的按鈕。
+import { ArrowRight, User } from '@element-plus/icons-vue'
 
-// 標頭與手機列是純圖示；手機功能選單的頁尾有空間放名字，用 showName 打開
-withDefaults(defineProps<{ showName?: boolean }>(), { showName: false })
+withDefaults(defineProps<{ layout?: 'bar' | 'row' }>(), { layout: 'bar' })
 
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
-// 登入狀態還沒確定（伺服器、hydration、Firebase 還在還原）：登入過的瀏覽器（firebase.client.ts 的 auth-hint）先畫一個頭像大小的
-// 空位，不先畫「登入」再換掉（2026-10-20，使用者：「重新整理的時候會閃動」）。也要等 hydration：Firebase 可能在那之前就解析完，
-// 瀏覽器的第一次渲染要跟伺服器一樣，否則 Hydration node mismatch（同日 dev 日誌量到的就是這裡）
+// 登入狀態還沒確定（伺服器、hydration、Firebase 還在還原）：登入過的瀏覽器（firebase.client.ts 的 auth-hint）先畫登入後的樣子
+// 但不能點，不先畫「登入」再換掉（2026-10-20，使用者：「重新整理的時候會閃動」）。也要等 hydration：Firebase 可能在那之前就解析完，
+// 瀏覽器的第一次渲染要跟伺服器一樣，否則 Hydration node mismatch
 const hasHydrated = useHasHydrated()
 const authResolved = useAuthResolved()
 const authHint = useCookie<boolean | null>('auth-hint')
@@ -22,73 +26,107 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
 </script>
 
 <template>
-  <NuxtLink
-    v-if="currentUser && !resolving"
-    to="/profile"
-    class="user-menu-button__trigger"
-    aria-label="個人資料設定"
-    :class="{ 'user-menu-button__trigger--named': showName }"
-  >
-    <!-- 一律傳 initial 當 fallback：有沒有顯示由 el-avatar 自己決定（沒有 src、或圖片載入失敗時） -->
-    <el-avatar :size="32" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">
-      {{ initial }}
-    </el-avatar>
-    <span v-if="showName" class="user-menu-button__name">{{ displayLabel }}</span>
-  </NuxtLink>
-  <span v-else-if="resolving && authHint" class="user-menu-button__pending" aria-hidden="true"><span class="user-menu-button__pending-avatar" /></span>
-  <!-- 兩顆而不是一顆帶條件 slot 的按鈕：el-button 只要收到 default slot 就會多包一個 span，純圖示的圓形按鈕
-       會因此偏離中心（2026-09-17） -->
-  <el-button v-else-if="showName" :icon="User" title="登入" class="user-menu-button__action" @click="openLogin">登入</el-button>
-  <el-button v-else :icon="User" circle title="登入" @click="openLogin" />
+  <template v-if="layout === 'bar'">
+    <NuxtLink v-if="currentUser && !resolving" to="/profile" class="app-bar-item user-menu-button user-menu-button__trigger">
+      <el-avatar :size="24" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">{{ initial }}</el-avatar>
+      帳號<span class="visually-hidden">：個人資料設定</span>
+    </NuxtLink>
+    <span v-else-if="resolving && authHint" class="app-bar-item user-menu-button user-menu-button--pending" aria-hidden="true">
+      <span class="user-menu-button__pending-avatar" />帳號
+    </span>
+    <button v-else type="button" class="app-bar-item user-menu-button" title="登入" @click="openLogin">
+      <el-icon aria-hidden="true"><User /></el-icon>登入
+    </button>
+  </template>
+
+  <template v-else>
+    <NuxtLink v-if="currentUser && !resolving" to="/profile" class="user-menu-button__row user-menu-button__trigger">
+      <el-avatar :size="40" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">{{ initial }}</el-avatar>
+      <span class="user-menu-button__text">
+        <span class="user-menu-button__name">{{ displayLabel }}</span>
+        <span class="user-menu-button__hint">個人資料與設定</span>
+      </span>
+      <el-icon aria-hidden="true" class="user-menu-button__arrow"><ArrowRight /></el-icon>
+    </NuxtLink>
+    <span v-else-if="resolving && authHint" class="user-menu-button__row user-menu-button--pending" aria-hidden="true">
+      <span class="user-menu-button__pending-avatar user-menu-button__pending-avatar--row" />
+    </span>
+    <el-button v-else type="primary" size="large" :icon="User" title="登入" class="user-menu-button__login" @click="openLogin">登入</el-button>
+  </template>
 </template>
 
 <style scoped>
-.user-menu-button__trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  /* Lets the trigger itself shrink inside the header's flex row — see __name below for what it
-     costs when it cannot. */
-  min-width: 0;
+/* 頁首那一顆：登入與帳號同寬（見上面的說明） */
+.user-menu-button {
+  min-width: 88px;
 }
-
-/* 不設 width: 100%（2026-09-24 它讓標頭的搜尋框被擠到 0px）；要整列寬的呼叫端（AppFeatureMenu）自己設。 */
 
 .user-menu-button__avatar {
-  cursor: pointer;
+  flex-shrink: 0;
   background: var(--el-color-primary);
-  flex-shrink: 0;
 }
 
-/* min-width: 0 讓 ellipsis 真的生效（flex item 預設不肯縮到比內容窄；2026-09-24 沒有這行時整個名字把搜尋框擠扁）；
-   max-width 把沒有顯示名稱、只剩 email 的帳號截短——搜尋框才是工具，名字只是識別。 */
-.user-menu-button__name {
-  font-size: 1rem;
-  color: var(--el-text-color-primary);
-  min-width: 0;
-  max-width: 10em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.user-menu-button--pending {
+  cursor: default;
 }
 
-/* 登入狀態確定前的空位：跟頭像一樣大，換成頭像時頁首不動 */
-.user-menu-button__pending {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
+/* 登入狀態確定前的頭像空位：跟頭像一樣大 */
 .user-menu-button__pending-avatar {
-  width: 32px;
-  height: 32px;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--el-fill-color);
 }
 
-/* 帶文字的「登入」要和旁邊的外觀設定按鈕同高（2026-09-20 反映兩顆高度不一） */
-.user-menu-button__action {
-  min-height: 44px;
+.user-menu-button__pending-avatar--row {
+  width: 40px;
+  height: 40px;
+}
+
+/* 手機選單層的那一列：整列可點、64px 高 */
+.user-menu-button__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+}
+
+a.user-menu-button__row:hover {
+  background: var(--el-fill-color-light);
+}
+
+.user-menu-button__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+/* 沒有顯示名稱、只剩 email 的帳號截短 */
+.user-menu-button__name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-button__hint {
+  color: var(--el-text-color-secondary);
+}
+
+.user-menu-button__arrow {
+  flex-shrink: 0;
+  color: var(--el-text-color-secondary);
+}
+
+.user-menu-button__login {
+  width: 100%;
 }
 </style>

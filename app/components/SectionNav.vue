@@ -24,11 +24,9 @@
 // difference is exactly why the two-copy split lives in each nav component rather than in
 // AppNavRail.vue — the rail owns its chrome, the caller owns what its narrow layout should be.
 //
-// Real <a href> on every destination, for the reason AppNavMenu.vue records: el-menu's router mode
-// emits no anchors at all, and scripts/check-click-depth.mjs walks these hrefs to prove every
-// sitemap URL is reachable. That is also why the rail copy is a plain list rather than the el-menu
-// StockPageNavList uses — el-menu buys nested groups and expand/collapse state, and a flat list of
-// seven has neither.
+// Real <a href> on every destination: Element Plus's el-menu in router mode emits no anchors at all
+// (the reason the header's AppNavMenu stopped using it, 2026-10-21), and scripts/check-click-depth.mjs
+// walks these hrefs to prove every sitemap URL is reachable. A plain list, like StockPageNavList.
 //
 // aria-current="page" comes from vue-router's own exact-active match and is styled with weight +
 // underline + background, never colour alone.

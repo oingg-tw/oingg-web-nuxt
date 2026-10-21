@@ -23,6 +23,10 @@ import { Setting } from '@element-plus/icons-vue'
 // only nav a phone visitor has once the desktop header hides itself.
 //
 // Scroll locking and Escape now belong to AppSlideLayer.vue, which owns the panel.
+//
+// 一律是圖示格（2026-10-21，使用者：「手機MENU就是要用圖示格 以後不再詢問 因為這跟既有的用戶習慣有關係」）。同日頁首重新設計：項目與
+// 順序改讀 app-features.ts 的同一份（頁首攤平再接總經特區、大師徽章），補上原本只有桌機有的「排行」；最上面的使用者那一列改成整列的
+// 「頭像、名稱、個人資料與設定」（原本是一行帶底線的 email 連結），登出時是整列的「登入」。
 const { close } = useSlideLayer()
 </script>
 
@@ -39,7 +43,7 @@ const { close } = useSlideLayer()
        div 本來就存在、而且 CSS 已經讓按鈕佔滿整行（見下方 .feature-menu__user 的規則），幾乎沒有
        點得到卻不是按鈕的死區。 -->
   <div class="feature-menu__user" @click="close">
-    <UserMenuButton show-name link-to-profile />
+    <UserMenuButton layout="row" />
   </div>
 
   <div class="feature-menu__grid">
@@ -133,11 +137,4 @@ const { close } = useSlideLayer()
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-/* Both states of UserMenuButton: the signed-out 登入 button and the signed-in avatar+name row.
-   The width belongs here rather than in that component — this is the container that wants a
-   full-width row, and the header wants the opposite（see UserMenuButton's own note）. */
-.feature-menu__user :deep(.el-button),
-.feature-menu__user :deep(.user-menu-button__trigger) {
-  width: 100%;
-}
 </style>

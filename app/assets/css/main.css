@@ -54,16 +54,6 @@ body {
   border-radius: 4px;
 }
 
-/* Element Plus 把頁首選單的焦點環拿掉了：`.el-menu--horizontal .el-menu-item:not(.is-disabled):focus { outline: none }`
-   是 (0,4,0)，所以這裡得用同樣的 :not(.is-disabled) 再加 html 前綴才贏得過（2026-10-08 用 styleSheets 逐條比對確認） */
-html .el-menu-item:not(.is-disabled):focus-visible,
-html .el-sub-menu__title:not(.is-disabled):focus-visible,
-html .el-menu--horizontal .el-menu-item:not(.is-disabled):focus-visible,
-html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
-  outline: 2px solid var(--el-color-primary);
-  outline-offset: -2px;
-}
-
 /* Windows 高對比模式：.el-button.is-text 是 border: 0 solid transparent（寬度 0），forced-colors 換掉 color／background 之後會整顆消失；
    給 1px 透明框讓系統色有東西可畫（.is-link 本來就有寬度，一起寫求一致）。!important：Element Plus 的元件 CSS 載在本檔之後，同特異性
    會輸（實測 border-width 停在 0）。 */
@@ -268,6 +258,51 @@ html .el-menu--horizontal .el-sub-menu__title:not(.is-disabled):focus-visible {
 .rail-divided {
   margin-top: 8px;
   border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* 頁首列上的每一個控制項（2026-10-21，使用者：「app-header-menu 我懷疑 這邊的樣式也是不一致的 請重新設計 並確保 UIUX 使用體驗順暢，手機
+   優先並且要符合a11y」）。原本同一列有四種高度（選單 60、搜尋框 48、按鈕 44、頭像 32）、三種外觀（Element 選單的純文字、框線輸入框、
+   框線按鈕）。現在桌機與手機頁首的導覽、下拉按鈕、外觀設定、登入／帳號、選單、搜尋都是這一個樣子：44px 高（觸控下限）、沒有框線、
+   滑過淡底色，目前所在跟側欄（.rail-item）同一套：主色、粗體、底線、淡底色——不只靠顏色。透明框線是給 Windows 高對比模式畫的 */
+.app-bar-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--el-text-color-primary);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-bar-item:hover,
+.app-bar-item[aria-expanded='true'] {
+  background: var(--el-fill-color-light);
+}
+
+.app-bar-item[aria-current='page'],
+.app-bar-item.is-current {
+  font-weight: 700;
+  color: var(--el-color-primary-dark-2);
+  background: var(--el-color-primary-light-9);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+.app-bar-item .el-icon {
+  flex-shrink: 0;
+  font-size: 1.125rem;
 }
 
 /* 資料還沒到的區塊（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構，確定自己沒跑錯地方」「然後不要閃動」）：標題、說明、
@@ -523,10 +558,10 @@ html[data-text-scale='120'] { font-size: 120%; }
   --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
     'Microsoft JhengHei', sans-serif !important;
   /* JS 前的後備值，要等於頁首的真實高度：AppHeaderMenu／AppMobileHeader 掛載後才用 useHeaderHeightMeasure 量真實高度覆寫，而兩個
-     頁首都延後 hydration（約 1.3 s），值不對內容區就在那時跳一下。手機頁首 68px＝上 12＋safe-area、按鈕 min-height 44、下 12；桌機
-     60px 寫在下面的媒體查詢（2026-10-16 DEV 量 320～1920 寬）。原本的 57px 是頁首還是 32px 圓鈕時的值，2026-09-19 改成 44px 文字鈕
-     沒跟著改，手機每一頁都多一段 11px 的版面位移（CLS 0.011） */
-  --app-header-height: calc(68px + env(safe-area-inset-top));
+     頁首都延後 hydration（約 1.3 s），值不對內容區就在那時跳一下。手機頁首 60px＝上 8＋safe-area、按鈕 44、下 8；桌機也是 60px，寫在
+     下面的媒體查詢。改頁首的內距或按鈕高度就要改這裡：57px（32px 圓鈕時代）沒跟著改過一次（CLS 0.011），2026-10-21 頁首重新設計由
+     68 改 60 時又量到一次（手機每一頁 0.008） */
+  --app-header-height: calc(60px + env(safe-area-inset-top));
   /* 預設 0（沒有橫幅）：AppSystemHealthBanner 掛載時量自己的高度覆寫，AppNavRail 與版面的內容 padding 跟著下移 */
   --app-banner-height: 0px;
   --app-sidebar-width: 240px;

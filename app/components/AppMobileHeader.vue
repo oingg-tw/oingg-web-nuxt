@@ -24,14 +24,11 @@ useHeaderHeightMeasure(barRef)
 
 <template>
   <header ref="barRef" class="mobile-header">
-    <!-- Icon + visible text, not icon-only, since 2026-09-19 (interface-complexity review): a
-         bare icon circle failed the reference doc's "every functional icon needs a text label"
-         rule, and its comment claiming "44px circle size" below was never true — Element Plus's
-         own small-size circle button is a fixed 32px (element-plus.css's own .el-button--small.is-circle
-         rule). min-height is now set explicitly rather than inherited from a size variant. -->
-    <el-button class="mobile-header__btn" @click="toggle('menu')">
+    <!-- 圖示＋文字（2026-09-19：每個功能圖示都要有文字）。2026-10-21 頁首重新設計：跟桌機頁首同一個樣子（.app-bar-item，main.css）
+         ——原本是 Element 的框線按鈕，兩個頁首各長各的。原生 <button>：沒有 Element 的框線、內距與高度要蓋 -->
+    <button type="button" class="app-bar-item mobile-header__btn" @click="toggle('menu')">
       <el-icon aria-hidden="true"><Menu /></el-icon>選單
-    </el-button>
+    </button>
     <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
          the menu/search buttons on either end are the same 44px circle size, this centers the
          logo/name group exactly in the header's remaining space, matching "logo/站名 請水平
@@ -46,9 +43,9 @@ useHeaderHeightMeasure(barRef)
     <div class="mobile-header__spacer" />
     <!-- accesskey="s"（2026-09-16 是 n，2026-10-08 改成無障礙規範 2.0 慣例的 S；配置見 pages/sitemap.vue）：這顆按鈕本來就做 Alt+S 要做的事（開搜尋圖層），不像桌機的
          內嵌輸入框得另放一顆隱藏的觸發鈕（見 AppHeaderMenu）。 -->
-    <el-button class="mobile-header__btn" accesskey="s" title="搜尋區塊" @click="toggle('search')">
+    <button type="button" class="app-bar-item mobile-header__btn" accesskey="s" title="搜尋區塊" @click="toggle('search')">
       <el-icon aria-hidden="true"><Search /></el-icon>搜尋
-    </el-button>
+    </button>
 
 </header>
 </template>
@@ -63,24 +60,12 @@ useHeaderHeightMeasure(barRef)
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  /* 60px：44px 的控制項上下各 8px，同桌機頁首 */
+  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
   /* 半透明而不是全透明——同 AppHeaderMenu（那邊的註解記了「searchbar跑版了」那次）。 */
   background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
-}
-
-/* flex-shrink: 0 — .mobile-header has no other flexible child except the spacer below, so
-   without this the buttons would be free to shrink under gap pressure at very narrow widths.
-   min-height/padding/font-size set explicitly (2026-09-19, replacing `circle size="small"`)
-   since these are now icon+text buttons, not fixed-size circles — a ≥44px touch target per the
-   reference doc, with the button's own content driving its actual height instead of a hardcoded
-   px number (element-plus.css's own `.el-button--small { height: auto }` rule already does the same). */
-.mobile-header__btn {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  font-size: 1rem;
 }
 
 /* Two of these (one each side of the logo) share the header's remaining space equally,

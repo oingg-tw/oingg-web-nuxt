@@ -50,7 +50,7 @@ useScrollLock(isOpen)
 // leaves focus on a button that is about to go inert, so the browser expels it to <body>, and
 // closing leaves it there — measured, a reader who pressed Escape landed on <body> and had to Tab
 // from the top of the document again to get back to where they were.
-const closeButtonRef = ref<{ ref?: HTMLElement } | null>(null)
+const closeButtonRef = ref<HTMLElement | null>(null)
 let returnFocusTo: HTMLElement | null = null
 
 watch(
@@ -62,7 +62,7 @@ watch(
       await nextTick()
       // The close button, not the panel: landing on the exit is what a reader who opened this by
       // mistake needs first, and it is the only control guaranteed to exist in every layer.
-      closeButtonRef.value?.ref?.focus()
+      closeButtonRef.value?.focus()
     } else {
       const target = returnFocusTo
       returnFocusTo = null
@@ -106,14 +106,16 @@ function onKeydown(event: KeyboardEvent) {
          The bar is at the TOP rather than the bottom because a layer's content scrolls and the exit
          must stay where the thumb expects it. -->
     <div class="slide-layer__bar">
-      <el-button
+      <!-- 跟頁首同一個樣子（.app-bar-item，2026-10-21 頁首重新設計）：原本是 Element 的框線方塊，整個手機介面只剩它有框 -->
+      <button
         ref="closeButtonRef"
-        class="slide-layer__close"
+        type="button"
+        class="app-bar-item slide-layer__close"
         :aria-label="`返回，離開${label}`"
         @click="emit('close')"
       >
         <el-icon aria-hidden="true"><ArrowLeft /></el-icon>
-      </el-button>
+      </button>
       <span class="slide-layer__title">{{ label }}</span>
     </div>
 
@@ -159,9 +161,17 @@ function onKeydown(event: KeyboardEvent) {
    a layer sliding over them would be answering a question nobody asked. Kept in the markup rather
    than removed so the server HTML is identical at every width, the rule layouts/default.vue exists
    to enforce. */
-/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
-@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。
+   例外（2026-10-21）：平板橫放（桌機版面、不到 1280 寬）時桌機頁首的搜尋框收成「搜尋」按鈕，開的就是這裡的搜尋層（右側），所以那個寬度
+   只藏選單層；1280 以上兩層都藏 */
+@media (min-width: 1280px) {
   .slide-layer {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .slide-layer--left {
     display: none;
   }
 }
@@ -182,13 +192,9 @@ function onKeydown(event: KeyboardEvent) {
   background: var(--el-bg-color-overlay);
 }
 
-/* 44px square: the icon lost its text, so the button can no longer borrow the label's width to
-   reach a comfortable touch target and has to state one. Element Plus's own small-size button is
-   32px, which is under every touch-target guideline this app follows. */
+/* 44px 見方：只有圖示，借不到文字的寬度，觸控大小要自己說 */
 .slide-layer__close {
-  flex: none;
   min-width: 44px;
-  min-height: 44px;
   padding: 0;
 }
 

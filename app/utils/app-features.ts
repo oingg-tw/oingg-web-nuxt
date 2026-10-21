@@ -1,4 +1,4 @@
-import { Compass, DataLine, Filter, Money, Odometer, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
+import { Compass, DataLine, Filter, Money, Odometer, Sort, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 
 export interface AppFeature {
@@ -6,32 +6,51 @@ export interface AppFeature {
   label: string
   icon: Component
   to: string
+  // 這一項底下的頁面也算在它裡面（頁首下拉的分組按鈕據此標成目前所在）；不給就是 to 本身
+  match?: string
 }
 
-// 全站的第一層功能，AppFeatureMenu 照陣列順序渲染（手機是圖示格、桌機是側邊欄）
+export interface AppNavGroup {
+  key: string
+  label: string
+  items: AppFeature[]
+}
+
+// 全站的第一層功能，頁首（AppNavMenu）與手機選單的圖示格（AppFeatureMenu）讀同一份（2026-10-21，使用者：「app-header-menu 我懷疑 這邊的樣式
+// 也是不一致的 請重新設計」）。原本兩份各自維護：桌機有排行、手機沒有；手機有總經特區、大師徽章，順序也不同。
+// 配息月曆：2026-09-16 由 dashboard 改名；2026-07 的 620 筆除息全是普通股、2026-10 的 17 筆有 8 筆是 ETF，月配型 ETF 是讀者最常追的
+const CALENDAR: AppFeature = { key: 'calendar', label: '配息月曆', icon: Odometer, to: '/calendar' }
+// 網站導覽：/sitemap 是給人看的 HTML 網站地圖（不是 sitemap.xml）。2026-09-20 放回第一位（「導覽順位要在Logo後面 也就是第一位」）
+const SITEMAP: AppFeature = { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' }
+// 股票篩選：普通股／特別股／ETF 三組篩選的入口（2026-10-15 起 ETF、特別股都收在 /screener 底下）
+const SCREENER: AppFeature = { key: 'screener', label: '股票篩選', icon: Filter, to: '/screener/common', match: '/screener' }
+// 排行的圖示是線條的上下箭頭（Sort）：其他圖示都是線條，Histogram 是實心的直條，放在一起就是唯一一個實心的
+const RANK: AppFeature = { key: 'rank', label: '排行', icon: Sort, to: '/rank' }
+// 產業索引（2026-10-21 由產業追蹤改名：「追蹤」像是能關注某個產業，點進去其實是 34 個類股的索引頁）；/industry/{類股} 也算它底下
+const INDUSTRIES: AppFeature = { key: 'industries', label: '產業索引', icon: OfficeBuilding, to: '/industries', match: '/industr' }
+// 觀察清單與持股管理相鄰：使用者明確指示這是兩個功能（追蹤 vs 真的持有、有股數與成本），擺在一起讓這個區分一眼看得出來
+const WATCHLIST: AppFeature = { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' }
+const HOLDINGS: AppFeature = { key: 'holdings', label: '持股管理', icon: Money, to: '/holdings' }
+// 頁首沒放、只在手機圖示格的兩個（頁首 2026-09-19 收斂、09-22「總經特區從top nav移除」，桌機的入口在頁尾）。總經特區列在這裡而不只在
+// sitemap：個股導覽永遠不會通到全市場頁，沒有這一筆手機只剩 /sitemap 一個入口
+const MACRO: AppFeature = { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro' }
+// 大師徽章：永遠放最後（「徽章系統永遠放在 sidebar 最下面」）
+const GURU: AppFeature = { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' }
+
+// 頁首的導覽：照這個順序；有 items 的是下拉分組（2026-09-20「找股票應該要與篩選排行合併成下拉選單」，2026-10-21 名稱對齊點進去的內容）
+export const APP_NAV: (AppFeature | AppNavGroup)[] = [
+  SITEMAP,
+  CALENDAR,
+  { key: 'find', label: '找股票', items: [SCREENER, RANK, INDUSTRIES] },
+  { key: 'mine', label: '我的股票', items: [WATCHLIST, HOLDINGS] }
+]
+
+export const isNavGroup = (entry: AppFeature | AppNavGroup): entry is AppNavGroup => 'items' in entry
+
+// 手機圖示格（與網站導覽頁的功能清單）：頁首的全部攤平、同一個順序，再接頁首沒放的。外觀設定由 AppFeatureMenu 自己接在最後。
+// ETF 專區與特別股專區 2026-09-14 依指示隱藏（2026-10-15 起收在股票篩選底下）
 export const APP_FEATURES: AppFeature[] = [
-  // dashboard 2026-09-16 改名 calendar（使用者指示）。2026-09-23 暫緩過又當天放回（「ETF 可以用」）：2026-07 的 620 筆除息全是
-  // 普通股、2026-10 的 17 筆有 8 筆是 ETF，兩者除息季節錯開，月配型 ETF 又是讀者最常追的。
-  { key: 'calendar', label: '配息月曆', icon: Odometer, to: '/calendar' },
-  // 觀察清單與持股管理相鄰：使用者明確指示這是兩個功能（追蹤 vs 真的持有、有股數與成本），擺在一起讓這個區分一眼看得出來
-  { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' },
-  // WalletFilled → Money（2026-09-14 換一輪 icon，使用者從預覽挑的）
-  { key: 'holdings', label: '持股管理', icon: Money, to: '/holdings' },
-  { key: 'screener', label: '股票篩選', icon: Filter, to: '/screener/common' },
-  // 產業追蹤 → 產業索引（2026-10-21，同頁首選單）：「追蹤」像是能關注某個產業，點進去其實是 34 個類股的索引頁
-  { key: 'industries', label: '產業索引', icon: OfficeBuilding, to: '/industries' },
-  // 總經特區 2026-09-21（當時叫大盤與升降息，在 /rate-cycle），2026-09-22 成立特區後改指 /macro。列在這裡而不只在 sitemap：
-  // 個股導覽永遠不會通到全市場頁，沒有這一筆它只剩 /sitemap 一個入口，check-click-depth 量到的會是孤兒。
-  { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro' },
-  // 產業追蹤的資料來源變過：供應鏈樹（2026-09-15）被 analysis-ts 2026-09-20 整個刪除（合規考量，沒有替代端點），頁面退回證交所類股；
-  // 產業價值鏈 2026-09-09 加入當天下架（ic.tpex.org.tw 需書面授權才能轉載，檔案已刪，使用者另案重做）。
-  // ETF 專區與特別股專區 2026-09-14 依指示從側邊欄隱藏（頁面都在，入口在首頁／頁尾／網站導覽），要重新上架就加回：
-  // { key: 'etf-zone', label: 'ETF 篩選', icon: PieChart, to: '/screener/etf' }（2026-10-15 起收在 /screener 篩選區底下）
-  // { key: 'preferred-stocks', label: '特別股篩選', icon: GoldMedal, to: '/screener/preferred' }（icon 換過七次，最後定 GoldMedal）
-  // 網站導覽 2026-09-20 放回側邊欄（使用者：「網站導覽要加回來喔」）：/sitemap 是給人看的 HTML 網站地圖（不是 sitemap.xml），
-  // 2026-09-17 清空側邊欄後只剩頁尾一個入口。
-  { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' },
-  // 大師徽章：名稱 大師指標→徽章系統→徽章與指標→大師徽章（2026-09-14 定案），icon 最後定 Trophy（把 Medal 讓給特別股）。永遠放陣列
-  // 最後（「徽章系統永遠放在 sidebar 最下面」）——AppFeatureMenu 照陣列順序 v-for。
-  { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' }
+  ...APP_NAV.flatMap(entry => (isNavGroup(entry) ? entry.items : [entry])),
+  MACRO,
+  GURU
 ]
