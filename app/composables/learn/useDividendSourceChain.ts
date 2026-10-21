@@ -115,6 +115,7 @@ export async function useDividendSourceChain(code: Ref<string>, stockShortName: 
       .find(year => year < fiscalYear.value! && FY_REQUIRED.every(code => fyRows.value.get(year)?.[code] != null)) ?? null
   })
   const fyPrev = (code: string): number | null => (prevFiscalYear.value === null ? null : fyRows.value.get(prevFiscalYear.value)?.[code] ?? null)
+  const hasPreferredDividends = computed(() => [fy('preferredDividendsPerShare'), fyPrev('preferredDividendsPerShare')].some(value => Math.abs(value ?? 0) >= 0.005))
 
   const revenuePerShare = computed(() => fy('revenuePerShare'))
   const grossProfit = computed(() => fy('grossProfitPerShare'))
@@ -241,13 +242,18 @@ export async function useDividendSourceChain(code: Ref<string>, stockShortName: 
     },
     { op: '−', label: '所得稅費用', value: amount(fy('incomeTaxExpensePerShare')), prev: amount(fyPrev('incomeTaxExpensePerShare')), from: '這一年繳的所得稅。為負代表所得稅利益' },
     { op: '−', label: '少數股東損益', value: amount(fy('nonControllingInterestsPerShare')), prev: amount(fyPrev('nonControllingInterestsPerShare')), from: '子公司裡不屬於母公司的那一份' },
+    // 特別股股利（2026-10-21，analysis-ts preferredDividendsPerShare）：EPS 是普通股的，要先扣掉發給特別股的股利，1101 這類有特別股的
+    // 公司鏈才對得起來。沒有特別股的公司是 0，這一列不畫（兩年都是 0 或沒有值就當沒有）
+    ...(hasPreferredDividends.value
+      ? [{ op: '−', label: '特別股股利', value: amount(fy('preferredDividendsPerShare')), prev: amount(fyPrev('preferredDividendsPerShare')), from: '發給特別股股東的股利，普通股的每股盈餘要先扣掉這一份' }]
+      : []),
     {
       op: '＝',
       label: 'EPS（每股稅後淨利）',
       value: amount(eps.value),
       prev: amount(fyPrev('eps')),
-      from: reconciles([fy('pretaxIncomePerShare'), -(fy('incomeTaxExpensePerShare') ?? 0), -(fy('nonControllingInterestsPerShare') ?? 0)], eps.value)
-        ? `稅前淨利 ${amount(fy('pretaxIncomePerShare'))} 減所得稅 ${amount(fy('incomeTaxExpensePerShare'))}${Math.abs(fy('nonControllingInterestsPerShare') ?? 0) < 0.005 ? '' : ` 減少數股東 ${amount(fy('nonControllingInterestsPerShare'))}`}`
+      from: reconciles([fy('pretaxIncomePerShare'), -(fy('incomeTaxExpensePerShare') ?? 0), -(fy('nonControllingInterestsPerShare') ?? 0), -(fy('preferredDividendsPerShare') ?? 0)], eps.value)
+        ? `稅前淨利 ${amount(fy('pretaxIncomePerShare'))} 減所得稅 ${amount(fy('incomeTaxExpensePerShare'))}${Math.abs(fy('nonControllingInterestsPerShare') ?? 0) < 0.005 ? '' : ` 減少數股東 ${amount(fy('nonControllingInterestsPerShare'))}`}${hasPreferredDividends.value ? ` 減特別股股利 ${amount(fy('preferredDividendsPerShare'))}` : ''}`
         : '年報公告的每股盈餘。這一年它不等於稅前淨利減所得稅與少數股東，中間還有不在這條鏈上的科目'
     },
     {

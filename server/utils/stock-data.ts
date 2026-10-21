@@ -306,7 +306,7 @@ const SERIES_GROUPS = {
   // ——773 家的 114 年報還沒匯入，抽樣 20 檔有 14 檔最新只到 113 年度——所以要往回找第一個「每個科目
   // 都有值」的年度，不能只拿最後一筆。
   FY_CHAIN_1: { timeframe: 'FY', codes: ['revenuePerShare', 'operatingCostsPerShare', 'grossProfitPerShare', 'operatingExpensePerShare', 'netOtherIncomeExpensesPerShare', 'operatingIncomePerShare', 'pretaxIncomePerShare', 'eps'], limit: 5 },
-  FY_CHAIN_2: { timeframe: 'FY', codes: ['nonOperatingIncomeExpensesPerShare', 'incomeTaxExpensePerShare', 'nonControllingInterestsPerShare', 'sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare'], limit: 5 },
+  FY_CHAIN_2: { timeframe: 'FY', codes: ['nonOperatingIncomeExpensesPerShare', 'incomeTaxExpensePerShare', 'nonControllingInterestsPerShare', 'sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'preferredDividendsPerShare'], limit: 5 },
   Q_BVPS_1: { timeframe: 'Q', codes: ['bvps'], limit: 1 },
   // The stock's own PE/PB quarterly history for the digest's percentile sentences.
   PE_TTM_20: { timeframe: 'TTM', codes: ['peRatio'], limit: 20 },
