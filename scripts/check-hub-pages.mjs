@@ -44,8 +44,11 @@ const ROUTES = [
   // getSectors drops it. It now belongs in STATUS_CASES below as an expected 404.
   // 8 → 7 on 2026-09-22, when consecutive-dividend-years was pulled（RANK_PAGES has the reason）.
   // Goes back to 8 with that page, ~2027 Q1.
-  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 8 },
+  // 8 → 13 on 2026-10-21: five ETF rankings（RANK_PAGES 的 universe: 'etf'）。
+  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 13 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
+  // ETF 排行的列連到 /etf/{code}，連到 /stock/{code} 會被 301 轉走（securityPath）
+  { path: '/rank/etf-aum', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   // The app page: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what is on the page）。
   // 篩選區首頁 /screener 2026-10-16 拿掉（301 到這一頁）。標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
   { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
@@ -392,7 +395,7 @@ for (const route of ROUTES) {
   expect(route.path, `industry links ≥ ${route.industryLinksMin}`, new Set(internalHrefs.filter(href => href.startsWith('/industry/'))).size >= route.industryLinksMin)
   expect(route.path, `tables ≥ ${route.tablesMin}`, (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= route.tablesMin)
   expect(route.path, 'no Product/AggregateRating', !ssr.includes('"Product"') && !ssr.includes('"AggregateRating"'))
-  if (route.rankLinksMin) expect(route.path, `rank links ≥ ${route.rankLinksMin}`, new Set(internalHrefs.filter(href => /^\/rank\/[a-z-]+$/.test(href))).size >= route.rankLinksMin)
+  if (route.rankLinksMin) expect(route.path, `rank links ≥ ${route.rankLinksMin}`, new Set(internalHrefs.filter(href => /^\/rank\/[a-z0-9-]+$/.test(href))).size >= route.rankLinksMin)
   if (route.templateLinksMin) expect(route.path, `template links ≥ ${route.templateLinksMin}`, new Set(internalHrefs.filter(href => /^\/screener\/common\/[a-z-]+$/.test(href))).size >= route.templateLinksMin)
   // The compliance line sits in the page body（above the ranking table / at the end of a
   // condition page）, not only in the footer.

@@ -454,11 +454,39 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
   }
 }
 
+// ETF 的排行（2026-10-21）：ETF 篩選同一支 POST /etf-screener，依一個欄位排序。一次拿 100 筆再去掉沒有值的，取前 50。
+// 上游的 ETF 篩選結果不帶日期：基金月報的欄位用第一名的月報月份（每檔 ETF 頁同一支 /etfs/{代號}），其他欄位不寫日期
+async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPageData> {
+  const response = await businessFetch<{ results: { symbol: string; shortName: string; values: Record<string, string | number | boolean | null> }[] }>('/etf-screener', {
+    method: 'POST',
+    body: { columns: [{ field: definition.field }], sortField: definition.field, order: definition.direction, page: 1, pageSize: 100 }
+  })
+  const rows: RankingRow[] = response.results
+    .map(result => ({ result, value: parseDecimal(result.values[definition.field] as string | number | null) }))
+    .filter((entry): entry is { result: typeof entry.result; value: number } => entry.value !== null)
+    .slice(0, RANKING_LIMIT)
+    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.shortName, value: entry.value, knowledgeDate: null }))
+  // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
+  //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
+  const reportMonth = definition.monthlyReport && rows[0] ? String((await businessFetch<{ yearMonth?: string }>(`/etfs/${rows[0].symbol}`)).yearMonth ?? '') : ''
+  return {
+    slug: definition.slug,
+    field: definition.field,
+    direction: definition.direction,
+    metricName: definition.label,
+    fieldName: '',
+    unit: definition.unit ?? null,
+    rows,
+    asOf: /^\d{6}$/.test(reportMonth) ? `${reportMonth.slice(0, 4)}-${reportMonth.slice(4)}` : null
+  }
+}
+
 // GET /screener/ranking — the 50-row market-wide ordering behind one /rank/{slug} page.
 export const getRanking = defineCachedFunction(
   async (slug: string): Promise<RankingPageData> => {
     const definition = findRankPage(slug)
     if (!definition) throw new Error(`unknown rank page "${slug}"`)
+    if (definition.universe === 'etf') return runEtfRanking(definition)
     if (definition.screener) return runScreenerRanking(definition)
     const floor = definition.growthBaseFloor
     const response = await businessFetch<RankingResponse>('/screener/ranking', {
