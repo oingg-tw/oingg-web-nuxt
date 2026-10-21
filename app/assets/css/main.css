@@ -254,6 +254,18 @@ body {
   margin-top: 0;
 }
 
+/* 放在清單前面的一組（排行的類別，2026-10-21「類別放上是否更合理」：它決定下面列哪一組）：自己最上面不畫線，改在跟清單之間畫一條 */
+.rail-group--lead > .rail-heading {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: 0;
+}
+
+.rail-group--lead + nav {
+  margin-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
 /* 沒有組標題的分隔（設定類的頁面跟上面分開） */
 .rail-divided {
   margin-top: 8px;

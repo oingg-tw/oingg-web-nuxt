@@ -63,6 +63,8 @@ const current = computed(() => {
   <!-- Narrow widths. The list markup is repeated below rather than extracted into a third
        component: it is five lines, and both copies must exist in the DOM simultaneously. -->
   <AppBottomNav :current="current" :label="`${label}清單`">
+    <!-- 清單之前的區塊（排行的類別切換，2026-10-21）：它決定下面列哪一組，先選再看 -->
+    <slot name="before" />
     <nav :aria-label="label">
       <ul class="rail-list">
         <template v-for="item in items" :key="item.to">
@@ -78,6 +80,7 @@ const current = computed(() => {
   </AppBottomNav>
 
   <AppNavRail :label="`${label}導覽（釘選）`">
+    <slot name="before" />
     <nav :aria-label="label">
       <ul class="rail-list">
         <template v-for="item in items" :key="item.to">
