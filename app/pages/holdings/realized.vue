@@ -51,6 +51,10 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   }
 }, { immediate: true })
 
+// 報酬率（2026-10-21，使用者：「holdings/realized 要加上獲利比率 比如 +50% 之類的」）＝ 已實現損益 ÷ 賣掉那幾股的買進成本（costBasis）。
+// 成本是 0（只賣到配股或成本不明的股數）時是 null
+const returnOf = (profitLoss: string, cost: string) => (Number(cost) > 0 ? Number(profitLoss) / Number(cost) : null)
+
 const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
   const entry = companyByCode.value.get(row.symbol)
   const name = entry?.name ?? row.symbol
@@ -61,6 +65,7 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
     label: `${name} ${row.symbol}`,
     link: entry ? routeFor(entry) : securityPath(row.symbol),
     value: Number(row.realizedProfitLoss),
+    pct: returnOf(row.realizedProfitLoss, row.costBasis),
     price: quote?.price == null ? null : Number(quote.price),
     priceDate: quote?.priceDate ?? null,
     excluded: row.excludedSellCount > 0
@@ -85,7 +90,10 @@ const dayText = (date: string) => (date.slice(0, 4) === latestPriceDate.value?.s
 const expanded = ref<string[]>([])
 const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
   // 下載（2026-10-18）：已實現損益是金額、會透露部位大小，預設不下載；收盤價不會
-  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), sortValue: row => row.value, value: row => row.value, sensitive: true, tone: row => Math.round(row.value) },
+  // 卡片上報酬率寫在金額後面（同持股總覽的未實現損益）
+  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), cardText: row => (row.pct === null ? holdingsSignedMoney(row.value) : `${holdingsSignedMoney(row.value)} ${holdingsSignedPct(row.pct)}`), sortValue: row => row.value, value: row => row.value, sensitive: true, tone: row => Math.round(row.value) },
+  // 報酬率是比例、不透露部位大小，預設下載
+  { key: 'pct', label: '報酬率', minWidth: 110, sortLabel: '報酬率（高到低）', text: row => holdingsSignedPct(row.pct), sortValue: row => row.pct, value: row => row.pct, tone: row => (row.pct === null ? null : Number((row.pct * 100).toFixed(2))) },
   {
     key: 'price',
     label: latestPriceDate.value ? `收盤價（${dayText(latestPriceDate.value)}）` : '收盤價',
@@ -103,6 +111,7 @@ function rowLabelFor(row: RealizedRow) {
 }
 
 const total = computed(() => (realized.value ? Number(realized.value.totalRealizedProfitLoss) : null))
+const totalPct = computed(() => (realized.value ? returnOf(realized.value.totalRealizedProfitLoss, realized.value.totalCostBasis) : null))
 
 // 成本不明、沒算進損益的賣出：寫出是哪幾檔（同持股總覽的「未計入：」，最多列 5 檔）
 const excludedText = computed(() => {
@@ -170,8 +179,8 @@ const tradingRows = computed(() => {
 
         <template v-else>
           <p class="realized-page__answer">
-            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">賣出 3 檔，已實現損益合計 ▲ +123,456 元。</span>
-            <template v-else>賣出 {{ rows.length }} 檔，已實現損益合計 <span :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</span>。</template>
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">賣出 3 檔，已實現損益合計 ▲ +123,456 元，報酬率 +12.34%。</span>
+            <template v-else>賣出 {{ rows.length }} 檔，已實現損益合計 <span :class="directionClass(total)">{{ holdingsSignedMoney(total) }}</span><template v-if="totalPct !== null">，報酬率 <span :class="directionClass(total)">{{ holdingsSignedPct(totalPct) }}</span></template>。</template>
           </p>
           <HoldingsSymbolTable
             v-model:expanded="expanded"
@@ -201,6 +210,7 @@ const tradingRows = computed(() => {
               <li>只計賣出日落在期間內的賣出，包含已經全部賣出的股票。</li>
               <li>成本以先進先出（跟券商相同）配對，期間開始前買進的股票也照實帶入成本；賣出的手續費與交易稅已扣除，不含股利。</li>
               <li>除權配股依除權息行事曆自動入帳。</li>
+              <li>報酬率＝已實現損益 ÷ 賣掉的那幾股的買進成本（含買進手續費）。配股的成本算 0；只賣到配股或成本不明的股數時沒有報酬率。</li>
             </ul>
           </details>
         </template>

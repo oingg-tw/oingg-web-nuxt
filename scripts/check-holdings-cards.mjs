@@ -3,7 +3,7 @@
 //   - 開關是卡片的頁尾：最後一個元素、整張卡片寬；展開的內容長在它上面
 //   - 數字一種排法：卡片的列、明細面板（HoldingsDetailPanel card）、交易紀錄（HoldingsLedger 清單）的數字右緣切齊
 //   - 看完長明細才按收合，卡片要捲回看得到的地方（不躲在頁首底下）
-//   - 已實現損益頁：「賣出（期間內）」不會被切成兩半；最後一筆不跟頁尾疊兩條線
+//   - 已實現損益頁：「賣出（期間內）」不會被切成兩半；最後一筆不跟頁尾疊兩條線；報酬率（已實現損益 ÷ costBasis）在卡片與答句上
 //   - 沒有橫向捲動、axe 0
 // 持股與交易紀錄全是攔截的假資料，寫入一律擋下。
 //
@@ -29,7 +29,7 @@ const mock = async (ctx) => {
     if (p === '/api/core/holdings' && m === 'GET') return route.fulfill({ json: { holdings: [{ symbol: '2330', quantity: 300, costUnknownQuantity: 0, averageCost: '660.0000', totalCost: '198000', realizedProfitLoss: '230000' }, { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '36.5100', totalCost: '73020', realizedProfitLoss: '0' }] } })
     if (p === '/api/core/transactions' && m === 'GET') return route.fulfill({ json: { transactions: transactions[url.searchParams.get('symbol')] ?? [] } })
     if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: [] } })
-    if (p === '/api/core/holdings/realized' && m === 'GET') return route.fulfill({ json: { from: null, to: null, symbols: [{ symbol: '2330', realizedProfitLoss: '230000', excludedSellCount: 0, excludedShares: 0 }], tradeStats: { sellCount: 1, winCount: 1, lossCount: 0, winRate: '1', averageWin: '230000', averageLoss: null, profitFactor: null, averageHoldingDays: '700' }, totalRealizedProfitLoss: '230000', excludedSellCount: 0, excludedShares: 0 } })
+    if (p === '/api/core/holdings/realized' && m === 'GET') return route.fulfill({ json: { from: null, to: null, symbols: [{ symbol: '2330', realizedProfitLoss: '230000', costBasis: '294830', excludedSellCount: 0, excludedShares: 0 }], tradeStats: { sellCount: 1, winCount: 1, lossCount: 0, winRate: '1', averageWin: '230000', averageLoss: null, profitFactor: null, averageHoldingDays: '700' }, totalRealizedProfitLoss: '230000', totalCostBasis: '294830', excludedSellCount: 0, excludedShares: 0 } })
     // 報價（公開的讀取 POST）：收盤 100、前一天 98——卡片上有市值和漲跌色，數字寬度與對比也一起量到
     if (p === '/api/core/screener/values' && m === 'POST') {
       const body = JSON.parse(req.postData() ?? '{}')
@@ -97,6 +97,9 @@ check(before < 0 && after.top >= after.header && after.bottom <= 700, `捲到底
 console.log('已實現損益 375')
 await open('/holdings/realized')
 const rcard = page.locator('.symbol-table__card', { hasText: '2330' })
+// 報酬率 ＝ 230,000 ÷ 294,830
+check((await rcard.innerText()).includes('▲ +230,000 元 +78.01%'), '卡片：已實現損益後面寫報酬率 +78.01%')
+check((await page.locator('.realized-page__answer').innerText()).includes('報酬率 +78.01%'), '答句寫出合計報酬率')
 await rcard.locator('.symbol-table__toggle').click(); await page.waitForTimeout(1500)
 const word = await rcard.locator('.ledger__action', { hasText: '期間內' }).evaluate(el => el.getClientRects().length)
 check(word === 1, '「賣出（期間內）」整段在同一行')

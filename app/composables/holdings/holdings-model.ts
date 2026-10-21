@@ -82,8 +82,9 @@ export type ImportOutcome =
 export interface RealizedResult {
   from: string | null
   to: string | null
-  // 只有區間內至少有一筆賣出的代號。excluded* ＝ 賣到成本不明股數、因此不計入損益的部分
-  symbols: { symbol: string; realizedProfitLoss: string; excludedSellCount: number; excludedShares: number }[]
+  // 只有區間內至少有一筆賣出的代號。excluded* ＝ 賣到成本不明股數、因此不計入損益的部分。
+  // costBasis（業務中台 96b55c5，2026-10-21，算報酬率的分母）＝ 賣掉那幾批成本已知股數的先進先出成本（含買進手續費，配股那一批是 0）
+  symbols: { symbol: string; realizedProfitLoss: string; costBasis: string; excludedSellCount: number; excludedShares: number }[]
   // 2026-10-07（業務中台 9d691cd）：期間內賣出的統計。sellCount 0 時其他都是 null；金額是元的小數字串、可為負
   tradeStats: {
     sellCount: number
@@ -97,6 +98,7 @@ export interface RealizedResult {
   }
   // 各列四捨五入後的加總，所以畫面上的列一定加得起來
   totalRealizedProfitLoss: string
+  totalCostBasis: string
   excludedSellCount: number
   excludedShares: number
 }
