@@ -1,7 +1,7 @@
 // 讀取失敗提示的行為檢查（2026-10-11，使用者：「太容易跳出來了，而且也不會自關掉」）。對著跑著的 `pnpm run dev`：
 //   node scripts/check-load-failure.mjs            （LOAD_FAILURE_URL／LOAD_FAILURE_WIDTH 可覆寫）
 // 只能攔瀏覽器發出的請求，所以每個情境挑的都是瀏覽器端的讀取：個股子頁「客戶端換頁」時的 /api/stock/…、
-// ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /stocks。
+// ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /securities；連不上伺服器的橫幅是假造 /api/system-health。
 // 時間點跟著 LOAD_FAILURE_GRACE_MS（8 秒）與第一次退避（5 秒）走，改了那兩個要一起改這裡。
 import { chromium } from 'playwright'
 
@@ -65,8 +65,8 @@ await scenario('主要資料持續 502：寬限期後才開彈窗，恢復後自
 })
 
 await scenario('次要資料持續失敗：只有右下角提示，不開阻斷彈窗', async ({ page, dialog, notice }) => {
-  // 公司索引三個來源（上市櫃、特別股、ETF）全掛才算讀不到；只掛一個是設計上的降級，不報
-  await page.route(url => ['/api/core/stocks', '/api/core/stocks/preferred-stocks', '/api/core/etf-screener'].includes(url.pathname), fail502)
+  // 公司索引 2026-10-16 起只有 GET /securities 一個來源（useCompanyIndex；原本是三個，這裡沒跟著改，之後這個情境一直是假失敗）
+  await page.route(url => url.pathname === '/api/cached/securities', fail502)
   await openStock(page)
   await notice.waitFor({ state: 'visible', timeout: GRACE_MS + 8_000 })
   expect(!(await dialog.isVisible()), '次要資料開了阻斷彈窗')
@@ -116,6 +116,45 @@ await scenario('先關閉：同一批不再彈出，新的主要資料失敗才�
   await page.route('**/api/stock/2330/margins', fail502)
   await clientNavigate(page, '/stock/2330/margins')
   await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 8_000 })
+})
+
+// 連不上伺服器的橫幅（AppSystemHealthBanner，2026-10-21）：第一次健康檢查在 onNuxtReady 之後，橫幅永遠比元件晚出現——原本在
+// onMounted 量高度，從來沒量到，橫幅一直蓋住頁面最上面。對比也量：字 ≥ 4.5:1、底線對頁面底 ≥ 3:1（原本深色模式的字只有 3.06:1）
+const luminance = color => color.match(/\d+/g).slice(0, 3).map(value => value / 255)
+  .map(value => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4))
+  .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0)
+const contrast = (a, b) => {
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (high + 0.05) / (low + 0.05)
+}
+
+await scenario('連不上伺服器的橫幅：晚出現也把頁面往下推、淺深色都夠對比，關掉後收回', async ({ page }) => {
+  let ok = true
+  await page.route('**/api/system-health**', route => route.fulfill({ json: { ok } }))
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
+  ok = false
+  // 不等 30 秒的輪詢：分頁回到前景會立刻重查
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  const banner = page.locator('.app-system-health-banner')
+  await banner.waitFor({ state: 'visible', timeout: 10_000 })
+  for (const [viewportWidth, dark] of [[width, false], [width, true], [375, false]]) {
+    await page.setViewportSize({ width: viewportWidth, height: 900 })
+    await page.evaluate(isDark => document.documentElement.classList.toggle('dark', isDark), dark)
+    await wait(300)
+    const seen = await page.evaluate(() => {
+      const box = document.querySelector('.app-system-health-banner')
+      const style = getComputedStyle(box)
+      return { bannerBottom: box.getBoundingClientRect().bottom, h1Top: document.querySelector('main h1').getBoundingClientRect().top, text: style.color, fill: style.backgroundColor, line: style.borderBottomColor, pageFill: getComputedStyle(document.body).backgroundColor }
+    })
+    const where = `${viewportWidth}${dark ? ' 深色' : ''}`
+    expect(seen.h1Top >= seen.bannerBottom, `${where}：橫幅蓋住標題（h1 ${seen.h1Top}、橫幅底 ${seen.bannerBottom}）`)
+    expect(contrast(seen.text, seen.fill) >= 4.5, `${where}：字對橫幅底 ${contrast(seen.text, seen.fill).toFixed(2)}:1`)
+    expect(contrast(seen.line, seen.pageFill) >= 3, `${where}：底線對頁面底 ${contrast(seen.line, seen.pageFill).toFixed(2)}:1`)
+  }
+  await banner.getByRole('button', { name: '關閉' }).click()
+  await banner.waitFor({ state: 'hidden', timeout: 2_000 })
+  const height = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--app-banner-height').trim())
+  expect(height === '0px', `關掉後 --app-banner-height 是 ${height}`)
 })
 
 await browser.close()

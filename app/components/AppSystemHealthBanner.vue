@@ -15,23 +15,28 @@ watch(healthy, isHealthy => {
 
 const visible = computed(() => !healthy.value && !dismissed.value)
 
-// Only ever mounted while unhealthy AND not dismissed (v-if below), so onMounted/onUnmounted
-// line up exactly with when it needs to occupy space — measure the real height and push it
-// into --app-banner-height so AppNavRail and each layout's content padding shift down to
-// clear it, same pattern as AppHeaderMenu does for --app-header-height.
+// 量橫幅的實際高度寫進 --app-banner-height，AppNavRail 與版面內容的 padding 跟著下移（同 AppHeaderMenu 的 --app-header-height）。
+// 跟著 ref 走、不是 onMounted：v-if 在根元素上，元件一直掛在版面裡，橫幅本身是之後才出現或被關掉——第一次健康檢查在 onNuxtReady
+// 之後，所以掛載時永遠還沒有橫幅。原本在 onMounted 量，從來沒量到，橫幅一直蓋住頁面最上面 42px（手機 66px，2026-10-21 量到）
 const bannerRef = ref<HTMLElement>()
 let resizeObserver: ResizeObserver | undefined
+const publishHeight = (height: number) => document.documentElement.style.setProperty('--app-banner-height', `${height}px`)
 
-onMounted(() => {
-  resizeObserver = new ResizeObserver(([entry]) => {
-    if (entry) document.documentElement.style.setProperty('--app-banner-height', `${entry.target.getBoundingClientRect().height}px`)
+watch(bannerRef, (banner) => {
+  resizeObserver?.disconnect()
+  if (!banner) {
+    publishHeight(0)
+    return
+  }
+  resizeObserver ??= new ResizeObserver(([entry]) => {
+    if (entry) publishHeight(entry.target.getBoundingClientRect().height)
   })
-  if (bannerRef.value) resizeObserver.observe(bannerRef.value)
-})
+  resizeObserver.observe(banner)
+}, { flush: 'post' })
 
 onUnmounted(() => {
   resizeObserver?.disconnect()
-  document.documentElement.style.setProperty('--app-banner-height', '0px')
+  publishHeight(0)
 })
 </script>
 
@@ -68,13 +73,12 @@ onUnmounted(() => {
   /* 左右各 64px＝按鈕 44 ＋ 右邊距 12 ＋ 8 的呼吸空間（56 時實測訊息右緣與按鈕貼在一起，間距 0）。2026-09-19 因為關閉鈕帶了文字而放寬到 100px，2026-09-30 按鈕
      改回純 X 之後收回來——100px 在 375px 的畫面上吃掉 200px，訊息只剩 136px、被擠成四行。 */
   padding: 8px 64px;
+  /* 字、圖示、底線都是 --el-color-warning，它自己分模式（淺 #8a6823、深 #e6a23c）。2026-10-21（使用者：「背景與網站主題背景顏色太近了
+     難以區別輪廓 是否 符合 a11y?」）：原本寫死淺色的 #8a6823，深色模式的底上只有 3.06:1，不到 1.4.3 的 4.5:1；底色跟淺色頁面底
+     只差 1.01:1，橫幅的下緣看不出來，所以加一條底線（上緣有頁首的陰影）。 */
+  border-bottom: 2px solid var(--el-color-warning);
   background: var(--el-color-warning-light-9);
-  /* #8a6823, not --el-color-warning-dark-2（#b88230）— the SAME fix the close button below already
-     carries, which this line was missed by（2026-09-23）. The token measures 3.12:1 on this
-     banner's own #fdf6ec fill; the darkened GOLD accent measures 4.79:1. Fixing only the button
-     in the 2026-09-20 pass left the sentence it sits next to failing, which is the larger target
-     of the two. */
-  color: #8a6823;
+  color: var(--el-color-warning);
   /* 1rem, not 0.875rem. 14px here predates this app's 16px floor（--el-font-size-base is
      overridden globally）and this banner had been missed by it. The ResizeObserver above
      republishes --app-banner-height, so the taller banner still pushes the page down correctly. */
@@ -82,9 +86,8 @@ onUnmounted(() => {
   text-align: center;
 }
 
-/* 純 X：沒有外框、沒有底色、沒有文字，但點擊區仍是 44×44（圖示本身 20px，其餘是空白）。
-   顏色留 #8a6823——圖示只需要 3:1（SC 1.4.11），而這個值在橫幅自己的 #fdf6ec 底上是 4.79:1，
-   等於連文字的 4.5:1 都過，所以之後若又想加回文字不必重新挑色。 */
+/* 純 X：沒有外框、沒有底色、沒有文字，但點擊區仍是 44×44（圖示本身 20px，其餘是空白）。顏色跟橫幅的字一樣（連文字的 4.5:1 都過，
+   之後若又想加回文字不必重新挑色）。 */
 .app-system-health-banner__close {
   position: absolute;
   right: 12px;
@@ -99,16 +102,15 @@ onUnmounted(() => {
   border: none;
   border-radius: 8px;
   background: none;
-  color: #8a6823;
+  color: inherit;
   font-size: 1.25rem;
   cursor: pointer;
   flex-shrink: 0;
 }
 
-/* A darker gold, not `opacity: 0.7`. Opacity blended this text toward the fill and measured
-   2.76:1 on hover — worse than the 4.79:1 resting state the 2026-09-20 pass had just fixed it to,
-   and WCAG applies to every state, not just the resting one. #6f5219 measures 6.76:1. */
+/* 換一個對比更高的色，不用 `opacity: 0.7`：透明度把字混向底色，hover 時只剩 2.76:1，WCAG 每個狀態都算。dark-2 也分模式
+   （淺色更深、深色更亮）。 */
 .app-system-health-banner__close:hover {
-  color: #6f5219;
+  color: var(--el-color-warning-dark-2);
 }
 </style>
