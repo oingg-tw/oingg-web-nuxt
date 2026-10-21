@@ -262,13 +262,12 @@ for (const route of ROUTES) {
     .map(violation => `${violation.id}×${violation.nodes.length}`)
   checks.axe = unexpected.length === 0
   checks.noPageErrors = pageErrors.length === 0
-  // Vue's "Hydration … mismatch" console output — a server/client render disagreement. Reported,
-  // not failed, for now: the ones left after the 2026-09-19 el-empty → SharedEmptyState swap come
-  // from Element Plus internals（ElTooltipContent's SSR node vs. the client's comment placeholder,
-  // el-table's inline height）in components that pre-date the SEO build — "check-only" patches
-  // per Vue, tracked as a follow-up in the plan file. A NEW component must not add to this list.
-  checks.noHydrationMessages = true
-  if (hydrationMessages.length) console.log(`${route || '/'}: WARNING hydration ${hydrationMessages[0].replace(/\s+/g, ' ')}`)
+  // Vue's "Hydration … mismatch" console output — a server/client render disagreement. Fails since 2026-10-21（使用者：「hydration 警告
+  // 都不可忽視」）: until then it was only printed as a WARNING because of Element Plus internals left after the 2026-09-19
+  // el-empty swap; a site-wide scan that day found none left（check-hydration.mjs, 80 routes）, and the one that was still printing
+  // here（目前值圖表的讀取中佔位）was ours.
+  checks.noHydrationMessages = hydrationMessages.length === 0
+  if (hydrationMessages.length) console.log(`${route || '/'}: hydration ${hydrationMessages[0].replace(/\s+/g, ' ')}`)
 
   const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name)
   console.log(`${route || '/'}: ${failed.length ? `FAIL ${failed.join(', ')}` : 'ok'}${unexpected.length ? ` axe=${unexpected.join(' ')}` : ''}${pageErrors.length ? ` errors=${pageErrors[0]}` : ''}`)

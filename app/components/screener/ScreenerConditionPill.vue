@@ -38,7 +38,8 @@ const periods = computed(() => periodSiblingsOf(props.categories, props.fieldId)
 // ("最新" — there's no other period to contrast it against, so it doesn't tell you anything
 // "設定範圍" alone doesn't already). Only when it's the ONE AND ONLY option, same as daily —
 // a field that genuinely offers 最新 alongside other real periods still shows it.
-const NON_INFORMATIVE_SOLE_PERIODS = new Set(['daily', 'snapshot'])
+// 型錄的每日是 'EOD'（2026-10-21 改：原本寫 'daily'，型錄裡沒有這個代碼，於是殖利率、市場別這類只有每日的條件都多寫一個「每日」）
+const NON_INFORMATIVE_SOLE_PERIODS = new Set(['EOD', 'snapshot'])
 
 const currentPeriodLabel = computed(() => {
   const sole = periods.value.length === 1 ? periods.value[0] : null

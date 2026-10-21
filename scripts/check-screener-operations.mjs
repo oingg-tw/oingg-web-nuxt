@@ -253,6 +253,47 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   }
 }
 
+// ── 3c. 市場別（2026-10-21，使用者：「選擇篩選指標 要加上上市興櫃的市場別」）：第一支值是字串代碼的類別型條件（sii／otc／rotc，
+// analysis-ts 95995ae7、業務中台 2439873），河道位置的值是整數 ─────────────────────────────────────────────
+{
+  await page.locator('.screener-filters__add-slot').first().click()
+  const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+  if (picker.ok) {
+    await page.locator('.condition-panel .indicator-dialog__search input').fill('市場別')
+    await page.waitForTimeout(600)
+    const metric = page.locator('.indicator-dialog__metric', { hasText: '市場別' }).first()
+    expect('市場別', '選擇篩選指標找得到市場別', await metric.count() === 1)
+    if (await metric.count()) {
+      await metric.click()
+      // 選項找標籤（el-checkbox 原生的 input 是透明、0 大小，等「看得見」永遠等不到）
+      const options = page.locator('.condition-panel .range-editor__option')
+      const shown = await waitFor(options.first(), 15000)
+      const labels = (await options.allTextContents()).map(text => text.trim())
+      expect('市場別', '第二步是上市、上櫃、興櫃三個選項', shown.ok && labels.join('／') === '上市／上櫃／興櫃', labels.join('／'))
+      const sent = sentBodies.length
+      const pillsBefore = await page.locator('.condition-pill').count()
+      if (labels.includes('興櫃')) await options.filter({ hasText: '興櫃' }).click()
+      await page.waitForTimeout(400)
+      await page.keyboard.press('Escape')
+      const start = Date.now()
+      while (sentBodies.length === sent && Date.now() - start < 30000) await page.waitForTimeout(300)
+      const added = await page.locator('.condition-pill').count() === pillsBefore + 1
+      const pillText = added ? (await page.locator('.condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? '' : '沒有多出條件'
+      // 只有每日一個期別，膠囊不寫「每日」（ScreenerConditionPill 的 NON_INFORMATIVE_SOLE_PERIODS）
+      expect('市場別', '膠囊寫「市場別 包含 興櫃」', pillText.replace(/\s/g, '') === '市場別包含興櫃', pillText)
+      expect('市場別', '送出 market.EOD 的字串值 rotc', sentBodies.slice(sent).some(body => body.includes('"market.EOD"') && body.includes('"rotc"')), `${sentBodies.length - sent} 次查詢、業務中台 ${upstream.at(-1)}`)
+      // 只移除剛加的那一顆：沒加成功時移除最後一顆會刪到範本原本的條件，後面的排序與載入更多就全部跟著錯
+      if (added) {
+        await page.locator('.condition-pill').last().locator('.condition-pill__remove').click()
+        await page.waitForTimeout(1500)
+      }
+    } else {
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(800)
+    }
+  }
+}
+
 // ── 4. 排序 ──────────────────────────────────────────────────────────────────
 // 兩種排序都要驗，因為它們走完全不同的路：
 //   - 指標欄位是**後端**排序（sortable="custom"，emit 給 changeSort，重發一次查詢）
