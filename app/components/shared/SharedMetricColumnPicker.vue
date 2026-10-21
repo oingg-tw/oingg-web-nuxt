@@ -10,6 +10,11 @@ defineProps<{ title: string }>()
 const emit = defineEmits<{ select: [field: string, label: string] }>()
 
 const { data: schema } = useFilterSchema()
+// 第一次打開才建立對話框（2026-10-21，使用者回報 Hydration style mismatch）：關著的 el-dialog 在伺服器也會畫出遮罩、配一個 z-index，
+// /watchlist 量到它跟同頁的備註對話框在伺服器與瀏覽器配到的順序相反（2003／2002 互換）。伺服器不畫，就沒有順序可以對不上；打開時才配。
+// 目錄照樣一進頁就讀，打開時不用等
+const everOpened = ref(open.value)
+watch(open, (value) => { if (value) everOpened.value = true })
 
 function select(field: string, label: string) {
   open.value = false
@@ -19,7 +24,7 @@ function select(field: string, label: string) {
 
 <template>
   <!-- 寬度寫在 CSS 的 --el-dialog-width、不用 width 屬性：屬性會變成行內樣式，手機滿版那條蓋不掉 -->
-  <el-dialog v-model="open" :title="title" class="metric-column-picker" lock-scroll>
+  <el-dialog v-if="everOpened" v-model="open" :title="title" class="metric-column-picker" lock-scroll>
     <ScreenerIndicatorPickerBody v-loading="!schema.categories.length" :categories="schema.categories" :active="open" :hide-period="false" @select="select" />
   </el-dialog>
 </template>

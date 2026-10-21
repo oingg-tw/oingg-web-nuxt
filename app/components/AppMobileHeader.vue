@@ -62,9 +62,8 @@ useHeaderHeightMeasure(barRef)
   gap: 8px;
   /* 60px：44px 的控制項上下各 8px，同桌機頁首 */
   padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
-  /* 半透明而不是全透明——同 AppHeaderMenu（那邊的註解記了「searchbar跑版了」那次）。 */
-  background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
-  backdrop-filter: blur(8px);
+  /* 純色，同 AppHeaderMenu（2026-10-21「背景不要 再有 樣式 改成純色就好」） */
+  background: var(--el-bg-color);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
 

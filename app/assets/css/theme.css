@@ -372,31 +372,5 @@ body {
   line-height: 1.5;
 }
 
-/* 登入後 app-shell 的環境光暈（「除了首頁，dashboard 等等頁面背景也可以有漸層設計」），同 index.vue hero 的 color-mix 技巧，自動跟主色
-   與明暗。放全域：.app-shell 是版面渲染的，scoped 樣式只到自己的元件。跟首頁版三個不同：::before 用 position: fixed＋inset: 0 貼視窗
-   （.app-shell 隨頁面長高，錨在它的盒子光暈會隨頁面長度亂跑；z-index: 0 仍要建立區域堆疊，fixed 的版面不受影響）；不透明度 5–8%
-   （這裡是資料不是文案）；不用 100vw 滿版技巧（.app-shell 沒被限制在置中欄，那是 __inner--centered 的事）。 */
-.app-shell {
-  position: relative;
-  z-index: 0;
-}
-
-.app-shell::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    radial-gradient(circle closest-side at 8% 12%, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%),
-    radial-gradient(circle closest-side at 92% 85%, color-mix(in srgb, var(--el-color-primary) 6%, transparent) 0%, transparent 100%);
-  background-repeat: no-repeat;
-}
-
-/* 淺色模式要強 2.5 倍才看得見（「light mode 在 dashboard 看不出背景漸層」，截圖對照確認）：淺色調混進已經很淺又偏暖的底，亮度與色相
-   對比都少。 */
-html:not(.dark) .app-shell::before {
-  background-image:
-    radial-gradient(circle closest-side at 8% 12%, color-mix(in srgb, var(--el-color-primary) 20%, transparent) 0%, transparent 100%),
-    radial-gradient(circle closest-side at 92% 85%, color-mix(in srgb, var(--el-color-primary) 15%, transparent) 0%, transparent 100%);
-}
+/* 背景一律純色（2026-10-21，使用者：「背景不要 再有 樣式 改成純色就好」）：原本這裡是 app-shell 的環境光暈（左上、右下兩團主色的
+   radial-gradient），首頁另有五團，兩個頁首是半透明毛玻璃。三處都拿掉了，頁面底色就是 body 的 --el-bg-color-page。別再加回來 */

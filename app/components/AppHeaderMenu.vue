@@ -108,9 +108,8 @@ function focusSearch() {
   min-height: 60px;
   box-sizing: border-box;
   padding: 8px 16px;
-  /* 半透明＋模糊：固定在捲動的內容上，透一點但字還清楚（2026-09-02 誤刪後還原，「searchbar跑版了」） */
-  background: color-mix(in srgb, var(--el-bg-color) 65%, transparent);
-  backdrop-filter: blur(8px);
+  /* 純色（2026-10-21「背景不要 再有 樣式 改成純色就好」；原本半透明＋毛玻璃，捲動的內容會透上來） */
+  background: var(--el-bg-color);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
 }
 

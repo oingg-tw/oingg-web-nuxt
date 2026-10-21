@@ -234,52 +234,12 @@ useHead({
 </template>
 
 <style scoped>
-/* 層疊的 radial-gradient「光暈」背景（首頁背景漸層設計研究報告的做法：低飽和度極光、靜態不動，「克制動態、拉高對比」）。不用報告
-   建議的固定海軍藍／金色：本站有七色可選的主色系統，color-mix(..., transparent) 對 --el-color-primary 混色（同 AppHeaderMenu
-   的半透明頁首），自動跟著主色與明暗模式，不透明度 8–16% 不影響標題對比。
-   放在 .landing-page 而不是 __hero：鎖在 hero 的矮盒子時，每個漸層的透明終點都落在盒子外，光暈在 hero 邊緣被硬切成矩形（「漸層範圍
-   不對」，附截圖）。半徑用 closest-side 不用固定 px：固定 320px 在寬視窗會越過盒子右緣，同一個硬切 bug 換個邊再出現（「好一點了
-   但是還是不對」）；closest-side 的半徑等於到最近邊的距離，任何盒子尺寸都不會越界。
-   漸層畫在 ::before 上：.landing-page 跟內容一樣被 1080px 欄寬限制，寬螢幕的兩側會空（「畫面的左右還是好空虛」）；::before 用
-   負邊距／100vw 的滿版技巧撐到整個瀏覽器寬，文字與卡片維持原本的置中閱讀寬度。 */
+/* 背景純色（2026-10-21，使用者：「背景不要 再有 樣式 改成純色就好」）：原本這裡是五團主色光暈（::before 滿版），拿掉 */
 .landing-page {
-  position: relative;
-  /* z-index: 0, not just position: relative — without an explicit z-index, this element does
-     NOT establish its own stacking context, so the ::before's z-index: -1 below escapes to
-     compete at the PAGE's stacking level instead of staying local, and rendered behind the
-     page's own base background (confirmed live: the glow vanished entirely). z-index: 0 forces
-     a local stacking context so -1 correctly means "behind this element's own children," not
-     "behind everything on the page." */
-  z-index: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 48px;
-}
-
-.landing-page::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 100vw;
-  height: 100%;
-  transform: translateX(-50%);
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    radial-gradient(circle closest-side at 12% 160px, color-mix(in srgb, var(--el-color-primary) 16%, transparent) 0%, transparent 100%),
-    radial-gradient(circle closest-side at 88% 80px, color-mix(in srgb, var(--el-color-primary) 10%, transparent) 0%, transparent 100%),
-    radial-gradient(circle closest-side at 65% 420px, color-mix(in srgb, var(--el-color-primary) 8%, transparent) 0%, transparent 100%),
-    /* % Y positions (not px) for these two — unlike the three hero blobs above, these are meant
-       to keep some glow visible after scrolling past the hero ("滑鼠往下滾以後 下面就沒有漸層
-       了"), so they need to track this element's own full height (核心功能 + 常見問題 included)
-       rather than stay pinned near the top. Kept fainter (5–6%) than the hero blobs — this is
-       meant to read as the same ambient wash continuing, not a second set of equally-prominent
-       spotlights competing with the FAQ text for attention. */
-    radial-gradient(circle closest-side at 20% 60%, color-mix(in srgb, var(--el-color-primary) 6%, transparent) 0%, transparent 100%),
-    radial-gradient(circle closest-side at 85% 88%, color-mix(in srgb, var(--el-color-primary) 5%, transparent) 0%, transparent 100%);
-  background-repeat: no-repeat;
 }
 
 /* Grid 不用 flex（見檔頭）：舊的 flex-column 單欄 hero 三次修「子元素照自己內容定寬」，根因是 align-items: flex-start；Grid 項目

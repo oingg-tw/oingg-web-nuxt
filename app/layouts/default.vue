@@ -66,7 +66,7 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
            hydrate-on-visible（2026-10-16，DEV 的 Lighthouse 手機分數）：伺服器照樣輸出兩份 HTML，但只有看得到的那份接手——
            被 CSS 藏起來的那份不跑元件程式，手機上也就不會為桌機頁首的搜尋框抓股票目錄。換寬度讓它出現時才接手。
            這一檔下面的頁尾、選單層、搜尋層同理：一開始不在畫面上，捲到或打開時才接手（內容一直在伺服器 HTML 裡，SEO 不變）。
-           UserMenuButton（頁首與選單層裡）若接手時已經登入完成，畫面會跟伺服器輸出的「登入」不同，Vue 會直接換成頭像，功能不受影響 -->
+           UserMenuButton 等自己接手（mounted）才換成登入後的樣子，延後接手時第一次渲染仍跟伺服器一樣（2026-10-21） -->
       <LazyAppMobileHeader hydrate-on-visible class="app-shell__header-mobile" />
       <LazyAppHeaderMenu hydrate-on-visible class="app-shell__header-desktop" />
 

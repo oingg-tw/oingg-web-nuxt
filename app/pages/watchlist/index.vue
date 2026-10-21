@@ -135,11 +135,14 @@ function openPicker() {
 
 // 訪客（確定沒登入）先看市值最大的 10 家（2026-10-16 使用者：「未註冊用戶看到的觀察清單可不可以就選市場上最知名的幾間公司?」，
 // 選了「市值前 10 大（自動）」；「2330 一定有」——它的市值是第二名的 9 倍（2026-10-14 收盤的市值排行），依市值一定排第一）。用客觀規則、不人工挑選：跟 /rank 的
-// 市值排行同一份資料（伺服器每日快取）。訪客不能編輯這份清單，所以不顯示移除與備註。等 authResolved：還不知道有沒有登入時不顯示，
-// 免得已登入的人先閃一下這份清單
+// 市值排行同一份資料（伺服器每日快取）。訪客不能編輯這份清單，所以不顯示移除與備註。
+// 是不是訪客照 useMemberGate（2026-10-21 修 hydration 不一致）：原本是「authResolved 而且沒登入」，伺服器那時還不知道、畫的是會員的版本
+//（有備註／移除欄、排序選單寫「加入順序」），訪客的瀏覽器在 hydration 前就確定沒登入、第一次渲染卻是訪客版本，欄數、表格寬度、選單文字
+// 都對不上。現在還不確定時看這台瀏覽器有沒有登入過（auth-hint），伺服器與瀏覽器的第一次渲染一樣；登入過的人也不會先閃這份清單
 const { open: openLogin } = useLoginDialog()
 const authResolved = useAuthResolved()
-const isGuest = computed(() => authResolved.value && !currentUser.value)
+const { member } = useMemberGate()
+const isGuest = computed(() => !member.value)
 const GUEST_LIST_SIZE = 10
 const { data: marketCapRanking, status: marketCapStatus, execute: loadMarketCapRanking } = useFetch<RankingPageData>('/api/hub/rank/market-cap', { server: false, lazy: true, immediate: false })
 watch(isGuest, guest => { if (guest && !marketCapRanking.value) void loadMarketCapRanking() }, { immediate: true })
@@ -156,8 +159,7 @@ const syncPending = useState('watchlist-sync-pending', () => false)
 const firstPaintPending = computed(() => !hasHydrated.value || !authResolved.value
   || (currentUser.value ? !synced.value || syncPending.value : guestListLoading.value)
   || (pending.value && !priceDate.value))
-// 分享鈕從第一個畫面就在（登入過的瀏覽器）：它在工具列裡，手機上晚出現會多長一行（useMemberGate）
-const { member } = useMemberGate()
+// 分享鈕從第一個畫面就在（登入過的瀏覽器）：它在工具列裡，手機上晚出現會多長一行（member 見上面的 useMemberGate）
 // 骨架的列數＝上次看到的檔數（useLayoutHint）；0＝上次是空的
 const rowCountHint = useLayoutHint('watchlist-rows', 5)
 watch(() => (firstPaintPending.value ? null : listCodes.value.length), (count) => {
@@ -321,7 +323,8 @@ async function submitNote() {
     <!-- 訪客說明在清單下面（2026-10-18）：要等登入狀態確定才知道該不該顯示，原本放在清單上面，出現時把清單往下推（全站量測手機 0.030）；
          反過來先顯示的話換成登入的人看到它閃一下再被收走。清單下面只剩頁尾，而頁尾一開始就在畫面外，這裡晚出現不推動任何看得到的東西。
          等清單有列了才出現：早一步出現的話，清單長出來時會把它推下去 -->
-    <p v-if="isGuest && rows.length" class="watchlist-page__guest">
+    <!-- 讀完才出現（firstPaintPending）：伺服器還沒有市值前 10 大的資料，瀏覽器接手時也要一樣不畫（2026-10-21 hydration 不一致） -->
+    <p v-if="isGuest && !firstPaintPending && rows.length" class="watchlist-page__guest">
       還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
     </p>
 

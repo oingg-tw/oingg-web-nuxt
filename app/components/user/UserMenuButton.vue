@@ -14,12 +14,14 @@ withDefaults(defineProps<{ layout?: 'bar' | 'row' }>(), { layout: 'bar' })
 const currentUser = useCurrentUser()
 const { open: openLogin } = useLoginDialog()
 // 登入狀態還沒確定（伺服器、hydration、Firebase 還在還原）：登入過的瀏覽器（firebase.client.ts 的 auth-hint）先畫登入後的樣子
-// 但不能點，不先畫「登入」再換掉（2026-10-20，使用者：「重新整理的時候會閃動」）。也要等 hydration：Firebase 可能在那之前就解析完，
-// 瀏覽器的第一次渲染要跟伺服器一樣，否則 Hydration node mismatch
-const hasHydrated = useHasHydrated()
+// 但不能點，不先畫「登入」再換掉（2026-10-20，使用者：「重新整理的時候會閃動」）。也要等這個元件自己接手（mounted）：它的第一次
+// 渲染要跟伺服器一樣。看的是自己、不是整個 app 的 hydration——手機選單層延後接手（hydrate-on-idle），接手時 app 早就 hydrate 完、
+// 登入也確定了，用 app 的旗標它第一次就畫頭像連結，伺服器畫的卻是佔位（2026-10-21 使用者回報 Hydration mismatch，375 的個股頁量到）
+const mounted = ref(false)
+onMounted(() => { mounted.value = true })
 const authResolved = useAuthResolved()
 const authHint = useCookie<boolean | null>('auth-hint')
-const resolving = computed(() => !hasHydrated.value || !authResolved.value)
+const resolving = computed(() => !mounted.value || !authResolved.value)
 
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')
 const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
