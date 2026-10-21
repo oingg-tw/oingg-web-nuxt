@@ -42,7 +42,7 @@ const overviewNodes: StockNavNode[] = [{ label: '指標速覽', icon: Odometer, 
 const facetNodes = computed<StockNavNode[]>(() => facets.value.map(facet => ({ label: facet.label, to: () => industryFacetPath(props.code, facet.key) })))
 
 const footer = {
-  sources: ['臺灣證券交易所與證券櫃檯買賣中心（類股歸屬、股價、本益比、股價淨值比、殖利率）', '公開資訊觀測站（月營收、財務報表）', '國家發展委員會（景氣指標與景氣循環基準日期）'],
+  sources: ['證交所、櫃買中心（類股歸屬、股價與每日評價指標）', '公開資訊觀測站（月營收、財務報表）', '國發會（景氣指標）'],
   links: [
     { to: '/industries', label: '產業索引' },
     { to: commonScreenerPath({ sector: props.code }), label: `普通股篩選（限定${props.sectorName}）` }

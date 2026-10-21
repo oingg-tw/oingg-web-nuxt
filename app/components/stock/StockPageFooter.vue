@@ -36,7 +36,8 @@ withDefaults(defineProps<{
   <div class="stock-page-footer">
     <p v-if="sources.length">資料來源：{{ sources.join('、') }}<template v-if="freshness">（{{ freshness }}）</template></p>
     <p v-if="links.length">
-      相關頁面：<template v-for="(link, index) in links" :key="link.to"><template v-if="index">、</template><a v-if="link.external" :href="link.to" target="_blank" rel="noopener noreferrer">{{ link.label }}（另開新視窗）</a><NuxtLink v-else :to="link.to">{{ link.label }}</NuxtLink></template>
+      <!-- 連結用全站的內文連結樣式（2026-10-21：原本沒有 class，畫成瀏覽器預設的藍色） -->
+      相關頁面：<template v-for="(link, index) in links" :key="link.to"><template v-if="index">、</template><a v-if="link.external" :href="link.to" target="_blank" rel="noopener noreferrer" class="hub-inline-link">{{ link.label }}（另開新視窗）</a><NuxtLink v-else :to="link.to" class="hub-inline-link">{{ link.label }}</NuxtLink></template>
     </p>
     <p>{{ disclaimer }}</p>
   </div>

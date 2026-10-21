@@ -10,7 +10,8 @@ const baseUrl = process.env.CLICK_DEPTH_URL ?? 'http://localhost:3000'
 const MAX_DEPTH = 3
 const STOCK_PAGE = /^\/stock\/\d{4}$/
 // Pages whose links are followed. Stock pages, blog posts and app pages are leaves.
-const EXPANDABLE = [/^\/$/, /^\/stock$/, /^\/industry\/[^/]+$/, /^\/rank(\/[^/]+)?$/, /^\/screener(\/[^/]+){0,2}$/, /^\/learn(\/[^/]+)?$/, /^\/industries$/, /^\/sitemap$/, /^\/preferred\/[^/]+$/, /^\/etf\/[^/]+$/]
+// 類股頁 2026-10-21 起分面向：個股連結在 /industry/{code}-{slug}/companies（首頁膠囊 → 指標速覽 → 公司名單 → 個股）
+const EXPANDABLE = [/^\/$/, /^\/stock$/, /^\/industry\/[^/]+(\/companies)?$/, /^\/rank(\/[^/]+)?$/, /^\/screener(\/[^/]+){0,2}$/, /^\/learn(\/[^/]+)?$/, /^\/industries$/, /^\/sitemap$/, /^\/preferred\/[^/]+$/, /^\/etf\/[^/]+$/]
 const SOFT_404_SAMPLE = 25
 
 function links(html) {

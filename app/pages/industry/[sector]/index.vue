@@ -6,8 +6,8 @@ import type { FactItem } from '~/components/shared/SharedFactList.vue'
 //（跟面向頁同一張圖，IndustryFacetChart），點標題進那一頁；卡片順序跟側欄一樣（useIndustryFacetOrder）。公司名單沒有圖，那一格放家數與
 // 資料日期。
 //
-// 最下面兩份收起來的清單：本類股全部公司與其他類股。全部公司的連結留在這一頁是為了爬蟲的層數：個股頁離首頁要在三層內（check-click-depth：
-// 首頁 → 產業索引 → 這一頁 → 個股）；有股價與指標的表格在「公司名單」那一面
+// 最下面是其他類股（攤開）。個股的連結只在「公司名單」那一面：爬蟲走首頁的類股膠囊 → 這一頁 → 公司名單 → 個股，仍在三層內
+//（check-click-depth）；原本這裡收起來的全部公司清單 2026-10-21 拿掉（使用者：「指標速覽 頁尾 請好好設計」）
 const industry = await useIndustry('overview')
 const { code, sectorName, data, rows, noindex } = industry
 const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
@@ -20,11 +20,6 @@ const facts = computed<FactItem[]>(() => [
   { label: '財報資料至', value: data.value?.companies.fundamentalsDate ?? '－' }
 ])
 
-// 有指標的與沒有指標的成員合在一起，依代號
-const allCompanies = computed(() => [
-  ...rows.value.map(row => ({ symbol: row.symbol, name: row.name })),
-  ...(data.value?.unranked ?? [])
-].sort((a, b) => a.symbol.localeCompare(b.symbol)))
 const otherSectors = computed(() => sectors.value.filter(sector => sector.code !== code))
 
 const { order } = useIndustryFacetOrder()
@@ -55,28 +50,15 @@ const description = computed(() => clampDescription(`${sectorName}（證交所�
       </div>
     </section>
 
-    <section class="stock-page-section" aria-labelledby="industry-links-heading">
-      <h2 id="industry-links-heading" class="visually-hidden">{{ sectorName }}的公司與其他類股</h2>
-      <!-- 收起來但在 SSR HTML 裡（爬蟲照樣讀得到），不用 JS 也能用原生的展開 -->
-      <details class="hub-details">
-        <summary>{{ sectorName }}全部公司</summary>
-        <ul class="hub-company-list">
-          <li v-for="company in allCompanies" :key="company.symbol">
-            <NuxtLink :to="`/stock/${company.symbol}`" class="hub-company-list__link">{{ company.symbol }} {{ company.name }}</NuxtLink>
-          </li>
-        </ul>
-      </details>
-      <details class="hub-details">
-        <summary>其他 {{ otherSectors.length }} 個類股</summary>
-        <nav aria-label="其他類股">
-          <ul class="hub-chip-list">
-            <li v-for="sector in otherSectors" :key="sector.code">
-              <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
-            </li>
-          </ul>
-        </nav>
-      </details>
-    </section>
+    <!-- 其他類股攤開（2026-10-21，使用者：「其他類股根本不需要收合」）：膠囊同首頁的「依類股瀏覽」 -->
+    <nav v-if="otherSectors.length" class="stock-page-section" aria-labelledby="industry-other-sectors-heading">
+      <h2 id="industry-other-sectors-heading" class="stock-page-section__title">其他類股</h2>
+      <ul class="hub-chip-list">
+        <li v-for="sector in otherSectors" :key="sector.code">
+          <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }}（{{ sector.companyCount }}）</NuxtLink>
+        </li>
+      </ul>
+    </nav>
   </IndustryPage>
 </template>
 
