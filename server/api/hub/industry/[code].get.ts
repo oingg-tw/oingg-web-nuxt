@@ -38,15 +38,27 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
   // 2026-09-26 起產業頁不顯示興櫃，而家數還是從型錄借的）。
   const companyCount = new Set([...rows.map(row => row.symbol), ...unranked.map(company => company.symbol)]).size
   // 景氣與三率走勢（2026-10-10）：讀不到就是 null，頁面那兩段不顯示，不讓整頁失敗
-  const [revenueTrend, ...margins] = await Promise.all([
+  const [revenueTrend, indicators, cycles, ...margins] = await Promise.all([
     settle(getSectorMonthlyRevenue(code)),
+    settle(getBusinessCycleIndicators()),
+    settle(getBusinessCycleReferenceDates()),
     ...SECTOR_MARGIN_CODES.map(metricCode => settle(getSectorMetricHistory(code, metricCode, 'TTM', 20)))
   ])
+  // 營收圖疊景氣同時指標與景氣擴張期、收縮期（2026-10-21，使用者選「B＋類股頁加景氣線」）：只留營收有資料的月份，跟 /industries/cycle 同一份
+  const first = revenueTrend?.entries[0]?.yearMonth
+  const last = revenueTrend?.entries.at(-1)?.yearMonth
+  const businessCycle = first && last && indicators
+    ? {
+        coincident: Object.fromEntries(indicators.flatMap(point => (point.coincident !== null && point.period >= first && point.period <= last ? [[point.period, Math.round(point.coincident * 100) / 100]] : []))),
+        phases: businessCyclePhases(cycles ?? [], first, last)
+      }
+    : null
   return {
     sector: { code, name: known.name, slug: known.slug, companyCount },
     companies,
     unranked,
     revenueTrend,
-    marginTrend: Object.fromEntries(SECTOR_MARGIN_CODES.map((metricCode, i) => [metricCode, margins[i] ?? null])) as IndustryPageData['marginTrend']
+    marginTrend: Object.fromEntries(SECTOR_MARGIN_CODES.map((metricCode, i) => [metricCode, margins[i] ?? null])) as IndustryPageData['marginTrend'],
+    businessCycle
   }
 })

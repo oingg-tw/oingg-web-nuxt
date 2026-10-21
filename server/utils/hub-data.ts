@@ -1,4 +1,4 @@
-import type { BusinessCycleIndicatorPoint, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { BusinessCycleIndicatorPoint, BusinessCyclePhase, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -301,6 +301,16 @@ const previousMonth = (yearMonth: string, back: number): string => {
   return `${Math.floor(index / 12)}-${String(index % 12 + 1).padStart(2, '0')}`
 }
 
+// 國發會認定的景氣擴張期與收縮期，只留跟 [first, last] 重疊的（2026-10-21，/industries/cycle 的熱度圖與類股頁的營收圖共用；使用者：
+//「有了景氣收縮期 國發會定義的景氣擴張期呢?」）。擴張期從谷底的下一個月到高峰、收縮期從高峰的下一個月到谷底：官方的擴張、收縮
+// 月數就是這樣數的（第 15 次循環 2016-03～2022-01 共 71 個月、2022-02～2023-04 共 15 個月）。高峰或谷底還沒認定的 to 是 null
+export function businessCyclePhases(cycles: BusinessCycleReferenceCycle[], first: string, last: string): BusinessCyclePhase[] {
+  return cycles.flatMap((cycle): BusinessCyclePhase[] => [
+    { phase: 'expansion', from: previousMonth(cycle.troughStart, -1), to: cycle.peak },
+    ...(cycle.peak ? [{ phase: 'contraction' as const, from: previousMonth(cycle.peak, -1), to: cycle.troughEnd }] : [])
+  ]).filter(period => period.from <= last && (period.to ?? last) >= first)
+}
+
 // 近三個月累計營收年增率（%）：三個月營收加總 ÷ 去年同三個月加總 − 1。單月年增率會被農曆年落在一月或二月拉成暴衝，
 // 三個月累計把它攤平。缺任一個月就不算。上游每月用「兩年都有申報的同一批公司」，三個月的家數可能差一兩家，誤差可忽略。
 function rollingThreeMonthYoy(entries: SectorMonthlyRevenue['entries']): { yearMonth: string; value: number }[] {
@@ -334,11 +344,13 @@ const round2 = (value: number) => Math.round(value * 100) / 100
 
 export const getSectorCycleSummary = defineCachedFunction(
   async (): Promise<SectorCycleSummary> => {
-    const [sectors, indicators] = await Promise.all([getSectors(), getBusinessCycleIndicators()])
+    // 基準日期讀不到只是少了擴張期、收縮期的標示，不讓整頁失敗
+    const [sectors, indicators, cycles] = await Promise.all([getSectors(), getBusinessCycleIndicators(), settle(getBusinessCycleReferenceDates())])
     // 對照序列：景氣同時指標（去趨勢）。期別當鍵的普通物件（快取是 JSON，不能放 Map）
     const coincident: Record<string, number> = Object.fromEntries(indicators.flatMap(point => (point.coincident === null ? [] : [[point.period, point.coincident]])))
     const rows: SectorCycleRow[] = []
-    const months: string[] = []
+    // 熱度圖一列一個類股：逐月的年增率先按類股收起來，月份軸等全部類股讀完才知道
+    const seriesByCode = new Map<string, Map<string, number>>()
     // 4 個一批，不一次 34 個並發（類股月營收冷查詢 1～2 秒）；讀不到的類股就不列
     for (let i = 0; i < sectors.length; i += 4) {
       const batch = await Promise.all(sectors.slice(i, i + 4).map(sector => getSectorMonthlyRevenue(sector.code).then(revenue => ({ sector, revenue }), () => null)))
@@ -347,7 +359,7 @@ export const getSectorCycleSummary = defineCachedFunction(
         const { sector, revenue } = item
         const yoy = rollingThreeMonthYoy(revenue.entries)
         if (!yoy.length) continue
-        months.push(yoy[0]!.yearMonth, yoy.at(-1)!.yearMonth)
+        seriesByCode.set(sector.code, new Map(yoy.map(p => [p.yearMonth, Math.round(p.value * 10) / 10])))
         const paired = yoy.filter(point => point.yearMonth in coincident)
         const correlation = paired.length >= MIN_CORRELATION_MONTHS
           ? pearson(paired.map(point => point.value), paired.map(point => coincident[point.yearMonth]!))
@@ -363,16 +375,22 @@ export const getSectorCycleSummary = defineCachedFunction(
           correlation: correlation === null ? null : round2(correlation),
           months: correlation === null ? 0 : paired.length,
           lowest: point(sorted[0]!),
-          highest: point(sorted.at(-1)!)
+          highest: point(sorted.at(-1)!),
+          yoy: []
         })
       }
     }
-    months.sort()
+    const months = [...new Set([...seriesByCode.values()].flatMap(series => [...series.keys()]))].sort()
+    for (const row of rows) row.yoy = months.map(month => seriesByCode.get(row.code)!.get(month) ?? null)
+    const [first, last] = [months[0], months.at(-1)]
     return {
       sectors: rows,
-      firstMonth: months[0] ?? null,
-      lastMonth: months.at(-1) ?? null,
-      indicatorLastMonth: Object.keys(coincident).sort().at(-1) ?? null
+      firstMonth: first ?? null,
+      lastMonth: last ?? null,
+      indicatorLastMonth: Object.keys(coincident).sort().at(-1) ?? null,
+      months,
+      coincident: months.map(month => (month in coincident ? round2(coincident[month]!) : null)),
+      phases: first && last ? businessCyclePhases(cycles ?? [], first, last) : []
     }
   },
   { name: 'hub-sector-cycle-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }

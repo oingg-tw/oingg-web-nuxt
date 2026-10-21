@@ -145,8 +145,33 @@ const statCell = (value: number | null, unit: string) => (value === null ? '－'
 // ---- 產業景氣與三率走勢（2026-10-10，產業分析設計 #2、#3）----
 // 月營收年增率：上游用「當月與去年同月都有營收」的同一批公司相加後算，避免新上市、下市讓年增率跳動。
 const revenueEntries = computed(() => data.value?.revenueTrend?.entries ?? [])
-const revenueChartEntries = computed<LineChartEntry[]>(() => revenueEntries.value.map(entry => ({ label: entry.yearMonth, values: { yoy: { value: entry.yoyChangePct } } })))
-const REVENUE_SERIES: LineSeriesSpec[] = [{ code: 'yoy', name: '營收年增率', lineType: 'solid', symbol: 'circle', negativeBand: true }]
+// 疊景氣同時指標（右軸）與國發會的景氣擴張期、收縮期（2026-10-21，使用者在 /industries/cycle 選「B＋類股頁加景氣線」：單一類股跟景氣的對照放在這裡）
+const coincidentByMonth = computed(() => data.value?.businessCycle?.coincident ?? {})
+const hasCycle = computed(() => Object.keys(coincidentByMonth.value).length > 0)
+const coincidentText = (value: number | null) => (value === null ? '－' : value.toFixed(1))
+const revenueChartEntries = computed<LineChartEntry[]>(() => revenueEntries.value.map(entry => ({
+  label: entry.yearMonth,
+  values: { yoy: { value: entry.yoyChangePct }, coincident: { value: coincidentByMonth.value[entry.yearMonth] ?? null } }
+})))
+const revenueSeries = computed<LineSeriesSpec[]>(() => [
+  { code: 'yoy', name: '營收年增率', lineType: 'solid', symbol: 'circle', negativeBand: true },
+  ...(hasCycle.value
+    ? [{ code: 'coincident', name: '景氣同時指標', lineType: 'dashed', symbol: 'diamond', axis: 'right', format: (value: number | null) => (value === null ? '－' : `${value.toFixed(1)}（100＝長期趨勢）`) } as const]
+    : [])
+])
+// 國發會的擴張期、收縮期，夾在營收有資料的月份裡（兩端要是 x 軸上的月份）；收縮期加虛線框
+const revenuePeriods = computed(() => {
+  const first = revenueEntries.value[0]?.yearMonth
+  const last = revenueEntries.value.at(-1)?.yearMonth
+  if (!first || !last) return []
+  return (data.value?.businessCycle?.phases ?? []).map(period => ({
+    from: period.from < first ? first : period.from,
+    to: period.to === null || period.to > last ? last : period.to,
+    label: period.phase === 'expansion' ? '景氣擴張期' : '景氣收縮期',
+    shortLabel: period.phase === 'expansion' ? '擴張' : '收縮',
+    boxed: period.phase === 'contraction'
+  }))
+})
 const signedPercent = (value: number | null) => (value === null ? '－' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`)
 const revenueAnswer = computed(() => {
   const list = revenueEntries.value
@@ -263,18 +288,28 @@ const { breadcrumbs } = useHubPageSeo({
       <h2 id="industry-revenue-heading" class="stock-page-section__title">{{ sectorName }}的營收比去年多還是少？</h2>
       <p v-if="revenueAnswer" class="hub-answer">{{ revenueAnswer }}</p>
       <el-card shadow="never">
-        <StockMultiSeriesLineChart :entries="revenueChartEntries" :series="REVENUE_SERIES" palette="accent" unit="%" :format="signedPercent" />
+        <StockMultiSeriesLineChart
+          :entries="revenueChartEntries"
+          :series="revenueSeries"
+          palette="accent"
+          unit="%"
+          :unit-right="hasCycle ? '指數' : undefined"
+          scale-right
+          :periods="revenuePeriods"
+          :format="signedPercent"
+        />
       </el-card>
       <details class="hub-details">
         <summary>逐月數字</summary>
         <SharedTableScroll :label="`${sectorName}合計月營收年增率`">
           <table class="seo-table" data-ssr-table>
-            <caption>{{ sectorName }}合計月營收年增率（兩年都有申報的同一批公司）</caption>
+            <caption>{{ sectorName }}合計月營收年增率（兩年都有申報的同一批公司）<template v-if="hasCycle">與景氣同時指標</template></caption>
             <thead>
               <tr>
                 <th scope="col">月份</th>
                 <th scope="col">年增率</th>
                 <th scope="col">公司家數</th>
+                <th v-if="hasCycle" scope="col">景氣同時指標</th>
               </tr>
             </thead>
             <tbody>
@@ -282,6 +317,7 @@ const { breadcrumbs } = useHubPageSeo({
                 <th scope="row">{{ entry.yearMonth }}</th>
                 <td class="seo-table__num">{{ signedPercent(entry.yoyChangePct) }}</td>
                 <td class="seo-table__num">{{ entry.companyCount }}</td>
+                <td v-if="hasCycle" class="seo-table__num">{{ coincidentText(coincidentByMonth[entry.yearMonth] ?? null) }}</td>
               </tr>
             </tbody>
           </table>

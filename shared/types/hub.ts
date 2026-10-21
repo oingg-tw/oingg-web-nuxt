@@ -102,11 +102,12 @@ export interface SectorGrowthSummary {
 
 // /industries/cycle（2026-10-10，「讓用戶看出哪些產業屬於景氣循環股」）：每個類股兩個數字，都從類股月營收算——
 // 近三個月累計年增率的標準差（起伏幅度，百分點）、與景氣同時指標（去趨勢）的相關係數。不貼標籤、不排序。
+// 2026-10-21 起另帶逐月的年增率（熱度圖一列一個類股，使用者：「歷史變化是重要的」）
 export interface SectorCycleRow {
   code: string
   name: string
   slug: string
-  // 最新一個月有申報營收的家數（點大小、少於 5 家不畫）
+  // 最新一個月有申報營收的家數
   companyCount: number
   amplitude: number | null
   correlation: number | null
@@ -114,6 +115,16 @@ export interface SectorCycleRow {
   months: number
   lowest: { yearMonth: string; value: number } | null
   highest: { yearMonth: string; value: number } | null
+  // 近三個月累計營收年增率（%，小數一位），跟 SectorCycleSummary.months 一一對應，沒有值的月份是 null
+  yoy: (number | null)[]
+}
+
+// 國家發展委員會認定的景氣循環階段：擴張期從谷底的下一個月到高峰、收縮期從高峰的下一個月到谷底（官方的擴張、收縮月數就是
+// 這樣數的）；to 是 null 代表還沒到（高峰或谷底尚未認定）
+export interface BusinessCyclePhase {
+  phase: 'expansion' | 'contraction'
+  from: string
+  to: string | null
 }
 
 // 國家發展委員會景氣指標的兩個去趨勢值（100＝長期趨勢），逐月，舊的在前。/macro/business-cycle-clock 與
@@ -150,6 +161,10 @@ export interface SectorCycleSummary {
   lastMonth: string | null
   // 景氣同時指標的最新月份（通常比營收晚一個月）
   indicatorLastMonth: string | null
+  // 熱度圖的月份軸（舊的在前）、對齊的景氣同時指標（去趨勢）、落在這段期間的景氣擴張期與收縮期
+  months: string[]
+  coincident: (number | null)[]
+  phases: BusinessCyclePhase[]
 }
 
 // 類股層的時間序列（2026-10-10，analysis-ts ae14be5e／業務中台 0e9a28a）。每一期只用那一期的值、排除興櫃；count 0 時 median
@@ -200,6 +215,8 @@ export interface IndustryPageData {
   // 讀不到時是 null，頁面那兩段就不顯示（settle）
   revenueTrend: SectorMonthlyRevenue | null
   marginTrend: Record<SectorMarginCode, SectorMetricHistory | null>
+  // 營收圖疊的景氣同時指標（去趨勢，鍵是月份，只留營收有資料的區間）與景氣擴張期、收縮期（2026-10-21）；讀不到是 null，圖就只畫營收
+  businessCycle: { coincident: Record<string, number>; phases: BusinessCyclePhase[] } | null
 }
 
 export interface RankingRow {

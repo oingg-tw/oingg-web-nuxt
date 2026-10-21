@@ -35,8 +35,49 @@ for (const code of SECTORS) {
   assert.equal(row.amplitude, Math.round(sd(yoy.map(p => p.v)) * 100) / 100, `${code} amplitude`)
   assert.equal(row.correlation, Math.round(r * 100) / 100, `${code} correlation`)
   assert.equal(row.months, paired.length, `${code} months`)
-  console.log(`ok ${code} ${row.name}: amplitude ${row.amplitude}, r ${row.correlation} (${row.months} months)`)
+  // 熱度圖的一列（2026-10-21）：逐月年增率跟上面自己算的一致（小數一位），沒有值的月份是 null
+  const byMonth = new Map(yoy.map(p => [p.ym, Math.round(p.v * 10) / 10]))
+  summary.months.forEach((month, i) => assert.equal(row.yoy[i], byMonth.get(month) ?? null, `${code} yoy ${month}`))
+  console.log(`ok ${code} ${row.name}: amplitude ${row.amplitude}, r ${row.correlation} (${row.months} months), heatmap row matches`)
 }
+
+// 熱度圖的月份軸與對齊的景氣同時指標
+assert.ok(summary.months.length > 24 && summary.months.every((month, i) => i === 0 || summary.months[i - 1] < month), 'months ascending')
+assert.ok(summary.sectors.every(row => row.yoy.length === summary.months.length), 'every heatmap row aligned to months')
+summary.months.forEach((month, i) => assert.equal(summary.coincident[i], month in coincident ? Math.round(coincident[month] * 100) / 100 : null, `coincident ${month}`))
+
+// 國發會的擴張期、收縮期：用原始的基準日期自己算一次。擴張期＝谷底的下一個月到高峰、收縮期＝高峰的下一個月到谷底，
+// 每一段的月數要等於官方公布的擴張、收縮月數——對不上就是月份算錯（或「下一個月」的定義跟國發會不同）
+const reference = await get(`${BUSINESS}/macro/business-cycle-reference-dates`)
+const nextMonth = ym => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}` }
+const toIndex = ym => { const [y, m] = ym.split('-').map(Number); return y * 12 + m }
+const span = (from, to) => toIndex(to) - toIndex(from) + 1
+// 上游已知的錯，回報後等修正。修好了這裡會失敗，提醒把那一筆拿掉
+const KNOWN_UPSTREAM_ERRORS = {
+  // 高峰寫成 2014-01；國發會是 2014-10（2012-01 起 33 個月，跟同一筆的擴張 33、收縮 16 個月一致）。2026-10-21 本 check 抓到；
+  // analysis-ts 核對過是 gov-ts 的 export.v_business_cycle_reference_dates 就寫錯（analysis-ts 原樣轉發），已轉給 gov-ts
+  14: 'peak 2014-01 should be 2014-10'
+}
+for (const cycle of reference.entries) {
+  if (KNOWN_UPSTREAM_ERRORS[cycle.cycleNo]) {
+    assert.notEqual(span(nextMonth(cycle.troughStart), cycle.peak), cycle.expansionMonths, `cycle ${cycle.cycleNo} is fixed upstream (${KNOWN_UPSTREAM_ERRORS[cycle.cycleNo]}): remove it from KNOWN_UPSTREAM_ERRORS`)
+    continue
+  }
+  if (cycle.peak && cycle.expansionMonths != null) assert.equal(span(nextMonth(cycle.troughStart), cycle.peak), cycle.expansionMonths, `cycle ${cycle.cycleNo} expansion months`)
+  if (cycle.peak && cycle.troughEnd && cycle.contractionMonths != null) assert.equal(span(nextMonth(cycle.peak), cycle.troughEnd), cycle.contractionMonths, `cycle ${cycle.cycleNo} contraction months`)
+}
+const expected = reference.entries.flatMap(cycle => [
+  { phase: 'expansion', from: nextMonth(cycle.troughStart), to: cycle.peak },
+  ...(cycle.peak ? [{ phase: 'contraction', from: nextMonth(cycle.peak), to: cycle.troughEnd }] : [])
+])
+const within = (first, last) => expected.filter(p => p.from <= last && (p.to ?? last) >= first)
+assert.deepEqual(summary.phases, within(summary.months[0], summary.months.at(-1)), 'heatmap phases')
+// 類股頁的營收圖用同一份（航運）
+const industry = await get(`${APP}/api/hub/industry/${SECTORS[0]}`)
+const revenueMonths = industry.revenueTrend.entries.map(entry => entry.yearMonth)
+assert.deepEqual(industry.businessCycle.phases, within(revenueMonths[0], revenueMonths.at(-1)), 'industry page phases')
+assert.ok(Object.keys(industry.businessCycle.coincident).length > 24, 'industry page: coincident by month')
+console.log(`ok heatmap ${summary.months.length} months; phases ${summary.phases.map(p => `${p.phase === 'expansion' ? '擴張' : '收縮'} ${p.from}～${p.to ?? '…'}`).join('、')}; ${reference.entries.length - Object.keys(KNOWN_UPSTREAM_ERRORS).length} cycles' month counts match, known upstream errors: ${Object.keys(KNOWN_UPSTREAM_ERRORS).join('、') || 'none'}`)
 
 // 形狀：每列都有兩個數字或明確的 null，月份字串遞增
 assert.ok(summary.sectors.length >= 30, `only ${summary.sectors.length} sectors`)

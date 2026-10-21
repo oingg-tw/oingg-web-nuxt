@@ -95,6 +95,12 @@ const props = defineProps<{
   // indexing every line to a common base, breaks on a loss-making year because a negative base
   // flips the sign of everything after it.
   unitRight?: string
+  // 右軸不從 0 起（2026-10-21，類股頁的景氣同時指標在 100 上下，從 0 起整條線是平的）。不給＝照舊從 0 起
+  scaleRight?: boolean
+  // 時間上的區段（2026-10-21，類股頁營收圖的國發會景氣擴張期、收縮期，使用者選「B＋類股頁加景氣線」、又問「國發會定義的景氣擴張期
+  // 呢?」）：每一段的名稱寫在繪圖區上緣（手機用 shortLabel），提示框標出這一期落在哪一段。boxed 的畫成虛線框、不填色——填色已經是
+  // negativeBand 的「年增率為負」，兩種區段要一眼分得開。from／to 是 x 軸上的標籤，to 是 null 就畫到最後一期
+  periods?: { from: string; to: string | null; label: string; shortLabel?: string; boxed?: boolean }[]
 }>()
 
 const { resolvedMode, color: accentColorName, market } = useAppTheme()
@@ -152,6 +158,18 @@ const hasBars = computed(() => props.series.some(series => series.type === 'bar'
 
 const periodLabel = (entry: LineChartEntry): string => entry.label ?? (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 
+// periods 換成 x 軸上的索引；標籤不在軸上的區段不畫
+const periodRanges = computed(() => {
+  const labels = props.entries.map(periodLabel)
+  return (props.periods ?? []).flatMap((period) => {
+    const from = labels.indexOf(period.from)
+    const to = period.to === null ? labels.length - 1 : labels.indexOf(period.to)
+    return from >= 0 && to >= from ? [{ ...period, from, to }] : []
+  })
+})
+const isDesktop = useIsDesktop()
+const dashedBox = computed(() => ({ color: 'transparent', borderColor: chartInk.value.primary, borderWidth: 1.5, borderType: 'dashed' as const }))
+
 interface AxisTooltipParam { dataIndex?: number }
 
 const chartOption = computed(() => {
@@ -170,10 +188,12 @@ const chartOption = computed(() => {
     tooltip: {
       trigger: 'axis',
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
-        const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
+        const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
+        const entry = list[index]
         if (!entry) return ''
         const rows = props.series.map(series => `<div>${series.name}：${(series.format ?? props.format)(entry.values[series.code]?.value ?? null)}</div>`).join('')
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry)}</div>${rows}</div>`
+        const inPeriod = periodRanges.value.find(range => index >= range.from && index <= range.to)
+        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry)}${inPeriod ? `（${inPeriod.label}）` : ''}</div>${rows}</div>`
       }
     },
     xAxis: {
@@ -192,10 +212,11 @@ const chartOption = computed(() => {
             type: 'value',
             name: props.unitRight,
             splitLine: { show: false },
+            ...(props.scaleRight ? { scale: true } : {})
           }]
         : [])
     ],
-    series: props.series.flatMap((series, index) => [
+    series: [...props.series.flatMap((series, index) => [
       ...(hasBars.value && series.type !== 'bar'
         ? [{
             // 不給名字：SharedChart 用各 series 的名字組圖表的 aria-label，外框不是資料
@@ -266,7 +287,27 @@ const chartOption = computed(() => {
           ? { value, itemStyle: { color: value < 0 ? priceColors.value.down : priceColors.value.up } }
           : value
       })
-    }])
+    }]), ...(periodRanges.value.length
+      ? [{
+          // 只承載區段的框與名稱：沒有資料、不進提示框與圖例（沒有名字，SharedChart 組 aria-label 時也略過）；框跨整個繪圖區的高度，
+          // 掛在哪一軸都一樣
+          name: '',
+          type: 'line',
+          data: [],
+          silent: true,
+          tooltip: { show: false },
+          markArea: {
+            silent: true,
+            data: periodRanges.value.map(range => [{
+              xAxis: range.from - 0.5,
+              name: isDesktop.value ? range.label : (range.shortLabel ?? range.label),
+              itemStyle: range.boxed ? dashedBox.value : { color: 'transparent' },
+              // 名稱寫在繪圖區上緣；不到整條軸一成的區段不寫，免得擠到隔壁段的名稱或軸名
+              label: { show: (range.to - range.from + 1) / list.length >= 0.1, position: 'top', fontSize: 16, color: chartInk.value.secondary }
+            }, { xAxis: range.to + 0.5 }])
+          }
+        }]
+      : [])]
   }
 })
 </script>
