@@ -194,7 +194,7 @@ const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value
         <section v-if="loading ? yearCountHint : yearlyRows.length" aria-labelledby="performance-period-title" :aria-busy="loading">
           <h2 id="performance-period-title" class="performance-page__section-title">逐年與逐月報酬</h2>
           <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="loading ? skeletonYearRows : yearlyRows" :loading="loading" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
-          <details v-if="loading || monthlyRows.length" class="performance-page__details holdings-details">
+          <details v-if="loading || monthlyRows.length" class="performance-page__details app-disclosure">
             <summary>逐月報酬<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（12 個月）</span><template v-else>（{{ monthlyRows.length }} 個月）</template></summary>
             <HoldingsMetricTable caption="持股與加權指數的逐月報酬" :rows="monthlyRows" name-label="月份" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
           </details>

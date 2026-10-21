@@ -231,7 +231,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
             </ClientOnly>
             <!-- 有圖時表格收進 details（2026-10-08「有了圖表還需要表格嗎…可以收合精簡視覺嗎」）：圖是 canvas，
                  螢幕閱讀器念不出各檔數字，所以文字版必須在，只是預設收起來。沒有圖時直接攤開。 -->
-            <details v-if="loading || hasContribution" class="holdings-details">
+            <details v-if="loading || hasContribution" class="app-disclosure">
               <summary>各檔數字<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（{{ contributionCountHint }} 檔）</span><template v-else>（{{ contributionRows.length }} 檔）</template></summary>
               <HoldingsMetricTable caption="各檔持股的市值占比與波動占比" :rows="contributionRows" value-label="市值占比" market-label="波動占比" />
             </details>
@@ -254,7 +254,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
           </section>
 
           <!-- 口徑與回撤日期收進「計算方式」，同持股總覽（2026-10-08 同一句） -->
-          <details class="holdings-details">
+          <details class="app-disclosure">
             <summary>計算方式</summary>
             <ul class="risk-page__notes">
               <li>實際經歷的跌幅：依你每天實際的持股計算，買進、賣出都算進去；期間內沒有持股就不列。</li>

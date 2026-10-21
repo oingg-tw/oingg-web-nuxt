@@ -147,7 +147,7 @@ const methodGroups = computed(() => [
     </div>
 
     <!-- 照頁面上的順序分組：小標＋「名稱｜說明」。不放表格：表格會讓「tbody tr」選到兩份同名的列 -->
-    <details v-if="!loading" class="holdings-details holdings-traits__method">
+    <details v-if="!loading" class="app-disclosure holdings-traits__method">
       <summary>指標的意思與計算方式</summary>
       <section v-for="group in methodGroups" :key="group.title" class="holdings-traits__method-group">
         <h3 class="holdings-traits__method-title">{{ group.title }}</h3>

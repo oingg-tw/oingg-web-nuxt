@@ -204,7 +204,7 @@ const tradingRows = computed(() => {
           </HoldingsSymbolTable>
 
           <p v-if="!loading && excludedText" class="realized-page__note">未計入：{{ excludedText }}</p>
-          <details class="holdings-details realized-page__method">
+          <details class="app-disclosure realized-page__method">
             <summary>計算方式</summary>
             <ul class="realized-page__notes">
               <li>只計賣出日落在期間內的賣出，包含已經全部賣出的股票。</li>

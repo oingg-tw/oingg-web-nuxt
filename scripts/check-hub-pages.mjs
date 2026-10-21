@@ -504,9 +504,11 @@ expect('/calendar/months', '12 cells of this year, in order', exMonths.cells.len
 for (const cell of exMonths.cells) {
   const estimated = cell.month > exMonths.current
   expect('/calendar/months', `${cell.month} estimated iff after ${exMonths.current}, from last year`, cell.estimated === estimated && cell.source === (estimated ? `${exYear - 1}${cell.month.slice(4)}` : cell.month), `${cell.estimated} ${cell.source}`)
-  const { month, rows } = await (await fetch(`${baseUrl}/api/hub/ex-dividend-months?month=${cell.month}`)).json()
+  // 上游冷呼叫失敗（業務中台 502）時寫出狀態碼，不要看起來像檔數對不上
+  const response = await fetch(`${baseUrl}/api/hub/ex-dividend-months?month=${cell.month}`)
+  const { month, rows } = await response.json()
   const distinct = kind => new Set(rows.filter(row => !kind || row.kind === kind).map(row => row.symbol)).size
-  expect('/calendar/months', `${cell.month} counts == distinct symbols in its list`, month === cell.month && cell.counts.all === distinct() && ['common', 'preferred', 'etf'].every(kind => cell.counts[kind] === distinct(kind)), JSON.stringify(cell.counts))
+  expect('/calendar/months', `${cell.month} counts == distinct symbols in its list`, response.ok && month === cell.month && cell.counts.all === distinct() && ['common', 'preferred', 'etf'].every(kind => cell.counts[kind] === distinct(kind)), response.ok ? JSON.stringify(cell.counts) : `HTTP ${response.status}`)
 }
 
 if (failures.length) {

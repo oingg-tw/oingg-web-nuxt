@@ -495,7 +495,7 @@ async function submit() {
             </template>
           </HoldingsSymbolTable>
 
-          <details class="holdings-page__method holdings-details">
+          <details class="holdings-page__method app-disclosure">
             <summary>計算方式</summary>
             <ul>
               <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>

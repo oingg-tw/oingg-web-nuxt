@@ -75,6 +75,14 @@ const monthAnswer = computed(() => {
   return `${lead}共 ${total} 檔${split}，${cell.estimated ? '去年 ' : ''}${m} 月 ${Number(busiest.date.slice(8))} 日最多，有 ${busiest.count} 檔。${announced ? `其中 ${announced} 筆還沒除息（公司預告）。` : ''}`
 })
 
+// 每一天收成一列（2026-10-21，使用者：「6 7 月的持股數量非常多 所以底下勢必不可以單純 全部列出來」，選了這個做法）：摘要寫日期、
+// 檔數、前三檔的名字，點開才是那一天的表。7 月 805 檔變成 23 列；<details> 的內容照舊在伺服器 HTML 裡，爬蟲與螢幕閱讀器都讀得到
+const PREVIEW_NAMES = 3
+const previewOf = (rowsOfDay: ExDividendRow[]) => {
+  const names = [...new Set(rowsOfDay.map(row => row.name))]
+  return `${names.slice(0, PREVIEW_NAMES).join('、')}${names.length > PREVIEW_NAMES ? ' 等' : ''}`
+}
+
 const cashText = (cash: number) => String(Number(cash.toFixed(4)))
 const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Number((row.stockPerShare * 1000).toFixed(2))} 股` : row.rightsOffering ? '現金增資' : '－')
 </script>
@@ -110,37 +118,45 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
     </StockQuestionSection>
 
     <StockQuestionSection id="ex-months-list" :question="`${year} 年 ${monthNumber(selected.month)} 月有哪些除權息？`" :answer="monthAnswer">
-      <table v-if="rows.length" class="seo-table ex-month-table" data-ssr-table>
-        <caption class="visually-hidden">{{ year }} 年 {{ monthNumber(selected.month) }} 月的除權息，依除權息日分組</caption>
-        <thead>
-          <tr>
-            <th scope="col">代號 名稱</th>
-            <th scope="col">類型</th>
-            <th scope="col" class="seo-table__num">現金股利（元）</th>
-            <th scope="col">配股</th>
-            <th scope="col">現金發放日</th>
-          </tr>
-        </thead>
-        <tbody v-for="day in days" :key="day.date">
-          <tr class="ex-month-table__day">
-            <th colspan="5" scope="colgroup">{{ dayLabel(day.date) }}　{{ day.count }} 檔</th>
-          </tr>
-          <tr v-for="row in day.rows" :key="`${row.symbol}-${row.exType}`">
-            <td class="ex-month-table__name">
-              <NuxtLink v-if="row.kind" :to="securityPath(row.symbol)" class="seo-table__link">{{ row.name }}</NuxtLink>
-              <template v-else>{{ row.name }}</template>
-              <span class="ex-month-table__code">{{ row.symbol }}</span>
-            </td>
-            <td>{{ row.exType }}<el-tag v-if="row.announced" size="small" effect="plain" class="ex-month-table__tag">預告</el-tag></td>
-            <td class="seo-table__num" :class="{ 'is-empty': row.cash === null }">
-              <template v-if="row.cash !== null">{{ cashText(row.cash) }}<span class="ex-month-table__unit"> 元</span></template>
-              <template v-else>－</template>
-            </td>
-            <td :class="{ 'is-empty': !row.stockPerShare && !row.rightsOffering }">{{ stockText(row) }}</td>
-            <td class="ex-month-table__paid">{{ row.paymentDate ? row.paymentDate.slice(5).replace('-', '/') : '－' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <ul v-if="rows.length" class="ex-days">
+        <li v-for="day in days" :key="day.date">
+          <details class="app-disclosure ex-day">
+            <summary>
+              <span class="ex-day__date">{{ dayLabel(day.date) }}</span>
+              <span class="ex-day__count">{{ day.count }} 檔</span>
+              <span class="ex-day__preview">{{ previewOf(day.rows) }}</span>
+            </summary>
+            <table class="seo-table ex-month-table" data-ssr-table>
+              <caption class="visually-hidden">{{ dayLabel(day.date) }}的除權息</caption>
+              <thead>
+                <tr>
+                  <th scope="col">代號 名稱</th>
+                  <th scope="col">類型</th>
+                  <th scope="col" class="seo-table__num">現金股利（元）</th>
+                  <th scope="col">配股</th>
+                  <th scope="col">現金發放日</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in day.rows" :key="`${row.symbol}-${row.exType}`">
+                  <td class="ex-month-table__name">
+                    <NuxtLink v-if="row.kind" :to="securityPath(row.symbol)" class="seo-table__link">{{ row.name }}</NuxtLink>
+                    <template v-else>{{ row.name }}</template>
+                    <span class="ex-month-table__code">{{ row.symbol }}</span>
+                  </td>
+                  <td>{{ row.exType }}<el-tag v-if="row.announced" size="small" effect="plain" class="ex-month-table__tag">預告</el-tag></td>
+                  <td class="seo-table__num" :class="{ 'is-empty': row.cash === null }">
+                    <template v-if="row.cash !== null">{{ cashText(row.cash) }}<span class="ex-month-table__unit"> 元</span></template>
+                    <template v-else>－</template>
+                  </td>
+                  <td :class="{ 'is-empty': !row.stockPerShare && !row.rightsOffering }">{{ stockText(row) }}</td>
+                  <td class="ex-month-table__paid">{{ row.paymentDate ? row.paymentDate.slice(5).replace('-', '/') : '－' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </details>
+        </li>
+      </ul>
     </StockQuestionSection>
 
     <section class="stock-page-section" aria-labelledby="ex-months-notes-heading">
@@ -263,14 +279,55 @@ html.dark .ex-heat__legend {
   margin-right: 6px;
 }
 
-.ex-month-table {
-  width: 100%;
-  margin-top: 16px;
+/* 每一天一列：上下一條線分開；摘要是 箭頭｜日期｜檔數｜前三檔，名字放不下就省略，窄螢幕換到下一行 */
+.ex-days {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
-.ex-month-table__day th {
-  background: var(--el-fill-color-light);
-  font-weight: 600;
+.ex-days > li {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.ex-day > summary {
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-day__date {
+  min-width: 7.5em;
+}
+
+.ex-day__count {
+  min-width: 4em;
+  font-weight: 400;
+}
+
+.ex-day__preview {
+  flex: 1 1 12em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.ex-month-table {
+  width: 100%;
+  margin: 0 0 12px;
+}
+
+/* 窄螢幕：名字固定在第二行，跟日期對齊（箭頭 13px＋間距 12px） */
+@media (max-width: 767px) {
+  .ex-day__preview {
+    flex-basis: 100%;
+    padding-left: 25px;
+  }
 }
 
 .ex-month-table__code {
@@ -332,16 +389,16 @@ html.dark .ex-heat__legend {
     align-items: baseline;
   }
 
-  .ex-month-table__day th {
-    flex: 1 1 100%;
-  }
-
   .ex-month-table td {
     border: 0;
   }
 
-  .ex-month-table tbody tr:not(.ex-month-table__day) {
+  .ex-month-table tbody tr {
     border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  .ex-month-table tbody tr:last-child {
+    border-bottom: 0;
   }
 
   .ex-month-table__name {
