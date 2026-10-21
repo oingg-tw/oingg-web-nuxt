@@ -44,13 +44,13 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
     settle(getBusinessCycleReferenceDates()),
     ...SECTOR_MARGIN_CODES.map(metricCode => settle(getSectorMetricHistory(code, metricCode, 'TTM', 20)))
   ])
-  // 營收圖疊景氣同時指標與景氣擴張期、收縮期（2026-10-21，使用者選「B＋類股頁加景氣線」）：只留營收有資料的月份，跟 /industries/cycle 同一份
+  // 營收圖疊景氣同時指標與景氣收縮期（2026-10-21，使用者選「B＋類股頁加景氣線」）：只留營收有資料的月份，跟 /industries/cycle 同一份
   const first = revenueTrend?.entries[0]?.yearMonth
   const last = revenueTrend?.entries.at(-1)?.yearMonth
   const businessCycle = first && last && indicators
     ? {
         coincident: Object.fromEntries(indicators.flatMap(point => (point.coincident !== null && point.period >= first && point.period <= last ? [[point.period, Math.round(point.coincident * 100) / 100]] : []))),
-        phases: businessCyclePhases(cycles ?? [], first, last)
+        contractions: contractionPeriods(cycles ?? [], first, last)
       }
     : null
   return {

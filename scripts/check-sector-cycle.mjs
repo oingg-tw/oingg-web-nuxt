@@ -46,8 +46,8 @@ assert.ok(summary.months.length > 24 && summary.months.every((month, i) => i ===
 assert.ok(summary.sectors.every(row => row.yoy.length === summary.months.length), 'every heatmap row aligned to months')
 summary.months.forEach((month, i) => assert.equal(summary.coincident[i], month in coincident ? Math.round(coincident[month] * 100) / 100 : null, `coincident ${month}`))
 
-// 國發會的擴張期、收縮期：用原始的基準日期自己算一次。擴張期＝谷底的下一個月到高峰、收縮期＝高峰的下一個月到谷底，
-// 每一段的月數要等於官方公布的擴張、收縮月數——對不上就是月份算錯（或「下一個月」的定義跟國發會不同）
+// 景氣收縮期：用原始的基準日期自己算一次（高峰的下一個月到谷底）。擴張（谷底的下一個月到高峰）與收縮的月數都要等於官方公布
+// 的月數——對不上就是月份算錯，或基準日期本身寫錯：收縮期從高峰算起，高峰寫錯時擴張月數最先對不上（第 14 次循環就是這樣抓到的）
 const reference = await get(`${BUSINESS}/macro/business-cycle-reference-dates`)
 const nextMonth = ym => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}` }
 const toIndex = ym => { const [y, m] = ym.split('-').map(Number); return y * 12 + m }
@@ -66,18 +66,15 @@ for (const cycle of reference.entries) {
   if (cycle.peak && cycle.expansionMonths != null) assert.equal(span(nextMonth(cycle.troughStart), cycle.peak), cycle.expansionMonths, `cycle ${cycle.cycleNo} expansion months`)
   if (cycle.peak && cycle.troughEnd && cycle.contractionMonths != null) assert.equal(span(nextMonth(cycle.peak), cycle.troughEnd), cycle.contractionMonths, `cycle ${cycle.cycleNo} contraction months`)
 }
-const expected = reference.entries.flatMap(cycle => [
-  { phase: 'expansion', from: nextMonth(cycle.troughStart), to: cycle.peak },
-  ...(cycle.peak ? [{ phase: 'contraction', from: nextMonth(cycle.peak), to: cycle.troughEnd }] : [])
-])
+const expected = reference.entries.flatMap(cycle => (cycle.peak ? [{ from: nextMonth(cycle.peak), to: cycle.troughEnd }] : []))
 const within = (first, last) => expected.filter(p => p.from <= last && (p.to ?? last) >= first)
-assert.deepEqual(summary.phases, within(summary.months[0], summary.months.at(-1)), 'heatmap phases')
+assert.deepEqual(summary.contractions, within(summary.months[0], summary.months.at(-1)), 'heatmap contractions')
 // 類股頁的營收圖用同一份（航運）
 const industry = await get(`${APP}/api/hub/industry/${SECTORS[0]}`)
 const revenueMonths = industry.revenueTrend.entries.map(entry => entry.yearMonth)
-assert.deepEqual(industry.businessCycle.phases, within(revenueMonths[0], revenueMonths.at(-1)), 'industry page phases')
+assert.deepEqual(industry.businessCycle.contractions, within(revenueMonths[0], revenueMonths.at(-1)), 'industry page contractions')
 assert.ok(Object.keys(industry.businessCycle.coincident).length > 24, 'industry page: coincident by month')
-console.log(`ok heatmap ${summary.months.length} months; phases ${summary.phases.map(p => `${p.phase === 'expansion' ? '擴張' : '收縮'} ${p.from}～${p.to ?? '…'}`).join('、')}; ${reference.entries.length - Object.keys(KNOWN_UPSTREAM_ERRORS).length} cycles' month counts match, known upstream errors: ${Object.keys(KNOWN_UPSTREAM_ERRORS).join('、') || 'none'}`)
+console.log(`ok heatmap ${summary.months.length} months; contractions ${summary.contractions.map(p => `${p.from}～${p.to ?? '…'}`).join('、')}; ${reference.entries.length - Object.keys(KNOWN_UPSTREAM_ERRORS).length} cycles' month counts match, known upstream errors: ${Object.keys(KNOWN_UPSTREAM_ERRORS).join('、') || 'none'}`)
 
 // 形狀：每列都有兩個數字或明確的 null，月份字串遞增
 assert.ok(summary.sectors.length >= 30, `only ${summary.sectors.length} sectors`)

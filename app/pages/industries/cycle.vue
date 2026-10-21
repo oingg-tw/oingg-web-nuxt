@@ -9,7 +9,7 @@ import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue
 // 篩選功能.md §5.7、非景氣循環產業護城河分類學 L51–52）：只畫數字，表格依類股代號排。
 //
 // 圖 2026-10-21 從散佈圖改成熱度圖（使用者：「這張圖的設計我不滿意」，看過四種畫法後選熱度圖，理由「歷史變化是重要的」）：每一列一個
-// 類股、每一格一個月，顏色是那個月的年增率；最上面一條景氣同時指標，標出國發會認定的擴張期與收縮期，收縮期在格子上加虛線框。散佈圖要讀者先懂標準差與
+// 類股、每一格一個月，顏色是那個月的年增率；最上面一條景氣同時指標，虛線框是國發會認定的景氣收縮期。散佈圖要讀者先懂標準差與
 // 相關係數、得配兩段說明，而熱度圖看得到什麼時候、哪些類股跟著景氣一起變色。兩個數字留在表格。單一類股跟景氣的折線對照在各類股頁。
 // 也試過「擴張期與收縮期的平均年增率」：只有一段 15 個月的收縮期，又碰上 2022 年能源、航運與觀光解封，半導體在收縮期平均 +12.2%，
 // 會讓人以為不受景氣影響，沒有採用。
@@ -104,15 +104,13 @@ const heatOption = computed(() => {
   const list = months.value
   const first = list[0] ?? ''
   const last = list.at(-1) ?? ''
-  // 國發會的擴張期、收縮期，夾在月份軸裡（2026-10-21，使用者：「有了景氣收縮期 國發會定義的景氣擴張期呢?」）
-  const phases = (summary.value?.phases ?? []).map(period => ({
-    ...period,
+  // 景氣收縮期，夾在月份軸裡。擴張期同一天加過又拿掉（使用者：「原來是這樣認定 那還是把 擴張期拿掉吧」：收縮期以外都是擴張期）
+  const contractions = (summary.value?.contractions ?? []).map(period => ({
     from: period.from < first ? first : period.from,
     to: period.to === null || period.to > last ? last : period.to
   }))
-  const phaseName = (phase: 'expansion' | 'contraction') => (phase === 'expansion' ? '景氣擴張期' : '景氣收縮期')
-  const phaseOf = (month: string) => phases.find(period => month >= period.from && month <= period.to)
-  const contractionFrames = phases.filter(period => period.phase === 'contraction').map(period => [{ xAxis: period.from }, { xAxis: period.to }])
+  const inContraction = (month: string) => contractions.some(period => month >= period.from && month <= period.to)
+  const contractionAreas = contractions.map(period => [{ xAxis: period.from }, { xAxis: period.to }])
   const yearOnly = (value: string) => (value.endsWith('-01') && (isDesktop.value || Number(value.slice(0, 4)) % 2 === 0) ? value.slice(0, 4) : '')
   return {
     tooltip: {
@@ -121,8 +119,7 @@ const heatOption = computed(() => {
         if (param.seriesType !== 'heatmap' || !param.value) return ''
         const [x, y, value] = param.value
         const month = list[x] ?? ''
-        const phase = phaseOf(month)
-        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${heatRows.value[y]?.name ?? ''}　${month}${phase ? `（${phaseName(phase.phase)}）` : ''}</div><div>近三個月營收年增率 ${pct(value)}</div></div>`
+        return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${heatRows.value[y]?.name ?? ''}　${month}${inContraction(month) ? '（景氣收縮期）' : ''}</div><div>近三個月營收年增率 ${pct(value)}</div></div>`
       }
     },
     visualMap: {
@@ -176,16 +173,11 @@ const heatOption = computed(() => {
         showSymbol: false,
         data: summary.value?.coincident ?? [],
         lineStyle: { color: ink.secondary, width: 2 },
-        // 每一段寫名稱（手機寫兩個字：全名在 375 寬會跟隔壁段疊在一起）；收縮期填底色。不到整條軸一成的段不寫名稱
         markArea: {
           silent: true,
-          label: { position: 'top', fontSize: 16, color: ink.secondary },
-          data: phases.map(period => [{
-            xAxis: period.from,
-            name: isDesktop.value ? phaseName(period.phase) : (period.phase === 'expansion' ? '擴張' : '收縮'),
-            itemStyle: { color: period.phase === 'contraction' ? ink.gridline : 'transparent' },
-            label: { show: (list.indexOf(period.to) - list.indexOf(period.from) + 1) / list.length >= 0.1 }
-          }, { xAxis: period.to }])
+          itemStyle: { color: ink.gridline },
+          label: { show: true, position: 'top', fontSize: 16, color: ink.secondary },
+          data: contractionAreas.map(([from, to]) => [{ ...from, name: '景氣收縮期' }, to])
         }
       },
       {
@@ -200,7 +192,7 @@ const heatOption = computed(() => {
           // markArea 預設 z 1，在格子（z 2）底下，框的左右兩邊會被格子蓋掉
           z: 3,
           itemStyle: { color: 'transparent', borderColor: ink.primary, borderWidth: 1.5, borderType: 'dashed' },
-          data: contractionFrames
+          data: contractionAreas
         }
       }
     ]
@@ -222,7 +214,7 @@ const heatOption = computed(() => {
           :style="{ height: `${heatLayout.height}px` }"
           :option="heatOption"
           autoresize
-          aria-label="熱度圖：各類股每個月的近三個月累計營收年增率，上方是景氣同時指標與國發會認定的景氣擴張期、收縮期"
+          aria-label="熱度圖：各類股每個月的近三個月累計營收年增率，上方是景氣同時指標與景氣收縮期"
         />
       </el-card>
       <SharedSortableTable

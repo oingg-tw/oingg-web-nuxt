@@ -97,10 +97,10 @@ const props = defineProps<{
   unitRight?: string
   // 右軸不從 0 起（2026-10-21，類股頁的景氣同時指標在 100 上下，從 0 起整條線是平的）。不給＝照舊從 0 起
   scaleRight?: boolean
-  // 時間上的區段（2026-10-21，類股頁營收圖的國發會景氣擴張期、收縮期，使用者選「B＋類股頁加景氣線」、又問「國發會定義的景氣擴張期
-  // 呢?」）：每一段的名稱寫在繪圖區上緣（手機用 shortLabel），提示框標出這一期落在哪一段。boxed 的畫成虛線框、不填色——填色已經是
-  // negativeBand 的「年增率為負」，兩種區段要一眼分得開。from／to 是 x 軸上的標籤，to 是 null 就畫到最後一期
-  periods?: { from: string; to: string | null; label: string; shortLabel?: string; boxed?: boolean }[]
+  // 時間上的區段，畫成虛線框、不填色（2026-10-21，類股頁營收圖的「景氣收縮期」，使用者選「B＋類股頁加景氣線」）：填色已經是
+  // negativeBand 的「年增率為負」，兩種區段要一眼分得開。from／to 是 x 軸上的標籤，to 是 null 就畫到最後一期；圖例多一項（說明每個
+  // 框，連太窄寫不下字的那種），提示框標出這一期落在哪一段
+  periods?: { from: string; to: string | null; label: string }[]
 }>()
 
 const { resolvedMode, color: accentColorName, market } = useAppTheme()
@@ -164,26 +164,31 @@ const periodRanges = computed(() => {
   return (props.periods ?? []).flatMap((period) => {
     const from = labels.indexOf(period.from)
     const to = period.to === null ? labels.length - 1 : labels.indexOf(period.to)
-    return from >= 0 && to >= from ? [{ ...period, from, to }] : []
+    return from >= 0 && to >= from ? [{ from, to, label: period.label }] : []
   })
 })
-const isDesktop = useIsDesktop()
+const periodNames = computed(() => [...new Set(periodRanges.value.map(range => range.label))])
 const dashedBox = computed(() => ({ color: 'transparent', borderColor: chartInk.value.primary, borderWidth: 1.5, borderType: 'dashed' as const }))
 
 interface AxisTooltipParam { dataIndex?: number }
 
 const chartOption = computed(() => {
   const list = props.entries
+  const legendCount = props.series.length + periodNames.value.length
   return {
     // Top space reserved for the LEGEND, which wraps. 48 was a constant tuned when both consumers
     // had three short names（two rows at 375px）; 杜邦's four names with units take five rows there
     // and were measured drawing straight over the lines. One extra row per series past the second
     // covers the worst case — phone width, one entry per row — and at desktop, where the legend is
     // a single row, the surplus reads as spacing rather than as a defect.
-    grid: { left: 8, right: 16, top: 48 + Math.max(0, props.series.length - 2) * 24, bottom: 28, containLabel: true },
+    grid: { left: 8, right: 16, top: 48 + Math.max(0, legendCount - 2) * 24, bottom: 28, containLabel: true },
     legend: {
       top: 0,
-      data: props.series.map(series => series.name)
+      data: [
+        ...props.series.map(series => series.name),
+        // 圖例的小圖示也是虛線框，跟圖上的框一樣
+        ...periodNames.value.map(name => ({ name, icon: 'rect', itemStyle: dashedBox.value }))
+      ]
     },
     tooltip: {
       trigger: 'axis',
@@ -287,27 +292,20 @@ const chartOption = computed(() => {
           ? { value, itemStyle: { color: value < 0 ? priceColors.value.down : priceColors.value.up } }
           : value
       })
-    }]), ...(periodRanges.value.length
-      ? [{
-          // 只承載區段的框與名稱：沒有資料、不進提示框與圖例（沒有名字，SharedChart 組 aria-label 時也略過）；框跨整個繪圖區的高度，
-          // 掛在哪一軸都一樣
-          name: '',
-          type: 'line',
-          data: [],
-          silent: true,
-          tooltip: { show: false },
-          markArea: {
-            silent: true,
-            data: periodRanges.value.map(range => [{
-              xAxis: range.from - 0.5,
-              name: isDesktop.value ? range.label : (range.shortLabel ?? range.label),
-              itemStyle: range.boxed ? dashedBox.value : { color: 'transparent' },
-              // 名稱寫在繪圖區上緣；不到整條軸一成的區段不寫，免得擠到隔壁段的名稱或軸名
-              label: { show: (range.to - range.from + 1) / list.length >= 0.1, position: 'top', fontSize: 16, color: chartInk.value.secondary }
-            }, { xAxis: range.to + 0.5 }])
-          }
-        }]
-      : [])]
+    }]), ...periodNames.value.map(name => ({
+      // 只承載區段的框（與圖例那一項），沒有資料、不進提示框；框跨整個繪圖區的高度，所以掛在哪一軸都一樣
+      name,
+      type: 'line',
+      data: [],
+      silent: true,
+      tooltip: { show: false },
+      itemStyle: dashedBox.value,
+      markArea: {
+        silent: true,
+        itemStyle: dashedBox.value,
+        data: periodRanges.value.filter(range => range.label === name).map(range => [{ xAxis: range.from - 0.5 }, { xAxis: range.to + 0.5 }])
+      }
+    }))]
   }
 })
 </script>

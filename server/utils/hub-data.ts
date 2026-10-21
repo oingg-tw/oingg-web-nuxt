@@ -1,4 +1,4 @@
-import type { BusinessCycleIndicatorPoint, BusinessCyclePhase, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { BusinessCycleIndicatorPoint, BusinessCyclePeriod, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -301,14 +301,12 @@ const previousMonth = (yearMonth: string, back: number): string => {
   return `${Math.floor(index / 12)}-${String(index % 12 + 1).padStart(2, '0')}`
 }
 
-// 國發會認定的景氣擴張期與收縮期，只留跟 [first, last] 重疊的（2026-10-21，/industries/cycle 的熱度圖與類股頁的營收圖共用；使用者：
-//「有了景氣收縮期 國發會定義的景氣擴張期呢?」）。擴張期從谷底的下一個月到高峰、收縮期從高峰的下一個月到谷底：官方的擴張、收縮
-// 月數就是這樣數的（第 15 次循環 2016-03～2022-01 共 71 個月、2022-02～2023-04 共 15 個月）。高峰或谷底還沒認定的 to 是 null
-export function businessCyclePhases(cycles: BusinessCycleReferenceCycle[], first: string, last: string): BusinessCyclePhase[] {
-  return cycles.flatMap((cycle): BusinessCyclePhase[] => [
-    { phase: 'expansion', from: previousMonth(cycle.troughStart, -1), to: cycle.peak },
-    ...(cycle.peak ? [{ phase: 'contraction' as const, from: previousMonth(cycle.peak, -1), to: cycle.troughEnd }] : [])
-  ]).filter(period => period.from <= last && (period.to ?? last) >= first)
+// 國發會認定的景氣收縮期，只留跟 [first, last] 重疊的。從高峰的下一個月算到谷底：官方的收縮月數就是這樣數的（第 15 次循環
+// 2022-02～2023-04，15 個月）；還沒到谷底的 to 是 null。/industries/cycle 的熱度圖與類股頁的營收圖共用（2026-10-21）。
+// 擴張期同一天加過又拿掉（使用者：「原來是這樣認定 那還是把 擴張期拿掉吧」）：收縮期以外的月份都是擴張期，標出來只是多一層字
+export function contractionPeriods(cycles: BusinessCycleReferenceCycle[], first: string, last: string): BusinessCyclePeriod[] {
+  return cycles.flatMap(cycle => (cycle.peak ? [{ from: previousMonth(cycle.peak, -1), to: cycle.troughEnd }] : []))
+    .filter(period => period.from <= last && (period.to ?? last) >= first)
 }
 
 // 近三個月累計營收年增率（%）：三個月營收加總 ÷ 去年同三個月加總 − 1。單月年增率會被農曆年落在一月或二月拉成暴衝，
@@ -344,7 +342,7 @@ const round2 = (value: number) => Math.round(value * 100) / 100
 
 export const getSectorCycleSummary = defineCachedFunction(
   async (): Promise<SectorCycleSummary> => {
-    // 基準日期讀不到只是少了擴張期、收縮期的標示，不讓整頁失敗
+    // 基準日期讀不到只是少了收縮期的標示，不讓整頁失敗
     const [sectors, indicators, cycles] = await Promise.all([getSectors(), getBusinessCycleIndicators(), settle(getBusinessCycleReferenceDates())])
     // 對照序列：景氣同時指標（去趨勢）。期別當鍵的普通物件（快取是 JSON，不能放 Map）
     const coincident: Record<string, number> = Object.fromEntries(indicators.flatMap(point => (point.coincident === null ? [] : [[point.period, point.coincident]])))
@@ -390,7 +388,7 @@ export const getSectorCycleSummary = defineCachedFunction(
       indicatorLastMonth: Object.keys(coincident).sort().at(-1) ?? null,
       months,
       coincident: months.map(month => (month in coincident ? round2(coincident[month]!) : null)),
-      phases: first && last ? businessCyclePhases(cycles ?? [], first, last) : []
+      contractions: first && last ? contractionPeriods(cycles ?? [], first, last) : []
     }
   },
   { name: 'hub-sector-cycle-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
