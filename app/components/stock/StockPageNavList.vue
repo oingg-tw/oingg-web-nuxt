@@ -20,7 +20,7 @@ const props = withDefaults(defineProps<{
   // 可以拖曳排序的那一段（2026-10-18 抽成共用，使用者：「這邊的 sidebar 要跟個股瀏覽那邊的 sidebar 一樣可以拖曳排序，請抽出共用元件重複使用」）。
   // 排在 items 的骨幹列後面、trailing 列前面；順序存在哪裡由呼叫端決定（個股的自選指標存帳號，ETF 的面向存瀏覽器），這裡只回報誰搬到哪
   sortableItems?: StockNavNode[]
-  // 那一段的小標題（個股「自選指標」）；不給就不畫小標題與分隔線（ETF 的面向就是整份清單）
+  // 那一段的小標題（個股「自選指標」）；不給就只畫分隔線（ETF 的面向）
   sortableHeading?: string
 }>(), { code: '', items: () => STOCK_NAV_ITEMS, label: '個股頁面', sortableItems: () => [], sortableHeading: '' })
 
@@ -70,7 +70,9 @@ onUnmounted(() => sortable?.destroy())
       </li>
       <template v-if="sortableItems.length">
         <li v-if="sortableHeading" class="rail-heading">{{ sortableHeading }}</li>
-        <li>
+        <!-- 沒有小標題也要跟上面的骨幹隔一條線（2026-10-21，使用者：「etf sidebar 指標速覽下面要有橫線 這邊樣式全站沒有統一嗎」）：
+             原本線畫在小標題上，ETF 不給小標題就連線也沒了。上面沒有骨幹列時不畫 -->
+        <li :class="{ 'rail-divided': !sortableHeading && leadingItems.length }">
           <ul ref="sortableList" class="stock-page-nav__sublist">
             <li v-for="item in sortableItems" :key="item.label" class="stock-page-nav__pinned">
               <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->

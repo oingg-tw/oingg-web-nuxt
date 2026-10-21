@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Odometer } from '@element-plus/icons-vue'
 import type { Etf } from '~/composables/etf/useEtf'
 import type { EtfFacetKey } from '~/utils/etf-pages'
 import type { StockNavNode } from '~/utils/stock-page-nav'
@@ -33,7 +34,8 @@ useHubPageSeo({
 // 側欄跟個股頁同一個元件（StockPageNavList，2026-10-18「抽出共用元件重複使用」）：指標速覽固定在最上面，九個面向可以拖曳排序，順序存在
 // 這個瀏覽器（useEtfFacetOrder，速覽首頁的卡片也照這個順序）。兩份副本（手機底部、桌機側欄）同個股頁的理由
 const { facets, move } = useEtfFacetOrder()
-const overviewNodes: StockNavNode[] = [{ label: '指標速覽', to: () => etfPath(code.value) }]
+// 圖示同個股頁的指標速覽（2026-10-21，「樣式全站沒有統一嗎」）：同一個用途的列長一樣
+const overviewNodes: StockNavNode[] = [{ label: '指標速覽', icon: Odometer, to: () => etfPath(code.value) }]
 const facetNodes = computed<StockNavNode[]>(() => facets.value.map(facet => ({ label: facet.label, to: () => etfFacetPath(code.value, facet.key) })))
 const navLabel = computed(() => `${shortName.value} ${code.value}`)
 
