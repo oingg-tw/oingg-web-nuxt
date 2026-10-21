@@ -15,7 +15,8 @@ export interface MetricProvenanceEntry {
   // bigint-serialized strings (raw statement figures, e.g. "706561938"), but chowderNumber's
   // cash-dividend-yield "market snapshot" entry comes back as a plain float (0.92) instead.
   // Never assume string; formatProvenanceValue() in the consuming component checks the type.
-  value: string | number
+  // null：那一期的財報沒有這個科目、或由它算出來的平均（2026-10-21 實測 6741 的存貨與應付帳款）
+  value: string | number | null
   type: 'statementField' | 'other'
   // Only present on `type: 'statementField'` — fieldKey exact-matches
   // GET /stocks/:symbol/financial-statement's own keys (analysis-ts's own guarantee, cross-
