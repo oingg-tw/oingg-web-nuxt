@@ -253,6 +253,29 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   }
 }
 
+// ── 3b2. 英文搜尋（2026-10-21，使用者：「新增欄位彈窗 希望用英文也可以搜尋 比如用PBR 可以撈出 淨值比 河道 位置」）：衍生指標繼承
+// 母指標的縮寫（pbRatio 的 PBR → pbRatioRiverBand）；虛詞不算，搜 PER 不會撈出「… Per Share」 ───────────────────────────
+{
+  await page.locator('.screener-filters__add-slot').first().click()
+  const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+  if (picker.ok) {
+    const search = page.locator('.condition-panel .indicator-dialog__search input')
+    const found = async (query) => {
+      await search.fill(query)
+      await page.waitForTimeout(500)
+      return (await page.locator('.condition-panel .indicator-dialog__metric').allTextContents()).map(text => text.trim())
+    }
+    const pbr = await found('PBR')
+    expect('英文搜尋', 'PBR 找得到淨值比河道位置', pbr.includes('淨值比河道位置') && pbr.some(name => name.endsWith('股價淨值比')), pbr.join('、'))
+    const per = await found('PER')
+    expect('英文搜尋', 'PER 只找到本益比那一組', per.includes('本益比河道位置') && !per.some(name => name.startsWith('每股')), per.join('、'))
+    const psr = await found('PSR')
+    expect('英文搜尋', 'PSR 用代碼找得到股價營收比', psr.includes('股價營收比') && psr.includes('股價營收比河道位置'), psr.join('、'))
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(800)
+  }
+}
+
 // ── 3c. 市場別（2026-10-21，使用者：「選擇篩選指標 要加上上市興櫃的市場別」）：第一支值是字串代碼的類別型條件（sii／otc／rotc，
 // analysis-ts 95995ae7、業務中台 2439873），河道位置的值是整數 ─────────────────────────────────────────────
 {

@@ -236,9 +236,29 @@ function metricMatchesQuery(metric: Metric, query: string): boolean {
   // metricDisplayName 而不是 metric.name（2026-09-28）：畫面上的標題是「交易所 本益比」，但比對只看
   // `name`，所以搜「交易所」「即時」一筆都搜不到——使用者搜的是他看得到的字。六組同名指標（本益比、
   // 股價淨值比、市值、葛拉漢倍數、本益成長比、盈餘收益率）全都只靠後綴分辨。
-  return metricDisplayName(metric).toLowerCase().includes(query)
-    || (metric.nameEn?.toLowerCase().includes(query) ?? false)
-    || metric.fields.some(field => fieldMatchesQuery(metricDisplayName(metric), field, query))
+  return metricNameMatches(metric, query) || metric.fields.some(field => fieldMatchesQuery(metricDisplayName(metric), field, query))
+}
+
+// 指標本身的名稱：畫面上的中文、英文名、代碼，以及母指標的這些（2026-10-21，使用者：「新增欄位彈窗 希望用英文也可以搜尋 比如用PBR
+// 可以撈出 淨值比 河道 位置」）。衍生指標的代碼是母指標的代碼加後綴（pbRatio → pbRatioRiverBand、psr → psrRiverBand、eps →
+// epsGrowthRate），它自己的英文名不一定帶那個縮寫（淨值比河道位置是「P/B River Band」），從型錄找母指標，不另外維護別名表。
+// 代碼只比對整個相同（股價營收比沒有英文名、代碼是 psr），不比對片段——operatingIncomePerShare 裡面也有 per
+const allMetrics = computed(() => props.categories.flatMap(category => category.metrics))
+function metricNameMatches(metric: Metric, query: string): boolean {
+  const own = (target: Metric) => target.key.toLowerCase() === query || (target.nameEn ? nameEnMatches(target.nameEn, query) : false)
+  if (metricDisplayName(metric).toLowerCase().includes(query) || own(metric)) return true
+  return allMetrics.value.some(base => base.key !== metric.key && metric.key.startsWith(base.key) && /[A-Z]/.test(metric.key[base.key.length] ?? '') && own(base))
+}
+
+// 英文名：一個字的查詢比對每個字的開頭，虛詞（per、to、of…，不分大小寫）不算，全大寫的縮寫照算——否則搜「PER」會撈出 30 幾支
+//「… Per Share」，本益比的縮寫才是 PER（2026-10-21 實測）。帶空白或符號的查詢（P/B、gross margin）照舊比對整串
+const NAME_EN_FUNCTION_WORDS = new Set(['per', 'to', 'of', 'and', 'in', 'on', 'from', 'vs', 's'])
+function nameEnMatches(nameEn: string, query: string): boolean {
+  if (/[^a-z0-9]/.test(query)) return nameEn.toLowerCase().includes(query)
+  return nameEn.split(/[^A-Za-z0-9]+/).some((word) => {
+    const acronym = word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word)
+    return (acronym || !NAME_EN_FUNCTION_WORDS.has(word.toLowerCase())) && word.toLowerCase().startsWith(query)
+  })
 }
 
 // Metrics (中分類), flattened across every category — mirrors how the field list below
@@ -267,8 +287,8 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     // instead, silently inconsistent with each other).
     return sortedCategories.value.flatMap(category => bySort(category.metrics)).flatMap(metric => {
       // 英文縮寫也算（2026-10-20）：搜「ROE」原本只在中欄找到指標，右欄卻是空的、沒有東西可以點
-      const metricNameMatches = metricDisplayName(metric).toLowerCase().includes(query) || (metric.nameEn?.toLowerCase().includes(query) ?? false)
-      const matchingFields = bySort(metric.fields.filter(field => metricNameMatches || fieldMatchesQuery(metricDisplayName(metric), field, query)))
+      const nameMatches = metricNameMatches(metric, query)
+      const matchingFields = bySort(metric.fields.filter(field => nameMatches || fieldMatchesQuery(metricDisplayName(metric), field, query)))
       return entriesOf(matchingFields, metric.key, metricDisplayName(metric))
     })
   }
