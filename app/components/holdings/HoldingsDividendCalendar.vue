@@ -47,7 +47,7 @@ function openDetail(day: string) {
 
 <template>
   <div class="holdings-dividend-calendar">
-    <el-calendar v-model="month">
+    <el-calendar v-model="month" :class="{ 'app-calendar--weekdays': !hasWeekendDate(Object.keys(itemsByDay)) }">
       <!-- 有事件的格子是按鈕（點了看明細），沒有的是 div。aria-label 寫出日期與每一件事，螢幕閱讀器不必打開對話框。
            手機只放筆數：375px 的格子約 45px 寬，名稱放不下；768px 起才顯示名稱 -->
       <template #date-cell="{ data }">

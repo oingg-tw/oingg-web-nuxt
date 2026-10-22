@@ -154,7 +154,7 @@ function detailMeta(event: DividendCalendarEvent): string[] {
       :title="`${monthKey} 的除權息紀錄不完整：完整的全市場紀錄自 ${COVERAGE_FROM} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。`"
     />
 
-    <el-calendar v-model="selectedMonth" v-loading="pending">
+    <el-calendar v-model="selectedMonth" v-loading="pending" :class="{ 'app-calendar--weekdays': !hasWeekendDate(events.map(event => event.exDate)) }">
       <!-- 有事件的日子是真的 <button>（2026-10-08；原本是 click-div，鍵盤到不了），沒事件的日子維持 <div>——42 顆 disabled 按鈕
            對螢幕閱讀器只是噪音。aria-label 含可見的日號（2.5.3）。手機只放筆數：375px 的格子約 45px 寬，兩顆四位數代號的 chip
            放不下；768px 起才顯示 chip。 -->

@@ -654,6 +654,13 @@ body.has-bottom-nav-bar .load-failure-notice {
   font-variant-numeric: tabular-nums;
 }
 
+/* 配息月曆（/calendar、/holdings/dividends）不畫週六、週日（2026-10-22，使用者：「是不是沒有人六日配息? 那 calendar 能簡化嗎? 爭取手機版本顯示空間」）。
+   2026-10-22 量全市場 2024-01～2026-12 共 8,146 筆：除權息日週末 0 筆（交易日才除權息）；發放日週六 22 筆，全在 2024-02-17（補班日）。
+   所以只在那份資料沒有週末的日子時才加這個 class（hasWeekendDate）；有的話照畫七欄，事件不會被藏掉。el-calendar 第一欄是日、最後一欄是六 */
+.app-calendar--weekdays .el-calendar-table :is(th, td):is(:first-child, :last-child) {
+  display: none;
+}
+
 /* 收起來的 <details>（持股頁的計算方式、各檔數字、逐月報酬、持股特色的計算方式；除權息月覽的每一天）。2026-10-08 起靠原生三角形表示
    可以展開（三處各寫 display:flex 時三角形不見，看起來像普通標題）；2026-10-21 換成自己畫的箭頭（使用者：「計算方式看起來就像是沒設計過」——
    原生的是黑色小三角，大小、顏色都跟站上不搭）：收起來朝右、展開朝下，跟著字的顏色；文字段落的行寬留在好讀的範圍 */

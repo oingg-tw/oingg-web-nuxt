@@ -46,7 +46,9 @@ A site-wide rule for `/stock/[code]` pages is changed in its owner, never page b
 | Footer (sources, links, disclaimer) | `StockPageFooter.vue` (via the shell's required `footer` prop) |
 | Definition section | `StockMetricGuide.vue` |
 | History-table question, label and hidden caption | `historyTableText` |
-| ECharts setup (renderer, a11y label, static legends, theme) | `SharedChart.vue` |
+| ECharts setup (renderer, a11y label, static legends, theme; tooltips close when something covers the page) | `SharedChart.vue` (listens for `hideChartTips()` in `app/utils/chart-palette.ts`, called by `AppBottomNav` and `AppSlideLayer` when they open) |
+| Phone section sheet「其他頁面」(overlay that takes every tap outside it, Esc, Tab out, close on navigation) | `app/components/AppBottomNav.vue` |
+| Dividend calendars drop the 六／日 columns unless that data has a weekend date: /calendar, /holdings/dividends | `.app-calendar--weekdays` in `app/assets/css/main.css` + `hasWeekendDate` in `app/utils/dividend-event.ts` |
 | Screener pages (普通股／特別股／ETF): order, 我的篩選／顯示欄位 dropdowns, condition pills and panel, result table, empty state, new-screen dialogs | `app/components/screener/ScreenerPageShell.vue` |
 | The screen in the URL (bookmark／share: `?f=roe.TTM:15~&c=…&sort=…`; opening it picks the saved screen with the same conditions or opens an unsaved one; the URL follows edits by replace) | format `app/utils/screener-url.ts` (`scripts/check-screener-url.mjs`); screen ⇄ URL `app/composables/screener/useScreenerUrlSync.ts`; opened by the common page and `useUniverseScreener`. Links into a screener (e.g. 除權息月覽) write this format, not their own parameter |
 | Spreadsheet feel (cell selection, keyboard grid, copy as TSV/HTML, column widths and `###`, formula reference colors): /watchlist, /holdings/columns | `app/components/shared/SharedSheetGrid.vue` + `app/utils/sheet-grid.ts` |
