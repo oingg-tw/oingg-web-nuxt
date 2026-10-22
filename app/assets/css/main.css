@@ -563,6 +563,14 @@ body {
   background: var(--el-bg-color);
 }
 
+/* 表格裡沒帶 class 的連結一律是表格連結的樣子（同 .seo-table__link）。原本漏寫 class 的就是瀏覽器預設的藍色（類股排行的類股名稱，
+   2026-10-23 量到）。:where 讓權重最低：帶自己 class 的連結（持股的 .stock-name-link 這類）照它自己的 */
+:where(.seo-table) a {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* 數字欄靠右（2026-10-21，使用者：「CSS要改」）：原本只寫 .seo-table__num，權重輸給上面的 .seo-table td 的 text-align: left，全站數字欄其實都靠左 */
 .seo-table .seo-table__num {
   text-align: right;

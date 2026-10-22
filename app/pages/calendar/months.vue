@@ -137,6 +137,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
               <span class="ex-day__count">{{ day.count }} 檔</span>
               <span class="ex-day__preview">{{ previewOf(day.rows) }}</span>
             </summary>
+            <SharedTableScroll :label="`${dayLabel(day.date)}的除權息`" class="ex-month-table__card">
             <table class="seo-table ex-month-table" data-ssr-table>
               <caption class="visually-hidden">{{ dayLabel(day.date) }}的除權息</caption>
               <thead>
@@ -165,6 +166,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
                 </tr>
               </tbody>
             </table>
+            </SharedTableScroll>
           </details>
         </li>
       </ul>
@@ -292,15 +294,16 @@ html.dark .ex-heat__legend {
 }
 
 /* 每一天一列：上下一條線分開；摘要是 箭頭｜日期｜檔數｜前三檔，名字放不下就省略，窄螢幕換到下一行 */
+/* 分隔線用全站表格那一條淡的（--app-divider，2026-10-23）；展開的那一天是全站表格的卡片（SharedTableScroll） */
 .ex-days {
   margin: 16px 0 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .ex-days > li {
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .ex-day > summary {
@@ -329,8 +332,7 @@ html.dark .ex-heat__legend {
   color: var(--el-text-color-secondary);
 }
 
-.ex-month-table {
-  width: 100%;
+.ex-month-table__card {
   margin: 0 0 12px;
 }
 
@@ -406,7 +408,7 @@ html.dark .ex-heat__legend {
   }
 
   .ex-month-table tbody tr {
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    border-bottom: 1px solid var(--app-divider);
   }
 
   .ex-month-table tbody tr:last-child {
