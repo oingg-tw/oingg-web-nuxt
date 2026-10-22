@@ -483,11 +483,8 @@ function onTableClickCapture(event: MouseEvent) {
 // el-table 的表頭沒有 aria-sort，排序狀態寫在表頭按鈕裡給螢幕閱讀器（SharedSortIcon 是裝飾）
 const sortStateText = (field: string) => (activeSort.value.field === field && activeSort.value.order ? `，${activeSort.value.order === 'ascending' ? '由小到大' : '由大到小'}排序中` : '')
 const menuColumn = computed(() => orderedColumns.value.find(column => column.field === menu.field) ?? null)
+// 選單上面只寫欄名、不放指標說明（2026-10-22，使用者：「篩選 的 表頭選單 移除說明」）
 const menuLabel = computed(() => (menu.field === 'symbol' ? '代號' : menu.field === 'name' ? '名稱' : menuColumn.value ? displayLabel(menuColumn.value) : ''))
-const menuDescription = computed(() => {
-  const located = menu.field ? locateFieldInSchema(props.categories, menu.field) : null
-  return located?.field.description || located?.metric.description || undefined
-})
 const menuSort = computed(() => {
   const sortable = menu.field === 'symbol' || menu.field === 'name' || (!!menuColumn.value && sortableFor(menuColumn.value.field) !== false)
   return sortable ? (activeSort.value.field === menu.field ? activeSort.value.order : null) : undefined
@@ -746,7 +743,6 @@ watch(() => props.loading, (loading, wasLoading) => {
       v-model:open="menu.open"
       :anchor="menu.anchor"
       :label="menuLabel"
-      :description="menuDescription"
       :sort="menuSort"
       :moves="menuMoves"
       :removable="!!menuColumn && !readonly && toolbar"
