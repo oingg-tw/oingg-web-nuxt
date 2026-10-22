@@ -293,11 +293,11 @@ const sizeLetters = computed(() => sizeRevealingLetters(columns.value.map((colum
 // 骨架：同一張 SharedSheetGrid（表頭、列高、框線都一樣），欄是「股票」加上次那麼多欄、只有字母，列是空的
 const skeletonRows = computed(() => Array.from({ length: rowCountHint.value }, (_, index) => ({ symbol: `skeleton-${index}`, name: '', values: {} }) as unknown as ColumnRow))
 const skeletonSheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
-  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: () => '' },
+  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, text: () => '' },
   ...Array.from({ length: columnCountHint.value }, (_, index): SheetColumn<ColumnRow> => ({ key: `skeleton-${index}`, label: columnLetter(index), numeric: true, text: () => '' }))
 ])
 const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
-  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: row => `${row.symbol} ${row.name}` },
+  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, text: row => `${row.symbol} ${row.name}` },
   ...columns.value.map((column, index): SheetColumn<ColumnRow> => {
     const letter = letters.value[index]!
     return {
@@ -502,10 +502,10 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
           :aria-busy="loading"
           :row-key="row => row.symbol"
           label="持股表"
-          storage-key="holdings-columns"
+          fit
           :pointing="!!editingId"
           :highlights="highlights"
-          hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；股票格上按 Enter 進到連結、再按一次開啟個股頁；表頭上按加號、減號調整欄寬，按 0 自動貼合。"
+          hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；股票格上按 Enter 進到連結、再按一次開啟個股頁。"
           @pick="column => !loading && pickColumn(column.key)"
           @header-activate="column => !loading && editColumn(column.key)"
           @edit="(_row, column) => !loading && editColumn(column.key)"

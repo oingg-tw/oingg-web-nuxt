@@ -66,6 +66,9 @@ const props = withDefaults(defineProps<{
   // 點表頭（或在表頭按 Enter）打開欄位選單（SharedColumnMenu：排序、移動、移除），不直接排序（2026-10-22，觀察清單）。
   // 沒開的照舊：點表頭排序，或送 headerActivate（/holdings/columns 改公式）
   columnMenu?: boolean
+  // 欄寬照內容（2026-10-23，使用者：「holdings/columns 手動調整 欄位寬度的功能沒有意義 請fit data width就好」）：表格交給瀏覽器的
+  // 自動版面，每一欄就是表頭與資料最寬的那一格。沒有拖曳把手、沒有 +／−／0、不存寬度，也不會有 ###（永遠放得下）
+  fit?: boolean
 }>(), {
   storageKey: undefined,
   enterAction: 'move',
@@ -73,7 +76,8 @@ const props = withDefaults(defineProps<{
   pointing: false,
   highlights: () => ({}),
   hint: undefined,
-  columnMenu: false
+  columnMenu: false,
+  fit: false
 })
 
 const emit = defineEmits<{
@@ -84,7 +88,7 @@ const emit = defineEmits<{
   reorder: [keys: string[]]
   removeColumn: [key: string]
 }>()
-const hintText = computed(() => props.hint ?? `方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter ${props.columnMenu ? '打開欄位選單（排序、移動、移除）' : '排序'}，按加號、減號調整欄寬，按 0 自動貼合。`)
+const hintText = computed(() => props.hint ?? `方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter ${props.columnMenu ? '打開欄位選單（排序、移動、移除）' : '排序'}${props.fit ? '' : '，按加號、減號調整欄寬，按 0 自動貼合'}。`)
 
 defineSlots<{
   header?: (props: { column: SheetColumn<R>; index: number }) => unknown
@@ -195,6 +199,8 @@ function nudgeWidth(column: SheetColumn<R>, delta: number) {
 }
 
 // ---- 凍結欄 ----
+// ponytail: left 用 widthOf 算；fit 模式的欄寬是瀏覽器排的，只有第一欄（left 0）一定對——fit 目前只給單一凍結欄的表（/holdings/columns），
+// 要多欄凍結再改成量 DOM
 const frozenCount = computed(() => {
   let count = 0
   while (count < props.columns.length && props.columns[count]!.frozen) count++
@@ -209,7 +215,6 @@ const frozenLeft = computed(() => {
   }
   return lefts
 })
-const frozenWidth = computed(() => props.columns.slice(0, frozenCount.value).reduce((sum, column) => sum + widthOf(column), 0))
 
 // ---- 量字（### 與自動貼合）：只在瀏覽器，掛載後才算 ----
 const mounted = ref(false)
@@ -233,7 +238,7 @@ function measureText(text: string, font: string): number {
 }
 const masks = computed(() => {
   const map = new Map<string, string>()
-  if (!mounted.value) return map
+  if (!mounted.value || props.fit) return map
   const sample = root.value?.querySelector('tbody td')
   if (!sample) return map
   const font = fontOf(sample)
@@ -269,7 +274,8 @@ const cellEl = (cell: SheetCell) => root.value?.querySelector<HTMLElement>(`[dat
 function reveal(el: HTMLElement, c: number) {
   const box = scroller.value
   if (!box || c < frozenCount.value) return
-  const left = el.offsetLeft - frozenWidth.value
+  // 凍結欄量畫面上的寬（fit 模式的欄寬是瀏覽器排的，widthOf 只是估計）
+  const left = el.offsetLeft - headerCells.value.slice(0, frozenCount.value).reduce((sum, cell) => sum + cell.offsetWidth, 0)
   const right = el.offsetLeft + el.offsetWidth - box.clientWidth
   if (box.scrollLeft > left) box.scrollLeft = left
   else if (box.scrollLeft < right) box.scrollLeft = right
@@ -361,7 +367,8 @@ function onHeaderKey(event: KeyboardEvent, ctrl: boolean): boolean {
     headerAction(column)
     return true
   }
-  // 鍵盤調欄寬（拖曳的替代，WCAG 2.5.7）：+／− 每次 16 像素，0 自動貼合
+  // 鍵盤調欄寬（拖曳的替代，WCAG 2.5.7）：+／− 每次 16 像素，0 自動貼合。fit 模式沒有
+  if (props.fit) return false
   if (!ctrl && (event.key === '+' || event.key === '=')) {
     nudgeWidth(column, 16)
     return true
@@ -681,8 +688,8 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
     <!-- 卡片是全站表格的那一張（SharedTable custom，2026-10-23「試算表也改成只有淡的列線」）：白底、淡的暖色框、圓角 12px -->
     <SharedTable custom class="sheet__card">
       <div ref="scroller" class="sheet__scroll">
-        <table class="sheet__table" role="grid" aria-multiselectable="true" :aria-label="label" :aria-describedby="hintId" :style="{ width: `${tableWidth}px` }">
-          <colgroup>
+        <table class="sheet__table" :class="{ 'sheet__table--fit': fit }" role="grid" aria-multiselectable="true" :aria-label="label" :aria-describedby="hintId" :style="fit ? undefined : { width: `${tableWidth}px` }">
+          <colgroup v-if="!fit">
             <col v-for="column in columns" :key="column.key" :style="{ width: `${widthOf(column)}px` }">
           </colgroup>
           <thead>
@@ -709,6 +716,7 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
                 </span>
                 <!-- 滑鼠用的把手；鍵盤在表頭上按 +／−／0（見 onHeaderKey），所以把手本身不給輔助科技 -->
                 <span
+                  v-if="!fit"
                   class="sheet__resize"
                   aria-hidden="true"
                   @pointerdown="event => startResize(event, column)"
@@ -779,6 +787,11 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
   border-collapse: separate;
   border-spacing: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* fit：欄寬交給瀏覽器照內容排（格子不換行，所以就是最寬那一格） */
+.sheet__table--fit {
+  table-layout: auto;
 }
 
 .sheet__cell {
