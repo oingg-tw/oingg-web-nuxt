@@ -55,23 +55,64 @@ export const APP_FEATURES: AppFeature[] = [
   GURU
 ]
 
+export interface SiteMapLink {
+  label: string
+  to: string
+  // 網站導覽頁每一頁一句「這一頁能做什麼」（給新手，2026-10-22）；頁尾只用名稱
+  description?: string
+  requiresLogin?: boolean
+}
+
 export interface SiteMapGroup {
   label: string
-  links: { label: string; to: string }[]
+  links: SiteMapLink[]
 }
+
+const HOME_LINK: SiteMapLink = { label: '首頁', to: '/', description: '搜尋股票，從這裡進到各個功能' }
+const APPEARANCE_LINK: SiteMapLink = { label: '外觀設定', to: '/appearance', description: '字型大小、深淺色、版面寬度、主題色與漲跌顏色' }
+const PROFILE_LINK: SiteMapLink = { label: '個人資料設定', to: '/profile', description: '帳號與登入方式', requiresLogin: true }
+const ACCESSIBILITY_LINK: SiteMapLink = { label: '無障礙聲明', to: '/accessibility', description: '本站的無障礙規範、檢測方式與回饋管道' }
 
 // 本站相關：頁尾只放這一組（2026-10-22，使用者先要「網站地圖 請在footer也來一份」，看過之後改成「footer 只放 本站相關」「學習 塞進去
 // 網站導覽」）。其餘分組只在網站導覽頁
-export const ABOUT_SITE_LINKS: SiteMapGroup['links'] = [{ label: '首頁', to: '/' }, SITEMAP, { label: '外觀設定', to: '/appearance' }, { label: '個人資料設定', to: '/profile' }, { label: '無障礙聲明', to: '/accessibility' }]
+export const ABOUT_SITE_LINKS: SiteMapLink[] = [HOME_LINK, SITEMAP, APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK]
 
-// 網站地圖：網站導覽頁（/sitemap）畫全部分組，頁尾畫最後的「本站」那組——共用資料不共用元件（兩邊版型不同）。原本兩邊各寫一份，
-// /sitemap 漏了除權息月覽、排行與普通股篩選各列了兩次。網站導覽從每一頁的頁尾連過去，所以每個區塊的入口都要列在這裡，不然那一區
-// 會變孤兒頁（2026-09-22 總經特區、09-23 產業索引就是這樣補上的；那時入口直接放頁尾）
-// 學習排第一（2026-10-22，使用者：「sitemap 學習 順序往上面放」）
+// 網站地圖（網站導覽頁 /sitemap）：用「我想…」分組（2026-10-22，使用者在方案頁選了 B；網站導覽「主要服務 a11y 與新手」——新手不用先知道
+//「篩選」「月覽」是什麼），每一頁一句說明、要登入的標出來。網站導覽從每一頁的頁尾連過去，所以每個區塊的入口都要列在這裡，不然那一區
+// 會變孤兒頁（2026-09-22 總經特區、09-23 產業索引就是這樣補上的；那時入口直接放頁尾）。學習排第一（使用者：「sitemap 學習 順序往上面放」）
 export const SITE_MAP: SiteMapGroup[] = [
-  { label: '學習', links: [{ label: '新手專區', to: '/learn' }, MACRO, GURU, { label: '部落格', to: '/blog' }] },
-  { label: '找股票', links: [{ label: '普通股篩選', to: SCREENER_PATHS.common }, { label: '特別股篩選', to: SCREENER_PATHS.preferred }, { label: 'ETF 篩選', to: SCREENER_PATHS.etf }, RANK, INDUSTRIES] },
-  { label: '配息', links: [CALENDAR, { label: '除權息月覽', to: '/calendar/months' }] },
-  { label: '我的股票', links: [WATCHLIST, HOLDINGS] },
-  { label: '本站', links: ABOUT_SITE_LINKS }
+  {
+    label: '我想學會看這些數字',
+    links: [
+      { label: '新手專區', to: '/learn', description: '用一家真實公司的數字，一步一步看懂從營收到股利的每一個指標' },
+      { ...MACRO, description: '景氣時鐘、股債風險溢酬與市場大事，看大環境走到哪裡' },
+      { ...GURU, description: '知名投資人提出的選股門檻，看一家公司符合哪幾項' },
+      { label: '部落格', to: '/blog', description: '財報指標與殖利率觀念的文章，用真實案例說明' }
+    ]
+  },
+  {
+    label: '我想找符合條件的股票',
+    links: [
+      { label: '普通股篩選', to: SCREENER_PATHS.common, description: '用 ROE、負債比率、殖利率等條件，篩出符合的上市櫃公司' },
+      { label: '特別股篩選', to: SCREENER_PATHS.preferred, description: '比較特別股的股息率、最差殖利率與契約條件' },
+      { label: 'ETF 篩選', to: SCREENER_PATHS.etf, description: '依規模、費用率、配息頻率比較 ETF' },
+      { ...RANK, description: '單一指標由高到低的全市場排行' },
+      { ...INDUSTRIES, description: '證交所各類股的家數、殖利率與公司名單' }
+    ]
+  },
+  {
+    label: '我想知道什麼時候配息',
+    links: [
+      { ...CALENDAR, description: '每一天有哪些股票除權息、哪天發放' },
+      { label: '除權息月覽', to: '/calendar/months', description: '一年裡哪幾個月除權息最多，每個月有哪些標的' }
+    ]
+  },
+  {
+    label: '我想記下自己的股票',
+    links: [
+      { ...WATCHLIST, description: '追蹤關心的股票，欄位自己選', requiresLogin: true },
+      { ...HOLDINGS, description: '記下買賣，看持股、配息、報酬與風險', requiresLogin: true }
+    ]
+  },
+  { label: '我想調整網站或了解本站', links: [APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK, HOME_LINK] }
 ]
