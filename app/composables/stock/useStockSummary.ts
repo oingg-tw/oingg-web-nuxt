@@ -1,3 +1,5 @@
+import type { TradingHalt } from '~/utils/trading-halt'
+
 // GET /stocks/{symbol} — 業務中台's real quote endpoint (confirmed live 2026-09-14 by reading
 // oingg-bff-ts/src/domainBff/stock/stock.openapi.ts directly, after a reported "打2330出404" bug:
 // this composable used to call a `/stocks/{symbol}/summary` path with a combined price/valuation/
@@ -25,12 +27,15 @@ export interface StockSummary {
   symbol: string
   price: StockSummaryPrice | null
   valuation: StockSummaryValuation | null
+  // 停止買賣（2026-10-22 請 業務中台／analysis-ts 在這支帶出，形狀同 GET /stocks 每一列）；沒有停止買賣是 null
+  tradingHalt: TradingHalt | null
 }
 
 interface RawStockQuote {
   symbol: string
   price: { tradeDate: string; close: string | null } | null
   valuation: { tradeDate: string; peRatio: string | null; pbRatio: string | null; dividendYield: string | null } | null
+  tradingHalt?: TradingHalt | null
 }
 
 function toNumber(value: string | null | undefined): number | null {
@@ -67,7 +72,8 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
                 pbRatio: toNumber(raw.valuation.pbRatio),
                 dividendYield: toNumber(raw.valuation.dividendYield)
               }
-            : null
+            : null,
+          tradingHalt: raw.tradingHalt ?? null
         }
       } catch (error) {
         devWarn('stock-summary', `GET /api/cached/stocks/${current} unavailable`, error)

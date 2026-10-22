@@ -47,6 +47,8 @@ const unusualParValue = computed(() => {
   return par != null && par !== 10 ? par : null
 })
 
+const haltText = computed(() => tradingHaltText(props.stock.tradingHalt))
+
 // 加入觀察清單（2026-10-19 多組觀察清單）：星號按下去跳出勾選選單（WatchlistPickerPanel），這張卡就是唯一的負責者——原本 25 個頁面
 // 一路把 isFavorite／toggleFavorite 往下傳，現在卡片自己讀 useStocks。訪客按下去是登入。手機一列、桌機右上角各一顆，各自一個 popover
 const { listsContaining } = useStocks()
@@ -218,6 +220,8 @@ const qrDialogVisible = ref(false)
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>
       </div>
+      <!-- 停止買賣（2026-10-22，使用者：「做吧」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。同興櫃那句的灰字 -->
+      <p v-if="haltText" class="summary-card__halt">{{ haltText }}</p>
     </div>
 
     <!-- 手機的三顆按鈕是卡片的頁尾（2026-10-22，使用者：「summary-card 也一起設計吧」，方案頁選 2B）：沒有框、整排平分、上面一條線，
@@ -470,7 +474,8 @@ html.dark .summary-card__favorite-btn.is-plain {
 
 /* Desktop-only (see the min-width rule below) — at phone width the short name is the whole
    point of the 2026-09-15 "名稱可以用短名嗎" request, so the full legal name stays out of the way. */
-.summary-card__no-quote {
+.summary-card__no-quote,
+.summary-card__halt {
   grid-column: 1 / -1;
   margin: 0;
   font-size: 1rem;
@@ -601,7 +606,8 @@ html.dark .summary-card__favorite-btn.is-plain {
   }
 
   .summary-card__par-value,
-  .summary-card__no-quote {
+  .summary-card__no-quote,
+  .summary-card__halt {
     grid-column: 2;
   }
 
