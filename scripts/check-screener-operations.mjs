@@ -336,6 +336,13 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     [...document.querySelectorAll('.el-table__header th')].findIndex(th => th.querySelector('.cell')?.textContent?.trim().startsWith(text)), label)
   const sortable = page.locator('.el-table__header th.is-sortable')
   expect('排序', '表頭有可排序欄位', await sortable.count() >= 3, `${await sortable.count()} 欄`)
+  // 2026-10-22 起點表頭打開欄位選單（SharedColumnMenu），排序在選單裡選；點表頭本身不排序
+  const sortVia = async (index, direction) => {
+    await page.locator('.el-table__header th').nth(index).locator('.screener-result-table__head').click()
+    const menu = page.locator('.column-menu [role="menu"]')
+    await menu.waitFor({ timeout: 5000 })
+    await menu.getByRole('menuitem', { name: new RegExp(direction) }).click()
+  }
 
   // 後端排序。el-table 的 sort 事件到查詢回來之間有 debounce，所以等的是「列變了」而不是固定秒數。
   const metricColumn = '本益比'
@@ -343,7 +350,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   if (metricIndex >= 0) {
     const before = await rowsSignature(page)
     const postsBefore = upstream.length
-    await page.locator('.el-table__header th').nth(metricIndex).locator('.screener-result-table__column-label').click()
+    await sortVia(metricIndex, '由小到大')
     const changed = await waitForRowsChange(page, before)
     const sent = upstream.length > postsBefore
     const lastStatus = upstream[upstream.length - 1]
@@ -368,8 +375,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       await page.waitForTimeout(500)
     }
     const postsBefore = upstream.length
-    // 點欄名，不點排序箭頭：箭頭 2026-10-15 放大到 24px，點正中間會直接點到「由小到大」那一個，而不是照 sort-orders 輪
-    await page.locator('.el-table__header th').nth(priceIndex).locator('.screener-result-table__column-label').click()
+    await sortVia(priceIndex, '由大到小')
     await page.waitForTimeout(2500)
     const values = await page.evaluate(idx => [...document.querySelectorAll('.el-table__body tbody tr')]
       .map(tr => Number(tr.querySelectorAll('td')[idx]?.textContent?.trim().replaceAll(',', ''))), priceIndex)

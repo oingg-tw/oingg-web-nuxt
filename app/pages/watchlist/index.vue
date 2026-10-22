@@ -106,9 +106,16 @@ const columnLimit = computed(() => {
   return typeof max === 'number' ? { max, what: '觀察清單欄位' } : null
 })
 const defaultDrafts = defaultColumns().map(({ field, label }) => ({ field, label }))
-// 表頭拖曳（SharedSheetGrid）照樣直接換順序
+// 表頭拖曳與表頭的欄位選單（SharedSheetGrid）照樣直接換順序
 function reorderColumns(fields: string[]) {
   columns.value = fields.map(field => columns.value.find(column => column.field === field)!).filter(Boolean)
+}
+// 表頭的欄位選單「移除這一欄」：馬上拿掉、10 秒內可以復原（全站「可以復原的動作不先確認」）
+function removeColumn(field: string) {
+  const previous = columns.value
+  const column = previous.find(item => item.field === field)
+  columns.value = previous.filter(item => item.field !== field)
+  undoToast(`已移除「${column?.label ?? field}」欄`, () => { columns.value = previous }, () => {})
 }
 function saveColumnSettings(drafts: ColumnDraft[], close: () => void) {
   columns.value = drafts.map(draft => columns.value.find(column => column.field === draft.field)
@@ -269,6 +276,7 @@ async function submitNote() {
         :download-name="activeWatchlist?.name ?? '觀察清單'"
         movable
         @reorder="reorderColumns"
+        @remove-column="removeColumn"
       >
         <template #toolbar>
           <!-- 靠右的一組：分享鈕讀到連結狀態後才出現，放在最左邊，出現時欄位設定不會被推動 -->

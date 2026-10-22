@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<{
   // 表頭、卡片上的欄名照畫，名稱與數字是骨架；操作鈕由呼叫端依 slot 的 loading 停用，不能下載
   loading?: boolean
 }>(), { notes: () => ({}), storageKey: 'watchlist', movable: false, actions: false, downloadName: undefined, loading: false })
-const emit = defineEmits<{ reorder: [fields: string[]] }>()
+const emit = defineEmits<{ reorder: [fields: string[]], removeColumn: [field: string] }>()
 defineSlots<{
   toolbar?: () => unknown
   actions?: (props: { row: WatchlistRow; view: 'table' | 'card'; loading: boolean }) => unknown
@@ -70,15 +70,19 @@ const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
   { key: 'code', label: '代號', frozen: true, text: row => row.code, sortValue: row => row.code },
   { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },
   ...props.columns.map((column): SheetColumn<WatchlistRow> => {
+    // 表頭的欄位選單（2026-10-22）：自己的清單（movable）每一欄都能從選單移除；分享頁只能排序
+    const removable = props.movable
     // 複製與下載給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，下載時會被當成公式擋掉（toCsv）
-    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
-    if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
+    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, removable, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
+    if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, removable, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
     const located = locateFieldInSchema(schema.value.categories, column.field)
     const unit = located?.field.unit
     const percent = unit === '%'
     return {
       key: column.field,
       label: column.label,
+      removable,
+      description: located?.field.description || located?.metric.description || undefined,
       numeric: props.rows.some(row => rawNumber(row, column.field) !== null),
       text: row => formatScreenerValue(row.values[column.field]?.value, unit, column.field, located?.metric.options),
       value: (row) => {
@@ -143,8 +147,10 @@ const sortedCards = computed(() => {
       :storage-key="storageKey"
       enter-action="activate"
       :movable="movable"
+      column-menu
       @activate="row => navigateTo(linkOf(row))"
       @reorder="reorderFromSheet"
+      @remove-column="field => emit('removeColumn', field)"
     >
       <template #cell="{ row, column, text }">
         <div v-if="column.key === '__actions'" class="watchlist-row-actions">

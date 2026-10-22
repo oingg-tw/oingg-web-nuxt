@@ -8,7 +8,7 @@
 //   1. 控制項：「我的篩選」「顯示欄位」兩組選單（各有下拉、＋新增、管理）、新增條件、篩選結果標題、念出檔數的 live region
 //   2. 訪客按「＋新增」開登入，不偷建
 //   3. 條件流程：新增條件 → 挑數字欄位 → 下限設成不可能的數 → 0 檔 → 「移除最後一個條件」→ 檔數回來（沒有「搜尋」按鈕，自動查）；
-//      再加一個顯示欄位（表頭多一欄）、點欄名排序（第一列換人）
+//      再加一個顯示欄位（表頭多一欄）、點表頭打開欄位選單排序（第一列換人）
 //   4. 版面：1440 寬沒有橫向捲軸、排序箭頭不是一顆菱形、表格捲動區可聚焦、第一個畫面至少 8 列、沒有一口氣載完；欄位超出時右緣淡出、
 //      第一個畫面就看得到橫向捲軸而且拖得動；往下捲表頭黏在頁首下面。375 寬沒有橫向捲軸、結果是卡片、卡片區不是巢狀捲動
 // 另外 ETF、特別股的個別頁：SSR 就有標題與內容、一圖一表（同個股頁那一條，scripts/page-shape.mjs）、找不到的代號 noindex。
@@ -170,10 +170,11 @@ for (const target of PAGES) {
     if (await settingsDialog.isVisible()) await page.keyboard.press('Escape')
   }
 
-  // ── 3c. 排序：點欄名（第一下照這一欄自己的方向），第一列換人
+  // ── 3c. 排序：點表頭打開欄位選單（2026-10-22），選「由大到小」，第一列換人
   const firstSymbol = () => page.locator('.smt-table-view .el-table__body tbody tr').first().locator('td').first().textContent().then(text => text?.trim() ?? '')
   const symbolBefore = await firstSymbol()
-  await page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label', { hasText: target.sortColumn }).first().click()
+  await page.locator('.smt-table-view .screener-result-table__head', { hasText: target.sortColumn }).first().click()
+  await page.locator('.column-menu [role="menu"]').getByRole('menuitem', { name: /由大到小/ }).click()
   let symbolAfter = symbolBefore
   for (const start = Date.now(); Date.now() - start < 30000; await page.waitForTimeout(300)) {
     symbolAfter = await firstSymbol()
@@ -230,10 +231,11 @@ for (const target of PAGES) {
     const bar = table?.querySelector('.el-table__body-wrapper .el-scrollbar__bar.is-horizontal')
     const barShown = !!bar && getComputedStyle(bar).display !== 'none'
     const thumb = bar?.querySelector('.el-scrollbar__thumb')?.getBoundingClientRect()
-    // 排序箭頭：兩個三角形各是 10px 框的一半（升冪是下半、降冪是上半），可見部分之間要有空隙，不然看起來是一顆菱形
-    const caret = table?.querySelector('th .caret-wrapper')
-    const upBottom = caret?.querySelector('.sort-caret.ascending')?.getBoundingClientRect().bottom ?? 0
-    const downTop = caret?.querySelector('.sort-caret.descending')?.getBoundingClientRect().top ?? 0
+    // 排序箭頭：兩個三角形之間要有空隙，不然看起來是一顆菱形。2026-10-22 起表頭是欄位選單的按鈕，箭頭是裡面的 SharedSortIcon
+    // （el-table 自己的藏起來）；量一欄沒在排序的（排序中只剩一個三角形）
+    const caret = [...(table?.querySelectorAll('th .screener-result-table__head .sort-icon') ?? [])].find(icon => !/is-(ascending|descending)/.test(icon.className))
+    const upBottom = caret?.querySelector('.sort-icon__caret--up')?.getBoundingClientRect().bottom ?? 0
+    const downTop = caret?.querySelector('.sort-icon__caret--down')?.getBoundingClientRect().top ?? 0
     const barTop = barShown ? bar.getBoundingClientRect().top : window.innerHeight
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,

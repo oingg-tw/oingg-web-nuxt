@@ -27,11 +27,16 @@ export interface SheetColumn<Row> {
   // 典型值的樣本字串：自動欄寬把它也算進去。值在瀏覽器才讀到、又比欄名寬的欄（觀察清單的「漲跌」：「—」→「-20.00 (-0.82%)」，
   // 76→174px）不給的話，資料到的那一刻這一欄變寬、右邊每一欄被推走（2026-10-18 全站版面位移量測）。不影響手動拖拉的下限
   widthSample?: string
+  // 欄位選單（columnMenu）裡欄名下面的說明（型錄的指標說明）
+  description?: string
+  // 欄位選單裡有「移除這一欄」（送 removeColumn）
+  removable?: boolean
 }
 </script>
 
 <script setup lang="ts" generic="R">
 import type { SheetCell, SheetDirection } from '~/utils/sheet-grid'
+import type { ColumnMenuAction } from './SharedColumnMenu.vue'
 // 試算表手感的表格（2026-10-17）。使用者：照 conductor 的研究文件「將 Excel 桌面級操作手感遷移至 Web 端」做一個元件，先套在
 // /holdings/columns 與 /watchlist；選了框選與複製、鍵盤導航、欄寬調整、公式參照上色，點格子是選取。RevoGrid 試驗沒過（axe 嚴重違規、
 // Tab 進來沒有格子得到焦點、框選跨不過凍結欄、免費版有署名）之後使用者選了自己做。兩頁都在兩百列以內，原生 <table> 就夠，
@@ -58,13 +63,17 @@ const props = withDefaults(defineProps<{
   highlights?: Record<string, string>
   // 給螢幕報讀的操作說明（表格的 aria-describedby）；頁面的表頭不是排序時要換掉
   hint?: string
+  // 點表頭（或在表頭按 Enter）打開欄位選單（SharedColumnMenu：排序、移動、移除），不直接排序（2026-10-22，觀察清單）。
+  // 沒開的照舊：點表頭排序，或送 headerActivate（/holdings/columns 改公式）
+  columnMenu?: boolean
 }>(), {
   storageKey: undefined,
   enterAction: 'move',
   movable: false,
   pointing: false,
   highlights: () => ({}),
-  hint: '方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter 排序，按加號、減號調整欄寬，按 0 自動貼合。'
+  hint: undefined,
+  columnMenu: false
 })
 
 const emit = defineEmits<{
@@ -73,7 +82,9 @@ const emit = defineEmits<{
   pick: [column: SheetColumn<R>]
   headerActivate: [column: SheetColumn<R>]
   reorder: [keys: string[]]
+  removeColumn: [key: string]
 }>()
+const hintText = computed(() => props.hint ?? `方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter ${props.columnMenu ? '打開欄位選單（排序、移動、移除）' : '排序'}，按加號、減號調整欄寬，按 0 自動貼合。`)
 
 defineSlots<{
   header?: (props: { column: SheetColumn<R>; index: number }) => unknown
@@ -529,8 +540,58 @@ onUnmounted(() => {
 })
 
 function headerAction(column: SheetColumn<R>) {
+  if (props.columnMenu && column.copyable !== false) return openMenu(column)
   if (column.sortValue) toggleSort(column)
   else emit('headerActivate', column)
+}
+
+// ---- 表頭的欄位選單（columnMenu）：選單貼在表頭格旁，排序就是這張表自己的排序；移動照拖表頭那一條送 reorder ----
+const menu = reactive<{ open: boolean, key: string | null }>({ open: false, key: null })
+const menuIndex = computed(() => props.columns.findIndex(column => column.key === menu.key))
+const menuColumn = computed(() => props.columns[menuIndex.value] ?? null)
+const menuAnchor = computed(() => (menuIndex.value >= 0 ? headerCells.value[menuIndex.value] ?? null : null))
+// 能移動的範圍：凍結欄之後、不複製的那幾欄（操作欄）之外
+const movableRange = computed(() => {
+  const indexes = props.columns.flatMap((column, index) => (index >= frozenCount.value && column.copyable !== false ? [index] : []))
+  return { first: indexes[0] ?? -1, last: indexes.at(-1) ?? -1 }
+})
+const menuSort = computed(() => (menuColumn.value?.sortValue ? (sort.value?.key === menu.key ? sort.value.order : null) : undefined))
+const menuMoves = computed(() => {
+  const index = menuIndex.value
+  if (!props.movable || index < frozenCount.value || menuColumn.value?.copyable === false) return undefined
+  return { left: index > movableRange.value.first, right: index < movableRange.value.last }
+})
+function openMenu(column: SheetColumn<R>) {
+  // 開在這一欄時再按一次是關；換一欄要先關再開，焦點才會進到新的選單
+  const wasOpenHere = menu.open && menu.key === column.key
+  menu.open = false
+  if (wasOpenHere) return
+  nextTick(() => {
+    menu.key = column.key
+    menu.open = true
+  })
+}
+function onColumnMenu(action: ColumnMenuAction) {
+  const column = menuColumn.value
+  if (!column) return
+  if (action === 'ascending' || action === 'descending' || action === 'clear') {
+    sort.value = action === 'clear' ? null : { key: column.key, order: action }
+    copied.value = null
+    announce(sort.value ? `依${column.label}${action === 'ascending' ? '由小到大' : '由大到小'}排序` : `取消${column.label}的排序`)
+    return
+  }
+  if (action === 'remove') return emit('removeColumn', column.key)
+  const index = menuIndex.value
+  const { first, last } = movableRange.value
+  const target = action === 'left' ? index - 1 : action === 'right' ? index + 1 : action === 'start' ? first : last
+  if (target === index || target < first || target > last) return
+  const keys = props.columns.map(item => item.key)
+  keys.splice(index, 1)
+  keys.splice(target, 0, column.key)
+  emit('reorder', keys)
+  announce(`${column.label}移到第 ${target + 1} 欄`)
+  // 表頭格跟著欄搬了位置：作用中的格子與焦點跟過去
+  nextTick(() => setActive({ r: -1, c: target }))
 }
 function onClick(event: MouseEvent) {
   if (props.pointing) return
@@ -629,6 +690,8 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
               scope="col"
               role="columnheader"
               :aria-sort="ariaSort(column)"
+              :aria-haspopup="columnMenu && column.copyable !== false ? 'menu' : undefined"
+              :aria-expanded="columnMenu && column.copyable !== false ? menu.open && menu.key === column.key : undefined"
               :tabindex="active.r === -1 && active.c === c ? 0 : -1"
               :data-r="-1"
               :data-c="c"
@@ -675,7 +738,18 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
         </tbody>
       </table>
     </div>
-    <p :id="hintId" class="visually-hidden">{{ hint }}</p>
+    <p :id="hintId" class="visually-hidden">{{ hintText }}</p>
+    <SharedColumnMenu
+      v-if="columnMenu"
+      v-model:open="menu.open"
+      :anchor="menuAnchor"
+      :label="menuColumn?.label ?? ''"
+      :description="menuColumn?.description"
+      :sort="menuSort"
+      :moves="menuMoves"
+      :removable="!!menuColumn?.removable && menuIndex >= frozenCount"
+      @action="onColumnMenu"
+    />
     <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
   </div>
 </template>

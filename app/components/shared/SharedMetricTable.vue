@@ -4,6 +4,7 @@ import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { ColumnDraft } from './SharedColumnSettings.vue'
+import type { ColumnMenuAction } from './SharedColumnMenu.vue'
 // 篩選器結果表，2026-10-06 搬到 shared 讓觀察清單共用（「這個 table 請抽成共用元件」，使用者選「跟篩選器
 // 共用一個表格」）。下面標「共用時加的」那幾個 prop 的預設值都是篩選器原本的行為，篩選器不用改任何呼叫。
 export interface ScreenerResultTableColumn {
@@ -450,12 +451,101 @@ const columnSettingsOpen = ref(false)
 // 這張表保留自己的拖曳順序、不跟父層換順序（見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
 function saveFromSettings(columns: ColumnDraft[], close: () => void) {
   emit('saveColumns', columns, (apply = true) => {
-    if (apply) {
-      orderedColumns.value = columns.map(draft => orderedColumns.value.find(column => column.field === draft.field) ?? { field: draft.field, label: draft.label })
-      tableKey.value++
-    }
+    if (apply) applyLocalOrder(columns)
     close()
   })
+}
+function applyLocalOrder(columns: ColumnDraft[]) {
+  orderedColumns.value = columns.map(draft => orderedColumns.value.find(column => column.field === draft.field) ?? { field: draft.field, label: draft.label })
+  tableKey.value++
+}
+
+// ---- 表頭的欄位選單（SharedColumnMenu，2026-10-22）：點表頭打開，不直接排序 ----
+// 表頭格裡任何地方點到都算（按鈕蓋不滿整格，格子的留白也要），在 el-table 自己的表頭點擊（會直接排序）之前就攔下來；
+// 鍵盤在表頭按鈕上按 Enter／空白鍵也是一個 click。「＋ 新增欄位」那一欄沒有表頭按鈕，照舊
+const menu = reactive<{ open: boolean, field: string | null, anchor: HTMLElement | null }>({ open: false, field: null, anchor: null })
+const menuStatus = ref('')
+function onTableClickCapture(event: MouseEvent) {
+  const head = (event.target as HTMLElement).closest('th')?.querySelector<HTMLElement>('.screener-result-table__head')
+  if (!head) return
+  event.stopPropagation()
+  const field = head.dataset.field!
+  // 開在這一欄時再點一下是關；換一欄要先關再開，焦點才會進到新的選單
+  const wasOpenHere = menu.open && menu.field === field
+  menu.open = false
+  if (wasOpenHere) return
+  nextTick(() => {
+    menu.field = field
+    menu.anchor = head
+    menu.open = true
+  })
+}
+// el-table 的表頭沒有 aria-sort，排序狀態寫在表頭按鈕裡給螢幕閱讀器（SharedSortIcon 是裝飾）
+const sortStateText = (field: string) => (activeSort.value.field === field && activeSort.value.order ? `，${activeSort.value.order === 'ascending' ? '由小到大' : '由大到小'}排序中` : '')
+const menuColumn = computed(() => orderedColumns.value.find(column => column.field === menu.field) ?? null)
+const menuLabel = computed(() => (menu.field === 'symbol' ? '代號' : menu.field === 'name' ? '名稱' : menuColumn.value ? displayLabel(menuColumn.value) : ''))
+const menuDescription = computed(() => {
+  const located = menu.field ? locateFieldInSchema(props.categories, menu.field) : null
+  return located?.field.description || located?.metric.description || undefined
+})
+const menuSort = computed(() => {
+  const sortable = menu.field === 'symbol' || menu.field === 'name' || (!!menuColumn.value && sortableFor(menuColumn.value.field) !== false)
+  return sortable ? (activeSort.value.field === menu.field ? activeSort.value.order : null) : undefined
+})
+const menuMoves = computed(() => {
+  if (!menuColumn.value || props.readonly) return undefined
+  const index = orderedColumns.value.indexOf(menuColumn.value)
+  return { left: index > 0, right: index < orderedColumns.value.length - 1 }
+})
+// 整表重掛（tableKey）之後，el-table 要再畫一兩個畫面表頭才出來：等到那一欄的按鈕出現再放焦點，最多等十個畫面
+function focusHead(field: string, tries = 10) {
+  requestAnimationFrame(() => {
+    const head = (tableRef.value?.$el as HTMLElement | undefined)?.querySelector<HTMLElement>(`.screener-result-table__head[data-field="${field}"]`)
+    if (head?.isConnected) head.focus()
+    else if (tries > 0) focusHead(field, tries - 1)
+  })
+}
+
+function onColumnMenu(action: ColumnMenuAction) {
+  const field = menu.field
+  if (!field) return
+  if (action === 'ascending' || action === 'descending') {
+    applySort(field, action)
+    menuStatus.value = `依「${menuLabel.value}」${action === 'ascending' ? '由小到大' : '由大到小'}排序`
+    return
+  }
+  if (action === 'clear') {
+    applySort(null, null)
+    menuStatus.value = '取消排序'
+    return
+  }
+  const columns = orderedColumns.value
+  const index = columns.findIndex(column => column.field === field)
+  if (index < 0) return
+  if (action === 'remove') return removeFromMenu(columns[index]!)
+  const target = action === 'left' ? index - 1 : action === 'right' ? index + 1 : action === 'start' ? 0 : columns.length - 1
+  if (target === index || target < 0 || target >= columns.length) return
+  const next = [...columns]
+  const [moved] = next.splice(index, 1)
+  next.splice(target, 0, moved!)
+  orderedColumns.value = next
+  tableKey.value++
+  emit('reorder', next.map(column => column.field))
+  menuStatus.value = `「${menuLabel.value}」移到第 ${target + 1} 欄`
+  // 整表重掛換掉了表頭按鈕：焦點放回搬過去的那一欄
+  focusHead(field)
+}
+
+// 移除這一欄：馬上拿掉、10 秒內可以復原（全站「可以復原的動作不先確認」；選單不是對話框，復原提示按得到）。整份欄位交給父層，
+// 跟欄位設定彈窗同一條路（saveColumns）
+function removeFromMenu(column: ScreenerResultTableColumn) {
+  const previous = orderedColumns.value.map(({ field, label }) => ({ field, label }))
+  const next = previous.filter(item => item.field !== column.field)
+  const label = displayLabel(column)
+  emit('saveColumns', next, apply => { if (apply !== false) applyLocalOrder(next) })
+  undoToast(`已移除「${label}」欄`, () => {
+    emit('saveColumns', previous, apply => { if (apply !== false) applyLocalOrder(previous) })
+  }, () => {})
 }
 
 // ---- 無限捲動：哨兵（表格 #append 那一列、卡片清單最後）進到畫面附近就載下一批 ----
@@ -534,7 +624,8 @@ watch(() => props.loading, (loading, wasLoading) => {
 
     <!-- 窄的時候是卡片（cards），寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
          渲染時用寬度選標記）。卡片沿用同一組 #name／#cell／#actions slot。 -->
-    <div v-loading="loading" class="smt-table-view">
+    <!-- click.capture：表頭點擊在 el-table 自己排序之前攔下來，改成打開欄位選單（onTableClickCapture） -->
+    <div v-loading="loading" class="smt-table-view" @click.capture="onTableClickCapture">
     <el-table
       :key="tableKey"
       ref="tableRef"
@@ -551,7 +642,13 @@ watch(() => props.loading, (loading, wasLoading) => {
       <!-- Real backend sort (see handleSortChange) — sortable="custom" so el-table only
            reports the click instead of trying to reorder `rows` itself, which is already in
            whatever order the server returned it in. -->
-      <el-table-column prop="symbol" label="代號" width="90" fixed :sortable="sortMode === 'client' ? true : 'custom'" />
+      <el-table-column prop="symbol" label="代號" width="90" fixed :sortable="sortMode === 'client' ? true : 'custom'">
+        <template #header>
+          <button type="button" class="screener-result-table__head screener-result-table__head--start" data-field="symbol" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === 'symbol'">
+            <span class="screener-result-table__column-label">代號</span><SharedSortIcon :state="activeSort.field === 'symbol' ? activeSort.order : null" /><span class="visually-hidden">{{ sortStateText('symbol') }}</span>
+          </button>
+        </template>
+      </el-table-column>
       <!-- Plain sortable: not backend-sortable (see handleSortChange's comment), so this is
            a genuine, working client-side sort of whichever page is currently loaded —
            el-table handles it entirely on its own, no comparator needed here. -->
@@ -561,6 +658,11 @@ watch(() => props.loading, (loading, wasLoading) => {
            (same /stock/{code} path the parent's own row-click handler already navigates to,
            see screener.vue). -->
       <el-table-column prop="name" label="名稱" :width="nameWidth" fixed sortable>
+        <template #header>
+          <button type="button" class="screener-result-table__head screener-result-table__head--start" data-field="name" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === 'name'">
+            <span class="screener-result-table__column-label">名稱</span><SharedSortIcon :state="activeSort.field === 'name' ? activeSort.order : null" /><span class="visually-hidden">{{ sortStateText('name') }}</span>
+          </button>
+        </template>
         <template #default="{ row }">
           <!-- 共用時加的 #name：觀察清單要放 ETF／特別股標籤與備註、連結也依種類不同 -->
           <slot name="name" :row="row">
@@ -590,13 +692,11 @@ watch(() => props.loading, (loading, wasLoading) => {
         :label-class-name="headerClassFor(column, index)"
       >
         <template #header>
-          <!-- Two separate flex children (not one wrapping span) so el-table's own sort
-               caret — which it appends as a sibling AFTER whatever this slot renders, not
-               inside it — can be visually reordered via CSS order (see
-               .screener-result-table__draggable-header .cell below). Sort caret leads, then
-               the label text. 表頭沒有移除鈕（2026-10-21，使用者：「screener 表頭移除直接按下X刪除的功能」）：
-               移除欄位只在「欄位設定」面板裡，點表頭只會排序。 -->
-          <span class="screener-result-table__column-label">{{ displayLabel(column) }}</span>
+          <!-- 點表頭打開欄位選單（2026-10-22，SharedColumnMenu）：排序、移動、移除都在選單裡；表頭上沒有直接刪除的 X
+               （2026-10-21 使用者拿掉的，一按就刪）。排序的箭頭是 SharedSortIcon，el-table 自己的箭頭藏起來（見 CSS） -->
+          <button type="button" class="screener-result-table__head" :data-field="column.field" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === column.field">
+            <SharedSortIcon :state="activeSort.field === column.field ? activeSort.order : null" /><span class="screener-result-table__column-label">{{ displayLabel(column) }}</span><span class="visually-hidden">{{ sortStateText(column.field) }}</span>
+          </button>
         </template>
         <template #default="{ row }">
           <!-- 共用時加的 #cell：觀察清單的「漲跌」「下次除權息」是自己算的欄位，要自己畫 -->
@@ -642,6 +742,17 @@ watch(() => props.loading, (loading, wasLoading) => {
         </p>
       </template>
     </el-table>
+    <SharedColumnMenu
+      v-model:open="menu.open"
+      :anchor="menu.anchor"
+      :label="menuLabel"
+      :description="menuDescription"
+      :sort="menuSort"
+      :moves="menuMoves"
+      :removable="!!menuColumn && !readonly && toolbar"
+      @action="onColumnMenu"
+    />
+    <p class="visually-hidden" role="status">{{ menuStatus }}</p>
     </div>
 
     <div v-if="cards" v-loading="loading" class="smt-cards-view">
@@ -999,17 +1110,52 @@ watch(() => props.loading, (loading, wasLoading) => {
   gap: 4px;
 }
 
-/* 不能被壓扁：欄寬不夠時 flex 會把沒有內容寬度的箭頭框壓成 0，三角形（絕對定位）就疊到欄名上（2026-10-15 量到） */
-.screener-result-table :deep(th.screener-result-table__draggable-header .caret-wrapper) {
-  order: 0;
-  flex-shrink: 0;
+/* 表頭是打開欄位選單的按鈕（2026-10-22）：el-table 自己的排序箭頭藏起來，排序狀態畫在按鈕裡（SharedSortIcon，同自己畫表頭的表格）。
+   按鈕蓋滿格子的寬：點哪裡都是這顆（留白的點擊另由 onTableClickCapture 接住） */
+.screener-result-table :deep(th:has(.screener-result-table__head) .caret-wrapper) {
+  display: none;
+}
+
+.screener-result-table :deep(th:has(.screener-result-table__head) .cell) {
+  padding: 0 4px;
+}
+
+.screener-result-table__head {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 4px;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-align: right;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.screener-result-table__head--start {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.screener-result-table__head:hover {
+  color: var(--el-color-primary-dark-2);
+}
+
+.screener-result-table__head:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
 }
 
 .screener-result-table__column-label {
-  order: 1;
   min-width: 0;
   overflow-wrap: anywhere;
-  text-align: right;
 }
 
 .screener-result-table__cell {
