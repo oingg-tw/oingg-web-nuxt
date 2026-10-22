@@ -119,8 +119,14 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   // 搜尋時會再試一次，讀取失敗照舊由搜尋那條路報給彈窗
   if (import.meta.client) loadEntries().catch(() => {})
 
+  // 已經持有（2026-10-22，見 screener-tab-model.ts 的 HELD_FIELD_ID）：清單是公開快取、不能混個人資料，所以在這裡用各帳戶持有的代號篩、算欄位
+  const currentUser = useCurrentUser()
+  const held = useHeldSymbols()
+  const categories = computed(() => (currentUser.value ? withHeldCondition(CATEGORIES, held.portfolios.value, snapshotFieldId(HELD_FIELD_ID)) : CATEGORIES))
+
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
+    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => raw ?? '—', sortable: 'client' }
     return {
       field: fieldId,
       label: METRICS.get(field)?.name ?? EXTRA_LABELS[field] ?? field,
@@ -131,8 +137,25 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   }
 
   async function run(query: UniverseQuery): Promise<UniverseResult> {
-    const rows = (await loadEntries()).filter(entry => query.filters.every(filter => matches(entry, filter)))
-    return { rows: rows.map(toRow), total: rows.length, totalPages: 1 }
+    const heldFilter = query.filters.find(filter => filter.field === HELD_FIELD_ID)
+    const wantsHeld = !!heldFilter || query.columns.includes(HELD_FIELD_ID)
+    const [list, portfolios] = await Promise.all([loadEntries(), wantsHeld ? (held.portfolios.value ?? held.load()) : null])
+    const holders = (symbol: string) => (portfolios ?? []).filter(portfolio => portfolio.symbols.includes(symbol))
+    // 包含＝選的帳戶裡任一個有；排除＝選的帳戶都沒有（同 業務中台 對普通股、ETF 的定義）
+    const heldMatch = (symbol: string) => {
+      const hit = holders(symbol).some(portfolio => heldFilter!.values!.map(String).includes(portfolio.portfolioId))
+      return heldFilter!.exclude ? !hit : hit
+    }
+    const rows = list.filter(entry => query.filters.every(filter => (filter === heldFilter ? heldMatch(entry.symbol) : matches(entry, filter))))
+    return {
+      rows: rows.map((entry) => {
+        const row = toRow(entry)
+        if (wantsHeld) row.values[snapshotFieldId(HELD_FIELD_ID)] = { value: holders(entry.symbol).map(portfolio => portfolio.name).join('、') || null, knowledgeDate: '', nullReason: null }
+        return row
+      }),
+      total: rows.length,
+      totalPages: 1
+    }
   }
 
   // 每一檔的股價、殖利率都是同一個交易日的快照，取最新的那天就夠
@@ -141,7 +164,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   return {
     universe: 'preferred',
     allName: '全部特別股',
-    categories: computed(() => CATEGORIES),
+    categories,
     // 表頭不需要等任何資料（欄名寫在 METRICS；2026-10-16 拿掉表頭說明之前要等欄位公式），所以一進來就能建表頭
     ready: computed(() => true),
     defaultColumns: DEFAULT_COLUMNS,

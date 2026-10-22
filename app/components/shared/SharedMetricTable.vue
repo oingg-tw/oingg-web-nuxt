@@ -246,7 +246,8 @@ watch(
 //
 // ponytail: 用前綴判斷而不是查型錄。`stock.` 目前只有 price 一個成員，而這個元件手上沒有型錄可
 // 以查；哪天多一個型錄外的欄位、或者 業務中台 讓股價可以排序，改這一行就好。
-const BACKEND_UNSORTABLE = /^stock\./
+// `holding.`：已經持有的帳戶名稱（2026-10-22，業務中台 不能排序，sortField 給它回 400）
+const BACKEND_UNSORTABLE = /^(stock|holding)\./
 
 // **普通 `sortable` 單獨用是不夠的，必須配 `sort-method`。** el-table 預設拿 `prop` 當物件的鍵去
 // 讀值，而這些動態欄位的值不在 row 的頂層、在 `row.values[field].value`——所以
@@ -325,8 +326,11 @@ const RIVER_TRACK_WIDTH = 60
 function minWidthFor(column: ScreenerResultTableColumn): number {
   if (column.minWidth) return column.minWidth
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
+  const labels = (metric?.options ?? []).map(option => option.label)
+  // 一格可能列好幾個選項（已經持有的帳戶名稱）：照全部串起來估，最多 20 個字
+  const chars = metric?.joinedOptions ? Math.min(20, labels.join('、').length) : Math.max(0, ...labels.map(label => label.length))
   const value = metric?.kind === 'categorical'
-    ? Math.max(0, ...(metric.options ?? []).map(option => option.label.length)) * 16 + (metric.key.endsWith('RiverBand') ? RIVER_TRACK_WIDTH : 0) + 24
+    ? chars * 16 + (metric.key.endsWith('RiverBand') ? RIVER_TRACK_WIDTH : 0) + 24
     : NUMBER_COLUMN_WIDTH
   return Math.max(NUMBER_COLUMN_WIDTH, value, showCellDates.value ? 112 : 0)
 }

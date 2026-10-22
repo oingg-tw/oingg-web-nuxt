@@ -143,15 +143,15 @@ export function useScreenerTabCrud(ctx: {
     if (!tab.unsaved) return
     const name = await promptPresetName('存成我的篩選', tab.name)
     if (!name) return
-    // 類股範圍建立時就帶：只有類股的組合 filters 是空的，不帶的話 業務中台 會自動補「ROE > 30」（見 useScreenerPresets 的 create）
-    const created = await create(ctx.filtersOf(tab), sectorScopeFor(tab))
+    // 類股、已經持有的範圍建立時就帶：只有範圍的組合 filters 是空的，不帶的話 業務中台 會自動補「ROE > 30」（見 useScreenerPresets 的 create）
+    const created = await create(ctx.filtersOf(tab), scopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(lastErrorMessage.value ?? '儲存失敗，請稍後再試')
       return
     }
-    const updated = await update(created.id, { name, ...sectorScopeFor(tab) })
-    if (!updated) showErrorMessage(lastErrorMessage.value ?? `已儲存，但名稱或類股沒有一起存進去`)
+    const updated = await update(created.id, { name, ...scopeFor(tab) })
+    if (!updated) showErrorMessage(lastErrorMessage.value ?? `已儲存，但名稱或範圍（類股、已經持有）沒有一起存進去`)
     const saved = ctx.presetToTab(updated ?? created)
     Object.assign(saved, {
       columnPresetId: tab.columnPresetId ?? saved.columnPresetId,
@@ -178,13 +178,13 @@ export function useScreenerTabCrud(ctx: {
       openLogin()
       return
     }
-    const created = await create(ctx.filtersOf(tab), sectorScopeFor(tab))
+    const created = await create(ctx.filtersOf(tab), scopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
       else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')
       return
     }
-    const updated = await update(created.id, { name: `${tab.name} 的副本`.slice(0, 20), ...sectorScopeFor(tab) })
+    const updated = await update(created.id, { name: `${tab.name} 的副本`.slice(0, 20), ...scopeFor(tab) })
     const copy = registerTab(ctx.presetToTab(updated ?? created))
     copy.columnPresetId = tab.columnPresetId ?? copy.columnPresetId
     await ctx.runSearch(copy)

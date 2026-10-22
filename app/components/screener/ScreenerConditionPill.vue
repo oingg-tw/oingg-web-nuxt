@@ -52,7 +52,7 @@ const metric = computed(() => (props.fieldId ? locateFieldInSchema(props.categor
 const categoricalText = computed(() => {
   const values = props.values ?? []
   if (!values.length) return '選擇項目'
-  const labels = values.map(value => metric.value?.options?.find(option => option.value === value)?.label ?? value)
+  const labels = values.map(value => metric.value?.options?.find(option => option.value === value)?.label ?? metric.value?.missingOptionLabel ?? value)
   const shown = labels.length > 2 ? `${labels.slice(0, 2).join('、')} 等 ${labels.length} 項` : labels.join('、')
   return `${props.exclude ? '排除' : '包含'} ${shown}`
 })

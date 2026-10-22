@@ -18,6 +18,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
+  // 「已經持有」的帳戶（條件選項）
+  const { portfolios: heldPortfolios } = useHeldSymbols()
   const { update, run, runStateless, list, lastErrorMessage, lastError } = useScreenerPresets()
   // 搜尋讀不到（2026-10-11）：交給全站讀取失敗彈窗，重試＝同一個分頁、同一頁再搜一次。4xx（例如條件不合法）是可以
   // 行動的回饋，照舊用提示顯示上游給的理由；「載入更多」失敗也照舊用提示（已載入的列留著）。
@@ -56,9 +58,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // preset/template supplies a fieldId that didn't go through the picker's own handleSelect,
   // which already threads the real label through separately — see its own fieldLabel param).
   function labelForField(fieldId: string): string {
+    // 類股、已經持有不在型錄裡（前端加的條件），從網址或存檔還原時名稱照膠囊原本的寫法
     if (fieldId === SECTOR_FIELD_ID) return '類股'
-    // 類股不在型錄裡（前端加的條件），從網址或存檔還原時名稱照膠囊原本的寫法
-    if (fieldId === SECTOR_FIELD_ID) return '類股'
+    if (isHeldField(fieldId)) return '已經持有'
     if (!schema.value) return fieldId
     for (const category of schema.value.categories) {
       for (const metric of category.metrics) {
@@ -85,12 +87,12 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
 
   // Empty placeholder slots (fieldId still null, waiting on the condition panel's picker)
   // never reach the API — they're not a real criterion yet.
-  // 類股不是指標條件，另外轉成 sectorCodes／excludeSectorCodes（sectorScopeFor）
+  // 類股、已經持有不是指標條件，另外轉成 body 最上層的範圍（scopeFor）
   // 類別型（河道位置，2026-10-21）同特別股／ETF 的 useUniverseScreener.filtersOf：勾了項目才送 values、min／max 一律 null；還沒勾任何
   // 項目的不送（業務中台 對沒有 values 的類別型條件回 400）
   function filtersOfTab(tab: ScreenerTab): FilterCriterion[] {
     return tab.slots.flatMap((slot): FilterCriterion[] => {
-      if (slot.fieldId === null || slot.fieldId === SECTOR_FIELD_ID) return []
+      if (slot.fieldId === null || slot.fieldId === SECTOR_FIELD_ID || isHeldField(slot.fieldId)) return []
       if (slot.values?.length) return [{ field: slot.fieldId, min: null, max: null, exclude: slot.exclude, values: [...slot.values] }]
       if (slot.values !== undefined) return []
       return [{ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude }]
@@ -101,7 +103,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // 白白多一趟往返才開始搜。presetToTab（伺服器的版本，buildSlots 一對一不丟條件）與 PATCH 成功時記下，一樣就不送。用 handleSearch
   // 自己的轉法算，兩邊形狀才一致；composable 重掛時清空，最多多送一次（跟以前一樣）
   const persistedFilterKeys = new Map<string, string>()
-  const filterKeyOf = (tab: ScreenerTab) => JSON.stringify({ filters: filtersOfTab(tab), ...sectorScopeFor(tab) })
+  const filterKeyOf = (tab: ScreenerTab) => JSON.stringify({ filters: filtersOfTab(tab), ...scopeFor(tab) })
 
   function presetToTab(preset: ScreenerPreset): ScreenerTab {
     const slots = buildSlots(preset.filters ?? [])
@@ -109,6 +111,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     // so a preset carrying both is already outside the contract and a silent merge would hide it.
     if (preset.excludeSectorCodes?.length) slots.push(sectorSlot(slots.length, preset.excludeSectorCodes, true))
     else if (preset.sectorCodes?.length) slots.push(sectorSlot(slots.length, preset.sectorCodes, false))
+    if (preset.excludeHeldPortfolioIds?.length) slots.push(heldSlot(slots.length, preset.excludeHeldPortfolioIds, true))
+    else if (preset.heldPortfolioIds?.length) slots.push(heldSlot(slots.length, preset.heldPortfolioIds, false))
     const tab: ScreenerTab = {
       id: preset.id,
       name: preset.name,
@@ -280,10 +284,10 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
     const filters = filtersOfTab(tab)
 
-    // 業務中台 要至少一個條件：數字條件或類股範圍都算（2026-10-19 起只有類股也能查，業務中台 5c3f36b；使用者要「只看某產業」）。
-    // 兩種都沒有就在這裡擋，不白跑一趟拿同一個 400
-    const scope = sectorScopeFor(tab)
-    if (!filters.length && !scope.sectorCodes.length && !scope.excludeSectorCodes.length) {
+    // 業務中台 要至少一個條件：數字條件、類股或已經持有的範圍都算（2026-10-19 起只有類股也能查，業務中台 5c3f36b；使用者要「只看某產業」）。
+    // 都沒有就在這裡擋，不白跑一趟拿同一個 400
+    const scope = scopeFor(tab)
+    if (!filters.length && !Object.values(scope).some(ids => ids.length)) {
       ElMessage.warning('請至少設定一個篩選條件')
       return
     }
@@ -322,7 +326,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
             const result = await runStateless({
               filters,
               ...(columns.length ? { columns } : {}),
-              ...sectorScopeFor(tab),
+              ...scope,
               pagination: { page: targetPage, pageSize: tab.pageSize },
               sort: tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
             })
@@ -350,7 +354,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           if (!isPageChangeOnly) {
             // 伺服器上已經是這一份就不送（見 persistedFilterKeys）；PATCH 失敗不記，下次再送
             const filterKey = filterKeyOf(tab)
-            if (persistedFilterKeys.get(tab.id) !== filterKey && await update(tab.id, { filters, ...sectorScopeFor(tab) })) {
+            if (persistedFilterKeys.get(tab.id) !== filterKey && await update(tab.id, { filters, ...scope })) {
               persistedFilterKeys.set(tab.id, filterKey)
             }
 
@@ -595,7 +599,10 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   })
 
   // ---- ScreenerPageShell 要的形狀（ScreenerWorkspace）----
-  const categories = computed(() => withSectorCondition(schema.value?.categories ?? [], sectors.value))
+  const categories = computed(() => {
+    const base = withSectorCondition(schema.value?.categories ?? [], sectors.value)
+    return currentUser.value ? withHeldCondition(base, heldPortfolios.value) : base
+  })
   const presetItems = computed<PresetSelectItem[]>(() => tabs.value.map(tab => ({
     id: tab.id,
     name: tab.name,

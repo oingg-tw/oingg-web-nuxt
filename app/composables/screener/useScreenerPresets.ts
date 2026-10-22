@@ -16,6 +16,9 @@ export interface ScreenerPreset {
   // 不在前端用「列出其他所有類股」模擬：約 51 家沒有類股分類的公司在排除法下會留下、在反向包含法下會被靜默丟掉
   // （實測 sectorCodes:["24"] 158 ＋ excludeSectorCodes:["24"] 1425 ＝ 全市場）。
   excludeSectorCodes?: string[]
+  // 已經持有（2026-10-22，業務中台 5034637）：帳戶 id，互斥規則同類股。可能含已刪除的帳戶（執行時當成沒持股）
+  heldPortfolioIds?: string[]
+  excludeHeldPortfolioIds?: string[]
   // run 回應裡的 preset 才有（剛建立的沒有，跑過一次才設），等於 run 回應最上層的 columnPresetId
   lastColumnPresetId?: string | null
   createdAt?: string
@@ -74,6 +77,8 @@ export interface StatelessScreenerRunParams {
   sectorCodes?: string[]
   // 見 ScreenerPreset.excludeSectorCodes，互斥規則相同
   excludeSectorCodes?: string[]
+  heldPortfolioIds?: string[]
+  excludeHeldPortfolioIds?: string[]
   pagination?: ScreenerPaginationParams
   sort?: ScreenerSortParams
 }
@@ -89,6 +94,19 @@ interface StatelessScreenerRunApiResponse extends ScreenerPagination {
   columns: ScreenerResultColumn[]
   results: ScreenerResultRow[]
   columnPresetId: string | null
+}
+
+// 放在 body 最上層的範圍（類股、已經持有，見 screener-tab-model.ts 的 scopeFor）
+type PresetScope = Pick<ScreenerPreset, 'sectorCodes' | 'excludeSectorCodes' | 'heldPortfolioIds' | 'excludeHeldPortfolioIds'>
+
+// 建立與無狀態查詢只送非空的那幾個（兩邊都非空 業務中台 回 400）；PATCH 原樣送，空陣列是「清掉」
+function nonEmptyScope(scope: PresetScope): PresetScope {
+  return Object.fromEntries(Object.entries({
+    sectorCodes: scope.sectorCodes,
+    excludeSectorCodes: scope.excludeSectorCodes,
+    heldPortfolioIds: scope.heldPortfolioIds,
+    excludeHeldPortfolioIds: scope.excludeHeldPortfolioIds
+  }).filter(([, codes]) => codes?.length))
 }
 
 // 業務中台 /api-docs 與實際回應確認：POST /screener/presets 回 { preset: {...} }（不是 /watchlist 的 { item }），list() 假設對應的
@@ -126,17 +144,12 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
 
   // 類股範圍建立時就帶（2026-10-19）：filters 是空的又沒帶類股，業務中台 會自動補「ROE > 30」當起點——「只看半導體」先建立再 PATCH
   // 類股，存下來會變成「半導體且 ROE > 30」。空陣列不送（兩邊都非空 業務中台 回 400）
-  async function create(filters: FilterCriterion[], scope: { sectorCodes?: string[]; excludeSectorCodes?: string[] } = {}): Promise<ScreenerPreset | null> {
+  async function create(filters: FilterCriterion[], scope: PresetScope = {}): Promise<ScreenerPreset | null> {
     if (!currentUser.value) return null
     try {
       const response = await authedFetch<{ preset: ScreenerPreset }>('/screener/presets', {
         method: 'POST',
-        body: {
-          universe,
-          filters,
-          ...(scope.sectorCodes?.length ? { sectorCodes: scope.sectorCodes } : {}),
-          ...(scope.excludeSectorCodes?.length ? { excludeSectorCodes: scope.excludeSectorCodes } : {})
-        }
+        body: { universe, filters, ...nonEmptyScope(scope) }
       })
       return response.preset
     } catch (error) {
@@ -147,7 +160,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
 
   async function update(
     id: string,
-    patch: { name?: string; filters?: FilterCriterion[]; sectorCodes?: string[]; excludeSectorCodes?: string[] }
+    patch: { name?: string; filters?: FilterCriterion[] } & PresetScope
   ): Promise<ScreenerPreset | null> {
     if (!currentUser.value) return null
     try {
@@ -173,15 +186,15 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
   }
 
   // 訪客的無狀態執行：不建立任何後端資源。給了 columns 就送 columns、從不送 columnPresetId——訪客沒有自己的 ColumnPreset 可指。
+  // 登入的人（還沒存的那一組）帶身分：「已經持有」的條件與欄位沒登入 業務中台 回 401
   async function runStateless(params: StatelessScreenerRunParams): Promise<StatelessScreenerRunResult | null> {
     try {
-      const response = await apiFetch<StatelessScreenerRunApiResponse>('/screener', {
+      const response = await (currentUser.value ? authedFetch : apiFetch)<StatelessScreenerRunApiResponse>('/screener', {
         method: 'POST',
         body: {
           filters: params.filters,
           ...(params.columns ? { columns: params.columns } : {}),
-          ...(params.sectorCodes?.length ? { sectorCodes: params.sectorCodes } : {}),
-          ...(params.excludeSectorCodes?.length ? { excludeSectorCodes: params.excludeSectorCodes } : {}),
+          ...nonEmptyScope(params),
           ...params.pagination,
           ...(params.sort ? { sortField: params.sort.field, order: params.sort.order } : {})
         }

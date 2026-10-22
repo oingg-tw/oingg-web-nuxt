@@ -132,7 +132,12 @@ export function useEtfSource(): UniverseSource {
 
   const fieldsByKey = computed(() => new Map((catalog.value ?? []).flatMap(category => category.fields).map(field => [field.field, field])))
 
-  const categories = computed(() => (catalog.value ?? []).map((category, index) => snapshotCategory(
+  // 已經持有（2026-10-22，見 screener-tab-model.ts 的 HELD_FIELD_ID）：登入的人才有，查詢要帶身分
+  const currentUser = useCurrentUser()
+  const authedFetch = useAuthedFetch()
+  const { portfolios: heldPortfolios } = useHeldSymbols()
+
+  const catalogCategories = computed(() => (catalog.value ?? []).map((category, index) => snapshotCategory(
     category.categoryKey,
     category.categoryDisplayName,
     index,
@@ -146,9 +151,12 @@ export function useEtfSource(): UniverseSource {
         options: field.values?.map(value => ({ value, label: valueLabel(field.field, value) }))
       }))
   )))
+  const categories = computed(() => (currentUser.value ? withHeldCondition(catalogCategories.value, heldPortfolios.value, snapshotFieldId(HELD_FIELD_ID)) : catalogCategories.value))
 
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
+    // 業務中台 不能排這一欄，只排已載入的列（同普通股）；欄名同普通股的回應
+    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => raw ?? '—', sortable: 'client' }
     const year = EXPENSE_RATIO_YEAR.exec(field)?.[1]
     const meta = fieldsByKey.value.get(field)
     return {
@@ -189,19 +197,23 @@ export function useEtfSource(): UniverseSource {
     // 型錄沒有的欄位不送：業務中台對不認得的欄位整個查詢回 400（例如存起來的欄位組合用到上游已拿掉的欄位，或新欄位還沒上到這個環境）。
     // 濾完一欄都不剩（存了空的欄位組合、或組合裡的欄位上游全拿掉了）就改用預設欄位：沒有條件又沒有欄位，業務中台回 400
     //「"filters" or "columns" must have at least one item」，一進頁面就跳錯誤（2026-10-18）
-    const known = (fields: string[]) => fields.filter(field => !catalog.value || fieldsByKey.value.has(field))
+    const known = (fields: string[]) => fields.filter(field => field === HELD_FIELD_ID || !catalog.value || fieldsByKey.value.has(field))
     const columns = known(query.columns)
     const body: Record<string, unknown> = {
       columns: (columns.length ? columns : known(DEFAULT_COLUMNS.map(snapshotField))).map(field => ({ field })),
       page: query.page,
       pageSize: query.pageSize
     }
-    if (query.filters.length) body.filters = query.filters.map(toEtfFilter)
+    // 已經持有存在篩選組合裡是一個普通的類別條件（ETF 的組合原樣存），送出時拿出來放到 body 最上層
+    const held = query.filters.find(filter => filter.field === HELD_FIELD_ID)
+    const filters = query.filters.filter(filter => filter !== held)
+    if (filters.length) body.filters = filters.map(toEtfFilter)
+    if (held?.values?.length) body[held.exclude ? 'excludeHeldPortfolioIds' : 'heldPortfolioIds'] = held.values.map(String)
     if (query.sort) {
       body.sortField = query.sort.field
       body.order = query.sort.order
     }
-    const response = await apiFetch<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
+    const response = await (currentUser.value ? authedFetch : apiFetch)<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
     return { rows: response.results.map(toRow), total: response.count, totalPages: response.totalPages }
   }
 

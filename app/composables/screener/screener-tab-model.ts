@@ -300,6 +300,52 @@ export function sectorScopeFor(tab: Pick<ScreenerTab, 'slots'>): { sectorCodes: 
   return slot?.exclude ? { sectorCodes: [], excludeSectorCodes: codes } : { sectorCodes: codes, excludeSectorCodes: [] }
 }
 
+// ── 已經持有 ───────────────────────────────────────────────────────────────────
+// 2026-10-22，使用者：「screener 加上一個指標 叫做 已經持有」，選了條件＋欄位、可以選帳戶、三組都要。條件是帳戶的類別型條件（values 是帳戶 id，
+// 包含＝選的帳戶裡任一個有持股、排除＝選的帳戶都沒有），欄位是有這一檔的帳戶名稱。個人資料不在上游型錄，由前端加進挑選面板（withHeldCondition）。
+// 普通股與 ETF 送出時轉成 業務中台 body 最上層的 heldPortfolioIds／excludeHeldPortfolioIds（同類股），特別股在瀏覽器裡篩（usePreferredSource）。
+// ETF、特別股的畫面欄位 id 帶 .snapshot（useUniverseScreener），存進帳號與網址的都是 HELD_FIELD_ID
+export const HELD_FIELD_ID = 'holding.portfolioNames'
+export const isHeldField = (fieldId: string | null): boolean => fieldId === HELD_FIELD_ID || fieldId === `${HELD_FIELD_ID}.snapshot`
+
+export function heldSlot(id: number, ids: string[], exclude: boolean): TabFilterSlot {
+  return { id, fieldId: HELD_FIELD_ID, fieldLabel: '已經持有', min: null, max: null, exclude, values: ids }
+}
+
+export function heldScopeFor(slots: TabFilterSlot[]): { heldPortfolioIds: string[]; excludeHeldPortfolioIds: string[] } {
+  const slot = slots.find(item => isHeldField(item.fieldId))
+  const ids = (slot?.values ?? []).map(String)
+  return slot?.exclude ? { heldPortfolioIds: [], excludeHeldPortfolioIds: ids } : { heldPortfolioIds: ids, excludeHeldPortfolioIds: [] }
+}
+
+// 送出時放在 body 最上層的範圍（類股、已經持有）。四個鍵都給，理由同 sectorScopeFor
+export function scopeFor(tab: Pick<ScreenerTab, 'slots'>) {
+  return { ...sectorScopeFor(tab), ...heldScopeFor(tab.slots) }
+}
+
+// 挑選面板裡的「已經持有」：自成「我的持股」一類放最後（個人資料，不跟財報指標混在一起）。只給登入的人，帳戶讀到了卻一個都沒有就不加。
+// 選項是帳戶；條件裡有、清單裡沒有的 id 是刪掉的帳戶（業務中台 執行時當成沒持股）。欄位的值是好幾個帳戶名稱用「、」串起來（joinedOptions）。
+// fieldId 決定指標與欄位的 key：普通股 holding.portfolioNames，ETF、特別股 holding.portfolioNames.snapshot
+export function withHeldCondition(categories: MetricCategory[], portfolios: { portfolioId: string; name: string }[] | null, fieldId = HELD_FIELD_ID): MetricCategory[] {
+  if (portfolios?.length === 0) return categories
+  const cut = fieldId.lastIndexOf('.')
+  const metric = {
+    key: fieldId.slice(0, cut),
+    name: '已經持有',
+    path: fieldId.slice(0, cut),
+    unit: '',
+    sort: 0,
+    kind: 'categorical' as const,
+    options: (portfolios ?? []).map(portfolio => ({ value: portfolio.portfolioId, label: portfolio.name })),
+    // 帳戶清單還沒讀到時不能說是刪掉的
+    missingOptionLabel: portfolios ? '已刪除的帳戶' : '…',
+    joinedOptions: true,
+    description: '你記錄的持股裡，哪些帳戶有這一檔',
+    fields: [{ key: fieldId.slice(cut + 1), name: '已經持有', period: 'snapshot', unit: '', sort: 0 }]
+  }
+  return [...categories, { key: 'holding', name: '我的持股', sort: Number.MAX_SAFE_INTEGER, metrics: [metric] }]
+}
+
 // 挑選面板裡的「類股」：只能當條件，不能當結果表的欄位（conditionOnly）。放在型錄的「基本資料」裡、市場別後面（2026-10-22，使用者：
 //「為什麼 篩選指標 類股 不放在 基本資料中? 產業不算是基本資料嗎」——原本自成一個分類排最後）；型錄沒有基本資料時才自成一類
 export function withSectorCondition(categories: MetricCategory[], sectors: { code: string; name: string; companyCount: number }[]): MetricCategory[] {
