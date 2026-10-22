@@ -52,7 +52,7 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* 清單的上緣就是跟「我的篩選」之間的那條線。沒有左右內距：外框（ScreenerPageShell 的設定區）已經有 16px。
+/* 清單的上緣就是跟「我的篩選」之間的那條線。沒有左右內距：跟上面「我的篩選」、下面的結果切齊。
    container：欄數看這一塊自己的寬度（側欄、滿版或置中模式都對），不是看視窗 */
 .screener-filters {
   container-type: inline-size;

@@ -279,18 +279,14 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   color: var(--el-text-color-secondary);
 }
 
-/* 設定區一個框：我的篩選＋條件是同一件事（「篩什麼」），跟下面的結果分開。上下排列：我的篩選一列、條件清單在下面（2026-10-19；
-   清單 2026-10-22 方案 B）。container：窄於 720px 時「我的篩選」併成一行（ScreenerPresetSelect 的 compactLabel，同結果區）。
-   不會困住裡面的對話框：container-type 不帶 layout containment，「管理」的遮罩照樣蓋滿畫面 */
+/* 設定區：我的篩選一列、條件清單在下面（2026-10-19；清單 2026-10-22 方案 B）。同日拆掉外面的卡片（使用者：「篩選條件 卡片我想拆掉
+   看看效果」）：直接排在頁面上，跟結果區一樣沒有框。container：窄於 720px 時「我的篩選」併成一行（ScreenerPresetSelect 的
+   compactLabel，同結果區）。不會困住裡面的對話框：container-type 不帶 layout containment，「管理」的遮罩照樣蓋滿畫面 */
 .screener-shell__setup {
   container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: var(--el-bg-color);
 }
 
 .screener-shell__results {
