@@ -19,7 +19,7 @@ import type { PresetChanges } from '~/utils/preset-changes'
 // 一樣寬的兩欄（ScreenerFilters），四個條件兩列就放完。2026-10-22 使用者選方案 B（手機與電腦一起）：條件不再各自一個框，
 // 排成一張清單；手機上「我的篩選」併成一行（5 個條件時設定區從 721px 降下來）。
 const props = defineProps<{
-  // 標題、說明、主詞都從 SCREENER_ZONE_ITEMS 讀（側欄與 /screener 首頁也讀它），三處的名稱不會分家
+  // 標題、主詞都從 SCREENER_ZONE_ITEMS 讀（側欄也讀它），名稱不會分家
   universe: ScreenerUniverse
   screener: ScreenerWorkspace
   // 頁面還在決定要開哪一組（普通股的 ?template 解析中）：維持骨架，不先畫 #no-tab 再整塊換掉（2026-10-16，手機 CLS 0.112）
@@ -122,8 +122,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       {{ zone.label }}
       <slot name="title-extra" />
     </h1>
+    <!-- 標題下面的說明文字 2026-10-22 拿掉（使用者：「screener-shell__intro 文字說明拿掉」） -->
     <ScreenerNav />
-    <p class="screener-shell__intro">{{ zone.description }}</p>
 
     <!-- hasHydrated 也要等：登入狀態在伺服器與瀏覽器第一次渲染時一定是「還不知道」，兩邊才畫得一樣（見 useHasHydrated） -->
     <template v-if="hasHydrated && screener.ready && !pending">
@@ -270,13 +270,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.screener-shell__intro {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--el-text-color-secondary);
 }
 
 /* 設定區：我的篩選一列、條件清單在下面（2026-10-19；清單 2026-10-22 方案 B）。同日拆掉外面的卡片（使用者：「篩選條件 卡片我想拆掉
