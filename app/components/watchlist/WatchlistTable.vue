@@ -28,7 +28,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ reorder: [fields: string[]] }>()
 defineSlots<{
   toolbar?: () => unknown
-  settings?: () => unknown
   actions?: (props: { row: WatchlistRow; view: 'table' | 'card'; loading: boolean }) => unknown
 }>()
 
@@ -135,7 +134,6 @@ const sortedCards = computed(() => {
     <slot name="toolbar" />
     <SharedDownloadButton v-if="downloadName" :rows="loading ? [] : rows" :columns="sheetColumns" :filename="downloadName" />
   </div>
-  <slot name="settings" />
   <div class="view-table">
     <SharedSheetGrid
       :rows="rows"

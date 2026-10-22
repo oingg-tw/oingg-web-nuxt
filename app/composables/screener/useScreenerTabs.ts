@@ -185,7 +185,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     renameColumnPreset,
     reorderColumnPresets,
     handleReorderColumns,
-    handleRemoveColumn
+    handleRemoveColumn,
+    applyColumnChoices
   } = tabColumnPresets
   // Also useState, for the same reason as tabs above — a plain closure variable here
   // was the original, more subtle version of the same bug: it alone reset to false on every
@@ -646,8 +647,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     },
     openNewColumnPresetDialog,
     renameColumnSet: renameColumnPreset,
-    removeColumnSet: (id: string) => {
-      if (activeTab.value) removeColumnPresetOption(activeTab.value, id)
+    removeColumnSet: async (id: string) => {
+      if (activeTab.value) await removeColumnPresetOption(activeTab.value, id)
     },
     reorderColumnSets: reorderColumnPresets,
     // 普通股的欄位組合改了就存（登入的人一定在某一組已存的上面），沒有「未儲存」的欄位組合
@@ -670,6 +671,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     changeSort,
     handleReorderColumns,
     handleRemoveColumn,
+    applyColumnChoices,
     newTabDialogVisible,
     templates,
     templatesLoading,

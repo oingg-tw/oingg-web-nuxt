@@ -2,7 +2,8 @@
 // 能跟篩選那邊一樣可以自由選擇嗎…抽成一個完整元件 讓 watchlist 也是走同樣邏輯」）：
 //   - /holdings/columns「新增指標」：搜「ROE」挑近四季 → 存成 =METRIC("roe.TTM")、百分比、2 位；2330 顯示 15.20%、0056（ETF 沒有）是「－」；
 //     焦點在新表頭；再挑一次同一個只提示、不存；對話框 axe 0；手機滿版、沒有橫向捲動、Esc 後焦點回到按鈕
-//   - /watchlist 欄位設定「＋ 新增欄位」：同一個挑選器，存進觀察清單欄位；額度已滿時先擋、不開挑選器
+//   - /watchlist 欄位設定彈窗的「＋ 新增欄位」（2026-10-22 起）：同一個挑選器本體在彈窗裡換一頁（不疊彈窗），挑了回到清單、按「儲存」
+//     才存進觀察清單欄位；額度已滿時說明（含看方案）寫在彈窗裡、不換到挑指標
 // 持股、觀察清單、欄位設定、方案全是攔截的假資料；寫入一律擋下並記錄（PUT 的內容拿來比對）。
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-metric-columns.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
@@ -131,11 +132,15 @@ console.log('觀察清單「＋ 新增欄位」（1440）')
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx)
   const page = await open(ctx, '/watchlist')
-  await page.getByRole('button', { name: '欄位設定' }).click(); await page.waitForTimeout(300)
+  await page.getByRole('button', { name: '欄位設定' }).click(); await page.waitForTimeout(500)
   await page.getByRole('button', { name: '＋ 新增欄位' }).click(); await page.waitForTimeout(800)
   const dialog = page.getByRole('dialog', { name: '新增欄位' })
-  check(await dialog.isVisible(), '欄位設定的「＋ 新增欄位」開同一個挑選器')
+  check(await dialog.isVisible() && await page.locator('.el-dialog:visible').count() === 1, '欄位設定的「＋ 新增欄位」在同一個彈窗換成挑指標（不疊彈窗）')
   await pickRoe(page, dialog)
+  const settings = page.getByRole('dialog', { name: '欄位設定' })
+  check(await settings.locator('.column-settings__row', { hasText: ROE_LABEL }).count() === 1, '挑了回到清單、多一列')
+  check(!puts.some(put => put.path.endsWith('watchlist-columns')), '還沒按「儲存」就不存')
+  await settings.getByRole('button', { name: '儲存' }).click(); await page.waitForTimeout(1500)
   const saved = puts.filter(put => put.path.endsWith('watchlist-columns')).at(-1)?.columns ?? []
   check(saved.some(column => column.field === 'roe.TTM' && column.label === ROE_LABEL), `存進觀察清單欄位：roe.TTM「${ROE_LABEL}」（${saved.map(column => column.field).join('、')}）`)
   await ctx.close()
@@ -146,9 +151,12 @@ console.log('觀察清單：額度已滿（5 欄）')
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx, { watchlistColumnQuota: 5 })
   const page = await open(ctx, '/watchlist')
-  await page.getByRole('button', { name: '欄位設定' }).click(); await page.waitForTimeout(300)
+  await page.getByRole('button', { name: '欄位設定' }).click(); await page.waitForTimeout(500)
   await page.getByRole('button', { name: '＋ 新增欄位' }).click(); await page.waitForTimeout(800)
-  check(!(await page.getByRole('dialog', { name: '新增欄位' }).isVisible()) && await page.locator('.el-message', { hasText: '觀察清單欄位已達目前方案的上限' }).count() > 0, '先擋：提示已達上限、不開挑選器（不再加上去又被收回）')
+  const settings = page.getByRole('dialog', { name: '欄位設定' })
+  check(await settings.isVisible() && !(await settings.locator('.indicator-dialog').count())
+    && (await settings.textContent()).includes('觀察清單欄位已達目前方案的上限') && await settings.getByRole('link', { name: /看方案/ }).count() === 1,
+  '先擋：說明（含看方案）寫在彈窗裡、不換到挑指標（不再加上去又被收回）')
   await ctx.close()
 }
 

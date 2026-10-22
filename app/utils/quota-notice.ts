@@ -6,6 +6,9 @@ import { ElMessage } from 'element-plus'
 //
 // 措辭只陳述數量與兩條路（刪掉不需要的、或升級），不催促、不倒數。價格還沒定（使用者決定等定價研究），
 // 所以不寫金額；連結去 /profile#plan 看方案與用量。detail：整句換掉（整批放不下時不是「已達上限」，是「還能加 N 檔」）
+// 彈窗裡用不了提示（焦點鎖住時按不到）的地方照抄同一句、自己接「看方案」（欄位設定的新增欄位）
+export const quotaReachedText = (what: string) => `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`
+
 export function showQuotaReached(what: string, detail?: string) {
   const instance = ElMessage({
     type: 'warning',
@@ -15,7 +18,7 @@ export function showQuotaReached(what: string, detail?: string) {
       // 「看方案」接在句點後面（2026-10-22，使用者：「那個看方案 直接接在句點後面 然後顯眼點?」）：句子的一部分，不另佔一格，
       // 手機上文字因此有整個寬度可以排。真的 <a>（右鍵、新分頁都能用），點擊時走 SPA 導覽，不整頁重載；箭頭不唸
       h('span', { class: 'app-toast__text' }, [
-        detail ?? `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`,
+        detail ?? quotaReachedText(what),
         h('a', {
           href: '/profile#plan',
           class: 'app-toast__link',

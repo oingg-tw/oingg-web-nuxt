@@ -22,10 +22,14 @@ const rows = ref<Row[]>([])
 const errors = ref<Record<string, string>>({})
 const status = ref('')
 const listRef = ref<HTMLElement | null>(null)
+// 第一次打開才建立對話框（同 SharedMetricColumnPicker）：關著的 el-dialog 在伺服器也會畫出遮罩、配一個 z-index，跟同頁其他對話框的
+// 順序在伺服器與瀏覽器對不上（hydration 不一致）
+const everOpened = ref(open.value)
 
 // 每次打開都從目前的清單重來（上次沒儲存的草稿不留）
 watch(open, (value) => {
   if (!value) return
+  everOpened.value = true
   rows.value = props.items.map(item => ({
     id: item.id,
     name: item.name,
@@ -84,7 +88,7 @@ function save() {
 </script>
 
 <template>
-  <el-dialog v-model="open" :title="`管理${label}`" width="min(560px, 92vw)" class="preset-manage">
+  <el-dialog v-if="everOpened" v-model="open" :title="`管理${label}`" width="min(560px, 92vw)" class="preset-manage">
     <ul ref="listRef" class="preset-manage__list">
       <li v-for="(row, index) in rows" :key="row.id" :data-id="row.id" class="preset-manage__row">
         <template v-if="row.removed">

@@ -3,6 +3,7 @@ import { Loading, Plus } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
+import type { ColumnDraft } from './SharedColumnSettings.vue'
 // 篩選器結果表，2026-10-06 搬到 shared 讓觀察清單共用（「這個 table 請抽成共用元件」，使用者選「跟篩選器
 // 共用一個表格」）。下面標「共用時加的」那幾個 prop 的預設值都是篩選器原本的行為，篩選器不用改任何呼叫。
 export interface ScreenerResultTableColumn {
@@ -166,6 +167,8 @@ const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
   addColumnClick: [triggerEl: HTMLElement]
+  // 欄位設定彈窗按「儲存」（saveFromSettings）：done(false)＝父層不套用這份欄位（例如這一組要刪掉），只關彈窗
+  saveColumns: [columns: ColumnDraft[], done: (apply?: boolean) => void]
   rowClick: [symbol: string]
   loadMore: []
   // Only ever emitted for symbol/metric columns — see handleSortChange below. field is null
@@ -432,14 +435,19 @@ const cardRows = computed(() => {
 // 最後一列：知道總數就寫出來（三組篩選共用，2026-10-15；原本寫死「…的股票」，ETF 不是股票）
 const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${groupThousands(props.total)} 檔` : '已顯示全部符合條件的結果'))
 
-// ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），面板在 SharedColumnSettings（觀察清單共用）----
+// ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），彈窗在 SharedColumnSettings（觀察清單共用）----
 const columnSettingsOpen = ref(false)
-const columnSettingsId = useId()
 
-function reorderFromSettings(fields: string[]) {
-  orderedColumns.value = fields.map(field => orderedColumns.value.find(column => column.field === field)!)
-  tableKey.value++
-  emit('reorder', fields)
+// 彈窗按「儲存」：整份交給父層（saveColumns），父層檢查完自己的部分（篩選頁的「這一組」）再呼叫 done。done(true) 時表格先照新順序排——
+// 這張表保留自己的拖曳順序、不跟父層換順序（見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
+function saveFromSettings(columns: ColumnDraft[], close: () => void) {
+  emit('saveColumns', columns, (apply = true) => {
+    if (apply) {
+      orderedColumns.value = columns.map(draft => orderedColumns.value.find(column => column.field === draft.field) ?? { field: draft.field, label: draft.label })
+      tableKey.value++
+    }
+    close()
+  })
 }
 
 // ---- 無限捲動：哨兵（表格 #append 那一列、卡片清單最後）進到畫面附近就載下一批 ----
@@ -503,24 +511,15 @@ watch(() => props.loading, (loading, wasLoading) => {
         </select>
       </label>
       <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
-      <el-button
-        v-if="!readonly"
-        class="smt-toolbar__settings"
-        :aria-expanded="columnSettingsOpen"
-        :aria-controls="columnSettingsId"
-        @click="columnSettingsOpen = !columnSettingsOpen"
-      >
-        欄位設定
-      </el-button>
+      <el-button v-if="!readonly" class="smt-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
     </div>
     <SharedColumnSettings
-      v-if="toolbar && !readonly && columnSettingsOpen"
-      :id="columnSettingsId"
+      v-if="toolbar && !readonly"
+      v-model:open="columnSettingsOpen"
       :columns="orderedColumns"
       :label-of="displayLabel"
-      @reorder="reorderFromSettings"
-      @remove="field => emit('removeColumn', field)"
-      @add="triggerEl => emit('addColumnClick', triggerEl)"
+      :categories="categories"
+      @save="saveFromSettings"
     >
       <template v-if="$slots['column-settings-head']" #head><slot name="column-settings-head" /></template>
     </SharedColumnSettings>

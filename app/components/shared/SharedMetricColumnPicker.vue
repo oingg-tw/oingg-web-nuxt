@@ -1,18 +1,11 @@
 <script setup lang="ts">
 // 從指標目錄挑一個欄位（2026-10-20，使用者：「holdings/columns 我要怎麼任意自行加上我要的指標 比如 ROE…能跟篩選那邊一樣可以
-// 自由選擇嗎…抽成一個完整元件 讓 watchlist 也是走同樣邏輯」）。/watchlist 欄位設定的「＋ 新增欄位」與 /holdings/columns 的
-// 「新增指標」共用（負責元件，見 CLAUDE.md）。裡面是篩選器同一個挑選器本體（搜尋＋分類→指標→期別），篩選器的條件面板也用它。
-// 目錄自己讀；挑了就關掉，再把 field（例如 roe.TTM）與標籤（「股東權益報酬率（近四季）」）送出去。
-// 重複與額度由各頁判斷：觀察清單照 field、自訂欄位照公式比對重複；額度一個是 watchlistColumns、一個是 customHoldingColumns。
-// 取代 ScreenerIndicatorPicker：只有觀察清單在用，桌機錨定下拉那一半從沒用到，而且在渲染時依螢幕寬度選標記。
-import type { MetricCategory } from '~/composables/screener/useFilterSchema'
-
+// 自由選擇嗎…抽成一個完整元件 讓 watchlist 也是走同樣邏輯」）。/holdings/columns 的「新增指標」在用（負責元件，見 CLAUDE.md）；
+// /watchlist 原本也用，2026-10-22 欄位設定改成彈窗後，挑指標變成那個彈窗裡的一頁（SharedColumnSettings，同一個挑選器本體）。
+// 裡面是篩選器同一個挑選器本體（搜尋＋分類→指標→期別），篩選器的條件面板也用它。
+// 目錄自己讀；挑了就關掉，再把 field（例如 roe.TTM）與標籤（「股東權益報酬率（近四季）」）送出去。重複與額度由頁面判斷（customHoldingColumns）。
 const open = defineModel<boolean>({ required: true })
-defineProps<{
-  title: string
-  // 不給就是指標目錄。觀察清單另外加「類股」（業務中台 填的欄位、不在目錄裡，2026-10-22 使用者：「要」）；/holdings/columns 是公式表，不加
-  categories?: MetricCategory[]
-}>()
+defineProps<{ title: string }>()
 const emit = defineEmits<{ select: [field: string, label: string] }>()
 
 const { data: schema } = useFilterSchema()
@@ -31,7 +24,7 @@ function select(field: string, label: string) {
 <template>
   <!-- 寬度寫在 CSS 的 --el-dialog-width、不用 width 屬性：屬性會變成行內樣式，手機滿版那條蓋不掉 -->
   <el-dialog v-if="everOpened" v-model="open" :title="title" class="metric-column-picker" lock-scroll>
-    <ScreenerIndicatorPickerBody v-loading="!schema.categories.length" :categories="categories ?? schema.categories" :active="open" :hide-period="false" @select="select" />
+    <ScreenerIndicatorPickerBody v-loading="!schema.categories.length" :categories="schema.categories" :active="open" :hide-period="false" @select="select" />
   </el-dialog>
 </template>
 

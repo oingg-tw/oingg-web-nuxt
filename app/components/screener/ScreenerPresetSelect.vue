@@ -4,8 +4,7 @@
 // 下拉選單不論有幾組都只佔一行。
 //
 // 「管理」打開 ScreenerPresetManageDialog（2026-10-22，原本是下拉選單）：一次看到全部、按「儲存」才套用，變更整包交給父層（manage）。
-// 下面的改名、上移、下移、刪除（只動目前這一組；刪除先藏起來、10 秒內可復原，時間到才通知父層刪）留給 hideManage 的呼叫端用：
-// 顯示欄位放在「欄位設定」面板最上面。最後一組不能刪。
+// 顯示欄位沒有「管理」（hideManage）：它的名稱、移動、刪除在欄位設定彈窗最上面（ScreenerColumnSetHead）
 import type { PresetChanges } from '~/utils/preset-changes'
 
 export interface PresetSelectItem {
@@ -27,8 +26,7 @@ const props = defineProps<{
   hideAdd?: boolean
   // 目前這一組未儲存時的按鈕文字：「存成我的篩選」「存成我的欄位組合」
   saveLabel: string
-  // 不畫「管理」選單：改名、上移、下移、刪除由呼叫端放在別處，用 expose 出去的同一組函式（顯示欄位放進「欄位設定」面板，
-  // 2026-10-21 使用者：「管理與欄位設定是否可以合併」）
+  // 不畫「管理」（顯示欄位，見上面）
   hideManage?: boolean
 }>()
 
@@ -36,78 +34,18 @@ const activeId = defineModel<string>('activeId', { required: true })
 
 const emit = defineEmits<{
   add: [triggerEl: HTMLElement]
-  rename: [id: string, name: string]
-  remove: [id: string]
-  reorder: [ids: string[]]
   manage: [changes: PresetChanges]
   save: []
 }>()
 
 const manageOpen = ref(false)
-
 const uid = useId()
 const labelId = `${uid}-label`
-
-// 刪除後藏起來、等復原提示結束才真的刪
-const pendingRemoval = ref<string[]>([])
-const visibleItems = computed(() => props.items.filter(item => !pendingRemoval.value.includes(item.id)))
-const activeItem = computed(() => visibleItems.value.find(item => item.id === activeId.value) ?? null)
-const activeIndex = computed(() => visibleItems.value.findIndex(item => item.id === activeId.value))
-const editable = computed(() => activeItem.value?.editable !== false)
-const canRemove = computed(() => editable.value && visibleItems.value.length > 1)
-const status = ref('')
+const activeItem = computed(() => props.items.find(item => item.id === activeId.value) ?? null)
 
 function optionLabel(item: PresetSelectItem) {
   return item.unsaved ? `${item.name}（未儲存）` : item.name
 }
-
-async function rename() {
-  const item = activeItem.value
-  if (!item) return
-  const name = await promptPresetName(`幫「${item.name}」改名`, item.name, '改名')
-  if (name && name !== item.name) {
-    emit('rename', item.id, name)
-    status.value = `已改名為「${name}」`
-  }
-}
-
-// 內建、未儲存的那幾組固定在最前面：已存的不能移到它們前面（不然選單看起來動了、存回帳號的順序卻沒變）
-function canMove(offset: -1 | 1): boolean {
-  const neighbor = visibleItems.value[activeIndex.value + offset]
-  return editable.value && activeIndex.value >= 0 && !!neighbor && neighbor.editable !== false
-}
-
-function move(offset: -1 | 1) {
-  if (!canMove(offset)) return
-  const ids = visibleItems.value.map(item => item.id)
-  const index = activeIndex.value
-  const target = index + offset
-  if (index < 0 || target < 0 || target >= ids.length) return
-  ;[ids[index], ids[target]] = [ids[target]!, ids[index]!]
-  emit('reorder', ids)
-  status.value = `「${activeItem.value?.name}」移到第 ${target + 1} 個`
-}
-
-function remove() {
-  const item = activeItem.value
-  if (!item || !canRemove.value) return
-  const index = activeIndex.value
-  pendingRemoval.value = [...pendingRemoval.value, item.id]
-  const fallback = visibleItems.value[Math.max(index - 1, 0)]
-  if (fallback) activeId.value = fallback.id
-  let undone = false
-  undoToast(`已刪除「${item.name}」`, () => {
-    undone = true
-    pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id)
-    activeId.value = item.id
-  }, () => {
-    if (undone) return
-    emit('remove', item.id)
-    nextTick(() => { pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id) })
-  })
-}
-
-defineExpose({ activeItem, editable, canRemove, canMove, rename, move, remove })
 </script>
 
 <template>
@@ -120,15 +58,14 @@ defineExpose({ activeItem, editable, canRemove, canMove, rename, move, remove })
       :aria-label="label"
       @update:model-value="(id: string) => { activeId = id }"
     >
-      <el-option v-for="item in visibleItems" :key="item.id" :label="optionLabel(item)" :value="item.id" />
+      <el-option v-for="item in items" :key="item.id" :label="optionLabel(item)" :value="item.id" />
     </el-select>
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button" @click="emit('save')">{{ saveLabel }}</el-button>
     <el-button v-if="!hideAdd" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋新增</el-button>
     <template v-if="!hideManage">
       <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
-      <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="visibleItems" @save="changes => emit('manage', changes)" />
+      <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
     </template>
-    <p class="visually-hidden" role="status">{{ status }}</p>
   </div>
 </template>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
+import type { ColumnDraft } from '~/components/shared/SharedColumnSettings.vue'
 import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
@@ -46,7 +47,7 @@ const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.inc
 // 欄位存在帳號裡（GET／PUT /users/me/watchlist-columns，業務中台 9a2eeff）。存的是整張表、照顯示順序；null ＝
 // 從沒存過，用預設。免費方案上限 8 欄（預設 5＋自己的 3），付費無上限，每個方案硬上限 20（使用者 2026-10-06
 // 的決定，業務中台 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——存檔不先查額度再擋，因為
-// 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。只有「新增」在開挑選器前先擋（openPicker）。
+// 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。只有「新增」先擋（欄位設定彈窗的 limit）。
 const { fetchColumns, saveColumns } = useUserWatchlist()
 const currentUser = useCurrentUser()
 const serializeColumns = (list: ScreenerResultTableColumn[]) => JSON.stringify(list.map(({ field, label }) => ({ field, label })))
@@ -94,45 +95,26 @@ onMounted(() => {
 // 送去 /screener/values 的型錄欄位（濾掉假欄位與型錄裡已經沒有的，見 watchlistCatalogFields）
 const catalogFields = computed(() => watchlistCatalogFields(columns.value, schema.value.categories))
 
-function addColumn(field: string, label: string) {
-  if (columns.value.some(column => column.field === field)) {
-    ElMessage.info(`「${label}」已經在表格裡`)
-    return
-  }
-  columns.value = [...columns.value, BUILTIN_COLUMNS.find(column => column.field === field) ?? { field, label }]
-}
-function removeColumn(field: string) {
-  columns.value = columns.value.filter(column => column.field !== field)
-}
+// 欄位的新增、移除、換順序、重設都在「欄位設定」彈窗裡（SharedColumnSettings，篩選器共用；2026-10-22 從就地展開改成彈窗，
+// 改的是草稿、按「儲存」才換）。重設預設欄位（2026-10-06）是把「漲跌」「下次除權息」找回來的路：它們不在指標型錄裡、用 ＋ 加不回來。
+// 挑指標的那一頁是目錄＋「類股」（基本資料裡、市場別後面，同篩選器；2026-10-22 使用者：「要」，只當欄位用、不需要類股清單）。
+// 新增前先擋額度（寫在彈窗裡）：原本加上去約 0.6 秒後被 PUT 的 403 收回。只擋新增——重排、刪欄在降級後照樣要能存（見 columns 上面的註解）
+const { data: schema } = await useFilterSchema()
+const pickerCategories = computed(() => withSectorCondition(schema.value.categories, []))
+const columnLimit = computed(() => {
+  const max = quotaOf('watchlistColumns')
+  return typeof max === 'number' ? { max, what: '觀察清單欄位' } : null
+})
+const defaultDrafts = defaultColumns().map(({ field, label }) => ({ field, label }))
+// 表頭拖曳（SharedSheetGrid）照樣直接換順序
 function reorderColumns(fields: string[]) {
   columns.value = fields.map(field => columns.value.find(column => column.field === field)!).filter(Boolean)
 }
-
-// 重設預設欄位（2026-10-06「顯示欄位就可以改成重設預設欄位，因為現在欄位可以自由調整」）。取代原本的
-// 「顯示欄位」勾選清單：勾選清單只剩「把內建欄位找回來」一個用途，而「漲跌」「下次除權息」不在指標型錄裡、用 ＋ 加不回來，
-// 重設就是把它們找回來的路。可以復原，所以不先確認（同移除股票）。
-// 欄位的新增、移除、換順序、重設都只在「欄位設定」面板裡（2026-10-17「為什麼新增欄位有兩種方式？」：頁首原本另有「新增欄位」
-// 「重設預設欄位」兩顆，跟面板重複，拿掉）。面板在表格與卡片上方，兩種版面都打得開。
-const isDefaultColumns = computed(() => columns.value.map(column => column.field).join() === DEFAULT_FIELDS.join())
-function resetColumns() {
-  const previous = columns.value
-  columns.value = defaultColumns()
-  undoToast('已重設為預設欄位', () => (columns.value = previous), () => {})
-}
-
-const { data: schema } = await useFilterSchema()
-// 指標目錄＋「類股」（基本資料裡、市場別後面，同篩選器；2026-10-22 使用者：「要」）。只當欄位用，不需要類股清單
-const pickerCategories = computed(() => withSectorCondition(schema.value.categories, []))
-// 挑選器是 SharedMetricColumnPicker（2026-10-20 跟 /holdings/columns 的「新增指標」共用）。「新增」在開挑選器之前先擋額度：
-// 原本加上去約 0.6 秒後被 PUT 的 403 收回。只擋新增——重排、刪欄在降級後照樣要能存（見 columns 上面的註解）
-const pickerVisible = ref(false)
-function openPicker() {
-  const limit = quotaOf('watchlistColumns')
-  if (typeof limit === 'number' && columns.value.length >= limit) {
-    showQuotaReached('觀察清單欄位')
-    return
-  }
-  pickerVisible.value = true
+function saveColumnSettings(drafts: ColumnDraft[], close: () => void) {
+  columns.value = drafts.map(draft => columns.value.find(column => column.field === draft.field)
+    ?? BUILTIN_COLUMNS.find(column => column.field === draft.field)
+    ?? { field: draft.field, label: draft.label })
+  close()
 }
 
 // 訪客（確定沒登入）先看市值最大的 10 家（2026-10-16 使用者：「未註冊用戶看到的觀察清單可不可以就選市場上最知名的幾間公司?」，
@@ -205,7 +187,6 @@ const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' &&
 // 表格與卡片怎麼畫在 WatchlistTable（2026-10-19 抽出來，分享頁 /share/[token] 也用）；這一頁留資料、欄位設定、備註與移除。
 // 操作欄（備註、移除）只有登入後才有
 const columnSettingsOpen = ref(false)
-const columnSettingsId = useId()
 
 // 分享連結（2026-10-19，SharedShareButton）：可以一起分享的是表格上現在的欄位；備註原本「只有你自己看得到」，預設不分享
 const shareColumns = computed(() => [
@@ -300,21 +281,8 @@ async function submitNote() {
               :columns="shareColumns"
               sensitive-heading="只有你看得到的，預設不分享"
             />
-            <el-button class="watchlist-toolbar__settings" :aria-expanded="columnSettingsOpen" :aria-controls="columnSettingsId" @click="columnSettingsOpen = !columnSettingsOpen">欄位設定</el-button>
+            <el-button class="watchlist-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
           </div>
-        </template>
-        <template #settings>
-          <SharedColumnSettings
-            v-if="columnSettingsOpen"
-            :id="columnSettingsId"
-            :columns="columns"
-            :label-of="column => column.label"
-            @reorder="reorderColumns"
-            @remove="removeColumn"
-            @add="openPicker"
-          >
-            <button type="button" class="column-settings__button" :disabled="isDefaultColumns" @click="resetColumns">重設預設欄位</button>
-          </SharedColumnSettings>
         </template>
         <template #actions="{ row, view, loading }">
           <!-- 卡片上是頁尾的文字鈕（2026-10-22 方案頁 4B）：沒有框，移除只用紅字 -->
@@ -331,7 +299,15 @@ async function submitNote() {
       還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
     </p>
 
-    <SharedMetricColumnPicker v-model="pickerVisible" title="新增欄位" :categories="pickerCategories" @select="addColumn" />
+    <SharedColumnSettings
+      v-model:open="columnSettingsOpen"
+      :columns="columns"
+      :label-of="column => column.label"
+      :categories="pickerCategories"
+      :limit="columnLimit"
+      :defaults="defaultDrafts"
+      @save="saveColumnSettings"
+    />
 
     <el-dialog :model-value="noteTarget !== null" :title="noteTarget ? `${noteTarget.name} 的備註` : '備註'" width="min(480px, 92vw)" @close="noteTarget = null">
       <label for="watchlist-note-input" class="watchlist-note-dialog__label">為什麼想追蹤這一檔？只有你自己看得到。</label>

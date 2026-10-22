@@ -481,9 +481,9 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   // 條件也是欄位（2026-10-22「篩選指標 與 欄位 應該要有非常多重疊才對」）：新增欄位的面板也找得到類股。只看不選
   await page.getByRole('button', { name: '欄位設定' }).click()
   await page.locator('.column-settings').getByRole('button', { name: '＋ 新增欄位' }).click()
-  await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+  await waitFor(page.locator('.column-settings .indicator-dialog'), 15000)
   await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill('類股')
-  const asColumn = await waitFor(page.locator('.condition-panel .indicator-dialog__item', { hasText: /^\s*類股\s*$/ }), 10000)
+  const asColumn = await waitFor(page.locator('.column-settings .indicator-dialog__item', { hasText: /^\s*類股\s*$/ }), 10000)
   expect('類股', '新增欄位也找得到「類股」', asColumn.ok)
   await page.keyboard.press('Escape')
 }
@@ -520,12 +520,14 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     expect('手機', '排序選單選本益比會打後端', upstream.length > requestsBefore && upstream.at(-1) === 200, `多發了 ${upstream.length - requestsBefore} 次`)
     expect('手機', '排序後卡片還在', await m.locator('.smt-card').count() > 0)
 
-    // 欄位設定：下移第一欄 → 卡片裡的欄位順序跟著換
+    // 欄位設定（彈窗，手機滿版）：下移第一欄、儲存 → 卡片裡的欄位順序跟著換
     const labelsBefore = await m.locator('.smt-card').first().locator('dt').allTextContents()
     await m.getByRole('button', { name: '欄位設定' }).click()
+    await waitFor(m.locator('.column-settings__row').first(), 10000)
     const settingsRows = await m.locator('.column-settings__row').count()
     expect('手機', '欄位設定列出每一欄', settingsRows === labelsBefore.length, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
-    await m.locator('.column-settings__row').first().getByRole('button', { name: /^下移/ }).click()
+    await m.locator('.column-settings__row').first().getByRole('button', { name: /下移/ }).click()
+    await m.getByRole('dialog', { name: '欄位設定' }).getByRole('button', { name: '儲存' }).click()
     await m.waitForTimeout(1500)
     const labelsAfter = await m.locator('.smt-card').first().locator('dt').allTextContents()
     expect('手機', '下移第一欄後順序對調', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)

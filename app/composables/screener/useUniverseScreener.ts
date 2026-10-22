@@ -2,7 +2,7 @@ import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { FilterCriterion, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
 import type { ColumnPresetTemplate, ScreenerColumnPreset } from '~/composables/screener/useScreenerColumnPresets'
-import type { ScreenerTemplateOption, TabFilterSlot, WorkspaceTab } from '~/composables/screener/screener-tab-model'
+import type { ResultColumnChoice, ScreenerTemplateOption, TabFilterSlot, WorkspaceTab } from '~/composables/screener/screener-tab-model'
 import type { PresetSelectItem } from '~/components/screener/ScreenerPresetSelect.vue'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
 import type { ScreenerUniverse } from '~/utils/screener-zone'
@@ -425,12 +425,14 @@ export function useUniverseScreener(source: UniverseSource) {
     return activeSortCleared
   }
 
-  function setActiveColumns(fieldIds: string[]) {
+  // refetch：多了欄位（欄位設定彈窗一次存好幾欄）也要重查，ETF 只回要的欄位
+  function setActiveColumns(fieldIds: string[], refetch = false) {
     const set = activeColumnSet.value
     if (!set) return
     set.fields = fieldIds
     // 排序被清掉就從第一頁重查：不然畫面上這一頁還是照舊的順序，往下捲接的下一頁卻是預設順序
-    if (applyColumns(fieldIds) && activeTab.value) search(activeTab.value)
+    const sortCleared = applyColumns(fieldIds)
+    if ((sortCleared || refetch) && activeTab.value) search(activeTab.value)
     if (set.saved && currentUser.value) {
       columnsApi.update(set.id, { fields: fieldIds.map(snapshotField) }).then((updated) => {
         if (!updated) showErrorMessage(columnsApi.lastErrorMessage.value ?? '欄位沒有存進帳號，請稍後再試')
@@ -538,6 +540,13 @@ export function useUniverseScreener(source: UniverseSource) {
 
   function handleReorderColumns(_tab: UniverseTab, fields: string[]) {
     setActiveColumns(fields)
+  }
+
+  // 欄位設定彈窗按「儲存」：整份換掉、存一次
+  function applyColumnChoices(_tab: UniverseTab, choices: ResultColumnChoice[]) {
+    const fields = choices.map(choice => choice.field)
+    const before = activeColumnSet.value?.fields ?? []
+    setActiveColumns(fields, fields.some(field => !before.includes(field)))
   }
 
   function loadMoreResults(tab: UniverseTab) {
@@ -678,6 +687,7 @@ export function useUniverseScreener(source: UniverseSource) {
     changeSort,
     handleReorderColumns,
     handleRemoveColumn,
+    applyColumnChoices,
     newTabDialogVisible,
     templates: source.filterTemplates,
     templatesLoading: false,

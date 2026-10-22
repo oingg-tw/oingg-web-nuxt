@@ -133,29 +133,42 @@ for (const target of PAGES) {
     }
   }
 
-  // ── 3b. 顯示欄位：欄位設定 → ＋ 新增欄位 → 表頭多一欄（訪客改的是內建那一組，存在這次瀏覽）
+  // ── 3b. 顯示欄位：欄位設定彈窗（2026-10-22 從就地展開改成彈窗）。改的是草稿：取消不動表格；＋ 新增欄位在同一個彈窗換一頁挑指標
+  // （不疊彈窗）；儲存之後表頭多一欄（訪客改的是內建那一組，存在這次瀏覽）
   const headerLabels = () => page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()
   const columnsBefore = await headerLabels()
+  const settingsDialog = page.getByRole('dialog', { name: /^(欄位設定|新增欄位)$/ })
   await page.getByRole('button', { name: '欄位設定' }).click()
-  await page.locator('.column-settings').getByRole('button', { name: '＋ 新增欄位' }).click()
-  const columnPicker = await visible(page.locator('.condition-panel .indicator-dialog'), 15000)
-  expect(target.name, '「＋ 新增欄位」開挑選面板', columnPicker.ok)
-  if (columnPicker.ok) {
-    await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill(target.column)
-    const columnItem = page.locator('.condition-panel .indicator-dialog__item').first()
-    if ((await visible(columnItem, 10000)).ok) await columnItem.click()
-    let columnsAfter = columnsBefore
-    for (const start = Date.now(); Date.now() - start < 30000; await page.waitForTimeout(300)) {
-      columnsAfter = await headerLabels()
-      if (columnsAfter.length > columnsBefore.length) break
+  const dialogOpen = await visible(settingsDialog, 10000)
+  expect(target.name, '「欄位設定」打開彈窗', dialogOpen.ok)
+  if (dialogOpen.ok) {
+    await settingsDialog.getByRole('button', { name: /^把「.+」下移$/ }).first().click()
+    await settingsDialog.getByRole('button', { name: '取消' }).click()
+    await settingsDialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+    expect(target.name, '取消之後表頭順序沒變', (await headerLabels()).join('|') === columnsBefore.join('|'))
+    await page.getByRole('button', { name: '欄位設定' }).click()
+    await visible(settingsDialog, 10000)
+    await settingsDialog.getByRole('button', { name: '＋ 新增欄位' }).click()
+    const picker = await visible(settingsDialog.locator('.indicator-dialog'), 15000)
+    expect(target.name, '「＋ 新增欄位」在同一個彈窗換成挑指標（不疊彈窗）', picker.ok && await page.locator('.el-dialog:visible').count() === 1)
+    if (picker.ok) {
+      await settingsDialog.getByRole('textbox', { name: '搜尋指標名稱' }).fill(target.column)
+      const item = settingsDialog.locator('.indicator-dialog__item').first()
+      if ((await visible(item, 10000)).ok) await item.click()
+      const added = await visible(settingsDialog.locator('.column-settings__row', { hasText: target.column }), 5000)
+      expect(target.name, `挑了「${target.column}」回到清單、多一列`, added.ok)
+      await settingsDialog.getByRole('button', { name: '儲存' }).click()
+      let columnsAfter = columnsBefore
+      for (const start = Date.now(); Date.now() - start < 30000; await page.waitForTimeout(300)) {
+        columnsAfter = await headerLabels()
+        if (columnsAfter.length > columnsBefore.length) break
+      }
+      expect(target.name, `儲存之後表頭多一欄「${target.column}」`, columnsAfter.length === columnsBefore.length + 1 && columnsAfter.some(text => text.includes(target.column)), `${columnsBefore.length} → ${columnsAfter.length}`)
+      const closed = await settingsDialog.waitFor({ state: 'hidden', timeout: 3000 }).then(() => true).catch(() => false)
+      expect(target.name, '儲存之後彈窗會關', closed)
     }
-    expect(target.name, `新增欄位「${target.column}」後表頭多一欄`, columnsAfter.length === columnsBefore.length + 1 && columnsAfter.some(text => text.includes(target.column)), `${columnsBefore.length} → ${columnsAfter.length}`)
-    // 等關閉動畫：特別股、ETF 的表頭是立刻多一欄的（不用等查詢），那時面板還在淡出
-    const closed = await page.locator('.condition-panel .indicator-dialog').waitFor({ state: 'hidden', timeout: 3000 }).then(() => true).catch(() => false)
-    expect(target.name, '選完欄位面板會關', closed)
-    if (await page.locator('.condition-panel .indicator-dialog').isVisible()) await page.keyboard.press('Escape')
+    if (await settingsDialog.isVisible()) await page.keyboard.press('Escape')
   }
-  await page.getByRole('button', { name: '欄位設定' }).click()
 
   // ── 3c. 排序：點欄名（第一下照這一欄自己的方向），第一列換人
   const firstSymbol = () => page.locator('.smt-table-view .el-table__body tbody tr').first().locator('td').first().textContent().then(text => text?.trim() ?? '')
@@ -180,13 +193,12 @@ for (const target of PAGES) {
   // 移除排序中的那一欄會清掉排序、從第一頁重查（特別股在瀏覽器排序，沒有這個請求）：等重查回來再量，不然捲到底時重查還在跑，
   // 載入下一頁被略過（build 後量到；普通股先存欄位設定才重查，固定等幾百毫秒不夠）
   const research = page.waitForResponse(response => /\/api\/core\/(etf-)?screener\b/.test(response.url()), { timeout: 5000 }).catch(() => null)
-  // 移除欄位只在「欄位設定」面板裡（表頭的 ✕ 2026-10-21 拿掉）
-  const settings = page.getByRole('button', { name: '欄位設定' }).first()
-  if (await settings.getAttribute('aria-expanded') !== 'true') await settings.click()
-  await page.locator('.column-settings').getByRole('button', { name: new RegExp(`^移除\\s*：${target.sortColumn}`) }).first().click()
+  // 移除欄位只在「欄位設定」彈窗裡（表頭的 ✕ 2026-10-21 拿掉）：移除、儲存（彈窗自己關）
+  await page.getByRole('button', { name: '欄位設定' }).first().click()
+  const removeDialog = page.getByRole('dialog', { name: '欄位設定' })
+  await removeDialog.getByRole('button', { name: new RegExp(`^移除「[^」]*${target.sortColumn}`) }).first().click()
+  await removeDialog.getByRole('button', { name: '儲存' }).click()
   await research
-  // 收起面板：開著會把結果表往下推，後面量第一個畫面的版面會錯
-  await settings.click()
   await waitForCount(page, text => /\d+ 檔/.test(text))
   const rowsBefore = await tableRows.count()
   const totalCount = Number(((await page.locator('.screener-shell__count').textContent()) ?? '').match(/([\d,]+) 檔/)?.[1]?.replaceAll(',', '') ?? 0)

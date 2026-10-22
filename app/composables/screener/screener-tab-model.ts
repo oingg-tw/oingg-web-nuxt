@@ -95,10 +95,13 @@ export interface ScreenerWorkspace {
   activeColumnSetId: string
   selectColumnSet(id: string): void
   openNewColumnPresetDialog(tab: WorkspaceTab): void
-  renameColumnSet(id: string, name: string): void
-  removeColumnSet(id: string): void
-  reorderColumnSets(ids: string[]): void
+  // 欄位設定彈窗的「這一組」按「儲存」時，同上依序 await
+  renameColumnSet(id: string, name: string): Promise<void> | void
+  removeColumnSet(id: string): Promise<void> | void
+  reorderColumnSets(ids: string[]): Promise<void> | void
   saveColumnSet(): void
+  // 欄位設定彈窗按「儲存」：整份欄位一次換掉（多了欄位要重查；排序的那一欄不在了就清掉排序）
+  applyColumnChoices(tab: WorkspaceTab, columns: ResultColumnChoice[]): Promise<void> | void
 
   // 條件（useScreenerConditionEditor）
   pickerVisible: boolean

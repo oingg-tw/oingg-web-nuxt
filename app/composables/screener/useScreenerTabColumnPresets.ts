@@ -374,6 +374,23 @@ export function useScreenerTabColumnPresets(ctx: {
     ctx.cacheColumnView(tab)
     await ctx.syncColumnPreset(tab)
   }
+
+  // 欄位設定彈窗按「儲存」（2026-10-22）：整份換掉、存一次。移除的是排序中的那一欄就清掉排序（理由同 handleRemoveColumn）；
+  // 多了欄位要重查才有值。兩種都從第一頁重查
+  async function applyColumnChoices(tab: ScreenerTab, choices: ResultColumnChoice[]) {
+    const fields = new Set(choices.map(choice => choice.field))
+    const added = choices.some(choice => !tab.columns.some(column => column.field === choice.field))
+    const sortRemoved = !!tab.sortField && tab.columns.some(column => column.field === tab.sortField) && !fields.has(tab.sortField)
+    tab.columns = choices.map(({ field, label }) => ({ field, label }))
+    tab.resultColumns = tab.resultColumns.filter(column => fields.has(column.field))
+    if (sortRemoved) {
+      tab.sortField = null
+      tab.sortOrder = null
+    }
+    ctx.cacheColumnView(tab)
+    await ctx.syncColumnPreset(tab)
+    if ((added || sortRemoved) && tab.searched) await ctx.runSearch(tab, 1)
+  }
   return {
     // 核心要用的：共用狀態與兩個「這個頁籤該用哪個預設」的解析函式。
     columnPresetOptions,
@@ -393,6 +410,7 @@ export function useScreenerTabColumnPresets(ctx: {
     renameColumnPreset,
     reorderColumnPresets,
     handleReorderColumns,
-    handleRemoveColumn
+    handleRemoveColumn,
+    applyColumnChoices
   }
 }
