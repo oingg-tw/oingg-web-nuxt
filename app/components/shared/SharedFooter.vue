@@ -44,62 +44,19 @@ async function reopenConsent() {
         </div>
       </div>
 
-      <nav class="shared-footer__nav" aria-label="頁尾連結">
+      <!-- 只放本站相關（2026-10-22，使用者：「footer 只放 本站相關」「學習 塞進去 網站導覽」）：連結是 app-features.ts 的
+           ABOUT_SITE_LINKS，也是網站導覽頁的「本站」那一組；全站的其他區塊從這裡的「網站導覽」進去。這裡只多兩個頁尾才有的（聯絡我們、
+           Cookie 設定）。外觀設定一定要在頁尾（2026-09-17：低視力使用者放大後頁首可能被擠掉，很多人習慣在頁尾找無障礙設定） -->
+      <nav class="shared-footer__nav" aria-label="本站">
         <ul class="shared-footer__nav-list">
-          <li>
-            <!-- 2026-09-16「功能導向去網站導覽說明頁」：快速鍵說明與完整網站地圖放在 pages/sitemap.vue 這一頁，從這裡連過去，
-                 取代原本每頁都顯示的 accesskey 文字列。 -->
-            <NuxtLink to="/sitemap" class="shared-footer__nav-link">網站導覽</NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/accessibility" class="shared-footer__nav-link">無障礙聲明</NuxtLink>
-          </li>
-          <li v-if="consentAsks">
-            <button type="button" class="shared-footer__nav-link shared-footer__nav-button" @click="reopenConsent">Cookie 設定</button>
-          </li>
-          <!-- Hub pages 2026-09-19 (the SEO build) — the footer is on every page, so these are the
-               one set of links a crawler (and a keyboard user who scrolled to the end) can count
-               on regardless of which page it landed on. -->
-          <li>
-            <NuxtLink to="/screener/common" class="shared-footer__nav-link">股票篩選</NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/rank" class="shared-footer__nav-link">排行</NuxtLink>
-          </li>
-          <!-- 產業追蹤 added 2026-09-23 because it was a genuine ORPHAN, found while checking what
-               the mobile menu contributes to the server HTML: /industries returns 200 but appeared
-               in neither any page's markup nor the sitemap — its only link lived inside the mobile
-               feature menu, which was <ClientOnly> and so reached no crawler at all. Same reasoning
-               as 總經特區 directly below: a zone's sole entry point has to sit somewhere that
-               renders on every page, or the zone orphans. -->
-          <li>
-            <NuxtLink to="/industries" class="shared-footer__nav-link">產業索引</NuxtLink>
-          </li>
-          <!-- 總經特區 2026-09-22 — same move 大師徽章/部落格 made below: it spent a few hours as a
-               top-nav leaf and came out again（「總經特區從top nav移除」）. This is the zone's only
-               entry point from outside itself, so it has to live somewhere that appears on every
-               page, or its seven pages orphan. -->
-          <li>
-            <NuxtLink to="/macro" class="shared-footer__nav-link">總經特區</NuxtLink>
-          </li>
-          <!-- 大師徽章／部落格 2026-09-19 — moved here from the top nav's own 更多▾ dropdown when
-               that nav collapsed to 4 flat items (interface-complexity review); the footer is on
-               every page, so these two entries still have a reachable, permanent home. -->
-          <li>
-            <NuxtLink to="/guru-indicators" class="shared-footer__nav-link">大師徽章</NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/blog" class="shared-footer__nav-link">部落格</NuxtLink>
+          <li v-for="link in ABOUT_SITE_LINKS" :key="link.to">
+            <NuxtLink :to="link.to" class="shared-footer__nav-link">{{ link.label }}</NuxtLink>
           </li>
           <li>
             <a href="mailto:ian.chu@oingg.com" class="shared-footer__nav-link">聯絡我們</a>
           </li>
-          <li>
-            <!-- 2026-09-17 per direct request ("外觀設定要兩個入口 ... 2. 頁尾 — 這是無障礙慣例中
-                 常被忽略但很重要的一條。低視力使用者放大後,header 可能被擠掉;而且很多人習慣在頁尾
-                 找「協助工具」「無障礙設定」。") — same plain nav-link treatment as 網站導覽/聯絡我們
-                 above it, no special styling. -->
-            <NuxtLink to="/appearance" class="shared-footer__nav-link">外觀設定</NuxtLink>
+          <li v-if="consentAsks">
+            <button type="button" class="shared-footer__nav-link shared-footer__nav-button" @click="reopenConsent">Cookie 設定</button>
           </li>
         </ul>
       </nav>
@@ -107,6 +64,9 @@ async function reopenConsent() {
       <p class="shared-footer__disclaimer">
         本站僅提供一般性證券投資資訊與客觀數據篩選結果，非證券投資顧問事業，不構成任何個別有價證券之買賣建議、目標價或進出場時點，不保證投資獲利。歷史行情與財務數據來源包含台灣證券交易所（TWSE）、證券櫃檯買賣中心（TPEx）及公開資訊觀測站等公開資料，實際投資決策請自行判斷並審慎評估風險。
       </p>
+      <!-- 名稱後面的 *（2026-10-22，使用者問「強生* 後面那個 * 是甚麼意思? 名稱很多頁面都會用到 這個說明放在哪裡好?」，選了頁尾一句＋
+           摘要卡寫面額）：證交所、櫃買中心的簡稱標示，量過 45 家帶 * 的抽 40 家：33 家面額不是 10 元、7 家上游沒有面額、0 家是 10 元 -->
+      <p class="shared-footer__disclaimer">公司名稱後面的 *：每股面額不是新臺幣 10 元（證交所、櫃買中心的標示），個股頁的摘要會寫出實際面額。</p>
 
       <div class="shared-footer__legal">
         <p class="shared-footer__copyright">© {{ currentYear }} {{ companyInfo.legalName }}</p>

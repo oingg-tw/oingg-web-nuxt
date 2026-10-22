@@ -1,30 +1,11 @@
 <script setup lang="ts">
 // 網站導覽（2026-09-16「功能導向去網站導覽說明頁」）：取代原本每一頁都顯示的 accesskey 說明列，從 SharedFooter 連過來。結構照無障礙
-// 網路空間服務網的網站導覽頁：快速鍵、網站架構、再列出每一條真實路由。APP_FEATURES 就是 AppFeatureMenu／AppNavMenu 渲染的那一份，
-// 這裡重用不另外維護。快速鍵字母 2026-10-08 對齊無障礙規範 2.0 的慣例（U／C／S／L／Z）。
+// 網路空間服務網的網站導覽頁：快速鍵、網站架構、再列出每一條真實路由。網站地圖是 app-features.ts 的 SITE_MAP，頁尾讀同一份
+//（2026-10-22 起；原本這裡另外寫一份，漏了除權息月覽、排行與普通股篩選各列兩次）。快速鍵字母 2026-10-08 對齊無障礙規範 2.0 的慣例（U／C／S／L／Z）。
 useSeoMeta({ title: '網站導覽' })
 
-interface OtherLink {
-  label: string
-  to: string
-}
-
-// APP_FEATURES 之外的真實路由（那份陣列只放 app-shell 的功能區），分開列才是完整的網站地圖。
-const OTHER_LINKS: OtherLink[] = [
-  { label: '首頁', to: '/' },
-  { label: '排行', to: '/rank' },
-  { label: '新手專區', to: '/learn' },
-  { label: '普通股篩選', to: '/screener/common' },
-  { label: '特別股篩選', to: '/screener/preferred' },
-  { label: 'ETF 篩選', to: '/screener/etf' },
-  { label: '部落格', to: '/blog' },
-  { label: '外觀設定', to: '/appearance' },
-  { label: '個人資料設定', to: '/profile' },
-  { label: '無障礙聲明', to: '/accessibility' }
-]
-
 // 濾掉自己（2026-09-20）：這頁本身就是網站導覽，列出自己是空轉的自連結。
-const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/sitemap'))
+const groups = SITE_MAP.map(group => ({ ...group, links: group.links.filter(link => link.to !== '/sitemap') }))
 </script>
 
 <template>
@@ -56,14 +37,14 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
 
     <section class="sitemap-page__section">
       <h2 class="app-page__h2 sitemap-page__section-title">網站地圖</h2>
-      <ul class="sitemap-page__link-list">
-        <li v-for="link in OTHER_LINKS" :key="link.to">
-          <NuxtLink :to="link.to" class="sitemap-page__link">{{ link.label }}</NuxtLink>
-        </li>
-        <li v-for="feature in features" :key="feature.key">
-          <NuxtLink :to="feature.to" class="sitemap-page__link">{{ feature.label }}</NuxtLink>
-        </li>
-      </ul>
+      <template v-for="group in groups" :key="group.label">
+        <h3 class="sitemap-page__group-title">{{ group.label }}</h3>
+        <ul class="sitemap-page__link-list">
+          <li v-for="link in group.links" :key="link.to">
+            <NuxtLink :to="link.to" class="sitemap-page__link">{{ link.label }}</NuxtLink>
+          </li>
+        </ul>
+      </template>
     </section>
   </div>
 </template>
@@ -100,6 +81,12 @@ const features = computed(() => APP_FEATURES.filter(feature => feature.to !== '/
 .sitemap-page__key-list li,
 .sitemap-page__link-list li {
   font-size: 1rem;
+}
+
+.sitemap-page__group-title {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .sitemap-page__note {

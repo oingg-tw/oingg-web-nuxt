@@ -47,10 +47,30 @@ export const APP_NAV: (AppFeature | AppNavGroup)[] = [
 
 export const isNavGroup = (entry: AppFeature | AppNavGroup): entry is AppNavGroup => 'items' in entry
 
-// 手機圖示格（與網站導覽頁的功能清單）：頁首的全部攤平、同一個順序，再接頁首沒放的。外觀設定由 AppFeatureMenu 自己接在最後。
+// 手機圖示格：頁首的全部攤平、同一個順序，再接頁首沒放的。外觀設定由 AppFeatureMenu 自己接在最後。
 // ETF 專區與特別股專區 2026-09-14 依指示隱藏（2026-10-15 起收在股票篩選底下）
 export const APP_FEATURES: AppFeature[] = [
   ...APP_NAV.flatMap(entry => (isNavGroup(entry) ? entry.items : [entry])),
   MACRO,
   GURU
+]
+
+export interface SiteMapGroup {
+  label: string
+  links: { label: string; to: string }[]
+}
+
+// 本站相關：頁尾只放這一組（2026-10-22，使用者先要「網站地圖 請在footer也來一份」，看過之後改成「footer 只放 本站相關」「學習 塞進去
+// 網站導覽」）。其餘分組只在網站導覽頁
+export const ABOUT_SITE_LINKS: SiteMapGroup['links'] = [{ label: '首頁', to: '/' }, SITEMAP, { label: '外觀設定', to: '/appearance' }, { label: '個人資料設定', to: '/profile' }, { label: '無障礙聲明', to: '/accessibility' }]
+
+// 網站地圖：網站導覽頁（/sitemap）畫全部分組，頁尾畫最後的「本站」那組——共用資料不共用元件（兩邊版型不同）。原本兩邊各寫一份，
+// /sitemap 漏了除權息月覽、排行與普通股篩選各列了兩次。網站導覽從每一頁的頁尾連過去，所以每個區塊的入口都要列在這裡，不然那一區
+// 會變孤兒頁（2026-09-22 總經特區、09-23 產業索引就是這樣補上的；那時入口直接放頁尾）
+export const SITE_MAP: SiteMapGroup[] = [
+  { label: '找股票', links: [{ label: '普通股篩選', to: SCREENER_PATHS.common }, { label: '特別股篩選', to: SCREENER_PATHS.preferred }, { label: 'ETF 篩選', to: SCREENER_PATHS.etf }, RANK, INDUSTRIES] },
+  { label: '配息', links: [CALENDAR, { label: '除權息月覽', to: '/calendar/months' }] },
+  { label: '我的股票', links: [WATCHLIST, HOLDINGS] },
+  { label: '學習', links: [{ label: '新手專區', to: '/learn' }, MACRO, GURU, { label: '部落格', to: '/blog' }] },
+  { label: '本站', links: ABOUT_SITE_LINKS }
 ]
