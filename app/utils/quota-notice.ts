@@ -12,16 +12,19 @@ export function showQuotaReached(what: string, detail?: string) {
     duration: 8000,
     showClose: false,
     message: h('span', { class: 'app-toast' }, [
-      h('span', { class: 'app-toast__text' }, detail ?? `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`),
-      // 真的 <a>（右鍵、新分頁都能用），點擊時走 SPA 導覽，不整頁重載
-      h('a', {
-        href: '/profile#plan',
-        class: 'app-toast__action',
-        onClick: (event: MouseEvent) => {
-          event.preventDefault()
-          void navigateTo('/profile#plan')
-        }
-      }, '看方案'),
+      // 「看方案」接在句點後面（2026-10-22，使用者：「那個看方案 直接接在句點後面 然後顯眼點?」）：句子的一部分，不另佔一格，
+      // 手機上文字因此有整個寬度可以排。真的 <a>（右鍵、新分頁都能用），點擊時走 SPA 導覽，不整頁重載；箭頭不唸
+      h('span', { class: 'app-toast__text' }, [
+        detail ?? `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`,
+        h('a', {
+          href: '/profile#plan',
+          class: 'app-toast__link',
+          onClick: (event: MouseEvent) => {
+            event.preventDefault()
+            void navigateTo('/profile#plan')
+          }
+        }, ['看方案', h('span', { 'aria-hidden': 'true' }, ' →')])
+      ]),
       toastCloseButton(() => instance.close())
     ])
   })

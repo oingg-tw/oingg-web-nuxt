@@ -16,9 +16,12 @@ export function toastCloseButton(close: () => void) {
   return h('button', { type: 'button', class: 'app-toast__close', 'aria-label': '關閉訊息', onClick: close }, h(ElIcon, null, () => h(Close)))
 }
 
-export function showErrorMessage(message: string) {
-  const instance = ElMessage.error({
-    duration: 0,
+// 要讀一下、可以自己關的提示（錯誤、長的說明）：全站提示的同一個骨架——圖示、文字、本站的關閉鈕（2026-10-22 全站統一，
+// LINE 登入那則原本用 Element Plus 的 showClose）。duration 0 是不自己消失
+export function showClosableMessage(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', duration = 0) {
+  const instance = ElMessage({
+    type,
+    duration,
     showClose: false,
     message: h('span', { class: 'app-toast' }, [
       h('span', { class: 'app-toast__text' }, message),
@@ -26,4 +29,8 @@ export function showErrorMessage(message: string) {
     ])
   })
   return instance
+}
+
+export function showErrorMessage(message: string) {
+  return showClosableMessage(message, 'error')
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close, Loading } from '@element-plus/icons-vue'
+import { Close, Loading, WarningFilled } from '@element-plus/icons-vue'
 
 // 全站唯一的讀取失敗提示（2026-10-08）。使用者的兩個要求：
 //   - 「全域統一彈窗 Loader 阻斷瀏覽，而非個別畫面各自出現訊息」→ 點外面、Esc 都關不掉，沒有 ×；全站只有這一個，
@@ -178,11 +178,13 @@ function goHome() {
       <el-button ref="retryButton" type="primary" :loading="retrying" @click="retryNow">立即重試</el-button>
     </template>
   </el-dialog>
-  <!-- 次要資料讀不到：右下角、不擋頁面。role="status" 在出現時念一次；倒數不放進來（會每秒念） -->
+  <!-- 次要資料讀不到：右下角、不擋頁面。role="status" 在出現時念一次；倒數不放進來（會每秒念）。
+       長相跟全站提示同一種（element-plus.css 的全站提示段落，2026-10-22 方案 B）：深色條、警告圖示、淺金色的「立即重試」、自己的關閉鈕 -->
   <div v-if="noticeVisible" class="load-failure-notice" role="status">
+    <el-icon class="load-failure-notice__icon" aria-hidden="true"><WarningFilled /></el-icon>
     <p class="load-failure-notice__text">部分資料暫時讀不到，正在自動重試。</p>
-    <el-button :loading="retrying" @click="retryNow">立即重試</el-button>
-    <button type="button" class="load-failure-notice__close" aria-label="關閉讀取失敗提示" @click="dismiss">
+    <button type="button" class="app-toast__action" :disabled="retrying" @click="retryNow">{{ retrying ? '重試中…' : '立即重試' }}</button>
+    <button type="button" class="app-toast__close" aria-label="關閉讀取失敗提示" @click="dismiss">
       <el-icon aria-hidden="true"><Close /></el-icon>
     </button>
   </div>
@@ -215,44 +217,24 @@ function goHome() {
   font-variant-numeric: tabular-nums;
 }
 
+/* 長相在 element-plus.css 的全站提示段落（跟 ElMessage 同一種），這裡只管位置 */
 .load-failure-notice {
   position: fixed;
   right: 16px;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 2000;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: calc(100vw - 32px);
-  padding: 8px 4px 8px 16px;
-  border: 1px solid var(--el-border-color);
-  border-left: 4px solid var(--el-color-warning);
-  border-radius: 8px;
-  background: var(--el-bg-color-overlay);
-  box-shadow: var(--el-box-shadow-light);
+  max-width: min(520px, calc(100vw - 32px));
+}
+
+.load-failure-notice__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: var(--app-toast-warning);
 }
 
 .load-failure-notice__text {
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  line-height: 1.5;
-}
-
-.load-failure-notice__close {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--el-text-color-regular);
-  cursor: pointer;
-}
-
-.load-failure-notice__close:hover {
-  background: var(--el-fill-color-light);
 }
 </style>
