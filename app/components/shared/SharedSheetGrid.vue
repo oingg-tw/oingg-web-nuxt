@@ -328,7 +328,9 @@ watch(range, (next) => {
 // ---- 鍵盤 ----
 const ARROWS: Record<string, SheetDirection> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
 const WIDGETS = 'a[href], button, input, select, textarea'
-const cellWidgets = (el: HTMLElement | null) => Array.from(el?.querySelectorAll<HTMLElement>('button, input, select, textarea') ?? []).filter(widget => !widget.hasAttribute('disabled'))
+// Enter 進到格子裡的按鈕（再 Enter 按下、Esc 回格子）。連結只在 move 模式算：/holdings/columns 的股票格（2026-10-23）鍵盤才點得到；
+// activate 模式（觀察清單）Enter 本來就直接開啟那一列
+const cellWidgets = (el: HTMLElement | null) => Array.from(el?.querySelectorAll<HTMLElement>(props.enterAction === 'activate' ? 'button, input, select, textarea' : WIDGETS) ?? []).filter(widget => !widget.hasAttribute('disabled'))
 
 function onKeydown(event: KeyboardEvent) {
   // 輸入法選字時的 Enter、方向鍵是給輸入法的（研究文件的「IME 屏障」）

@@ -297,7 +297,7 @@ const skeletonSheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
   ...Array.from({ length: columnCountHint.value }, (_, index): SheetColumn<ColumnRow> => ({ key: `skeleton-${index}`, label: columnLetter(index), numeric: true, text: () => '' }))
 ])
 const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
-  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: row => `${row.name} ${row.symbol}` },
+  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, width: 160, text: row => `${row.symbol} ${row.name}` },
   ...columns.value.map((column, index): SheetColumn<ColumnRow> => {
     const letter = letters.value[index]!
     return {
@@ -505,7 +505,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
           storage-key="holdings-columns"
           :pointing="!!editingId"
           :highlights="highlights"
-          hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；表頭上按加號、減號調整欄寬，按 0 自動貼合。"
+          hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；股票格上按 Enter 進到連結、再按一次開啟個股頁；表頭上按加號、減號調整欄寬，按 0 自動貼合。"
           @pick="column => !loading && pickColumn(column.key)"
           @header-activate="column => !loading && editColumn(column.key)"
           @edit="(_row, column) => !loading && editColumn(column.key)"
@@ -526,7 +526,12 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
           </template>
           <template #cell="{ row, column, text }">
             <span v-if="loading" class="app-skeleton app-skeleton--inline columns-page__skeleton" aria-hidden="true" />
-            <template v-else-if="column.key === STOCK_KEY">{{ row.name }} <span class="columns-page__code">{{ row.symbol }}</span></template>
+            <!-- 股票：代號在前、連到個股頁（2026-10-23，使用者：「股票的欄位要加上超連結 而且代碼要在前」）。編輯公式時（選點模式）只畫字：
+                 那時點格子是插入參照，連結會把正在打的公式帶離這一頁 -->
+            <template v-else-if="column.key === STOCK_KEY">
+              <template v-if="editingId"><span class="columns-page__code">{{ row.symbol }}</span> {{ row.name }}</template>
+              <NuxtLink v-else :to="securityPath(row.symbol)" class="stock-name-link"><span class="columns-page__code">{{ row.symbol }}</span> {{ row.name }}</NuxtLink>
+            </template>
             <template v-else>{{ text }}</template>
           </template>
         </SharedSheetGrid>
