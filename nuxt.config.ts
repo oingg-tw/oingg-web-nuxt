@@ -120,7 +120,10 @@ export default defineNuxtConfig({
     '/images/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },
     // 分享連結（2026-10-19）：內容即時、關掉就要立刻失效，CDN 不能快取；不給搜尋引擎收錄；連到外站時不帶網址（token 在路徑裡）。
     // 不寫進 robots.txt：LINE、Facebook 的連結預覽要抓得到標題
-    '/share/**': { headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' } }
+    // strict-origin 而不是 no-referrer（2026-10-22）：Firebase 的 Browser key 加了網站限制，沒有 Referer 的登入請求會被擋——在分享頁登入、
+    //「加到我的觀察清單」都會失敗，而且單頁應用整段沿用第一頁的政策，從分享連結進站的人之後每一頁都會被擋。strict-origin 只送網域、不送路徑，
+    // token 照樣不外洩
+    '/share/**': { headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'strict-origin' } }
   },
   app: {
     head: {
