@@ -3,8 +3,11 @@
 // 取代原本的兩排分頁標籤（PresetFolder）：標籤一多，手機上整列超出畫面（ETF 那一列量到 1386px 寬），切換時標籤列與內容高度也會跳。
 // 下拉選單不論有幾組都只佔一行。
 //
-// 管理選單裡是真的按鈕：改名、上移、下移、刪除，不靠拖曳也不靠「再點一次」（WCAG 2.1.1／2.5.7）。刪除先藏起來、10 秒內可復原，
-// 時間到才真的通知父層刪（同原本 PresetFolder 的做法，父層不用自己做復原）。最後一組不能刪。
+// 「管理」打開 ScreenerPresetManageDialog（2026-10-22，原本是下拉選單）：一次看到全部、按「儲存」才套用，變更整包交給父層（manage）。
+// 下面的改名、上移、下移、刪除（只動目前這一組；刪除先藏起來、10 秒內可復原，時間到才通知父層刪）留給 hideManage 的呼叫端用：
+// 顯示欄位放在「欄位設定」面板最上面。最後一組不能刪。
+import type { PresetChanges } from '~/utils/preset-changes'
+
 export interface PresetSelectItem {
   id: string
   name: string
@@ -36,8 +39,11 @@ const emit = defineEmits<{
   rename: [id: string, name: string]
   remove: [id: string]
   reorder: [ids: string[]]
+  manage: [changes: PresetChanges]
   save: []
 }>()
+
+const manageOpen = ref(false)
 
 const uid = useId()
 const labelId = `${uid}-label`
@@ -102,13 +108,6 @@ function remove() {
 }
 
 defineExpose({ activeItem, editable, canRemove, canMove, rename, move, remove })
-
-function onCommand(command: string) {
-  if (command === 'rename') rename()
-  else if (command === 'up') move(-1)
-  else if (command === 'down') move(1)
-  else if (command === 'remove') remove()
-}
 </script>
 
 <template>
@@ -125,17 +124,10 @@ function onCommand(command: string) {
     </el-select>
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button" @click="emit('save')">{{ saveLabel }}</el-button>
     <el-button v-if="!hideAdd" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋新增</el-button>
-    <el-dropdown v-if="!hideManage" trigger="click" popper-class="screener-preset-select__menu" @command="onCommand">
-      <el-button class="screener-preset-select__button" :aria-label="`管理${label}`">管理</el-button>
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item command="rename" :disabled="!editable">改名</el-dropdown-item>
-          <el-dropdown-item command="up" :disabled="!canMove(-1)">上移</el-dropdown-item>
-          <el-dropdown-item command="down" :disabled="!canMove(1)">下移</el-dropdown-item>
-          <el-dropdown-item command="remove" :disabled="!canRemove" divided>刪除</el-dropdown-item>
-        </el-dropdown-menu>
-      </template>
-    </el-dropdown>
+    <template v-if="!hideManage">
+      <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
+      <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="visibleItems" @save="changes => emit('manage', changes)" />
+    </template>
     <p class="visually-hidden" role="status">{{ status }}</p>
   </div>
 </template>
@@ -186,19 +178,6 @@ function onCommand(command: string) {
     flex: 0 1 280px;
     width: 280px;
     min-width: 160px;
-  }
-}
-</style>
-
-<!-- 不加 scoped：下拉選單 teleport 到 body。觸控時每一項 ≥44px（全站的觸控規則沒有涵蓋選單項目） -->
-<style>
-.screener-preset-select__menu .el-dropdown-menu__item {
-  font-size: 1rem;
-}
-
-@media (pointer: coarse) {
-  .screener-preset-select__menu .el-dropdown-menu__item {
-    min-height: 44px;
   }
 }
 </style>

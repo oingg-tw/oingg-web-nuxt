@@ -84,9 +84,10 @@ export interface ScreenerWorkspace {
   activeTabId: string
   selectTab(id: string): void
   openNewTabDialog(): void
-  renamePreset(id: string, name: string): void
-  removePreset(id: string): void
-  reorderTabs(ids: string[]): void
+  // 管理彈窗一次存好幾項時由 ScreenerPageShell 依序 await（刪除做完才排序）
+  renamePreset(id: string, name: string): Promise<void> | void
+  removePreset(id: string): Promise<void> | void
+  reorderTabs(ids: string[]): Promise<void> | void
   saveActiveTab(): void
 
   // 顯示欄位

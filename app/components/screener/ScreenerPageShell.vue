@@ -2,6 +2,7 @@
 import type { ScreenerWorkspace } from '~/composables/screener/screener-tab-model'
 import type { ScreenerUniverse } from '~/utils/screener-zone'
 import type ScreenerPresetSelect from './ScreenerPresetSelect.vue'
+import type { PresetChanges } from '~/utils/preset-changes'
 // 三組篩選（普通股、特別股、ETF）共用的整頁（2026-10-15 三組篩選重新設計）。使用者：「三組最後使用UIUX要接近，降低用戶負擔」。
 // 每一個控制項都只在這裡接一次，三頁只給「資料」（screener：useScreenerTabs 或 useUniverseScreener 包成的 ScreenerWorkspace）
 // 與自己的標題、說明——改一個控制項三組一起改，不會有哪一頁漏接（同個股頁的 StockPageShell）。
@@ -62,6 +63,14 @@ function focusNewCondition() {
   setupRef.value?.querySelector<HTMLElement>(`[data-slot-id="${slots.at(-1)!.id}"] .condition-pill__value`)?.focus()
 }
 
+// 「我的篩選」管理彈窗按「儲存」（ScreenerPresetManageDialog）：一項做完再做下一項。刪除要先做完才排序——業務中台 的排序要
+// 「全部已存的 id」，還沒刪掉的那一組不能少；刪到目前這一組時，換選哪一組由各自的 removePreset 決定
+async function applyPresetChanges({ renames, removals, order }: PresetChanges) {
+  for (const [id, name] of renames) await props.screener.renamePreset(id, name)
+  for (const id of removals) await props.screener.removePreset(id)
+  if (order) await props.screener.reorderTabs(order)
+}
+
 // 欄位組合的改名、上移、下移、刪除放在「欄位設定」面板最上面，不另開「管理」選單（2026-10-21 使用者：「管理與欄位設定是否可以合併」）：
 // 一個管「哪一組」、一個管「這一組有哪些欄」，名字又太像。函式與刪除的 10 秒復原仍在 ScreenerPresetSelect（選單要跟著藏起刪掉的那一組）。
 // 一個都不能做（內建、訪客那一組）就寫一句話，不畫一排反灰的按鈕
@@ -114,9 +123,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             :active-id="screener.activeTabId"
             @update:active-id="screener.selectTab"
             @add="screener.openNewTabDialog()"
-            @rename="screener.renamePreset"
-            @remove="screener.removePreset"
-            @reorder="screener.reorderTabs"
+            @manage="applyPresetChanges"
             @save="screener.saveActiveTab()"
           />
           <ScreenerFilters

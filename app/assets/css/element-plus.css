@@ -48,6 +48,14 @@ html .el-tag.el-tag--info {
   height: 2rem !important;
 }
 
+/* 連結樣式的按鈕（el-button link）滑過時，Element Plus 把字換成 light-5：淺色模式的淺紅、淺金對比只有 2.2 左右（2026-10-22 axe
+   量到篩選「管理」彈窗的「刪除」#e39494，清單管理、帳戶管理的按鈕也一樣）。改用 dark-2：淺色模式更深、深色模式更亮，跟實心按鈕滑過的方向一致 */
+html .el-button--primary { --el-button-hover-link-text-color: var(--el-color-primary-dark-2); }
+html .el-button--success { --el-button-hover-link-text-color: var(--el-color-success-dark-2); }
+html .el-button--warning { --el-button-hover-link-text-color: var(--el-color-warning-dark-2); }
+html .el-button--danger { --el-button-hover-link-text-color: var(--el-color-danger-dark-2); }
+html .el-button--info { --el-button-hover-link-text-color: var(--el-color-info-dark-2); }
+
 /* Shared "關閉" button for a dialog's #footer slot (2026-09-19, interface-complexity review) —
    the reference doc wants every modal to give the visitor a real, TEXT exit, not just an × in the
    corner (which Element Plus's own close button still is; this is an addition, not a

@@ -630,9 +630,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     activeTabId,
     selectTab: (id: string) => { activeTabId.value = id },
     openNewTabDialog,
-    renamePreset: (id: string, name: string) => {
+    renamePreset: async (id: string, name: string) => {
       const tab = findTab(id)
-      if (tab) renameTab(tab, name)
+      if (tab) await renameTab(tab, name)
     },
     removePreset: (id: string) => removeTab(id),
     reorderTabs,
