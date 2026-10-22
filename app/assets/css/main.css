@@ -302,7 +302,9 @@ body {
   background: var(--el-fill-color-light);
 }
 
+/* router-link-active：NuxtLink 在這一項底下的頁也會標（/calendar/months 屬於配息月曆，靠 pages/calendar.vue 這個父路由） */
 .app-bar-item[aria-current='page'],
+.app-bar-item.router-link-active,
 .app-bar-item.is-current {
   font-weight: 700;
   color: var(--el-color-primary-dark-2);

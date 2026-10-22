@@ -84,7 +84,8 @@ const previewOf = (rowsOfDay: ExDividendRow[]) => {
 }
 
 // 到篩選器打開這個月除權息的標的、再加其他條件（2026-10-22，使用者：「或許是 帶去 股票篩選作為條件? 那麼是不是就要先建立 對應的指標?」
-// → analysis-ts 617ba6bb 的「除權息月份」，還沒到的月份同樣看去年同月）。跟著上面的種類切換，那個月沒有的種類不給連結
+// → analysis-ts 617ba6bb 的「除權息月份」，還沒到的月份同樣看去年同月）。跟著上面的種類切換，那個月沒有的種類不給連結（點進去是 0 檔；
+// 使用者 2026-10-22 問過 10 月為什麼沒有特別股，聽完確認維持隱藏）
 const SCREENER_LABEL: Record<ExDividendKind, string> = { common: '普通股', etf: 'ETF', preferred: '特別股' }
 const screenerLinks = computed(() => (Object.keys(SCREENER_LABEL) as ExDividendKind[])
   .filter(key => (kind.value === 'all' || kind.value === key) && selected.value.counts[key])
