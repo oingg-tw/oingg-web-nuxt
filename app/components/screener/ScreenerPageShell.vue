@@ -289,18 +289,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   background: var(--el-bg-color);
 }
 
-/* 顯示欄位放在結果表的工具列裡：窄的時候自己一整列，跟上面的我的篩選一樣寬（不然只有選單那麼寬，375 量到 276 對 309）；
-   560px 起整組一行、寬度看內容（同 ScreenerPresetSelect 的斷點） */
-.screener-shell__results .screener-preset-select {
-  flex: 1 1 100%;
-}
-
-@media (min-width: 560px) {
-  .screener-shell__results .screener-preset-select {
-    flex: 0 1 auto;
-  }
-}
-
 .screener-shell__results {
   display: flex;
   flex-direction: column;
