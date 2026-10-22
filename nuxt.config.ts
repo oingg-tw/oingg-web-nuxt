@@ -144,7 +144,10 @@ export default defineNuxtConfig({
       // No maximum-scale/user-scalable lock here — WCAG 1.4.4 (Resize Text, AA)
       // requires users can still zoom to 200%+; this only fixes the layout width,
       // it must never cap zoom.
-      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+      // referrer：瀏覽器的預設值，寫出來是為了蓋掉 Nitro 錯誤頁（所有 404）固定送的 `referrer-policy: no-referrer`（2026-10-22）。Firebase 的
+      // Browser key 只收自己網站送來的請求，沒有 Referer 的會被擋；單頁應用整段沿用第一頁的政策，從壞連結進到 404 頁再點站內連結的人，之後登入
+      // 都會失敗。meta 會更新文件的政策，跨站只送網域、不送路徑（分享頁的 token 照樣不外洩）
+      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }, { name: 'referrer', content: 'strict-origin-when-cross-origin' }],
       // 不載網路字型，用系統內建字（main.css 的 --el-font-family）。2026-10-16 DEV 的 Lighthouse：Noto Sans TC 每頁 17 個檔、1.1 MB，
       // 而且它的樣式表擋渲染；減成 400／700 兩個字重之後下載量一樣。使用者：「如果評測依舊不好，再改就用內建的吧」。
       link: [
