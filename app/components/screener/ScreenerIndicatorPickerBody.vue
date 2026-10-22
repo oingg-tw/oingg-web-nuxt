@@ -117,6 +117,20 @@ function locateField(fieldId: string): { categoryKey: string; metricKey: string 
   return null
 }
 
+// "Positioned to" means visible, not just marked active-and-possibly-off-screen below
+// the 3.5-row fold each column is capped to (see the height comments further down) —
+// scroll the matched row into view in each of the three columns once the picked field's
+// metric has actually rendered its own field list. 打開時、從搜尋結果點選指標時都要（2026-10-22，使用者：「搜尋 ROE 點下
+// 股東權益報酬率 有正常顯示 小項目 但是 中項目 沒有自動跳轉到 股東權益報酬率」——原本只有打開時捲）。只找這個面板自己的列：
+// 原本查整份 document，同時開著兩個面板會捲到另一個
+const rootRef = ref<HTMLElement>()
+async function revealActive() {
+  await nextTick()
+  for (const selector of ['.indicator-dialog__category.is-active', '.indicator-dialog__metric.is-active', '.indicator-dialog__item.is-active']) {
+    rootRef.value?.querySelector(selector)?.scrollIntoView({ block: 'nearest' })
+  }
+}
+
 // Every time this opens, jump straight to wherever currentFieldId actually lives in the
 // 大/中/小 hierarchy — a fresh empty slot or the column picker (currentFieldId null) just
 // falls through to the first category/metric, same as before. Clearing the search box here
@@ -138,15 +152,7 @@ watch(
     const location = props.currentFieldId ? locateField(props.currentFieldId) : null
     activeCategoryKey.value = location?.categoryKey ?? sortedCategories.value[0]?.key
     activeMetricKey.value = location?.metricKey ?? bySort(sortedCategories.value[0]?.metrics ?? [])[0]?.key
-
-    // "Positioned to" means visible, not just marked active-and-possibly-off-screen below
-    // the 3.5-row fold each column is capped to (see the height comments further down) —
-    // scroll the matched row into view in each of the three columns once the picked field's
-    // metric has actually rendered its own field list.
-    await nextTick()
-    for (const selector of ['.indicator-dialog__category.is-active', '.indicator-dialog__metric.is-active', '.indicator-dialog__item.is-active']) {
-      document.querySelector(selector)?.scrollIntoView({ block: 'nearest' })
-    }
+    await revealActive()
   },
   { immediate: true }
 )
@@ -406,6 +412,7 @@ function selectMetric(key: string) {
   if (owningCategory) activeCategoryKey.value = owningCategory.key
   activeMetricKey.value = key
   searchQuery.value = ''
+  revealActive()
 
   // Skip the extra click into the field column when there's only one row it could ever show
   // — selecting the metric already IS selecting the field at that point, nothing left to
@@ -425,7 +432,7 @@ function selectIndicator(entry: IndicatorEntry) {
 </script>
 
 <template>
-  <div class="indicator-dialog">
+  <div ref="rootRef" class="indicator-dialog">
     <el-input v-model="searchQuery" placeholder="搜尋指標名稱" aria-label="搜尋指標名稱" clearable class="indicator-dialog__search">
       <template #prefix>
         <el-icon><Search /></el-icon>
