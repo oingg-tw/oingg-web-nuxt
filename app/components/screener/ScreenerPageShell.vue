@@ -162,7 +162,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             </div>
           </div>
           <!-- 沒有結果：說清楚是條件太嚴，給一個馬上能做的動作（三組同一段）。這時「顯示欄位」跟著表格一起收起來（沒有資料就沒有欄位可選）。
-               下面結果表的名稱欄 160px：ETF 簡稱常有 8 個字（主動國泰動能高息），三組同寬 -->
+               下面結果表的名稱欄跟著資料寬（SharedMetricTable 量最長的名稱） -->
           <div v-if="empty" class="screener-shell__empty">
             <p class="screener-shell__empty-text">沒有符合上述條件的{{ zone.subject }}。可以放寬或移除條件。</p>
             <el-button v-if="lastSlotId !== null" class="screener-shell__empty-button" @click="screener.removeSlot(tab!, lastSlotId)">移除最後一個條件</el-button>
@@ -182,7 +182,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             :cell-dates="screener.periodToggle ? undefined : false"
             :row-link="screener.rowLink"
             :total="tab.total"
-            :name-width="160"
             sticky
             @reorder="fields => screener.handleReorderColumns(tab!, fields)"
             @remove-column="field => screener.handleRemoveColumn(tab!, field)"

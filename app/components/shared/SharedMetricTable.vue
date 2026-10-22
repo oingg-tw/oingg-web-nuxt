@@ -59,7 +59,6 @@ const props = withDefaults(defineProps<{
   showPeriod?: boolean
   // 每格下面要不要印資料日期（篩選器跟著 showPeriod；觀察清單只要表頭的期間、不要每格日期）
   cellDates?: boolean
-  nameWidth?: number
   actionsLabel?: string
   // 欄位順序以父層為準（父層主動換順序時表格跟著換）。見下面 orderedColumns 的 watcher 為什麼篩選器不開。
   followColumnOrder?: boolean
@@ -90,7 +89,6 @@ const props = withDefaults(defineProps<{
   paginated: true,
   showPeriod: undefined,
   cellDates: undefined,
-  nameWidth: 110,
   actionsLabel: '操作',
   followColumnOrder: false,
   cards: true,
@@ -441,6 +439,19 @@ const cardRows = computed(() => {
   return order === 'descending' ? sorted.reverse() : sorted
 })
 
+// 名稱欄跟著資料寬（2026-10-22，使用者：「screener 名稱 的 欄位 寬度 符合資料寬度就好」）：目前載入的列裡最長的名稱，用表格的字型量，
+// 加格子左右內距 24px；不窄於表頭（「名稱」兩個字＋排序圖示＋按鈕內距）。原本三組固定 160px（ETF 簡稱常有 8 個字），普通股兩三個字的
+// 名稱右邊空一大塊。結果只在瀏覽器查，伺服器端不會畫到這張表
+let measureContext: CanvasRenderingContext2D | null = null
+const nameWidth = computed(() => {
+  if (!import.meta.client) return 0
+  measureContext ??= document.createElement('canvas').getContext('2d')
+  if (!measureContext) return 0
+  measureContext.font = `${getComputedStyle(document.documentElement).fontSize} ${getComputedStyle(document.body).fontFamily}`
+  const widest = Math.max(measureContext.measureText('名稱').width + 22, ...props.rows.map(row => measureContext!.measureText(row.name ?? '').width))
+  return Math.ceil(widest) + 24
+})
+
 // 最後一列：知道總數就寫出來（三組篩選共用，2026-10-15；原本寫死「…的股票」，ETF 不是股票）
 const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${groupThousands(props.total)} 檔` : '已顯示全部符合條件的結果'))
 
@@ -605,9 +616,10 @@ watch(() => props.loading, (loading, wasLoading) => {
             <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
           </select>
         </label>
-        <!-- 方向一直在（沒選排序欄位時停用），選了欄位不會多冒出一個選單把版面推開 -->
+        <!-- 方向一直在（沒選排序欄位時停用），選了欄位不會多冒出一個選單把版面推開。圖示是全站的排序圖示（沒排序兩個三角形、排序中只留
+             那個方向；使用者 2026-10-21 的規範），不用文字箭頭：↑↓ 的高低跟著字型跑，跟旁邊的字對不齊 -->
         <el-button class="smt-direction" :disabled="!activeSort.field" @click="applySort(activeSort.field, activeSort.order === 'ascending' ? 'descending' : 'ascending')">
-          <span class="visually-hidden">排序方向：</span><span aria-hidden="true">{{ activeSort.order === 'ascending' ? '↑' : '↓' }}&nbsp;</span>{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}
+          <span class="visually-hidden">排序方向：</span><SharedSortIcon class="smt-direction__icon" :state="activeSort.field ? activeSort.order : null" />{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}
         </el-button>
       </div>
     </div>
@@ -842,6 +854,12 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin: 0;
 }
 
+/* 排序列的高度跟著方向鍵（Element 的尺寸：滑鼠 32px、字級 110／120% 40px、觸控 44px）：原生選單（.app-select）本來固定 44px，
+   用滑鼠看手機版面時比旁邊的按鈕高一截（2026-10-22，使用者：「手機版 排序 小到大 高度不對」）。觸控時全站規則把 select 撐到 44px */
+.smt-toolbar__row.smt-toolbar__sort {
+  align-items: stretch;
+}
+
 .smt-sort {
   position: relative;
   display: flex;
@@ -862,7 +880,12 @@ watch(() => props.loading, (loading, wasLoading) => {
 .smt-sort__select {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   padding-left: calc(12px + 2em + 8px);
+}
+
+.smt-direction__icon {
+  margin-right: 6px;
 }
 
 .smt-cards {
@@ -929,6 +952,13 @@ watch(() => props.loading, (loading, wasLoading) => {
 /* 值不折行；表頭在欄寬裡折行、對齊底部（2026-10-22 方案 1B，見 minWidthFor） */
 .screener-result-table :deep(.cell) {
   white-space: nowrap;
+}
+
+/* 表頭跟內容分得出來（2026-10-22，使用者：「screener header body 顏色要有所區分」）：Element 預設表頭跟列同一個底色。--el-fill-color
+   比斑馬紋（fill-color-lighter）與滑過的列（fill-color-light）都深一階；表頭字（次要文字色）對它淺色 4.97:1、深色 5.42:1。固定欄的表頭
+   Element 也讀這個變數 */
+.screener-result-table {
+  --el-table-header-bg-color: var(--el-fill-color);
 }
 
 .screener-result-table :deep(th.el-table__cell) {

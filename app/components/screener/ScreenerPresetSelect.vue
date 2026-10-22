@@ -148,8 +148,9 @@ function optionLabel(item: PresetSelectItem) {
     white-space: nowrap;
   }
 
+  /* 從 0 長：選單吃掉＋與管理剩下的寬度，不會先佔一塊把＋擠到下一行（字級 120%、360 寬時「＋」原本自己一行） */
   .screener-preset-select--compact .screener-preset-select__select {
-    flex: 1 1 10em;
+    flex: 1 1 0;
     width: auto;
     min-width: 0;
   }
