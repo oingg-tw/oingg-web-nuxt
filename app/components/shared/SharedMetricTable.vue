@@ -645,7 +645,6 @@ watch(() => props.loading, (loading, wasLoading) => {
       :class="{ 'screener-result-table--sticky': sticky }"
       :data="rows"
       row-key="symbol"
-      stripe
       scrollbar-always-on
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
@@ -654,7 +653,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       <!-- Real backend sort (see handleSortChange) — sortable="custom" so el-table only
            reports the click instead of trying to reorder `rows` itself, which is already in
            whatever order the server returned it in. -->
-      <el-table-column prop="symbol" label="代號" width="90" fixed :sortable="sortMode === 'client' ? true : 'custom'">
+      <el-table-column prop="symbol" label="代號" width="90" fixed class-name="screener-result-table__code" :sortable="sortMode === 'client' ? true : 'custom'">
         <template #header>
           <button type="button" class="screener-result-table__head screener-result-table__head--start" data-field="symbol" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === 'symbol'">
             <span class="screener-result-table__column-label">代號</span><SharedSortIcon :state="activeSort.field === 'symbol' ? activeSort.order : null" /><span class="visually-hidden">{{ sortStateText('symbol') }}</span>
@@ -954,11 +953,33 @@ watch(() => props.loading, (loading, wasLoading) => {
   white-space: nowrap;
 }
 
-/* 表頭跟內容分得出來（2026-10-22，使用者：「screener header body 顏色要有所區分」）：Element 預設表頭跟列同一個底色。--el-fill-color
-   比斑馬紋（fill-color-lighter）與滑過的列（fill-color-light）都深一階；表頭字（次要文字色）對它淺色 4.97:1、深色 5.42:1。固定欄的表頭
-   Element 也讀這個變數 */
+/* 表格的顏色（2026-10-23，使用者在配色方案頁選 A「結果放在一張卡片上」；原本：「顏色與背景似乎對比不足」「電腦版看起來怪怪的」）：
+   - 底色跟著卡片（--el-bg-color，手機結果卡片同一個），不是 Element 的純白；不畫斑馬紋（冷灰的 fill-color-lighter 壓在暖色卡片上很突兀）
+   - 表頭暖色（--app-table-head-bg），跟內容分得出來（10-22「header body 顏色要有所區分」），字用 regular；固定欄的表頭 Element 也讀這個變數
+   - 列線用淡的 --app-divider，不用元件外框那個 3:1 的灰（整片像試算表格線）
+   - 數字用主要文字色（手機卡片的數字也是），滑過的列用主色最淡那一階 */
 .screener-result-table {
-  --el-table-header-bg-color: var(--el-fill-color);
+  --el-table-bg-color: var(--el-bg-color);
+  --el-table-tr-bg-color: var(--el-bg-color);
+  --el-table-header-bg-color: var(--app-table-head-bg);
+  --el-table-header-text-color: var(--el-text-color-regular);
+  --el-table-text-color: var(--el-text-color-primary);
+  --el-table-border-color: var(--app-divider);
+  --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
+}
+
+/* 代號是識別用的，灰一階讓名稱與數字先被看到。名稱不加粗：微軟正黑體沒有 500，中文退回一般字重、英文卻變半粗（「富林-KY」的 KY 比字粗） */
+.screener-result-table :deep(td.screener-result-table__code) {
+  color: var(--el-text-color-secondary);
+}
+
+/* 第一欄與最後一欄離卡片邊 16px，跟卡片裡的標題、顯示欄位切齊 */
+.screener-result-table :deep(.el-table__cell:first-child .cell) {
+  padding-left: 16px;
+}
+
+.screener-result-table :deep(.el-table__cell:last-child .cell) {
+  padding-right: 16px;
 }
 
 .screener-result-table :deep(th.el-table__cell) {

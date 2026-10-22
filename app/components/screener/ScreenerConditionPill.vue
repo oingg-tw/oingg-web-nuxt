@@ -119,7 +119,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   display: grid;
   grid-template-columns: minmax(4em, 1fr) minmax(0, max-content) 44px;
   min-height: 44px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 /* block 而不是 flex：刪節號只對 block 裡的文字有效（flex 容器裡的文字是匿名項目，text-overflow 套不上） */

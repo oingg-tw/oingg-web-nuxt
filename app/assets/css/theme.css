@@ -45,6 +45,11 @@ html.dark {
      #6b6c6e clears 3.17–3.56:1 against all three. */
   --el-border-color: #6b6c6e;
   --el-border-color-lighter: #6b6c6e;
+
+  /* 見淺色那一組的說明（分隔線、卡片框、表頭底色） */
+  --app-divider: #2e2e2e;
+  --app-surface-border: #363636;
+  --app-table-head-bg: #2a2a2a;
 }
 
 /* 深色模式的實心按鈕字色：Element Plus 把 primary 按鈕與選中的 radio-button 寫死白字，而本站深色的七個主色都是為了「當文字」挑的
@@ -106,6 +111,13 @@ html:not(.dark) {
      要 3:1）。兩個 token 同一個 #7f8690：對頁面／卡片／白 3.26／3.49／3.67:1。 */
   --el-border-color: #7f8690;
   --el-border-color-lighter: #7f8690;
+
+  /* 2026-10-23（使用者看篩選頁電腦版：「顏色與背景似乎對比不足」，配色方案頁選 A）：上面那組 3:1 是給輸入框、按鈕這類元件外框的，
+     條件清單與表格的列線也跟著用，整片像試算表格線。分隔線不是元件外框（看對齊就分得出列），另外三個暖色、淡的：
+     --app-divider 列與列之間的線；--app-surface-border 放結果的那張卡片的框；--app-table-head-bg 表頭底色（表頭字 regular 對它 4.97:1） */
+  --app-divider: #e6dfd2;
+  --app-surface-border: #d9d1c2;
+  --app-table-head-bg: #efe8da;
 
   --el-color-danger: #c62828;
   --el-color-danger-dark-2: #9e2020;

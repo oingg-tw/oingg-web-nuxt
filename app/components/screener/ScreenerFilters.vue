@@ -56,7 +56,8 @@ const emit = defineEmits<{
    container：欄數看這一塊自己的寬度（側欄、滿版或置中模式都對），不是看視窗 */
 .screener-filters {
   container-type: inline-size;
-  border-top: 1px solid var(--el-border-color-lighter);
+  /* 淡的分隔線（2026-10-23 配色方案 A，見 theme.css 的 --app-divider） */
+  border-top: 1px solid var(--app-divider);
 }
 
 /* 窄的時候一欄，760px 以上兩欄（兩個最長的條件放得下：危機預警分數那類名稱約 230px＋值約 110px＋移除 44px），

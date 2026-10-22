@@ -260,6 +260,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 
 <style scoped>
 .screener-shell {
+  /* container：結果區要不要包成卡片看這一頁的寬度（見下面 .screener-shell__results） */
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -287,6 +289,29 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+}
+
+/* 電腦版的結果放在一張卡片上（2026-10-23，使用者在配色方案頁選 A）：設定區留在頁面底色上，結果（標題、顯示欄位、表格）一張淺色卡片，
+   一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張卡片，外面再包一張就是卡片包卡片。
+   門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。overflow: clip 不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸
+   就黏在卡片裡、不黏在畫面上 */
+@container (min-width: 722px) {
+  .screener-shell__results {
+    padding-top: 16px;
+    border: 1px solid var(--app-surface-border);
+    border-radius: 12px;
+    background: var(--el-bg-color);
+    overflow: clip;
+  }
+
+  .screener-shell__results-header,
+  .screener-shell__results :deep(.smt-toolbar) {
+    padding-inline: 16px;
+  }
+
+  .screener-shell__results > .screener-shell__empty {
+    margin: 0 16px 16px;
+  }
 }
 
 .screener-shell__results-header {
