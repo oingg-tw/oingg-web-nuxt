@@ -600,7 +600,9 @@ async function submit() {
 }
 
 /* 總覽：一塊、不分格，三列用 subgrid 對齊，金額靠右（位數一眼比得出大小）。依這一段的寬度排三種（mobile first）：
-   窄：總市值在上，每列「名稱｜金額」、比率在金額下面；≥480：每列「名稱｜金額｜比率」；≥720：總市值放左邊、三列放右邊 */
+   窄：總市值在上，每一項都跟它同一種寫法——名稱一行、金額與比率一行，全部靠左（2026-10-22，使用者：「這個卡片電腦看沒問題 手機版本看起來亂亂的」，
+   方案頁選 3C；原本比率擠在金額下面靠右，長短差三倍、左邊參差，離下一列的名稱跟離自己的金額一樣近）；
+   ≥480：每列「名稱｜金額｜比率」；≥720：總市值放左邊、三列放右邊 */
 .holdings-page__overview {
   container-type: inline-size;
 }
@@ -609,7 +611,7 @@ async function submit() {
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 16px;
-  row-gap: 8px;
+  row-gap: 14px;
   margin: 0;
   padding: 16px;
   border: 1px solid var(--el-border-color);
@@ -640,20 +642,15 @@ async function submit() {
 }
 
 .holdings-overview__row {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   grid-column: 1 / -1;
-  grid-template-columns: subgrid;
   align-items: baseline;
+  gap: 2px 12px;
 }
 
 .holdings-overview__row dt {
-  grid-row: span 2;
-}
-
-.holdings-overview__row dd {
-  grid-column: 2;
-  justify-self: end;
-  text-align: right;
+  flex-basis: 100%;
 }
 
 .holdings-overview__row dd:first-of-type {
@@ -670,20 +667,19 @@ async function submit() {
   .holdings-overview {
     grid-template-columns: max-content max-content 1fr;
     column-gap: 24px;
+    row-gap: 8px;
     padding: 20px 24px;
   }
 
-  .holdings-overview__row dt {
-    grid-row: auto;
+  /* gap: normal＝欄距跟外層的格子走（subgrid） */
+  .holdings-overview__row {
+    display: grid;
+    grid-template-columns: subgrid;
+    gap: normal;
   }
 
-  .holdings-overview__row dd {
-    grid-column: auto;
-    text-align: left;
-  }
-
-  .holdings-overview__row dd:last-of-type {
-    justify-self: start;
+  .holdings-overview__row dd:first-of-type {
+    justify-self: end;
   }
 }
 
