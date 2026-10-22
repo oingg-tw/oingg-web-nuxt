@@ -67,10 +67,11 @@ export const ABOUT_SITE_LINKS: SiteMapGroup['links'] = [{ label: '首頁', to: '
 // 網站地圖：網站導覽頁（/sitemap）畫全部分組，頁尾畫最後的「本站」那組——共用資料不共用元件（兩邊版型不同）。原本兩邊各寫一份，
 // /sitemap 漏了除權息月覽、排行與普通股篩選各列了兩次。網站導覽從每一頁的頁尾連過去，所以每個區塊的入口都要列在這裡，不然那一區
 // 會變孤兒頁（2026-09-22 總經特區、09-23 產業索引就是這樣補上的；那時入口直接放頁尾）
+// 學習排第一（2026-10-22，使用者：「sitemap 學習 順序往上面放」）
 export const SITE_MAP: SiteMapGroup[] = [
+  { label: '學習', links: [{ label: '新手專區', to: '/learn' }, MACRO, GURU, { label: '部落格', to: '/blog' }] },
   { label: '找股票', links: [{ label: '普通股篩選', to: SCREENER_PATHS.common }, { label: '特別股篩選', to: SCREENER_PATHS.preferred }, { label: 'ETF 篩選', to: SCREENER_PATHS.etf }, RANK, INDUSTRIES] },
   { label: '配息', links: [CALENDAR, { label: '除權息月覽', to: '/calendar/months' }] },
   { label: '我的股票', links: [WATCHLIST, HOLDINGS] },
-  { label: '學習', links: [{ label: '新手專區', to: '/learn' }, MACRO, GURU, { label: '部落格', to: '/blog' }] },
   { label: '本站', links: ABOUT_SITE_LINKS }
 ]
