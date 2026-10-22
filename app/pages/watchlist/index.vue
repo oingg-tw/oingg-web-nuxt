@@ -121,6 +121,8 @@ function resetColumns() {
 }
 
 const { data: schema } = await useFilterSchema()
+// 指標目錄＋「類股」（基本資料裡、市場別後面，同篩選器；2026-10-22 使用者：「要」）。只當欄位用，不需要類股清單
+const pickerCategories = computed(() => withSectorCondition(schema.value.categories, []))
 // 挑選器是 SharedMetricColumnPicker（2026-10-20 跟 /holdings/columns 的「新增指標」共用）。「新增」在開挑選器之前先擋額度：
 // 原本加上去約 0.6 秒後被 PUT 的 403 收回。只擋新增——重排、刪欄在降級後照樣要能存（見 columns 上面的註解）
 const pickerVisible = ref(false)
@@ -329,7 +331,7 @@ async function submitNote() {
       還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
     </p>
 
-    <SharedMetricColumnPicker v-model="pickerVisible" title="新增欄位" @select="addColumn" />
+    <SharedMetricColumnPicker v-model="pickerVisible" title="新增欄位" :categories="pickerCategories" @select="addColumn" />
 
     <el-dialog :model-value="noteTarget !== null" :title="noteTarget ? `${noteTarget.name} 的備註` : '備註'" width="min(480px, 92vw)" @close="noteTarget = null">
       <label for="watchlist-note-input" class="watchlist-note-dialog__label">為什麼想追蹤這一檔？只有你自己看得到。</label>

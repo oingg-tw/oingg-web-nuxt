@@ -35,13 +35,14 @@ export const WATCHLIST_CHANGE = 'watchlist.change'
 export const WATCHLIST_EX_DIVIDEND = 'watchlist.exDividend'
 
 // 表格上的欄位裡，要送去 /screener/values 的型錄欄位（/watchlist 與分享頁共用）。假欄位（watchlist.*）是這裡自己算的；
+// stock.* 與類股（sector.code，2026-10-22）是 業務中台 自己填的，不在型錄裡也要送。
 // 型錄裡已經不存在的欄位（指標改名，業務中台 提醒存的是 JSON、不跟型錄連動）先濾掉：一個未知欄位會讓整個請求 400、
 // 整張表都沒有數字。那一欄照樣顯示，值是空的。
 export function watchlistCatalogFields(columns: { field: string }[], categories: MetricCategory[]): string[] {
   return columns
     .map(column => column.field)
     .filter(field => !field.startsWith('watchlist.'))
-    .filter(field => field.startsWith('stock.') || !categories.length || !!locateFieldInSchema(categories, field))
+    .filter(field => field.startsWith('stock.') || field === SECTOR_FIELD_ID || !categories.length || !!locateFieldInSchema(categories, field))
 }
 
 export interface WatchlistRow {

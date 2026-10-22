@@ -5,8 +5,14 @@
 // 目錄自己讀；挑了就關掉，再把 field（例如 roe.TTM）與標籤（「股東權益報酬率（近四季）」）送出去。
 // 重複與額度由各頁判斷：觀察清單照 field、自訂欄位照公式比對重複；額度一個是 watchlistColumns、一個是 customHoldingColumns。
 // 取代 ScreenerIndicatorPicker：只有觀察清單在用，桌機錨定下拉那一半從沒用到，而且在渲染時依螢幕寬度選標記。
+import type { MetricCategory } from '~/composables/screener/useFilterSchema'
+
 const open = defineModel<boolean>({ required: true })
-defineProps<{ title: string }>()
+defineProps<{
+  title: string
+  // 不給就是指標目錄。觀察清單另外加「類股」（業務中台 填的欄位、不在目錄裡，2026-10-22 使用者：「要」）；/holdings/columns 是公式表，不加
+  categories?: MetricCategory[]
+}>()
 const emit = defineEmits<{ select: [field: string, label: string] }>()
 
 const { data: schema } = useFilterSchema()
@@ -25,7 +31,7 @@ function select(field: string, label: string) {
 <template>
   <!-- 寬度寫在 CSS 的 --el-dialog-width、不用 width 屬性：屬性會變成行內樣式，手機滿版那條蓋不掉 -->
   <el-dialog v-if="everOpened" v-model="open" :title="title" class="metric-column-picker" lock-scroll>
-    <ScreenerIndicatorPickerBody v-loading="!schema.categories.length" :categories="schema.categories" :active="open" :hide-period="false" @select="select" />
+    <ScreenerIndicatorPickerBody v-loading="!schema.categories.length" :categories="categories ?? schema.categories" :active="open" :hide-period="false" @select="select" />
   </el-dialog>
 </template>
 
