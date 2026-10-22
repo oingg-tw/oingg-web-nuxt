@@ -72,11 +72,12 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     return fieldId
   }
 
+  // 存過的組合、網址打開的、範本的條件都從這裡進來：被藏起來的舊指標換成留下來的那一支（replaced-metrics.ts）
   function buildSlots(filters: FilterCriterion[]): TabFilterSlot[] {
     return filters.map((filter, index) => ({
       id: index,
-      fieldId: filter.field,
-      fieldLabel: labelForField(filter.field),
+      fieldId: replacedField(filter.field),
+      fieldLabel: labelForField(replacedField(filter.field)),
       min: filter.min,
       max: filter.max,
       exclude: filter.exclude,
@@ -141,7 +142,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       renaming: false,
       renameDraft: preset.name
     }
-    persistedFilterKeys.set(tab.id, filterKeyOf(tab))
+    // 條件裡有換過的舊指標（buildSlots）就不記成伺服器的版本：第一次查詢前照新的 PATCH 回去，伺服器也照新的跑
+    if (!(preset.filters ?? []).some(filter => replacedField(filter.field) !== filter.field)) persistedFilterKeys.set(tab.id, filterKeyOf(tab))
     return tab
   }
 
@@ -581,6 +583,13 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       // Populated before presets.map(presetToTab) below runs, so presetToTab's own
       // resolveDefaultColumnPresetId() call already sees the real list, not last session's.
       columnPresetOptions.value = columnPresets.map(toColumnPresetOption)
+      // 欄位組合裡被藏起來的舊指標換成留下來的那一支（replaced-metrics.ts），存回帳號之後才往下：第一次查詢的欄位照伺服器存的那份
+      await Promise.all(columnPresetOptions.value.map((option) => {
+        const fields = replacedFields(option.fields)
+        if (fields.join() === option.fields.join()) return null
+        option.fields = fields
+        return updateColumnPreset(option.id, { fields })
+      }))
 
       tabs.value = [...unsavedTabs, ...presets.map(presetToTab)]
       for (const tab of tabs.value) watchTabForAutoSearch(tab)

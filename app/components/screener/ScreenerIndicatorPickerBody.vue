@@ -64,14 +64,9 @@ const searchQuery = ref('')
 // order 股東政策/安全韌性/獲利品質/估值水準/獲利能力/營運效率/成長動能，該類別 2026-09-21 由 財務韌性 更名) — sorting by `.sort`
 // here would silently put categories back in the wrong, stale order. props.categories is used
 // directly, unsorted, trusting the API's own array position as authoritative for this one level.
-// 同名的幾支只留一支能挑（2026-10-21，使用者：「類似的欄位 比如股價淨值比 就有三個 本益比也是 哪個比較適合做為篩選指標 請保留一個就好」）。
-// 型錄裡還在（個股頁的季資料圖、河流圖要用），只是挑選器不列；已經存在條件或欄位裡的照常顯示。2026-10-20 收盤資料量的理由：
-//   - 本益比、股價淨值比留「交易所」：季資料版停在上次財報那天（3008 本益比 21.75，當天其實 31.78）；即時版虧損公司是負數
-//     （1101 −22.76），「≤ 15」會把虧損公司篩進來，交易所對虧損公司不公布
-//   - 市值、葛拉漢倍數、本益成長比留「即時」：季資料版同樣停在財報那天；季資料版葛拉漢倍數虧損公司是負數（1101 −15.21）會通過「< 22.5」
-//   - 每股股利留「近12個月」：近四季版今年除息比去年晚就掉成 0（2364 是 0，近12個月 1.82）
-//   - 盈餘收益率兩支都留：一般版是 EPS ÷ 股價，Greenblatt 版是 EBIT ÷ 企業價值，公式不同
-const PICKER_HIDDEN_METRICS = new Set(['peRatio', 'livePeRatio', 'pbRatio', 'livePbRatio', 'marketCap', 'grahamNumber', 'pegRatio', 'dividendPerShare'])
+// 同名的幾支只留一支能挑（2026-10-21）：不列的那幾支與留下來的是哪一支、理由，都在 app/utils/replaced-metrics.ts（存過的條件與欄位
+// 也照那張表換掉，2026-10-22）
+const PICKER_HIDDEN_METRICS = new Set(Object.keys(REPLACED_METRICS))
 const sortedCategories = computed(() => props.categories.map(category => ({ ...category, metrics: category.metrics.filter(metric => !PICKER_HIDDEN_METRICS.has(metric.key)) })))
 
 const activeCategoryKey = ref<string | undefined>(sortedCategories.value[0]?.key)
