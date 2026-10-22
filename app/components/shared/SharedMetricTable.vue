@@ -163,6 +163,14 @@ function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | und
   }
 }
 
+// 年增率、年減率的格子用漲跌色（2026-10-22，使用者：「篩選 表格 舉凡 年增率 年減率 數字 都用 漲跌色」）：指標名稱以年增率／年減率結尾
+// （可以再接「變化」）才算。「營收年增率波動」是標準差、永遠是正的，不是增減，所以不上色
+const YOY_NAME = /(年增率|年減率)(變化)?$/
+function directionClassOf(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
+  const metric = locateFieldInSchema(props.categories, column.field)?.metric
+  return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(raw) : ''
+}
+
 const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
@@ -597,7 +605,7 @@ watch(() => props.loading, (loading, wasLoading) => {
             <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
               <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
             </span>
-            <span v-else>{{ formatValue(column, row.values[column.field]?.value) }}</span>
+            <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
             <!-- The actual per-row knowledgeDate this specific number describes (renamed from
                  asOfDate 2026-09-14) — different symbols can legitimately show different dates
                  for the same field (e.g. one hasn't filed this quarter's report yet), so this
@@ -654,7 +662,7 @@ watch(() => props.loading, (loading, wasLoading) => {
                   <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
                     <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
                   </span>
-                  <template v-else>{{ formatValue(column, row.values[column.field]?.value) }}</template>
+                  <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
                   <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ row.values[column.field]!.knowledgeDate }}</span>
                 </slot>
               </dd>
