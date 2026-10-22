@@ -676,68 +676,71 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
 
 <template>
   <div ref="root" class="sheet" @keydown="onKeydown" @pointerdown="onPointerdown" @pointerover="onPointerover" @click="onClick" @dblclick="onDblclick" @focusin="onFocusin" @focusout="onFocusout">
-    <div ref="scroller" class="sheet__scroll">
-      <table class="sheet__table" role="grid" aria-multiselectable="true" :aria-label="label" :aria-describedby="hintId" :style="{ width: `${tableWidth}px` }">
-        <colgroup>
-          <col v-for="column in columns" :key="column.key" :style="{ width: `${widthOf(column)}px` }">
-        </colgroup>
-        <thead>
-          <tr role="row">
-            <th
-              v-for="(column, c) in columns"
-              :key="column.key"
-              :ref="el => { if (el) headerCells[c] = el as HTMLElement }"
-              scope="col"
-              role="columnheader"
-              :aria-sort="ariaSort(column)"
-              :aria-haspopup="columnMenu && column.copyable !== false ? 'menu' : undefined"
-              :aria-expanded="columnMenu && column.copyable !== false ? menu.open && menu.key === column.key : undefined"
-              :tabindex="active.r === -1 && active.c === c ? 0 : -1"
-              :data-r="-1"
-              :data-c="c"
-              class="sheet__cell sheet__header-cell"
-              :class="[cellClasses(-1, c, column), dragClass(c), { 'is-sortable': !!column.sortValue }]"
-              :style="cellStyle(c, column)"
-            >
-              <span class="sheet__head">
-                <slot name="header" :column="column" :index="c">{{ column.label }}</slot>
-                <SharedSortIcon v-if="column.sortValue" :state="sort?.key === column.key ? sort.order : null" />
-              </span>
-              <!-- 滑鼠用的把手；鍵盤在表頭上按 +／−／0（見 onHeaderKey），所以把手本身不給輔助科技 -->
-              <span
-                class="sheet__resize"
-                aria-hidden="true"
-                @pointerdown="event => startResize(event, column)"
-                @pointermove="event => moveResize(event, column)"
-                @pointerup="endResize"
-                @pointercancel="endResize"
-                @dblclick.stop="autofit(c)"
-              />
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, r) in viewRows" :key="rowKey(row)" role="row">
-            <component
-              :is="column.rowHeader ? 'th' : 'td'"
-              v-for="(column, c) in columns"
-              :key="column.key"
-              :role="column.rowHeader ? 'rowheader' : 'gridcell'"
-              :scope="column.rowHeader ? 'row' : undefined"
-              :tabindex="active.r === r && active.c === c ? 0 : -1"
-              :aria-selected="String(inRange(range, r, c))"
-              :data-r="r"
-              :data-c="c"
-              class="sheet__cell"
-              :class="cellClasses(r, c, column)"
-              :style="cellStyle(c, column)"
-            >
-              <slot name="cell" :row="row" :column="column" :text="displayText(row, column, r, c)">{{ displayText(row, column, r, c) }}</slot>
-            </component>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- 卡片是全站表格的那一張（SharedTable custom，2026-10-23「試算表也改成只有淡的列線」）：白底、淡的暖色框、圓角 12px -->
+    <SharedTable custom class="sheet__card">
+      <div ref="scroller" class="sheet__scroll">
+        <table class="sheet__table" role="grid" aria-multiselectable="true" :aria-label="label" :aria-describedby="hintId" :style="{ width: `${tableWidth}px` }">
+          <colgroup>
+            <col v-for="column in columns" :key="column.key" :style="{ width: `${widthOf(column)}px` }">
+          </colgroup>
+          <thead>
+            <tr role="row">
+              <th
+                v-for="(column, c) in columns"
+                :key="column.key"
+                :ref="el => { if (el) headerCells[c] = el as HTMLElement }"
+                scope="col"
+                role="columnheader"
+                :aria-sort="ariaSort(column)"
+                :aria-haspopup="columnMenu && column.copyable !== false ? 'menu' : undefined"
+                :aria-expanded="columnMenu && column.copyable !== false ? menu.open && menu.key === column.key : undefined"
+                :tabindex="active.r === -1 && active.c === c ? 0 : -1"
+                :data-r="-1"
+                :data-c="c"
+                class="sheet__cell sheet__header-cell"
+                :class="[cellClasses(-1, c, column), dragClass(c), { 'is-sortable': !!column.sortValue }]"
+                :style="cellStyle(c, column)"
+              >
+                <span class="sheet__head">
+                  <slot name="header" :column="column" :index="c">{{ column.label }}</slot>
+                  <SharedSortIcon v-if="column.sortValue" :state="sort?.key === column.key ? sort.order : null" />
+                </span>
+                <!-- 滑鼠用的把手；鍵盤在表頭上按 +／−／0（見 onHeaderKey），所以把手本身不給輔助科技 -->
+                <span
+                  class="sheet__resize"
+                  aria-hidden="true"
+                  @pointerdown="event => startResize(event, column)"
+                  @pointermove="event => moveResize(event, column)"
+                  @pointerup="endResize"
+                  @pointercancel="endResize"
+                  @dblclick.stop="autofit(c)"
+                />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, r) in viewRows" :key="rowKey(row)" role="row">
+              <component
+                :is="column.rowHeader ? 'th' : 'td'"
+                v-for="(column, c) in columns"
+                :key="column.key"
+                :role="column.rowHeader ? 'rowheader' : 'gridcell'"
+                :scope="column.rowHeader ? 'row' : undefined"
+                :tabindex="active.r === r && active.c === c ? 0 : -1"
+                :aria-selected="String(inRange(range, r, c))"
+                :data-r="r"
+                :data-c="c"
+                class="sheet__cell"
+                :class="cellClasses(r, c, column)"
+                :style="cellStyle(c, column)"
+              >
+                <slot name="cell" :row="row" :column="column" :text="displayText(row, column, r, c)">{{ displayText(row, column, r, c) }}</slot>
+              </component>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </SharedTable>
     <p :id="hintId" class="visually-hidden">{{ hintText }}</p>
     <SharedColumnMenu
       v-if="columnMenu"
@@ -755,11 +758,20 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
 </template>
 
 <style scoped>
+/* 卡片跟著欄寬（欄寬像 Excel 一樣是固定的）：欄位加起來比版面窄時卡片到最後一欄為止，不然表頭的暖色在右邊斷掉、留一截白；比版面寬時
+   卡片撐滿、在裡面左右捲 */
+.sheet__card {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .sheet__scroll {
   overflow-x: auto;
 }
 
-/* 欄寬由 <col> 決定（table-layout: fixed）；格線用 separate＋右／下框線，凍結欄的 sticky 才不會跟框線錯位 */
+/* 欄寬由 <col> 決定（table-layout: fixed）；列線用 separate＋下框線，凍結欄的 sticky 才不會跟框線錯位。
+   只有淡的列線、沒有直的格線（2026-10-23，使用者：「試算表也改成只有淡的列線」）：跟全站表格同一套（main.css 的「全站表格」）——
+   白底、淡的 --app-divider、表頭暖色。框選與公式參照的外框照舊，看得出選了哪幾格 */
 .sheet__table {
   table-layout: fixed;
   border-collapse: separate;
@@ -771,9 +783,8 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
   position: relative;
   padding: 8px 12px;
   overflow: hidden;
-  border-right: 1px solid var(--el-border-color-lighter);
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  background: var(--el-bg-color);
+  border-bottom: 1px solid var(--app-divider);
+  background: var(--app-card-bg);
   color: var(--el-text-color-primary);
   font-weight: 400;
   text-align: left;
@@ -787,7 +798,8 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
 }
 
 .sheet__header-cell {
-  background: var(--el-fill-color-light);
+  background: var(--app-table-head-bg);
+  color: var(--el-text-color-regular);
   font-weight: 600;
 }
 
@@ -821,17 +833,13 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
   z-index: 2;
 }
 
-.sheet__cell.is-frozen-last {
-  border-right: 2px solid var(--el-border-color);
-}
-
-/* 框選：淡底色＋2px 外框，作用中的那一格維持白底（研究文件：清楚指出按鍵會作用在哪一格） */
+/* 框選：淡底色＋2px 外框，作用中的那一格維持白底（研究文件：清楚指出按鍵會作用在哪一格）。凍結欄邊界原本的 2px 直線拿掉（只留列線） */
 .sheet__cell.is-in-range {
-  background: color-mix(in srgb, var(--el-color-primary) 10%, var(--el-bg-color));
+  background: color-mix(in srgb, var(--el-color-primary) 10%, var(--app-card-bg));
 }
 
 .sheet__cell.is-in-range.is-active {
-  background: var(--el-bg-color);
+  background: var(--app-card-bg);
 }
 
 .is-sel-top { --sheet-sel-top: inset 0 2px 0 0 var(--el-color-primary); }

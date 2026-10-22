@@ -137,9 +137,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
               <span class="ex-day__count">{{ day.count }} 檔</span>
               <span class="ex-day__preview">{{ previewOf(day.rows) }}</span>
             </summary>
-            <SharedTableScroll :label="`${dayLabel(day.date)}的除權息`" class="ex-month-table__card">
-            <table class="seo-table ex-month-table" data-ssr-table>
-              <caption class="visually-hidden">{{ dayLabel(day.date) }}的除權息</caption>
+            <SharedTable :label="`${dayLabel(day.date)}的除權息`" table-class="ex-month-table" class="ex-month-table__card">
               <thead>
                 <tr>
                   <th scope="col">代號 名稱</th>
@@ -165,8 +163,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
                   <td class="ex-month-table__paid">{{ row.paymentDate ? row.paymentDate.slice(5).replace('-', '/') : '－' }}</td>
                 </tr>
               </tbody>
-            </table>
-            </SharedTableScroll>
+            </SharedTable>
           </details>
         </li>
       </ul>
@@ -294,7 +291,7 @@ html.dark .ex-heat__legend {
 }
 
 /* 每一天一列：上下一條線分開；摘要是 箭頭｜日期｜檔數｜前三檔，名字放不下就省略，窄螢幕換到下一行 */
-/* 分隔線用全站表格那一條淡的（--app-divider，2026-10-23）；展開的那一天是全站表格的卡片（SharedTableScroll） */
+/* 分隔線用全站表格那一條淡的（--app-divider，2026-10-23）；展開的那一天是全站表格的卡片（SharedTable） */
 .ex-days {
   margin: 16px 0 0;
   padding: 0;

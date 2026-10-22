@@ -141,7 +141,7 @@ const history = computed(() =>
 
 const historyText = computed(() => historyTableText({ shortName: stockShortName.value, code: code.value, topic: '現金循環', basis: '近四季', count: history.value.length, from: history.value.at(-1)?.period ?? '', to: history.value[0]?.period ?? '' }))
 const historyAnswer = computed(() => (history.value.length < 2 ? null : historyText.value.answer))
-// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+// 拆解表的表名（caption 藏起來，同 SharedTable 的 label；2026-10-13 統一）
 const breakdownLabel = computed(() => `${stockShortName.value} ${code.value} ${periodLabel.value ?? ''} 的現金循環拆解（近四季）`)
 
 const { breadcrumbs } = useStockPageSeo({
@@ -189,58 +189,52 @@ const { breadcrumbs } = useStockPageSeo({
     </StockQuestionSection>
 
     <StockQuestionSection v-if="historyAnswer" id="stock-cash-cycle-history" :question="historyText.question" :answer="historyAnswer">
-      <SharedTableScroll :label="historyText.label">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ historyText.label }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">期別</th>
-              <th scope="col">存貨天數</th>
-              <th scope="col">收現天數</th>
-              <th scope="col">營運週期</th>
-              <th scope="col">付現天數</th>
-              <th scope="col">現金轉換循環</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in history" :key="row.period">
-              <th scope="row">{{ row.period }}</th>
-              <td class="seo-table__num">{{ row.inventory.toFixed(1) }}</td>
-              <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
-              <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
-              <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
-              <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="historyText.label">
+        <thead>
+          <tr>
+            <th scope="col">期別</th>
+            <th scope="col">存貨天數</th>
+            <th scope="col">收現天數</th>
+            <th scope="col">營運週期</th>
+            <th scope="col">付現天數</th>
+            <th scope="col">現金轉換循環</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in history" :key="row.period">
+            <th scope="row">{{ row.period }}</th>
+            <td class="seo-table__num">{{ row.inventory.toFixed(1) }}</td>
+            <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
+            <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
+            <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
+            <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="hasCycle" id="stock-cash-cycle-chain" question="這幾天裡，哪幾天是公司自己出的錢？" :answer="cashAnswer">
-      <SharedTableScroll :label="breakdownLabel">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ breakdownLabel }}</caption>
-          <thead>
-            <tr>
-              <th scope="col" aria-hidden="true"></th>
-              <th scope="col">項目</th>
-              <th scope="col">天數</th>
-              <th scope="col">怎麼來的</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.label">
-              <td class="stock-cash-cycle-page__op" aria-hidden="true">{{ row.op }}</td>
-              <th scope="row">{{ row.label }}</th>
-              <td class="seo-table__num">{{ row.value }}</td>
-              <td>
-                {{ row.from }}
-                <NuxtLink :to="row.to" class="hub-inline-link">看這一項</NuxtLink>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="breakdownLabel">
+        <thead>
+          <tr>
+            <th scope="col" aria-hidden="true"></th>
+            <th scope="col">項目</th>
+            <th scope="col">天數</th>
+            <th scope="col">怎麼來的</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.label">
+            <td class="stock-cash-cycle-page__op" aria-hidden="true">{{ row.op }}</td>
+            <th scope="row">{{ row.label }}</th>
+            <td class="seo-table__num">{{ row.value }}</td>
+            <td>
+              {{ row.from }}
+              <NuxtLink :to="row.to" class="hub-inline-link">看這一項</NuxtLink>
+            </td>
+          </tr>
+        </tbody>
+      </SharedTable>
 
       <p v-if="cashShare !== null && cashShare > 0" class="stock-answer">
         換個講法：{{ days(cashCycle) }}大約是一年的 {{ cashShare }}%，也就是公司隨時有相當於 {{ cashShare }}% 年營業額的錢卡在這門生意裡動不了。

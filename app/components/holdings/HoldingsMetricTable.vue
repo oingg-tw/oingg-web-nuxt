@@ -36,10 +36,9 @@ const VALUE_SAMPLE = '12.3%'
 
 <template>
   <!-- role 寫明（2026-10-07 a11y 盤點）：窄的時候 table/tr 改成 block/grid，Safari＋VoiceOver 會因此把表格語意
-       丟掉，明寫 role 才保得住。 -->
+       丟掉，明寫 role 才保得住（<table> 的 role 在 SharedTable）。 -->
   <div class="holdings-metric-table">
-    <table class="seo-table holdings-metric-table__table" role="table">
-      <caption class="visually-hidden">{{ caption }}</caption>
+    <SharedTable :label="caption" :ssr="false" :scrollable="false" table-class="holdings-metric-table__table" class="holdings-metric-table__card">
       <thead role="rowgroup">
         <tr role="row">
           <th scope="col" role="columnheader" :style="{ width: columnWidths[0] }">{{ nameLabel }}</th>
@@ -70,7 +69,7 @@ const VALUE_SAMPLE = '12.3%'
           </td>
         </tr>
       </tbody>
-    </table>
+    </SharedTable>
   </div>
 </template>
 
@@ -79,76 +78,88 @@ const VALUE_SAMPLE = '12.3%'
   container-type: inline-size;
 }
 
-/* 窄：每一列一張小卡片 */
-.holdings-metric-table__table {
-  display: block;
-  background: none;
-}
-
-.holdings-metric-table__table thead {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.holdings-metric-table__table tbody {
-  display: grid;
-  gap: 8px;
-}
-
-.holdings-metric-table__table tbody tr {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 12px;
-  align-items: baseline;
-}
-
-.holdings-metric-table__table tbody th,
-.holdings-metric-table__table tbody td {
-  position: static;
-  padding: 0;
-  border: 0;
-  white-space: normal;
-  background: none;
-}
-
-.holdings-metric-table__table tbody th {
-  font-weight: 600;
-}
-
 .holdings-metric-table__value {
   color: var(--el-text-color-primary);
 }
-.holdings-metric-table__table td[data-label],
-.holdings-metric-table__meaning {
-  grid-column: 1 / -1;
-  text-align: left;
-  color: var(--el-text-color-secondary);
-}
 
-.holdings-metric-table__table td[data-label]::before {
-  content: attr(data-label) '：';
-}
-
-.holdings-metric-table__value[data-value-label]::before {
-  content: attr(data-value-label) '：';
-  font-size: 1rem;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
-}
-
-/* 寬：還原成表格 */
-@container (min-width: 640px) {
-  .holdings-metric-table__table {
-    display: table;
-    background: var(--el-bg-color);
+/* 窄：每一列一張小卡片（tr 上的 .holdings-card），外面那張表格卡片不畫——同篩選結果在手機上 */
+@container (max-width: 639px) {
+  .holdings-metric-table__card {
+    border: 0;
+    border-radius: 0;
+    background: none;
   }
 
+  /* <table> 是 SharedTable 畫的，對表格本身要用 :deep；thead／tbody／tr 是這裡的插槽內容，直接寫就好 */
+  :deep(.holdings-metric-table__table) {
+    display: block;
+    background: none;
+  }
+
+  .holdings-metric-table__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .holdings-metric-table__table tbody {
+    display: grid;
+    gap: 8px;
+  }
+
+  .holdings-metric-table__table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    align-items: baseline;
+  }
+
+  .holdings-metric-table__table tbody th,
+  .holdings-metric-table__table tbody td {
+    position: static;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    background: none;
+  }
+
+  .holdings-metric-table__table tbody th {
+    font-weight: 600;
+  }
+
+  .holdings-metric-table__table td[data-label],
+  .holdings-metric-table__meaning {
+    grid-column: 1 / -1;
+    text-align: left;
+    color: var(--el-text-color-secondary);
+  }
+
+  .holdings-metric-table__table td[data-label]::before {
+    content: attr(data-label) '：';
+  }
+
+  .holdings-metric-table__value[data-value-label]::before {
+    content: attr(data-value-label) '：';
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+/* 寬：全站表格（線、內距、表頭都照 main.css 的「全站表格」），這裡只放這張表自己的 */
+@container (min-width: 640px) {
   /* 欄寬照表頭的 width，不照內容（columnWidths） */
-  .holdings-metric-table__table {
+  :deep(.holdings-metric-table__table) {
     table-layout: fixed;
+  }
+
+  /* tr 上的 .holdings-card 是窄的時候的卡片 */
+  .holdings-metric-table__table tbody tr {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
   }
 
   /* 數值欄（數值、大盤）與它們的表頭一律靠右：欄寬固定之後，原本靠左的數值欄跟靠右的大盤欄一左一右很明顯。全站的 .seo-table 不換行，
@@ -161,35 +172,9 @@ const VALUE_SAMPLE = '12.3%'
     overflow-wrap: anywhere;
   }
 
-  .holdings-metric-table__table thead {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip-path: none;
-  }
-
-  .holdings-metric-table__table tbody {
-    display: table-row-group;
-  }
-
-  .holdings-metric-table__table tbody tr {
-    display: table-row;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-  }
-
+  /* 欄寬固定，長名稱與意思換行（骨架與資料是同樣的字，換行也一樣） */
   .holdings-metric-table__table tbody th,
-  .holdings-metric-table__table tbody td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-    vertical-align: top;
-  }
-
-  /* 欄寬固定，長名稱換行（骨架與資料是同樣的字，換行也一樣） */
-  .holdings-metric-table__table tbody th {
-    font-weight: 500;
+  .holdings-metric-table__meaning {
     white-space: normal;
   }
 
@@ -199,17 +184,7 @@ const VALUE_SAMPLE = '12.3%'
   }
 
   .holdings-metric-table__table td[data-label] {
-    text-align: right;
     color: var(--el-text-color-primary);
-  }
-
-  .holdings-metric-table__table td[data-label]::before,
-  .holdings-metric-table__value[data-value-label]::before {
-    content: none;
-  }
-
-  .holdings-metric-table__meaning {
-    white-space: normal;
   }
 }
 </style>

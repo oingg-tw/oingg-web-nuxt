@@ -110,29 +110,26 @@ const { breadcrumbs } = useHubPageSeo({
 {{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
       </p>
       <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
-      <SharedTableScroll v-if="rows.length" :label="`${tableSubject.trim()}排行`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">台股{{ tableSubject }}{{ orderWord }}前 {{ shownCount }} 檔</caption>
-          <thead>
-            <tr>
-              <th scope="col" class="seo-table__num">名次</th>
-              <th scope="col">代號</th>
-              <th scope="col">名稱</th>
-              <th scope="col" class="seo-table__num"><span v-if="data?.valueYear" class="rank-page__year">{{ data.valueYear }} 年</span>{{ label }}<template v-if="unit">（{{ unit }}）</template></th>
-              <th v-if="hasRowDates" scope="col">資料日期</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.symbol">
-              <td class="seo-table__num">{{ row.rank }}</td>
-              <th scope="row"><NuxtLink :to="securityPath(row.symbol)" class="seo-table__link">{{ row.symbol }}</NuxtLink></th>
-              <td>{{ row.name }}</td>
-              <td class="seo-table__num">{{ valueText(row.value) }}</td>
-              <td v-if="hasRowDates">{{ row.knowledgeDate ?? '－' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="rows.length" :label="`${tableSubject.trim()}排行`" :caption="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
+        <thead>
+          <tr>
+            <th scope="col" class="seo-table__num">名次</th>
+            <th scope="col">代號</th>
+            <th scope="col">名稱</th>
+            <th scope="col" class="seo-table__num"><span v-if="data?.valueYear" class="rank-page__year">{{ data.valueYear }} 年</span>{{ label }}<template v-if="unit">（{{ unit }}）</template></th>
+            <th v-if="hasRowDates" scope="col">資料日期</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.symbol">
+            <td class="seo-table__num">{{ row.rank }}</td>
+            <th scope="row"><NuxtLink :to="securityPath(row.symbol)" class="seo-table__link">{{ row.symbol }}</NuxtLink></th>
+            <td>{{ row.name }}</td>
+            <td class="seo-table__num">{{ valueText(row.value) }}</td>
+            <td v-if="hasRowDates">{{ row.knowledgeDate ?? '－' }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p v-else class="hub-answer">目前沒有這個指標的排行資料。</p>
     </section>
 

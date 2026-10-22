@@ -17,29 +17,26 @@ const answer = computed(() => {
 <template>
   <EtfPage :etf-data="etfData" facet="fill" :description="answer">
     <StockQuestionSection id="etf-fill" :question="`${shortName}（${code}）除息之後，股價填回來了嗎？`" :answer="answer">
-      <SharedTableScroll v-if="fills.length" :label="`${shortName} ${code} 的除息與填息紀錄`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 的除息與填息紀錄（新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">除息日</th>
-              <th scope="col" class="seo-table__num">每單位配息（元）</th>
-              <th scope="col" class="seo-table__num">除息前一交易日收盤價（元）</th>
-              <th scope="col">回到該價位的日期</th>
-              <th scope="col">經過交易日數</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="fill in fills" :key="fill.exDividendDate">
-              <th scope="row">{{ fill.exDividendDate }}</th>
-              <td class="seo-table__num">{{ formatSignificantDigits(fill.cashDividend, 4) }}</td>
-              <td class="seo-table__num">{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
-              <td>{{ fill.filledDate ?? '－' }}</td>
-              <td>{{ fillDayText(fill) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="fills.length" :label="`${shortName} ${code} 的除息與填息紀錄`" :caption="`${shortName} ${code} 的除息與填息紀錄（新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">除息日</th>
+            <th scope="col" class="seo-table__num">每單位配息（元）</th>
+            <th scope="col" class="seo-table__num">除息前一交易日收盤價（元）</th>
+            <th scope="col">回到該價位的日期</th>
+            <th scope="col">經過交易日數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="fill in fills" :key="fill.exDividendDate">
+            <th scope="row">{{ fill.exDividendDate }}</th>
+            <td class="seo-table__num">{{ formatSignificantDigits(fill.cashDividend, 4) }}</td>
+            <td class="seo-table__num">{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
+            <td>{{ fill.filledDate ?? '－' }}</td>
+            <td>{{ fillDayText(fill) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">填息是指除息後股價回到除息前一個交易日的收盤價。沒有填息的期間，配到的錢等於是從自己的本金拿出來的。</p>
     </StockQuestionSection>
   </EtfPage>

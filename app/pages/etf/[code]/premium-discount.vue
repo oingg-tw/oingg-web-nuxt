@@ -23,29 +23,26 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="premium" :description="answer">
     <StockQuestionSection id="etf-premium" :question="`${shortName}（${code}）的市價比淨值高還是低？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="premium" />
-      <SharedTableScroll v-if="months.length" :label="`${shortName}每月折溢價`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 每月折溢價的平均、單日最高與最低（新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">月份</th>
-              <th scope="col" class="seo-table__num">平均</th>
-              <th scope="col" class="seo-table__num">單日最高</th>
-              <th scope="col" class="seo-table__num">單日最低</th>
-              <th scope="col" class="seo-table__num">有成交的日數</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in months" :key="row.month">
-              <th scope="row">{{ row.month }}</th>
-              <td class="seo-table__num">{{ signed(row.average) }}</td>
-              <td class="seo-table__num">{{ signed(row.highest) }}</td>
-              <td class="seo-table__num">{{ signed(row.lowest) }}</td>
-              <td class="seo-table__num">{{ row.tradingDays }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="months.length" :label="`${shortName}每月折溢價`" :caption="`${shortName} ${code} 每月折溢價的平均、單日最高與最低（新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">月份</th>
+            <th scope="col" class="seo-table__num">平均</th>
+            <th scope="col" class="seo-table__num">單日最高</th>
+            <th scope="col" class="seo-table__num">單日最低</th>
+            <th scope="col" class="seo-table__num">有成交的日數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in months" :key="row.month">
+            <th scope="row">{{ row.month }}</th>
+            <td class="seo-table__num">{{ signed(row.average) }}</td>
+            <td class="seo-table__num">{{ signed(row.highest) }}</td>
+            <td class="seo-table__num">{{ signed(row.lowest) }}</td>
+            <td class="seo-table__num">{{ row.tradingDays }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">折溢價 ＝（收盤價 − 淨值）÷ 淨值。正的是溢價（市價高於淨值），負的是折價。淨值來自基金資訊觀測站，沒有成交的日子不算。</p>
     </StockQuestionSection>
   </EtfPage>

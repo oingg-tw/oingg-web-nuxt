@@ -158,14 +158,16 @@ function rowClassName({ row }: { row: StatementLine }) {
 </script>
 
 <template>
-  <!-- 全站表格的卡片（.app-table-card，2026-10-23 原本是 el-card）：標題與報表種類在卡片裡，表格貼齊卡片兩邊 -->
-  <div class="financial-statements-card app-table-card">
-    <div class="financial-statements-card__header">
-      <StockCardTitle title="三大財務報表" />
-      <el-select v-model="activeTabKey" class="financial-statements-card__tab-select" aria-label="報表種類">
-        <el-option v-for="tab in TABS" :key="tab.key" :value="tab.key" :label="tab.label" />
-      </el-select>
-    </div>
+  <!-- 全站表格的卡片（SharedTable custom，2026-10-23 原本是 el-card）：標題與報表種類在卡片的標題列，表格貼齊卡片兩邊 -->
+  <SharedTable custom class="financial-statements-card">
+    <template #header>
+      <div class="financial-statements-card__header">
+        <StockCardTitle title="三大財務報表" />
+        <el-select v-model="activeTabKey" class="financial-statements-card__tab-select" aria-label="報表種類">
+          <el-option v-for="tab in TABS" :key="tab.key" :value="tab.key" :label="tab.label" />
+        </el-select>
+      </div>
+    </template>
 
     <!-- el-table 的欄位要等掛載才註冊，伺服器輸出永遠是空的表身與表頭，掛載後表頭與 30 列才長出來（2026-10-18 全站量測 1440 寬 0.199）。
          兩件事一起做：最小高度＝（科目列數＋表頭）× 2rem（size="small" 一列 32px，科目清單是固定的），下面的段落不被推；掛載完成前
@@ -203,17 +205,12 @@ function rowClassName({ row }: { row: StatementLine }) {
     <p v-else-if="prior && !prior.found" class="financial-statements-card__note">
       {{ priorYear }}年第{{ quarter }}季查無此標的申報資料（前期比較欄位顯示為 －）
     </p>
-  </div>
+  </SharedTable>
 </template>
 
 <style scoped>
 .financial-statements-card__table--pending {
   visibility: hidden;
-}
-
-/* 卡片的底色、框、圓角是 .app-table-card；clip 讓表格的方角不露出卡片的圓角 */
-.financial-statements-card {
-  overflow: clip;
 }
 
 /* Pulse marking the row a useStatementRowFocus.ts jump landed on — transition lives on the
@@ -234,7 +231,6 @@ function rowClassName({ row }: { row: StatementLine }) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
 }
 
 .financial-statements-card__tab-select {

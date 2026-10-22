@@ -154,31 +154,28 @@ const { breadcrumbs } = useStockPageSeo({
       :question="tableText.question"
       :answer="tableText.answer"
     >
-      <SharedTableScroll :label="tableText.label">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ tableText.label }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">月份</th>
-              <th scope="col">月營收</th>
-              <th scope="col">年增率（%）</th>
-              <th scope="col">月增率（%）</th>
-              <th scope="col">累計營收</th>
-              <th scope="col">累計年增率（%）</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in descending" :key="entry.yearMonth">
-              <th scope="row">{{ entry.yearMonth }}</th>
-              <td>{{ amountText(toHundredMillion(entry.currentMonthRevenue)) }}</td>
-              <td>{{ rateText(entry.yoyChangePct) }}</td>
-              <td>{{ rateText(entry.momChangePct) }}</td>
-              <td>{{ amountText(toHundredMillion(entry.cumulativeRevenue)) }}</td>
-              <td>{{ rateText(entry.cumulativeChangePct) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="tableText.label">
+        <thead>
+          <tr>
+            <th scope="col">月份</th>
+            <th scope="col">月營收</th>
+            <th scope="col">年增率（%）</th>
+            <th scope="col">月增率（%）</th>
+            <th scope="col">累計營收</th>
+            <th scope="col">累計年增率（%）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in descending" :key="entry.yearMonth">
+            <th scope="row">{{ entry.yearMonth }}</th>
+            <td>{{ amountText(toHundredMillion(entry.currentMonthRevenue)) }}</td>
+            <td>{{ rateText(entry.yoyChangePct) }}</td>
+            <td>{{ rateText(entry.momChangePct) }}</td>
+            <td>{{ amountText(toHundredMillion(entry.cumulativeRevenue)) }}</td>
+            <td>{{ rateText(entry.cumulativeChangePct) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
     <template #guide>
       <StockMetricGuide id-prefix="stock-monthly-revenue" :topic="TOPIC_GUIDE.topic" :definition="[TOPIC_GUIDE.summary]" />

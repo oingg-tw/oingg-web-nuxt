@@ -114,26 +114,23 @@ const cell = (thousand: number, row: Row) => {
       />
     </SharedChartCard>
     <StockQuestionSection v-if="!chartOnly" :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
-    <SharedTableScroll :label="table.label">
-      <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ table.label }}</caption>
-        <thead>
-          <tr>
-            <th scope="col">期別</th>
-            <!-- 數字欄的表頭跟數字一起靠右（同股利歷史表）；無形資產只有這一欄、很寬，靠左的話表頭與數字隔整張表 -->
-            <th scope="col" class="seo-table__num">{{ totalLabel }}</th>
-            <th v-for="key in order" :key="key" scope="col" class="seo-table__num">{{ labels[key] }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in [...shown].reverse()" :key="row.label">
-            <th scope="row">{{ row.label }}</th>
-            <td class="seo-table__num">{{ shareOfAssets ? cell(row.total, row) : money(row.total) }}</td>
-            <td v-for="key in order" :key="key" class="seo-table__num">{{ cell(row.parts[key] ?? 0, row) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </SharedTableScroll>
+    <SharedTable :label="table.label">
+      <thead>
+        <tr>
+          <th scope="col">期別</th>
+          <!-- 數字欄的表頭跟數字一起靠右（同股利歷史表）；無形資產只有這一欄、很寬，靠左的話表頭與數字隔整張表 -->
+          <th scope="col" class="seo-table__num">{{ totalLabel }}</th>
+          <th v-for="key in order" :key="key" scope="col" class="seo-table__num">{{ labels[key] }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="row in [...shown].reverse()" :key="row.label">
+          <th scope="row">{{ row.label }}</th>
+          <td class="seo-table__num">{{ shareOfAssets ? cell(row.total, row) : money(row.total) }}</td>
+          <td v-for="key in order" :key="key" class="seo-table__num">{{ cell(row.parts[key] ?? 0, row) }}</td>
+        </tr>
+      </tbody>
+    </SharedTable>
     </StockQuestionSection>
   </div>
 </template>

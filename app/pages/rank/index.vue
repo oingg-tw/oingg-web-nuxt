@@ -50,31 +50,28 @@ const groups = computed(() => [
       <p class="hub-answer">每一份排行只依一個指標排序；下表是各排行目前的第一名與它的數值，點排行名稱看前 50 檔與資料日期。</p>
       <template v-for="group in groups" :key="group.key">
         <h3 class="rank-index__group">{{ group.title }}</h3>
-        <SharedTableScroll :label="`${group.title}各排行的第一名`">
-          <table class="seo-table rank-index__table" data-ssr-table>
-            <caption class="visually-hidden">{{ group.title }}各項排行目前的第一名與數值</caption>
-            <thead>
-              <tr>
-                <th scope="col">排行</th>
-                <th scope="col">第一名</th>
-                <th scope="col" class="seo-table__num">數值</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in group.rows" :key="row.page.slug">
-                <th scope="row">
-                  <NuxtLink :to="rankPath(row.page.slug)" class="seo-table__link">{{ row.page.label }}</NuxtLink>
-                  <span class="rank-index__order">{{ orderWord(row.page) }}</span>
-                </th>
-                <td>
-                  <NuxtLink v-if="row.leader" :to="securityPath(row.leader.symbol)" class="seo-table__link">{{ row.leader.name }} {{ row.leader.symbol }}</NuxtLink>
-                  <template v-else>暫時無法取得</template>
-                </td>
-                <td class="seo-table__num">{{ row.value }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+        <SharedTable :label="`${group.title}各排行的第一名`" :caption="`${group.title}各項排行目前的第一名與數值`" table-class="rank-index__table">
+          <thead>
+            <tr>
+              <th scope="col">排行</th>
+              <th scope="col">第一名</th>
+              <th scope="col" class="seo-table__num">數值</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in group.rows" :key="row.page.slug">
+              <th scope="row">
+                <NuxtLink :to="rankPath(row.page.slug)" class="seo-table__link">{{ row.page.label }}</NuxtLink>
+                <span class="rank-index__order">{{ orderWord(row.page) }}</span>
+              </th>
+              <td>
+                <NuxtLink v-if="row.leader" :to="securityPath(row.leader.symbol)" class="seo-table__link">{{ row.leader.name }} {{ row.leader.symbol }}</NuxtLink>
+                <template v-else>暫時無法取得</template>
+              </td>
+              <td class="seo-table__num">{{ row.value }}</td>
+            </tr>
+          </tbody>
+        </SharedTable>
       </template>
     </section>
 

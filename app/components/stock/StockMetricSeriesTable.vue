@@ -33,34 +33,31 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <SharedTableScroll v-if="rows.length" :label="label">
-    <table class="seo-table stock-series-table" data-ssr-table>
-      <caption class="visually-hidden">{{ label }}</caption>
-      <thead v-if="layout === 'periods-as-rows'">
-        <tr>
-          <th scope="col">期別</th>
-          <th v-for="column in columns" :key="column.code" scope="col" class="seo-table__num">{{ columnHeading(column) }}</th>
-        </tr>
-      </thead>
-      <thead v-else>
-        <tr>
-          <th scope="col">指標</th>
-          <th v-for="row in rows" :key="row.key" scope="col" class="seo-table__num" :class="{ 'is-latest': row.isLatest }">{{ row.label }}</th>
-        </tr>
-      </thead>
-      <tbody v-if="layout === 'periods-as-rows'">
-        <tr v-for="row in rows" :key="row.key" :class="{ 'is-latest': row.isLatest }">
-          <th scope="row">{{ row.label }}</th>
-          <td v-for="cell in row.cells" :key="cell.code" class="seo-table__num" :title="cell.title">{{ cell.text }}</td>
-        </tr>
-      </tbody>
-      <tbody v-else>
-        <tr v-for="(column, index) in columns" :key="column.code">
-          <th scope="row">{{ columnHeading(column) }}</th>
-          <td v-for="row in rows" :key="row.key" class="seo-table__num" :class="{ 'is-latest': row.isLatest }" :title="row.cells[index]?.title">{{ row.cells[index]?.text ?? '－' }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </SharedTableScroll>
+  <SharedTable v-if="rows.length" :label="label" table-class="stock-series-table">
+    <thead v-if="layout === 'periods-as-rows'">
+      <tr>
+        <th scope="col">期別</th>
+        <th v-for="column in columns" :key="column.code" scope="col" class="seo-table__num">{{ columnHeading(column) }}</th>
+      </tr>
+    </thead>
+    <thead v-else>
+      <tr>
+        <th scope="col">指標</th>
+        <th v-for="row in rows" :key="row.key" scope="col" class="seo-table__num" :class="{ 'is-latest': row.isLatest }">{{ row.label }}</th>
+      </tr>
+    </thead>
+    <tbody v-if="layout === 'periods-as-rows'">
+      <tr v-for="row in rows" :key="row.key" :class="{ 'is-latest': row.isLatest }">
+        <th scope="row">{{ row.label }}</th>
+        <td v-for="cell in row.cells" :key="cell.code" class="seo-table__num" :title="cell.title">{{ cell.text }}</td>
+      </tr>
+    </tbody>
+    <tbody v-else>
+      <tr v-for="(column, index) in columns" :key="column.code">
+        <th scope="row">{{ columnHeading(column) }}</th>
+        <td v-for="row in rows" :key="row.key" class="seo-table__num" :class="{ 'is-latest': row.isLatest }" :title="row.cells[index]?.title">{{ row.cells[index]?.text ?? '－' }}</td>
+      </tr>
+    </tbody>
+  </SharedTable>
 </template>
 

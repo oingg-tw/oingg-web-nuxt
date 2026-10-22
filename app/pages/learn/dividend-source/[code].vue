@@ -84,14 +84,12 @@ const { breadcrumbs } = useStockPageSeo({
            `ssrTables` 要求的那一個 data-ssr-table。收在 <details> 裡讀者多一個動作才看得到，
            而它本來就是這一段的內容而不是附錄。 -->
       <div class="stock-dividend-source-page__table">
-        <SharedTableScroll :label="`${stockShortName} ${code} 從營收到配息的每一個環節`">
-        <table class="seo-table" data-ssr-table>
-          <!-- visually-hidden 不是刪掉（2026-09-25「想刪掉。但是想不到強化 SEO 的替代方案」）。
-               caption 是表格的無障礙名稱，拿掉會讓螢幕閱讀器與爬蟲都少一段，而它在畫面上其實是
-               多餘的——上面的 h2 已經說了這是什麼。main.css 的 .visually-hidden 就是為這件事存在的
-               （「for screen readers and search engines rather than the visual layout」），
-               既然沒有版面成本，就寫完整一點：把第三欄在做什麼也講出來。 -->
-          <caption class="visually-hidden">{{ stockShortName }} {{ code }} {{ fiscalYear === null ? '' : `${fiscalYear} 年度` }}從營收一路分到股利，每一列是該環節的每股金額，以及它怎麼從上一列算出來</caption>
+        <!-- visually-hidden 不是刪掉（2026-09-25「想刪掉。但是想不到強化 SEO 的替代方案」）。
+             caption 是表格的無障礙名稱，拿掉會讓螢幕閱讀器與爬蟲都少一段，而它在畫面上其實是
+             多餘的——上面的 h2 已經說了這是什麼。main.css 的 .visually-hidden 就是為這件事存在的
+             （「for screen readers and search engines rather than the visual layout」），
+             既然沒有版面成本，就寫完整一點：把第三欄在做什麼也講出來。 -->
+        <SharedTable :label="`${stockShortName} ${code} 從營收到配息的每一個環節`" :caption="`${stockShortName} ${code} ${fiscalYear === null ? '' : `${fiscalYear} 年度`}從營收一路分到股利，每一列是該環節的每股金額，以及它怎麼從上一列算出來`">
           <thead>
             <tr>
               <th scope="col"><span class="visually-hidden">運算</span></th>
@@ -110,8 +108,7 @@ const { breadcrumbs } = useStockPageSeo({
               <td>{{ step.from }}</td>
             </tr>
           </tbody>
-        </table>
-        </SharedTableScroll>
+        </SharedTable>
       </div>
       </StockQuestionSection>
 

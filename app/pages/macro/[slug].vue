@@ -187,25 +187,22 @@ const chartOption = computed(() => {
 
     <section class="stock-page-section" aria-labelledby="macro-table-heading">
       <h2 id="macro-table-heading" class="stock-page-section__title">{{ page.topic }}的逐期數據是什麼？</h2>
-      <SharedTableScroll :label="`${page.topic}與加權股價指數逐期數據`">
-        <table class="seo-table" data-ssr-table>
-          <caption>{{ page.topic }}與加權股價指數（由新到舊，每月一期）</caption>
-          <thead>
-            <tr>
-              <th scope="col">期別</th>
-              <th v-for="spec in page.series" :key="spec.key" scope="col">{{ spec.name }}{{ unit ? `（${unit}）` : '' }}</th>
-              <th scope="col">加權股價指數</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rowsDesc" :key="row.period">
-              <th scope="row">{{ row.period }}</th>
-              <td v-for="spec in page.series" :key="spec.key">{{ seriesValueText(row, spec) }}</td>
-              <td>{{ row.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 }) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable caption-visible :label="`${page.topic}與加權股價指數逐期數據`" :caption="`${page.topic}與加權股價指數（由新到舊，每月一期）`">
+        <thead>
+          <tr>
+            <th scope="col">期別</th>
+            <th v-for="spec in page.series" :key="spec.key" scope="col">{{ spec.name }}{{ unit ? `（${unit}）` : '' }}</th>
+            <th scope="col">加權股價指數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rowsDesc" :key="row.period">
+            <th scope="row">{{ row.period }}</th>
+            <td v-for="spec in page.series" :key="spec.key">{{ seriesValueText(row, spec) }}</td>
+            <td>{{ row.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 }) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer hub-sources macro-page__sources">資料來源：中央銀行、行政院主計總處、國家發展委員會、臺灣證券交易所加權股價指數。</p>
     </section>
   </div>

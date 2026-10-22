@@ -287,7 +287,7 @@ const sortedCards = computed(() => {
 .watchlist-card__foot {
   display: flex;
   margin: 2px -16px -12px;
-  box-shadow: inset 0 1px 0 var(--el-border-color-lighter);
+  box-shadow: inset 0 1px 0 var(--app-divider);
 }
 
 .watchlist-card__foot :deep(.el-button) {
@@ -298,7 +298,7 @@ const sortedCards = computed(() => {
 }
 
 .watchlist-card__foot :deep(.el-button + .el-button) {
-  box-shadow: inset 1px 0 0 var(--el-border-color-lighter);
+  box-shadow: inset 1px 0 0 var(--app-divider);
 }
 
 .watchlist-card__foot :deep(.el-button:first-child) {

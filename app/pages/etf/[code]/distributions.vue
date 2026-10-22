@@ -20,25 +20,22 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="distributions" :description="answer">
     <StockQuestionSection id="etf-distributions" :question="`${shortName}（${code}）每次配多少？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="distributions" />
-      <SharedTableScroll v-if="events.length" :label="`${shortName}歷次配息`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 歷次配息（新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">除息日</th>
-              <th scope="col" class="seo-table__num">每單位配息</th>
-              <th scope="col">發放日</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="event in events" :key="event.exDividendDate">
-              <th scope="row">{{ event.exDividendDate }}</th>
-              <td class="seo-table__num">{{ event.distributionPerUnit === null ? '尚未公布' : etfYuan(event.distributionPerUnit) }}</td>
-              <td>{{ event.paymentDate ?? '－' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="events.length" :label="`${shortName}歷次配息`" :caption="`${shortName} ${code} 歷次配息（新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">除息日</th>
+            <th scope="col" class="seo-table__num">每單位配息</th>
+            <th scope="col">發放日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="event in events" :key="event.exDividendDate">
+            <th scope="row">{{ event.exDividendDate }}</th>
+            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '尚未公布' : etfYuan(event.distributionPerUnit) }}</td>
+            <td>{{ event.paymentDate ?? '－' }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">配息不等於賺到：除息當天股價會扣掉同樣的金額，配息有一部分也可能來自收益平準金或資本利得（見「配息組成」）。</p>
     </StockQuestionSection>
   </EtfPage>

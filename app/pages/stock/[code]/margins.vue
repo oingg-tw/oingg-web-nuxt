@@ -185,7 +185,7 @@ const history = computed(() => {
   return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '財報三率', basis: '單季', count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
 const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
-// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+// 拆解表的表名（caption 藏起來，同 SharedTable 的 label；2026-10-13 統一）
 const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（單季）`
 
 // 三率三升（2026-09-21,「三率三升的徽章可以加上去了」）. Everything a reader sees here comes from
@@ -300,27 +300,24 @@ const { breadcrumbs } = useStockPageSeo({
     </StockQuestionSection>
 
     <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
-      <SharedTableScroll :label="history.label">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ history.label }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">期別</th>
-              <th scope="col">毛利率（%）</th>
-              <th scope="col">營業利益率（%）</th>
-              <th scope="col">稅後淨利率（%）</th>
-              <th scope="col">資料時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-              <th scope="row">{{ periodLabel(entry) }}</th>
-              <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode">{{ rateText(entry.values[rateCode]?.value ?? null) }}</td>
-              <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="history.label">
+        <thead>
+          <tr>
+            <th scope="col">期別</th>
+            <th scope="col">毛利率（%）</th>
+            <th scope="col">營業利益率（%）</th>
+            <th scope="col">稅後淨利率（%）</th>
+            <th scope="col">資料時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+            <th scope="row">{{ periodLabel(entry) }}</th>
+            <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode">{{ rateText(entry.values[rateCode]?.value ?? null) }}</td>
+            <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="relationAnswer" id="stock-margins-relation" question="三率之間是什麼關係？" :answer="relationAnswer">
@@ -345,9 +342,7 @@ const { breadcrumbs } = useStockPageSeo({
            figure at each step rather than just the step's own size. -->
       <details class="stock-margins-page__details">
         <summary>看完整項目名稱與逐列數字</summary>
-        <SharedTableScroll :label="breakdownLabel('財報三率')">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ breakdownLabel('財報三率') }}</caption>
+        <SharedTable :label="breakdownLabel('財報三率')">
           <thead>
             <tr>
               <th scope="col">項目</th>
@@ -390,8 +385,7 @@ const { breadcrumbs } = useStockPageSeo({
               <td>{{ rateText(netProfitMargin) }}</td>
             </tr>
           </tbody>
-        </table>
-        </SharedTableScroll>
+        </SharedTable>
       </details>
 
     </StockQuestionSection>

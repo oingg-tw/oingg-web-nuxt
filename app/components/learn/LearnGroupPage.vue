@@ -73,27 +73,24 @@ const { breadcrumbs } = useHubPageSeo({
     <StockQuestionSection :id="`learn-${group.slug}-all`" :question="`這一組還有哪些指標？（共 ${metricCount} 項）`">
       <section v-for="category in categories" :key="category.key" class="learn-group__category" :aria-labelledby="`learn-category-${category.key}-heading`">
         <h3 :id="`learn-category-${category.key}-heading`" class="learn-group__category-title">{{ category.name }}（{{ category.metrics.length }} 項）</h3>
-        <SharedTableScroll :label="`${category.name}指標`">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ category.name }}類指標的名稱、單位與期別</caption>
-            <thead>
-              <tr>
-                <th scope="col">指標</th>
-                <th scope="col">英文</th>
-                <th scope="col">單位</th>
-                <th scope="col">期別</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="metric in category.metrics" :key="metric.key">
-                <th scope="row"><NuxtLink :to="metricPath(metric.key)" class="seo-table__link">{{ metricDisplayName(metric) }}</NuxtLink></th>
-                <td>{{ metric.nameEn ?? '－' }}</td>
-                <td>{{ metric.unit }}</td>
-                <td>{{ periodsOf(metric) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+        <SharedTable :label="`${category.name}指標`" :caption="`${category.name}類指標的名稱、單位與期別`">
+          <thead>
+            <tr>
+              <th scope="col">指標</th>
+              <th scope="col">英文</th>
+              <th scope="col">單位</th>
+              <th scope="col">期別</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="metric in category.metrics" :key="metric.key">
+              <th scope="row"><NuxtLink :to="metricPath(metric.key)" class="seo-table__link">{{ metricDisplayName(metric) }}</NuxtLink></th>
+              <td>{{ metric.nameEn ?? '－' }}</td>
+              <td>{{ metric.unit }}</td>
+              <td>{{ periodsOf(metric) }}</td>
+            </tr>
+          </tbody>
+        </SharedTable>
       </section>
     </StockQuestionSection>
 

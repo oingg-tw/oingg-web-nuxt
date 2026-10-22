@@ -152,7 +152,9 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           />
         </section>
 
-        <section class="screener-shell__results app-table-card" :aria-labelledby="`${uid}-results`">
+        <section class="screener-shell__results" :aria-labelledby="`${uid}-results`">
+          <!-- 全站表格的卡片（SharedTable custom）：標題、顯示欄位與表格在同一張卡片上；手機（卡片版面）拿掉，見 CSS -->
+          <SharedTable custom class="screener-shell__results-card">
           <div class="screener-shell__results-header">
             <h2 :id="`${uid}-results`" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
             <p class="screener-shell__count" role="status"><template v-if="countParts"><span class="screener-shell__count-prefix">{{ countParts.prefix }}</span>{{ countParts.main }}{{ countParts.note }}</template></p>
@@ -211,6 +213,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
               <ScreenerColumnSetHead ref="columnSetHead" :items="screener.columnSetItems" :active-id="screener.activeColumnSetId" />
             </template>
           </SharedMetricTable>
+          </SharedTable>
         </section>
       </template>
       <!-- 還沒有任何一組可以顯示（普通股的訪客要先選一組範本） -->
@@ -285,18 +288,21 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 }
 
 .screener-shell__results {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   min-width: 0;
 }
 
-/* 電腦版的結果放在一張卡片上（2026-10-23，使用者在配色方案頁選 A；同日抽成全站表格的卡片 .app-table-card，main.css）：設定區留在頁面
-   底色上，結果（標題、顯示欄位、表格）一張卡片，一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張
-   卡片，外面再包一張就是卡片包卡片，所以窄的時候拿掉。門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。
-   overflow: clip 不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸就黏在卡片裡、不黏在畫面上 */
+.screener-shell__results-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 電腦版的結果放在一張卡片上（2026-10-23，使用者在配色方案頁選 A；同日抽成全站表格 SharedTable）：設定區留在頁面底色上，結果（標題、
+   顯示欄位、表格）一張卡片，一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張卡片，外面再包一張就是
+   卡片包卡片，所以窄的時候拿掉。門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。卡片的 overflow: clip（SharedTable）
+   不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸就黏在卡片裡、不黏在畫面上 */
 @container (max-width: 721px) {
-  .screener-shell__results.app-table-card {
+  .screener-shell__results-card {
     border: 0;
     border-radius: 0;
     background: none;
@@ -304,9 +310,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 }
 
 @container (min-width: 722px) {
-  .screener-shell__results {
+  .screener-shell__results-card {
     padding-top: 16px;
-    overflow: clip;
   }
 
   .screener-shell__results-header,
@@ -314,7 +319,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     padding-inline: 16px;
   }
 
-  .screener-shell__results > .screener-shell__empty {
+  .screener-shell__results-card > .screener-shell__empty {
     margin: 0 16px 16px;
   }
 }

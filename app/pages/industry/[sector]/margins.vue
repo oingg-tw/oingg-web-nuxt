@@ -16,29 +16,26 @@ const answer = computed(() => {
   <IndustryPage :code="code" :sector-name="sectorName" facet="margins" :description="answer" :noindex="noindex">
     <StockQuestionSection id="industry-margins" :question="`${sectorName}的獲利能力這幾年怎麼走？`" :answer="answer">
       <IndustryFacetChart v-if="data" :data="data" :sector-name="sectorName" facet="margins" />
-      <SharedTableScroll v-if="marginRows.length" :label="`${sectorName}三率中位數逐季`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ sectorName }}三率中位數（近四季），新的在上</caption>
-          <thead>
-            <tr>
-              <th scope="col">期別</th>
-              <th scope="col" class="seo-table__num">毛利率</th>
-              <th scope="col" class="seo-table__num">營業利益率</th>
-              <th scope="col" class="seo-table__num">稅後淨利率</th>
-              <th scope="col" class="seo-table__num">有值家數</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in [...marginRows].reverse()" :key="`${row.fiscalYear}-${row.fiscalQuarter}`">
-              <th scope="row">{{ row.fiscalYear }} Q{{ row.fiscalQuarter }}</th>
-              <td class="seo-table__num">{{ industryPct(row.values.grossMargin?.value) }}</td>
-              <td class="seo-table__num">{{ industryPct(row.values.operatingMargin?.value) }}</td>
-              <td class="seo-table__num">{{ industryPct(row.values.netProfitMargin?.value) }}</td>
-              <td class="seo-table__num">{{ row.count }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="marginRows.length" :label="`${sectorName}三率中位數逐季`" :caption="`${sectorName}三率中位數（近四季），新的在上`">
+        <thead>
+          <tr>
+            <th scope="col">期別</th>
+            <th scope="col" class="seo-table__num">毛利率</th>
+            <th scope="col" class="seo-table__num">營業利益率</th>
+            <th scope="col" class="seo-table__num">稅後淨利率</th>
+            <th scope="col" class="seo-table__num">有值家數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in [...marginRows].reverse()" :key="`${row.fiscalYear}-${row.fiscalQuarter}`">
+            <th scope="row">{{ row.fiscalYear }} Q{{ row.fiscalQuarter }}</th>
+            <td class="seo-table__num">{{ industryPct(row.values.grossMargin?.value) }}</td>
+            <td class="seo-table__num">{{ industryPct(row.values.operatingMargin?.value) }}</td>
+            <td class="seo-table__num">{{ industryPct(row.values.netProfitMargin?.value) }}</td>
+            <td class="seo-table__num">{{ row.count }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
   </IndustryPage>
 </template>

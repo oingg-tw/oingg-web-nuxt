@@ -232,62 +232,56 @@ const { breadcrumbs } = useHubPageSeo({
       <el-card shadow="never" class="macro-clock-page__card">
         <SharedChart class="app-chart macro-clock-page__chart" :option="chartOption" autoresize :aria-label="`${indicatorName}去趨勢值與月變動的景氣時鐘軌跡圖，${periodText}`" />
       </el-card>
-      <SharedTableScroll :label="`${indicatorName}${periodText}的去趨勢值與月變動`">
-        <table class="seo-table" data-ssr-table>
-          <caption>{{ indicatorName }}去趨勢值與月變動，{{ periodText }}（國家發展委員會，新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">月份</th>
-              <th scope="col">去趨勢值</th>
-              <th scope="col">比上個月</th>
-              <th scope="col">所在區域</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableRows" :key="row.period">
-              <th scope="row">{{ monthText(row.period) }}</th>
-              <td class="seo-table__num">{{ row.level.toFixed(2) }}</td>
-              <td class="seo-table__num">{{ signed(row.change) }}</td>
-              <td>{{ CLOCK_ZONES[row.zone].definition }}（{{ CLOCK_ZONES[row.zone].name }}）</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable caption-visible :label="`${indicatorName}${periodText}的去趨勢值與月變動`" :caption="`${indicatorName}去趨勢值與月變動，${periodText}（國家發展委員會，新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">月份</th>
+            <th scope="col">去趨勢值</th>
+            <th scope="col">比上個月</th>
+            <th scope="col">所在區域</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in tableRows" :key="row.period">
+            <th scope="row">{{ monthText(row.period) }}</th>
+            <td class="seo-table__num">{{ row.level.toFixed(2) }}</td>
+            <td class="seo-table__num">{{ signed(row.change) }}</td>
+            <td>{{ CLOCK_ZONES[row.zone].definition }}（{{ CLOCK_ZONES[row.zone].name }}）</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="cycles.length" id="macro-clock-cycles" question="國家發展委員會認定過哪幾次景氣循環？" :answer="cycleAnswer">
-      <SharedTableScroll label="國家發展委員會認定的景氣循環">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">國家發展委員會景氣循環基準日期：每次循環的起點、高峰、終點與擴張、收縮、全循環月數（新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">循環</th>
-              <th scope="col">起點</th>
-              <th scope="col">高峰</th>
-              <th scope="col">終點</th>
-              <th scope="col" class="seo-table__num">擴張</th>
-              <th scope="col" class="seo-table__num">收縮</th>
-              <th scope="col" class="seo-table__num">全循環</th>
-              <th scope="col">景氣時鐘</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="cycle in [...cycles].reverse()" :key="cycle.cycleNo">
-              <th scope="row">第 {{ cycle.cycleNo }} 次</th>
-              <td>{{ monthText(cycle.troughStart) }}{{ supplemented(cycle, 'troughStart') }}</td>
-              <td>{{ monthOrPending(cycle.peak) }}{{ supplemented(cycle, 'peak') }}</td>
-              <td>{{ monthOrPending(cycle.troughEnd) }}{{ supplemented(cycle, 'troughEnd') }}</td>
-              <td class="seo-table__num">{{ countOrPending(cycle.expansionMonths) }}{{ supplemented(cycle, 'expansionMonths') }}</td>
-              <td class="seo-table__num">{{ countOrPending(cycle.contractionMonths) }}{{ supplemented(cycle, 'contractionMonths') }}</td>
-              <td class="seo-table__num">{{ countOrPending(cycle.totalMonths) }}{{ supplemented(cycle, 'totalMonths') }}</td>
-              <td>
-                <NuxtLink v-if="drawable(cycle)" :to="{ query: { cycle: cycle.cycleNo }, hash: '#macro-clock-chart' }" :aria-label="`在景氣時鐘上看第 ${cycle.cycleNo} 次循環`">在景氣時鐘上看</NuxtLink>
-                <template v-else>—</template>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable label="國家發展委員會認定的景氣循環" caption="國家發展委員會景氣循環基準日期：每次循環的起點、高峰、終點與擴張、收縮、全循環月數（新的在上）">
+        <thead>
+          <tr>
+            <th scope="col">循環</th>
+            <th scope="col">起點</th>
+            <th scope="col">高峰</th>
+            <th scope="col">終點</th>
+            <th scope="col" class="seo-table__num">擴張</th>
+            <th scope="col" class="seo-table__num">收縮</th>
+            <th scope="col" class="seo-table__num">全循環</th>
+            <th scope="col">景氣時鐘</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="cycle in [...cycles].reverse()" :key="cycle.cycleNo">
+            <th scope="row">第 {{ cycle.cycleNo }} 次</th>
+            <td>{{ monthText(cycle.troughStart) }}{{ supplemented(cycle, 'troughStart') }}</td>
+            <td>{{ monthOrPending(cycle.peak) }}{{ supplemented(cycle, 'peak') }}</td>
+            <td>{{ monthOrPending(cycle.troughEnd) }}{{ supplemented(cycle, 'troughEnd') }}</td>
+            <td class="seo-table__num">{{ countOrPending(cycle.expansionMonths) }}{{ supplemented(cycle, 'expansionMonths') }}</td>
+            <td class="seo-table__num">{{ countOrPending(cycle.contractionMonths) }}{{ supplemented(cycle, 'contractionMonths') }}</td>
+            <td class="seo-table__num">{{ countOrPending(cycle.totalMonths) }}{{ supplemented(cycle, 'totalMonths') }}</td>
+            <td>
+              <NuxtLink v-if="drawable(cycle)" :to="{ query: { cycle: cycle.cycleNo }, hash: '#macro-clock-chart' }" :aria-label="`在景氣時鐘上看第 ${cycle.cycleNo} 次循環`">在景氣時鐘上看</NuxtLink>
+              <template v-else>—</template>
+            </td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">景氣指標的資料從 1982 年起，更早的循環只有日期，沒有可以畫在景氣時鐘上的數字。</p>
     </StockQuestionSection>
 

@@ -95,7 +95,7 @@ function footerBlocks(html) {
 }
 
 // 表格標題（2026-10-13 統一，使用者：「每個表格的標題文字內容都不太一樣」，選了 caption 一律藏起來）：每張 data-ssr-table
-// 都有 visually-hidden 的 caption；包在 SharedTableScroll 裡的，捲動區的名稱就是 caption 的開頭（徽章表的 caption 在表名後
+// 都有 visually-hidden 的 caption；包在 SharedTable 裡的，捲動區的名稱就是 caption 的開頭（徽章表的 caption 在表名後
 // 多一段給螢幕閱讀器的結構說明）。回傳不合格的說明，空陣列＝全部合格。
 function tableTitleProblems(html) {
   const text = value => value.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim()

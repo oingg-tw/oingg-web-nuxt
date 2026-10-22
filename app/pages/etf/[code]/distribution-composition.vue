@@ -28,30 +28,27 @@ const latestWarning = computed(() => events.value.find(event => event.distributi
   <EtfPage :etf-data="etfData" facet="composition" :description="answer">
     <StockQuestionSection id="etf-composition" :question="`${shortName}（${code}）配的錢從哪裡來？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="composition" />
-      <SharedTableScroll v-if="events.length" :label="`${shortName}歷次配息組成`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 歷次配息組成（投信公告的預估比例，新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">除息日</th>
-              <th scope="col" class="seo-table__num">每單位配息</th>
-              <th v-for="part in ETF_DISTRIBUTION_PARTS" :key="part.key" scope="col" class="seo-table__num">{{ part.name }}</th>
-              <th scope="col" class="seo-table__num">未揭露</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="event in events" :key="event.exDividendDate">
-              <th scope="row">{{ event.exDividendDate }}</th>
-              <td class="seo-table__num">{{ event.distributionPerUnit === null ? '尚未公布' : etfYuan(event.distributionPerUnit) }}</td>
-              <td v-if="!hasEtfComposition(event.composition)" :colspan="ETF_DISTRIBUTION_PARTS.length + 1">組成未公告</td>
-              <template v-else>
-                <td v-for="part in ETF_DISTRIBUTION_PARTS" :key="part.key" class="seo-table__num">{{ share(event.composition![part.key]) }}</td>
-                <td class="seo-table__num">{{ undisclosed(event.composition!) }}</td>
-              </template>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="events.length" :label="`${shortName}歷次配息組成`" :caption="`${shortName} ${code} 歷次配息組成（投信公告的預估比例，新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">除息日</th>
+            <th scope="col" class="seo-table__num">每單位配息</th>
+            <th v-for="part in ETF_DISTRIBUTION_PARTS" :key="part.key" scope="col" class="seo-table__num">{{ part.name }}</th>
+            <th scope="col" class="seo-table__num">未揭露</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="event in events" :key="event.exDividendDate">
+            <th scope="row">{{ event.exDividendDate }}</th>
+            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '尚未公布' : etfYuan(event.distributionPerUnit) }}</td>
+            <td v-if="!hasEtfComposition(event.composition)" :colspan="ETF_DISTRIBUTION_PARTS.length + 1">組成未公告</td>
+            <template v-else>
+              <td v-for="part in ETF_DISTRIBUTION_PARTS" :key="part.key" class="seo-table__num">{{ share(event.composition![part.key]) }}</td>
+              <td class="seo-table__num">{{ undisclosed(event.composition!) }}</td>
+            </template>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">收益平準金是新申購的人買進時付的錢、已實現資本利得是賣股票的價差，兩者都來自基金的本金與資產，不是持股配發的股利或利息。</p>
       <details v-if="latestWarning" class="hub-details">
         <summary>投信公告附註（原文）</summary>

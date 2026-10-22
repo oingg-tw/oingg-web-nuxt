@@ -290,67 +290,63 @@ const planName = computed(() => {
 
     <section id="plan" class="profile-page__section">
       <h2 class="profile-page__section-title">方案與用量</h2>
-      <div class="profile-page__plan-card">
-        <!-- 方案標題這一塊至少留「方案名稱＋一行說明」的高度（2026-10-18 全站量測）：方案在瀏覽器才讀到，原本讀取中只有一行字，
-             讀到後變成名稱＋說明兩行，把下面的額度表推下去（1440 寬 0.007、375 寬 0.023）。免費版沒有說明，名稱下面留一行空白 -->
-        <div class="profile-page__plan-head">
-        <template v-if="planName">
-          <p class="profile-page__plan-name">{{ planName }}</p>
-          <p v-if="isTrial && trialDaysLeft !== null" class="profile-page__plan-note">
-            試用還剩 {{ trialDaysLeft }} 天（到 {{ dateText(entitlement?.trialEndsAt) }}）。試用結束後自動轉為免費版，你的資料都會保留。
-          </p>
-          <p v-else-if="entitlement?.source === 'subscription' && entitlement.currentPeriodEnd" class="profile-page__plan-note">
-            有效至 {{ dateText(entitlement.currentPeriodEnd) }}
-          </p>
+      <!-- 方案卡片就是全站表格的卡片：方案名稱在卡片的標題列，下面是額度表 -->
+      <SharedTable :label="`你的方案額度${usage ? '與目前用量' : ''}`" :ssr="false" table-class="profile-page__plan-table">
+        <template #header>
+          <!-- 方案標題這一塊至少留「方案名稱＋一行說明」的高度（2026-10-18 全站量測）：方案在瀏覽器才讀到，原本讀取中只有一行字，
+               讀到後變成名稱＋說明兩行，把下面的額度表推下去（1440 寬 0.007、375 寬 0.023）。免費版沒有說明，名稱下面留一行空白 -->
+          <div class="profile-page__plan-head">
+            <template v-if="planName">
+              <p class="profile-page__plan-name">{{ planName }}</p>
+              <p v-if="isTrial && trialDaysLeft !== null" class="profile-page__plan-note">
+                試用還剩 {{ trialDaysLeft }} 天（到 {{ dateText(entitlement?.trialEndsAt) }}）。試用結束後自動轉為免費版，你的資料都會保留。
+              </p>
+              <p v-else-if="entitlement?.source === 'subscription' && entitlement.currentPeriodEnd" class="profile-page__plan-note">
+                有效至 {{ dateText(entitlement.currentPeriodEnd) }}
+              </p>
+            </template>
+            <!-- 讀不到時全站彈窗會說明並重讀（2026-10-11）；這裡只在還沒回來時說讀取中 -->
+            <p v-else-if="!entitlementFailure" class="profile-page__plan-note">方案資訊讀取中…</p>
+          </div>
         </template>
-        <!-- 讀不到時全站彈窗會說明並重讀（2026-10-11）；這裡只在還沒回來時說讀取中 -->
-        <p v-else-if="!entitlementFailure" class="profile-page__plan-note">方案資訊讀取中…</p>
-        </div>
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th v-if="usage" scope="col">已使用</th>
+            <th scope="col">上限</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in QUOTA_ROWS" :key="row.resource">
+            <th scope="row">{{ row.label }}</th>
+            <td v-if="usage">{{ usage[row.resource] ?? 0 }} {{ row.unit }}</td>
+            <td>{{ limitText(entitlement ? entitlement.quotas[row.resource] ?? null : undefined, row.unit) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
+      <p class="profile-page__plan-cta">專業版即將開放</p>
 
-        <table class="profile-page__plan-table">
-          <caption class="visually-hidden">你的方案額度{{ usage ? '與目前用量' : '' }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">項目</th>
-              <th v-if="usage" scope="col">已使用</th>
-              <th scope="col">上限</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in QUOTA_ROWS" :key="row.resource">
-              <th scope="row">{{ row.label }}</th>
-              <td v-if="usage">{{ usage[row.resource] ?? 0 }} {{ row.unit }}</td>
-              <td>{{ limitText(entitlement ? entitlement.quotas[row.resource] ?? null : undefined, row.unit) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="profile-page__plan-cta">專業版即將開放</p>
-      </div>
-
-      <div v-if="plans" class="profile-page__plan-compare">
-        <table class="profile-page__plan-table">
-          <caption class="visually-hidden">免費版與專業版的差別</caption>
-          <thead>
-            <tr>
-              <th scope="col">項目</th>
-              <th scope="col">免費版</th>
-              <th scope="col">專業版</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 法規底線（投信投顧法）：付費只能差在能追蹤、儲存多少，分析與資料兩邊一樣——寫在最前面 -->
-            <tr>
-              <th scope="row">個股分析、篩選結果、資料來源</th>
-              <td colspan="2">兩個方案完全相同</td>
-            </tr>
-            <tr v-for="row in QUOTA_ROWS" :key="row.resource">
-              <th scope="row">{{ row.label }}</th>
-              <td>{{ limitText(planOf('FREE')?.quotas[row.resource], row.unit) }}</td>
-              <td>{{ limitText(planOf('PRO')?.quotas[row.resource], row.unit) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <SharedTable v-if="plans" label="免費版與專業版的差別" :ssr="false" table-class="profile-page__plan-table" class="profile-page__plan-compare">
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th scope="col">免費版</th>
+            <th scope="col">專業版</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 法規底線（投信投顧法）：付費只能差在能追蹤、儲存多少，分析與資料兩邊一樣——寫在最前面 -->
+          <tr>
+            <th scope="row">個股分析、篩選結果、資料來源</th>
+            <td colspan="2">兩個方案完全相同</td>
+          </tr>
+          <tr v-for="row in QUOTA_ROWS" :key="row.resource">
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ limitText(planOf('FREE')?.quotas[row.resource], row.unit) }}</td>
+            <td>{{ limitText(planOf('PRO')?.quotas[row.resource], row.unit) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="profile-page__plan-footnote">新註冊的帳號有 14 天專業版試用，不需要信用卡；到期自動轉為免費版，超過免費額度的部分可以看、可以刪，只是不能再新增。</p>
     </section>
 
@@ -520,17 +516,6 @@ const planName = computed(() => {
   margin: 0 0 12px;
 }
 
-.profile-page__plan-card {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  padding: 20px 16px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-}
-
 .profile-page__plan-name {
   margin: 0;
   font-size: 1.25rem;
@@ -564,7 +549,7 @@ const planName = computed(() => {
 
 /* 不是 disabled 按鈕（朗讀器會念成「按鈕，已停用」卻沒有任何可做的事）：一行靜態說明 */
 .profile-page__plan-cta {
-  margin: 0;
+  margin: 12px 0 0;
   text-align: center;
   color: var(--el-text-color-secondary);
 }
@@ -573,26 +558,8 @@ const planName = computed(() => {
   margin-top: 16px;
 }
 
-.profile-page__plan-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.profile-page__plan-table th,
-.profile-page__plan-table td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.profile-page__plan-table thead th {
-  font-weight: 600;
-  border-bottom-width: 2px;
-}
-
+/* 表格的樣子是全站表格（SharedTable）；這兩張只有三欄，名稱長的那一格換行，手機上不用左右捲 */
 .profile-page__plan-table tbody th {
-  font-weight: 400;
+  white-space: normal;
 }
 </style>

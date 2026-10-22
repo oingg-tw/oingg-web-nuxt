@@ -46,10 +46,11 @@ html.dark {
   --el-border-color: #6b6c6e;
   --el-border-color-lighter: #6b6c6e;
 
-  /* 見淺色那一組的說明（分隔線、卡片框、表頭底色） */
-  --app-divider: #2e2e2e;
-  --app-surface-border: #363636;
-  --app-table-head-bg: #2a2a2a;
+  /* 見淺色那一組的說明。卡片是 el-card 一直以來的深色底 #2a2a2a，表頭與分隔線比它亮一階才看得出來 */
+  --app-card-bg: #2a2a2a;
+  --app-divider: #3a3a3a;
+  --app-surface-border: #414243;
+  --app-table-head-bg: #353535;
 }
 
 /* 深色模式的實心按鈕字色：Element Plus 把 primary 按鈕與選中的 radio-button 寫死白字，而本站深色的七個主色都是為了「當文字」挑的
@@ -118,6 +119,9 @@ html:not(.dark) {
   --app-divider: #e6dfd2;
   --app-surface-border: #d9d1c2;
   --app-table-head-bg: #efe8da;
+  /* 卡片底色（2026-10-23，使用者：「圖表卡片 統一 但我認為統一成白底好」）：圖表卡片（el-card）與表格卡片（SharedTable）同一個白，
+     壓在暖白頁面上；框、圓角也同一套（element-plus.css、main.css 的「全站表格」） */
+  --app-card-bg: #ffffff;
 
   --el-color-danger: #c62828;
   --el-color-danger-dark-2: #9e2020;

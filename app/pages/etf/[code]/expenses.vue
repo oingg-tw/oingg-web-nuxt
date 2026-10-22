@@ -38,23 +38,20 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="expenses" :description="answer">
     <StockQuestionSection id="etf-expenses" :question="`${shortName}（${code}）一年被收多少費用？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="expenses" />
-      <SharedTableScroll v-if="years.length" :label="`${shortName}歷年總費用率`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 歷年總費用率（新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">年度</th>
-              <th scope="col" class="seo-table__num">總費用率</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in years" :key="row.year">
-              <th scope="row">{{ row.year }} 年</th>
-              <td class="seo-table__num">{{ etfPct(row.value) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="years.length" :label="`${shortName}歷年總費用率`" :caption="`${shortName} ${code} 歷年總費用率（新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">年度</th>
+            <th scope="col" class="seo-table__num">總費用率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in years" :key="row.year">
+            <th scope="row">{{ row.year }} 年</th>
+            <td class="seo-table__num">{{ etfPct(row.value) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p v-if="years.length" class="hub-answer">各項費用是 {{ years[0]!.year }} 年全年的實際比率，不是契約費率。總費用率含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。</p>
       <SharedFactList :items="fees" :label="years.length ? `${shortName} ${years[0]!.year} 年各項費用` : `${shortName}各項費用`" />
     </StockQuestionSection>

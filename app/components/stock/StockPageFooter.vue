@@ -44,14 +44,14 @@ withDefaults(defineProps<{
 </template>
 
 <style scoped>
-/* 安靜的頁尾，不是另一張卡片（2026-09-21 StockPageDigest 拿掉卡片外框的理由）：只有上方一條線 */
+/* 安靜的頁尾，不是另一張卡片（2026-09-21 StockPageDigest 拿掉卡片外框的理由）：只有上方一條線，用全站表格那一條淡的（2026-10-23，
+   原本是元件外框的 3:1 深灰）。跟上一段的距離是 StockPageShell 的段落間距，這裡不另外加 */
 .stock-page-footer {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-top: 8px;
   padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
   line-height: 1.7;
   color: var(--el-text-color-secondary);
 }

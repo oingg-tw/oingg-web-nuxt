@@ -21,23 +21,20 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="returns" :description="answer">
     <StockQuestionSection id="etf-returns" :question="`${shortName}（${code}）過去各期間的含息報酬率是多少？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="returns" />
-      <SharedTableScroll :label="`${shortName}各期間報酬率`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 各期間報酬率（投信投顧公會基金月報{{ month ? `，${month}` : '' }}）</caption>
-          <thead>
-            <tr>
-              <th scope="col">期間</th>
-              <th scope="col" class="seo-table__num">含息報酬率（累積）</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.label">
-              <th scope="row">{{ row.label }}</th>
-              <td class="seo-table__num">{{ etfPct(row.value) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="`${shortName}各期間報酬率`" :caption="`${shortName} ${code} 各期間報酬率（投信投顧公會基金月報${month ? `，${month}` : ''}）`">
+        <thead>
+          <tr>
+            <th scope="col">期間</th>
+            <th scope="col" class="seo-table__num">含息報酬率（累積）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.label">
+            <th scope="row">{{ row.label }}</th>
+            <td class="seo-table__num">{{ etfPct(row.value) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">報酬率是整段期間的累積報酬，不是每年平均。過去的報酬不代表未來；「－」是這檔 ETF 成立的時間比那個期間短。</p>
     </StockQuestionSection>
     <StockMetricGuide

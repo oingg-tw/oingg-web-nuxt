@@ -364,40 +364,44 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
     <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
     <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
-      <!-- 不包 SharedTableScroll：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動 -->
-      <div v-if="rows.length" class="stock-quick-view-page__table-wrap">
-        <table class="seo-table stock-quick-view-page__table" data-ssr-table>
-          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的自選指標最新數值與期別</caption>
-          <thead>
-            <tr>
-              <th scope="col">指標</th>
-              <th scope="col" class="seo-table__num">最新數值</th>
-              <th scope="col">期別（資料日期）</th>
-              <th scope="col">調整</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, index) in rows" :key="row.slug">
-              <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
-              <td class="seo-table__num">{{ valueText(row.field, row.slug) || '－' }}</td>
-              <td data-label="期別">{{ periodText(row.field) }}</td>
-              <td class="stock-quick-view-page__order">
-                <div class="stock-quick-view-page__order-buttons">
-                <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
-                  <el-icon aria-hidden="true"><Top /></el-icon>上移
-                </button>
-                <button :id="`quick-view-down-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === rows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
-                  <el-icon aria-hidden="true"><Bottom /></el-icon>下移
-                </button>
-                <button type="button" class="stock-quick-view-page__move" :aria-label="`從自選指標刪除 ${row.label}`" @click="removeRow(row.slug, row.label)">
-                  <el-icon aria-hidden="true"><Delete /></el-icon>刪除
-                </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- 不畫捲動區（:scrollable="false"）：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動。
+           卡片本身是窄寬切換的容器（.stock-quick-view-page__table-wrap） -->
+      <SharedTable
+        v-if="rows.length"
+        :label="`${stockShortName} ${code} 的自選指標最新數值與期別`"
+        table-class="stock-quick-view-page__table"
+        :scrollable="false"
+        class="stock-quick-view-page__table-wrap"
+      >
+        <thead>
+          <tr>
+            <th scope="col">指標</th>
+            <th scope="col" class="seo-table__num">最新數值</th>
+            <th scope="col">期別（資料日期）</th>
+            <th scope="col">調整</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, index) in rows" :key="row.slug">
+            <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
+            <td class="seo-table__num">{{ valueText(row.field, row.slug) || '－' }}</td>
+            <td data-label="期別">{{ periodText(row.field) }}</td>
+            <td class="stock-quick-view-page__order">
+              <div class="stock-quick-view-page__order-buttons">
+              <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
+                <el-icon aria-hidden="true"><Top /></el-icon>上移
+              </button>
+              <button :id="`quick-view-down-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === rows.length - 1" :aria-label="`${row.label} 下移`" @click="moveRow(row.slug, 1, row.label)">
+                <el-icon aria-hidden="true"><Bottom /></el-icon>下移
+              </button>
+              <button type="button" class="stock-quick-view-page__move" :aria-label="`從自選指標刪除 ${row.label}`" @click="removeRow(row.slug, row.label)">
+                <el-icon aria-hidden="true"><Delete /></el-icon>刪除
+              </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p v-else class="stock-quick-view-page__empty">
         還沒有釘選任何指標。到<NuxtLink :to="`/stock/${code}/metrics`">指標總覽</NuxtLink>把想常看的釘到側邊欄。
       </p>
@@ -539,15 +543,16 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   container-type: inline-size;
 }
 
-.stock-quick-view-page__table {
+/* <table> 是 SharedTable 畫的，不帶這一頁的 scoped 屬性：直接對表格本身的規則要用 :deep（從帶著這一頁屬性的卡片往下找） */
+:deep(.stock-quick-view-page__table) {
   display: block;
   background: none;
 }
 
-/* 手機：每一列是一張小卡片（2026-10-07「quick-view 手機板樣式請美化」），框線、圓角、底色同上面的圖表卡 */
+/* 手機：一張卡片（SharedTable）裡一列一列，列與列之間全站表格那一條淡線（2026-10-23；原本每一列自己一張小卡片，包進表格卡片之後
+   會變成卡片包卡片） */
 .stock-quick-view-page__table tbody {
   display: grid;
-  gap: 8px;
 }
 
 .stock-quick-view-page__table thead {
@@ -564,9 +569,11 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   gap: 4px 12px;
   align-items: center;
   padding: 12px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-card-border-radius, 4px);
-  background: var(--el-bg-color);
+  border-bottom: 1px solid var(--app-divider);
+}
+
+.stock-quick-view-page__table tbody tr:last-child {
+  border-bottom: 0;
 }
 
 .stock-quick-view-page__table tbody th,
@@ -640,9 +647,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
 /* 表格區塊寬 ≥860px：還原成四欄表格，外觀同改版前 */
 @container (min-width: 860px) {
-  .stock-quick-view-page__table {
+  :deep(.stock-quick-view-page__table) {
     display: table;
-    background: var(--el-bg-color);
+    background: var(--app-card-bg);
   }
 
   .stock-quick-view-page__table thead {
@@ -664,12 +671,20 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     border-radius: 0;
   }
 
-  /* 還原 main.css 的 .seo-table th/td；按鈕列高 44px，文字欄垂直置中 */
+  /* 還原全站表格的格子（main.css 的 .seo-table th/td）：內距、淡的列線、第一欄與最後一欄離卡片邊 16px；按鈕列高 44px，文字欄垂直置中 */
   .stock-quick-view-page__table tbody th,
   .stock-quick-view-page__table tbody td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--app-divider);
     vertical-align: middle;
+  }
+
+  .stock-quick-view-page__table tbody th:first-child {
+    padding-left: 16px;
+  }
+
+  .stock-quick-view-page__table tbody td:last-child {
+    padding-right: 16px;
   }
 
   .stock-quick-view-page__table tbody th {
@@ -697,7 +712,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   .stock-quick-view-page__move {
     padding: 0 12px;
     border: 1px solid var(--el-border-color);
-    background: var(--el-bg-color);
+    background: var(--app-card-bg);
   }
 }
 

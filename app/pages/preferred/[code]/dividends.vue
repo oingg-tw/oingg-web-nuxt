@@ -34,23 +34,20 @@ const answer = computed(() => {
     <StockQuestionSection id="preferred-dividends" :question="`${shortName}（${code}）實際配了多少？跟目前公告的股息一樣嗎？`" :answer="answer">
       <template v-if="years.length">
         <PreferredDividendChart :years="years" :dividend-rate="entry?.dividendRate ?? null" :short-name="shortName" />
-        <SharedTableScroll :label="`${shortName}每年實際配發的股息`">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ shortName }} {{ code }} 依除息年份加總的實際配發現金股息（新的在上）</caption>
-            <thead>
-              <tr>
-                <th scope="col">年份</th>
-                <th scope="col" class="seo-table__num">實際配發</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in [...years].reverse()" :key="row.year">
-                <th scope="row">{{ row.year }} 年</th>
-                <td class="seo-table__num">{{ row.amount === null ? '沒有除息紀錄' : preferredYuan(row.amount) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+        <SharedTable :label="`${shortName}每年實際配發的股息`" :caption="`${shortName} ${code} 依除息年份加總的實際配發現金股息（新的在上）`">
+          <thead>
+            <tr>
+              <th scope="col">年份</th>
+              <th scope="col" class="seo-table__num">實際配發</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in [...years].reverse()" :key="row.year">
+              <th scope="row">{{ row.year }} 年</th>
+              <td class="seo-table__num">{{ row.amount === null ? '沒有除息紀錄' : preferredYuan(row.amount) }}</td>
+            </tr>
+          </tbody>
+        </SharedTable>
       </template>
       <p class="hub-answer">
         發行條件寫的每年股息不一定每年都一樣：有些特別股的股息每隔幾年會依利率重設；非累積型的特別股如果某一年沒有配發，之後也不補發。

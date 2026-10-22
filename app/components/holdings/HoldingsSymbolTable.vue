@@ -140,8 +140,8 @@ function toggle(symbol: string, event?: MouseEvent) {
     </div>
 
     <!-- 骨架表：el-table 在伺服器不畫列（欄位要 mount 才登記），所以自己畫一張。欄寬照 el-table 的分法、表頭與列高照它的樣式，
-         列高靠同一顆「明細」按鈕撐出來（觸控裝置按鈕 44px 時一起變高） -->
-    <table v-if="skeletonRows" class="view-table symbol-table__skeleton" aria-hidden="true">
+         列高靠同一顆「明細」按鈕撐出來（觸控裝置按鈕 44px 時一起變高）。兩張都放在全站表格的卡片裡（SharedTable） -->
+    <SharedTable v-if="skeletonRows" :ssr="false" :scrollable="false" table-class="symbol-table__skeleton" class="view-table" aria-hidden="true">
       <thead>
         <tr>
           <!-- 排序欄的表頭後面留 el-table 排序箭頭的寬（24px），靠右的欄名才在同一個位置 -->
@@ -157,50 +157,52 @@ function toggle(symbol: string, event?: MouseEvent) {
           <td v-if="slots.detail"><el-button disabled tabindex="-1">{{ toggleLabels[0] }}</el-button></td>
         </tr>
       </tbody>
-    </table>
+    </SharedTable>
 
-    <el-table v-else class="view-table" :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
-      <!-- 展開列只拿來放明細；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
-           免得同一件事有兩個開關 -->
-      <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
-        <template #default="{ row }">
-          <slot name="detail" :row="tableRow<T>(row)" :variant="'table'" />
-        </template>
-      </el-table-column>
-      <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH" sortable :sort-method="compareBy('symbol')">
-        <template #default="{ row }">
-          <div class="symbol-table__name">
-            <NuxtLink :to="tableRow<T>(row).link" class="stock-name-link">{{ tableRow<T>(row).name }}</NuxtLink>
-            <span class="symbol-table__code">{{ tableRow<T>(row).symbol }}</span>
-            <el-tag v-if="tableRow<T>(row).kind === 'etf'" size="small" effect="plain">ETF</el-tag>
-            <el-tag v-else-if="tableRow<T>(row).kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column
-        v-for="column in columns"
-        :key="column.key"
-        :label="column.label"
-        :prop="column.key"
-        align="right"
-        :min-width="column.minWidth"
-        sortable
-        :sort-method="compareBy(column.key)"
-      >
-        <template #default="{ row }">
-          <span :class="toneClass(column, tableRow<T>(row))">{{ column.text(tableRow<T>(row)) }}</span>
-        </template>
-      </el-table-column>
-      <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。 -->
-      <el-table-column v-if="slots.detail" label="明細" :min-width="DETAIL_MIN_WIDTH">
-        <template #default="{ row }">
-          <!-- 念出來的名稱＝看得到的字＋股票名（WCAG 2.5.3），狀態交給 aria-expanded -->
-          <el-button :aria-expanded="expanded.includes(tableRow<T>(row).symbol)" @click="toggle(tableRow<T>(row).symbol)">
-            {{ expanded.includes(tableRow<T>(row).symbol) ? toggleLabels[1] : toggleLabels[0] }}<span class="visually-hidden">：{{ tableRow<T>(row).label }}</span>
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <SharedTable v-else custom class="view-table">
+      <el-table :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
+        <!-- 展開列只拿來放明細；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
+             免得同一件事有兩個開關 -->
+        <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
+          <template #default="{ row }">
+            <slot name="detail" :row="tableRow<T>(row)" :variant="'table'" />
+          </template>
+        </el-table-column>
+        <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH" sortable :sort-method="compareBy('symbol')">
+          <template #default="{ row }">
+            <div class="symbol-table__name">
+              <NuxtLink :to="tableRow<T>(row).link" class="stock-name-link">{{ tableRow<T>(row).name }}</NuxtLink>
+              <span class="symbol-table__code">{{ tableRow<T>(row).symbol }}</span>
+              <el-tag v-if="tableRow<T>(row).kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+              <el-tag v-else-if="tableRow<T>(row).kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-for="column in columns"
+          :key="column.key"
+          :label="column.label"
+          :prop="column.key"
+          align="right"
+          :min-width="column.minWidth"
+          sortable
+          :sort-method="compareBy(column.key)"
+        >
+          <template #default="{ row }">
+            <span :class="toneClass(column, tableRow<T>(row))">{{ column.text(tableRow<T>(row)) }}</span>
+          </template>
+        </el-table-column>
+        <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。 -->
+        <el-table-column v-if="slots.detail" label="明細" :min-width="DETAIL_MIN_WIDTH">
+          <template #default="{ row }">
+            <!-- 念出來的名稱＝看得到的字＋股票名（WCAG 2.5.3），狀態交給 aria-expanded -->
+            <el-button :aria-expanded="expanded.includes(tableRow<T>(row).symbol)" @click="toggle(tableRow<T>(row).symbol)">
+              {{ expanded.includes(tableRow<T>(row).symbol) ? toggleLabels[1] : toggleLabels[0] }}<span class="visually-hidden">：{{ tableRow<T>(row).label }}</span>
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </SharedTable>
 
     <!-- 手機卡片（2026-10-20 重新設計，使用者：「不展開還好，一展開看起來有夠髒」）：所有數字一種排法——名稱靠左、數字靠右，
          一列一項；展開後接著列下去，交易紀錄與動作在最後（HoldingsDetailPanel 的 card）。開關是卡片的頁尾（「明細按鈕放在右上角不太順，
@@ -292,25 +294,16 @@ function toggle(symbol: string, event?: MouseEvent) {
   font-variant-numeric: tabular-nums;
 }
 
-/* 骨架表：照 el-table 的樣子（表頭 8px 上下內距、23px 行高、次要字色；儲存格 0 12px 內距、下框線） */
-.symbol-table__skeleton {
-  width: 100%;
+/* 骨架表：照 el-table 的高（格子上下 8px、23px 行高）；左右內距、線、表頭底色與字色是全站表格那一套，el-table 也是同一套。
+   <table> 是 SharedTable 畫的，對它本身要用 :deep */
+:deep(.symbol-table__skeleton) {
   table-layout: fixed;
-  border-collapse: collapse;
-  background: var(--el-bg-color);
 }
 
 .symbol-table__skeleton th,
 .symbol-table__skeleton td {
-  padding: 8px 12px;
+  padding-block: 8px;
   line-height: 23px;
-  text-align: left;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.symbol-table__skeleton th {
-  font-weight: 500;
-  color: var(--el-text-color-secondary);
 }
 
 .symbol-table__skeleton .symbol-table__skeleton-num {
@@ -384,7 +377,7 @@ function toggle(symbol: string, event?: MouseEvent) {
   min-height: 44px;
   margin: 0 -16px -12px;
   border-radius: 0 0 var(--el-card-border-radius, 4px) var(--el-card-border-radius, 4px);
-  box-shadow: inset 0 1px 0 var(--el-border-color-lighter);
+  box-shadow: inset 0 1px 0 var(--app-divider);
 }
 
 .symbol-table__chevron {
@@ -404,7 +397,7 @@ function toggle(symbol: string, event?: MouseEvent) {
   flex-direction: column;
   gap: 4px;
   padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .view-card {

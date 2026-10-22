@@ -49,27 +49,24 @@ const rows = computed(() => {
 
 <template>
   <StockQuestionSection v-if="points.length" id="stock-metric-history" :question="text.question" :answer="answer">
-    <SharedTableScroll :label="text.label">
-      <!-- data-ssr-table="history"：指標頁一圖一表的那一張表（scripts/check-stock-pages.mjs 數它） -->
-      <table class="seo-table" data-ssr-table="history">
-        <caption class="visually-hidden">{{ text.label }}</caption>
-        <thead>
-          <tr>
-            <th scope="col">期別</th>
-            <th scope="col">{{ topic }}{{ unit ? `（${unit}）` : '' }}</th>
-            <th scope="col">資料時間</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="{ key, entry, period } in rows" :key="key">
-            <th scope="row">{{ period }}</th>
-            <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ metricCellText(entry.point, unit) }}</td>
-            <!-- 算不出數值的列不寫資料時間（2026-10-17「沒上市 那為什麼會有資料時間?」）：那個日期是分母的財報公布日，不是這個數字的 -->
-            <td>{{ entry.point?.value != null ? entry.point.knowledgeDate ?? '—' : '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </SharedTableScroll>
+    <!-- ssr="history"：指標頁一圖一表的那一張表（scripts/check-stock-pages.mjs 數它） -->
+    <SharedTable :label="text.label" ssr="history">
+      <thead>
+        <tr>
+          <th scope="col">期別</th>
+          <th scope="col">{{ topic }}{{ unit ? `（${unit}）` : '' }}</th>
+          <th scope="col">資料時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="{ key, entry, period } in rows" :key="key">
+          <th scope="row">{{ period }}</th>
+          <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ metricCellText(entry.point, unit) }}</td>
+          <!-- 算不出數值的列不寫資料時間（2026-10-17「沒上市 那為什麼會有資料時間?」）：那個日期是分母的財報公布日，不是這個數字的 -->
+          <td>{{ entry.point?.value != null ? entry.point.knowledgeDate ?? '—' : '—' }}</td>
+        </tr>
+      </tbody>
+    </SharedTable>
   </StockQuestionSection>
 </template>
 

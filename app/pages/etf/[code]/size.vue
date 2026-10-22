@@ -24,29 +24,26 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="size" :description="answer">
     <StockQuestionSection id="etf-size" :question="`${shortName}（${code}）規模多大？受益人數有沒有變？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="size" />
-      <SharedTableScroll v-if="months.length" :label="`${shortName}每月規模與受益人數`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ shortName }} {{ code }} 每月規模、受益人數、淨申購與定期定額金額（投信投顧公會基金月報，新的在上）</caption>
-          <thead>
-            <tr>
-              <th scope="col">月份</th>
-              <th scope="col" class="seo-table__num">規模</th>
-              <th scope="col" class="seo-table__num">受益人數</th>
-              <th scope="col" class="seo-table__num">淨申購（申購 − 贖回）</th>
-              <th scope="col" class="seo-table__num">定期定額金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in months" :key="row.yearMonth">
-              <th scope="row">{{ row.yearMonth }}</th>
-              <td class="seo-table__num">{{ money(row.aum) }}</td>
-              <td class="seo-table__num">{{ people(row.holders) }}</td>
-              <td class="seo-table__num">{{ money(row.netFlow) }}</td>
-              <td class="seo-table__num">{{ money(row.dcaAmount) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="months.length" :label="`${shortName}每月規模與受益人數`" :caption="`${shortName} ${code} 每月規模、受益人數、淨申購與定期定額金額（投信投顧公會基金月報，新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">月份</th>
+            <th scope="col" class="seo-table__num">規模</th>
+            <th scope="col" class="seo-table__num">受益人數</th>
+            <th scope="col" class="seo-table__num">淨申購（申購 − 贖回）</th>
+            <th scope="col" class="seo-table__num">定期定額金額</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in months" :key="row.yearMonth">
+            <th scope="row">{{ row.yearMonth }}</th>
+            <td class="seo-table__num">{{ money(row.aum) }}</td>
+            <td class="seo-table__num">{{ people(row.holders) }}</td>
+            <td class="seo-table__num">{{ money(row.netFlow) }}</td>
+            <td class="seo-table__num">{{ money(row.dcaAmount) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p class="hub-answer">規模跌破法定門檻、而且一段時間沒有回升，ETF 可能依規定下市清算（以發行投信的公告為準）。基金月報的資料從 2024 年 1 月起。</p>
     </StockQuestionSection>
   </EtfPage>

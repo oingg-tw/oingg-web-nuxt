@@ -31,30 +31,27 @@ const tableId = useId()
 <template>
   <div class="statement-table">
     <h3 v-if="showTitle" class="statement-table__title">{{ title }}</h3>
-    <SharedTableScroll v-if="currentStatement" :label="title">
-      <table :id="tableId" class="seo-table" data-ssr-table>
-        <!-- 單位原本寫在看得見的 caption（2026-10-13 caption 一律藏起來），改寫進欄位標題與不是千元那幾列的列名 -->
-        <caption class="visually-hidden">{{ title }}</caption>
-        <thead>
-          <tr>
-            <th scope="col">科目</th>
-            <th scope="col" class="seo-table__num">{{ currentLabel }}（千元）</th>
-            <th scope="col" class="seo-table__num">{{ priorLabel }}（千元）</th>
-            <th scope="col" class="seo-table__num">增減（%）</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="line in built.lines" :key="line.key" :class="{ 'is-latest': line.total }">
-            <th scope="row" :class="{ 'statement-table__indent': !line.total, 'statement-table__other': line.other }">
-              {{ line.label }}<template v-if="line.unit !== '千元'">（{{ line.unit }}）</template>
-            </th>
-            <td class="seo-table__num">{{ formatStatementAmount(line.current) }}</td>
-            <td class="seo-table__num">{{ formatStatementAmount(line.prior) }}</td>
-            <td class="seo-table__num">{{ statementChangePercent(line.current, line.prior) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </SharedTableScroll>
+    <!-- 單位原本寫在看得見的 caption（2026-10-13 caption 一律藏起來），改寫進欄位標題與不是千元那幾列的列名 -->
+    <SharedTable v-if="currentStatement" :label="title" :table-id="tableId">
+      <thead>
+        <tr>
+          <th scope="col">科目</th>
+          <th scope="col" class="seo-table__num">{{ currentLabel }}（千元）</th>
+          <th scope="col" class="seo-table__num">{{ priorLabel }}（千元）</th>
+          <th scope="col" class="seo-table__num">增減（%）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="line in built.lines" :key="line.key" :class="{ 'is-latest': line.total }">
+          <th scope="row" :class="{ 'statement-table__indent': !line.total, 'statement-table__other': line.other }">
+            {{ line.label }}<template v-if="line.unit !== '千元'">（{{ line.unit }}）</template>
+          </th>
+          <td class="seo-table__num">{{ formatStatementAmount(line.current) }}</td>
+          <td class="seo-table__num">{{ formatStatementAmount(line.prior) }}</td>
+          <td class="seo-table__num">{{ statementChangePercent(line.current, line.prior) }}</td>
+        </tr>
+      </tbody>
+    </SharedTable>
     <p v-else class="stock-answer">{{ title }}：{{ currentLabel }}查無申報資料。</p>
     <!-- 預設只列主要科目（金額門檻），其餘併進各段的「其他」；這顆展開這家公司每一個有數字的科目 -->
     <el-button

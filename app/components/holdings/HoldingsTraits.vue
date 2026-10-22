@@ -170,14 +170,14 @@ const methodGroups = computed(() => [
   margin: 0 0 12px;
 }
 
-/* 一塊面板（框線、圓角、底色同持股總覽），九宮格的色塊壓在卡片色上才分得出最淺那一階。面板是整段寬的區塊，拿來當 container：
+/* 一塊面板（框線、圓角、底色同全站卡片，--el-card-*），九宮格的色塊壓在卡片色上才分得出最淺那一階。面板是整段寬的區塊，拿來當 container：
    九宮格與表格依它的寬度一起決定並排還是上下疊 */
 .holdings-traits__panel {
   container-type: inline-size;
   padding: 16px 20px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
+  border: 1px solid var(--el-card-border-color);
+  border-radius: var(--el-card-border-radius);
+  background: var(--el-card-bg-color);
 }
 
 /* 答句：標籤一排，在面板上面 */
@@ -322,7 +322,7 @@ const methodGroups = computed(() => [
   align-items: baseline;
   /* 左右不留內距：欄位才跟上面九宮格那一層的欄位切在同一個位置 */
   padding: 8px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .holdings-traits__metrics thead tr {

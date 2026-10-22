@@ -82,29 +82,26 @@ const { breadcrumbs } = useStockPageSeo({
       :question="`${stockShortName}（${code}）配息之後，股價填回來了嗎？`"
       :answer="fillAnswer"
     >
-      <SharedTableScroll :label="`${stockShortName} ${code} 的除息與填息紀錄`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的除息與填息紀錄</caption>
-          <thead>
-            <tr>
-              <th scope="col">除息日</th>
-              <th scope="col">現金股利（元）</th>
-              <th scope="col">除息前一交易日收盤價（元）</th>
-              <th scope="col">回到該價位的日期</th>
-              <th scope="col">經過交易日數</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="fill in fills" :key="fill.exDividendDate">
-              <th scope="row">{{ fill.exDividendDate }}</th>
-              <td>{{ fill.cashDividend.toFixed(2) }}</td>
-              <td>{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
-              <td>{{ fill.filledDate ?? '－' }}</td>
-              <td>{{ fillDayText(fill) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="`${stockShortName} ${code} 的除息與填息紀錄`">
+        <thead>
+          <tr>
+            <th scope="col">除息日</th>
+            <th scope="col">現金股利（元）</th>
+            <th scope="col">除息前一交易日收盤價（元）</th>
+            <th scope="col">回到該價位的日期</th>
+            <th scope="col">經過交易日數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="fill in fills" :key="fill.exDividendDate">
+            <th scope="row">{{ fill.exDividendDate }}</th>
+            <td>{{ fill.cashDividend.toFixed(2) }}</td>
+            <td>{{ fill.preExClose === null ? '－' : fill.preExClose.toFixed(2) }}</td>
+            <td>{{ fill.filledDate ?? '－' }}</td>
+            <td>{{ fillDayText(fill) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
 
     <StockQuestionSection id="stock-dividend-fill-limits" question="什麼情況下算不出填息？" :answer="limitAnswer" />

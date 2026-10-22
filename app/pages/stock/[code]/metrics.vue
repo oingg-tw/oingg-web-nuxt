@@ -180,48 +180,47 @@ const { breadcrumbs } = useStockPageSeo({
 
       <!-- 有查詢字：平鋪的結果表，母項當第一欄。不動手風琴的 open 狀態（見 script 的註解）。 -->
       <template v-if="normalizedQuery">
-        <SharedTableScroll v-if="matches.length" :label="`${stockShortName} ${code} 符合「${query.trim()}」的指標`">
-          <table class="seo-table stock-metric-index-page__links">
-            <caption class="visually-hidden">{{ stockShortName }} {{ code }} 符合「{{ query.trim() }}」的指標</caption>
-            <thead class="visually-hidden">
-              <tr>
-                <th scope="col">指標</th>
-                <th scope="col">它回答什麼</th>
-                <th scope="col">釘選到側邊欄</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="match in matches" :key="match.link.label">
-                <th scope="row">
-                  <NuxtLink :to="match.link.to!(code)" class="seo-table__link">{{ match.link.label }}</NuxtLink>
-                  <span class="stock-metric-index-page__match-group">{{ match.group }}</span>
-                </th>
-                <td class="stock-metric-index-page__hook">{{ match.link.hook }}</td>
-                <td class="stock-metric-index-page__pin-cell">
-                  <button
-                    v-if="hasPinnableChart(slugOf(match.link))"
-                    type="button"
-                    class="stock-metric-index-page__pin"
-                    :class="{ 'is-pinned': isPinned(slugOf(match.link)) }"
-                    :aria-pressed="isPinned(slugOf(match.link))"
-                    :aria-label="`${isPinned(slugOf(match.link)) ? '已釘選' : '釘選'}：${match.link.label}`"
-                    :disabled="!isPinned(slugOf(match.link)) && isFull"
-                    @click="toggle(slugOf(match.link))"
-                  >
-                    <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
-                      <component :is="isPinned(slugOf(match.link)) ? Check : Plus" />
-                    </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(match.link)) ? '已釘選' : '釘選' }}</span>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+        <SharedTable v-if="matches.length" :label="`${stockShortName} ${code} 符合「${query.trim()}」的指標`" table-class="stock-metric-index-page__links" :ssr="false">
+          <thead class="visually-hidden">
+            <tr>
+              <th scope="col">指標</th>
+              <th scope="col">它回答什麼</th>
+              <th scope="col">釘選到側邊欄</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="match in matches" :key="match.link.label">
+              <th scope="row">
+                <NuxtLink :to="match.link.to!(code)" class="seo-table__link">{{ match.link.label }}</NuxtLink>
+                <span class="stock-metric-index-page__match-group">{{ match.group }}</span>
+              </th>
+              <td class="stock-metric-index-page__hook">{{ match.link.hook }}</td>
+              <td class="stock-metric-index-page__pin-cell">
+                <button
+                  v-if="hasPinnableChart(slugOf(match.link))"
+                  type="button"
+                  class="stock-metric-index-page__pin"
+                  :class="{ 'is-pinned': isPinned(slugOf(match.link)) }"
+                  :aria-pressed="isPinned(slugOf(match.link))"
+                  :aria-label="`${isPinned(slugOf(match.link)) ? '已釘選' : '釘選'}：${match.link.label}`"
+                  :disabled="!isPinned(slugOf(match.link)) && isFull"
+                  @click="toggle(slugOf(match.link))"
+                >
+                  <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
+                    <component :is="isPinned(slugOf(match.link)) ? Check : Plus" />
+                  </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(match.link)) ? '已釘選' : '釘選' }}</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </SharedTable>
         <p v-else class="stock-answer">
           找不到「{{ query.trim() }}」。指標名、說明、視角（組成、每股、成長率…）和英文縮寫都可以搜，例如輸入 ROE 或 天數。
         </p>
       </template>
 
+      <!-- 各組一個接一個（中間只有分隔線），包一層才不會吃到段落的間距 -->
+      <div class="stock-metric-index-page__groups">
       <details
         v-for="section in sections"
         v-show="!normalizedQuery"
@@ -233,60 +232,58 @@ const { breadcrumbs } = useStockPageSeo({
         <summary>
           <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
         </summary>
-        <div>
+        <div class="stock-metric-index-page__group-body">
           <!-- 母項的說明句必須在展開後的 panel 裡，不能塞進 <summary>：11 個 summary × 48px
                ＝ 528px，加上上面的 h2 與答句剛好落在 375×812 扣掉瀏覽器 chrome 與底部導覽列之後的
                預算內。說明句塞進 summary 每列會變 72px，11 列就爆掉。 -->
           <p v-if="section.answer" class="stock-answer">{{ section.answer }}</p>
-          <SharedTableScroll :label="`${stockShortName} ${code} 的${section.label}指標`">
-            <table class="seo-table stock-metric-index-page__links" data-ssr-table>
-              <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的{{ section.label }}指標</caption>
-              <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
-                   存在，caption 也還在。 -->
-              <thead class="visually-hidden">
-                <tr>
-                  <th scope="col">指標</th>
-                  <th scope="col">它回答什麼</th>
-                  <th scope="col">釘選到側邊欄</th>
-                </tr>
-              </thead>
-              <!-- 視角（組成／每股／佔比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
-                   移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
-                   只是不佔畫面。 -->
-              <tbody>
-                <tr v-for="link in section.links" :key="link.label">
-                  <th scope="row">
-                    <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
-                  </th>
-                  <td class="stock-metric-index-page__hook">{{ link.hook }}</td>
-                  <!-- 真的 <button>、aria-pressed 表達開關狀態、可及名稱帶上指標名——一整欄
-                       60 幾個都叫「釘選」的話，用螢幕閱讀器逐項瀏覽時分不出在釘哪一支。
-                       手機上文字被 CSS 藏起來，可及名稱仍然完整（來自 aria-label 不是文字節點）。
+          <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
+               存在，caption 也還在。 -->
+          <SharedTable :label="`${stockShortName} ${code} 的${section.label}指標`" table-class="stock-metric-index-page__links">
+            <thead class="visually-hidden">
+              <tr>
+                <th scope="col">指標</th>
+                <th scope="col">它回答什麼</th>
+                <th scope="col">釘選到側邊欄</th>
+              </tr>
+            </thead>
+            <!-- 視角（組成／每股／佔比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
+                 移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
+                 只是不佔畫面。 -->
+            <tbody>
+              <tr v-for="link in section.links" :key="link.label">
+                <th scope="row">
+                  <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
+                </th>
+                <td class="stock-metric-index-page__hook">{{ link.hook }}</td>
+                <!-- 真的 <button>、aria-pressed 表達開關狀態、可及名稱帶上指標名——一整欄
+                     60 幾個都叫「釘選」的話，用螢幕閱讀器逐項瀏覽時分不出在釘哪一支。
+                     手機上文字被 CSS 藏起來，可及名稱仍然完整（來自 aria-label 不是文字節點）。
 
-                       不用 Star：StockSummaryCard 右上角的「已加最愛」已經用星號代表自選股，
-                       同一頁兩種星號兩種意思會混淆。加號是「加到側邊欄」，打勾是「已經在那裡了」。 -->
-                  <td class="stock-metric-index-page__pin-cell">
-                    <button
-                      v-if="hasPinnableChart(slugOf(link))"
-                      type="button"
-                      class="stock-metric-index-page__pin"
-                      :class="{ 'is-pinned': isPinned(slugOf(link)) }"
-                      :aria-pressed="isPinned(slugOf(link))"
-                      :aria-label="`${isPinned(slugOf(link)) ? '已釘選' : '釘選'}：${link.label}`"
-                      :disabled="!isPinned(slugOf(link)) && isFull"
-                      @click="toggle(slugOf(link))"
-                    >
-                      <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
-                        <component :is="isPinned(slugOf(link)) ? Check : Plus" />
-                      </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(link)) ? '已釘選' : '釘選' }}</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </SharedTableScroll>
+                     不用 Star：StockSummaryCard 右上角的「已加最愛」已經用星號代表自選股，
+                     同一頁兩種星號兩種意思會混淆。加號是「加到側邊欄」，打勾是「已經在那裡了」。 -->
+                <td class="stock-metric-index-page__pin-cell">
+                  <button
+                    v-if="hasPinnableChart(slugOf(link))"
+                    type="button"
+                    class="stock-metric-index-page__pin"
+                    :class="{ 'is-pinned': isPinned(slugOf(link)) }"
+                    :aria-pressed="isPinned(slugOf(link))"
+                    :aria-label="`${isPinned(slugOf(link)) ? '已釘選' : '釘選'}：${link.label}`"
+                    :disabled="!isPinned(slugOf(link)) && isFull"
+                    @click="toggle(slugOf(link))"
+                  >
+                    <el-icon class="stock-metric-index-page__pin-icon" aria-hidden="true">
+                      <component :is="isPinned(slugOf(link)) ? Check : Plus" />
+                    </el-icon><span class="stock-metric-index-page__pin-text">{{ isPinned(slugOf(link)) ? '已釘選' : '釘選' }}</span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </SharedTable>
         </div>
       </details>
+      </div>
     </StockQuestionSection>
 
     <!-- 「釘選的指標會跟著我的帳號嗎？」一段（含上移／下移排序清單）2026-10-07 依直接指示拿掉。 -->
@@ -297,25 +294,22 @@ const { breadcrumbs } = useStockPageSeo({
       question="這些指標的數字是哪一期的？"
       answer="看指標的性質而定，每一頁自己會寫清楚；共用的規則如下。"
     >
-      <SharedTableScroll label="指標的數字是哪一期的">
-        <table class="seo-table stock-metric-index-page__periods">
-          <caption class="visually-hidden">各種指標的數字是哪一期的</caption>
-          <thead>
-            <tr>
-              <th scope="col">指標的種類</th>
-              <th scope="col">看哪一期</th>
-              <th scope="col">為什麼</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="rule in PERIOD_RULES" :key="rule.kind">
-              <th scope="row">{{ rule.kind }}<span class="stock-metric-index-page__period-examples">{{ rule.examples }}</span></th>
-              <td>{{ rule.period }}</td>
-              <td>{{ rule.reason }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable label="各種指標的數字是哪一期的" table-class="stock-metric-index-page__periods" :ssr="false">
+        <thead>
+          <tr>
+            <th scope="col">指標的種類</th>
+            <th scope="col">看哪一期</th>
+            <th scope="col">為什麼</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="rule in PERIOD_RULES" :key="rule.kind">
+            <th scope="row">{{ rule.kind }}<span class="stock-metric-index-page__period-examples">{{ rule.examples }}</span></th>
+            <td>{{ rule.period }}</td>
+            <td>{{ rule.reason }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
   </StockPageShell>
 </template>
@@ -323,8 +317,8 @@ const { breadcrumbs } = useStockPageSeo({
 <style scoped>
 /* 56px：el-input 的預設是 32/40px，而本站的觸控底線是 48px——搜尋框是這一頁最先被碰到的控制項，
    給它高於底線的高度。字級同步放大到 1.125rem，不然框變高、字還是原來的大小會顯得空。 */
+/* 跟上下的距離由段落的節奏決定（.stock-page-section），這裡不另外留 */
 .stock-metric-index-page__search {
-  margin-bottom: 16px;
   --el-input-height: 56px;
 }
 
@@ -357,7 +351,6 @@ const { breadcrumbs } = useStockPageSeo({
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 20px;
 }
 
 .stock-metric-index-page__jump-link {
@@ -381,15 +374,24 @@ const { breadcrumbs } = useStockPageSeo({
 /* 不用 main.css 的 .hub-details（2026-09-28「如果要用類似表格的形式呈現，那就不需要放在卡片中，
    這樣版面更乾淨」）。那一支給的是卡片外觀——外框、圓角、底色、四邊 16px 內距——而這一頁的內容
    本來就是表格，卡片只是多一層框。這裡只留「一條分隔線 + 可點的標題列」，內容齊左貼齊表格。 */
+/* 分隔線是全站表格那一條淡的（--app-divider，2026-10-23；原本是元件外框那個 3:1 的深灰）；第一組上面也一條，整串上下對稱 */
 .stock-metric-index-page__group {
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
   /* 跟 StockQuestionSection 同一條：跳轉過來時標題不要被固定頁首蓋住 */
   scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 16px);
 }
 
-/* 標題列（箭頭、44px、hover／focus）是 .app-disclosure（main.css）——2026-10-22 方案頁 1B 起加上箭頭，看得出可以收起來 */
-.stock-metric-index-page__group > :not(summary) {
-  padding: 0 4px 16px;
+.stock-metric-index-page__groups {
+  border-top: 1px solid var(--app-divider);
+}
+
+/* 標題列（箭頭、44px、hover／focus）是 .app-disclosure（main.css）——2026-10-22 方案頁 1B 起加上箭頭，看得出可以收起來。
+   展開的內容：說明句與表格之間 12px，下面留 16px 再接分隔線 */
+.stock-metric-index-page__group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 0 16px;
 }
 
 .stock-metric-index-page__group-title {
@@ -421,7 +423,8 @@ const { breadcrumbs } = useStockPageSeo({
     clip-path: inset(50%);
   }
 
-  .stock-metric-index-page__periods,
+  /* <table> 是 SharedTable 畫的，對表格本身要用 :deep（從帶著這一頁屬性的卡片往下找）；tbody／tr 是這一頁的插槽內容，直接寫就好 */
+  :deep(.stock-metric-index-page__periods),
   .stock-metric-index-page__periods tbody {
     display: block;
   }
@@ -537,19 +540,14 @@ const { breadcrumbs } = useStockPageSeo({
   padding-right: 32px;
 }
 
-:deep(.stock-question-section) {
-  gap: 8px;
-}
-
-:deep(.stock-answer) {
-  margin-bottom: 12px;
-}
+/* 段落裡的間距（標題、答句、搜尋框、跳轉、表格）是全站問句段落的節奏（main.css 的 .stock-page-section），2026-10-23 拿掉這一頁
+   自己的覆寫（gap 8px、答句下 12px）：同一頁上下兩段距離不一樣，使用者：「間距甚麼的似是隨意」 */
 
 /* 手機：整列改成兩欄 grid，釘選鈕跨兩列擺右邊。
    改版前這裡只把 table/tr/td 設成 display: block，而 .pin-cell 一條覆寫都沒有，於是那顆
    88×48 的按鈕變成獨立的一整橫列——量到的列高 132px，六成是它造成的。 */
 @media (max-width: 600px) {
-  .stock-metric-index-page__links,
+  :deep(.stock-metric-index-page__links),
   .stock-metric-index-page__links tbody {
     display: block;
     width: 100%;
@@ -622,7 +620,7 @@ const { breadcrumbs } = useStockPageSeo({
 
   /* 拿掉框線、底線與底色（1B）：表格不另塗底色、一列只留 tr 那一條線（原本 td 自己的線跟它錯開成兩條，沒有釘選鈕的那一列剩一小段），
      名稱用主色加粗表示可以點、不加底線（整頁是一份連結清單） */
-  .stock-metric-index-page__links,
+  :deep(.stock-metric-index-page__links),
   .stock-metric-index-page__links th[scope='row'] {
     background: transparent;
   }

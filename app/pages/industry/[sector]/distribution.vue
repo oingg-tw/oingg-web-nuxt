@@ -21,33 +21,30 @@ const answer = computed(() => {
   <IndustryPage :code="code" :sector-name="sectorName" facet="distribution" :description="answer" :noindex="noindex">
     <StockQuestionSection id="industry-distribution" :question="`${sectorName}的本益比與殖利率分布如何？`" :answer="answer">
       <IndustryFacetChart v-if="data" :data="data" :sector-name="sectorName" facet="distribution" />
-      <SharedTableScroll v-if="distribution.length" :label="`${sectorName}各指標的分布`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ sectorName }}上市櫃公司的指標分布（10／25／50／75／90 百分位）</caption>
-          <thead>
-            <tr>
-              <th scope="col">指標</th>
-              <th scope="col" class="seo-table__num">有值家數</th>
-              <th scope="col" class="seo-table__num">10%</th>
-              <th scope="col" class="seo-table__num">25%</th>
-              <th scope="col" class="seo-table__num">中位數</th>
-              <th scope="col" class="seo-table__num">75%</th>
-              <th scope="col" class="seo-table__num">90%</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in distribution" :key="item.label">
-              <th scope="row">{{ item.label }}</th>
-              <td class="seo-table__num">{{ item.stat.count }}</td>
-              <td class="seo-table__num">{{ industryStat(item.stat.p10, item.unit) }}</td>
-              <td class="seo-table__num">{{ industryStat(item.stat.q1, item.unit) }}</td>
-              <td class="seo-table__num">{{ industryStat(item.stat.median, item.unit) }}</td>
-              <td class="seo-table__num">{{ industryStat(item.stat.q3, item.unit) }}</td>
-              <td class="seo-table__num">{{ industryStat(item.stat.p90, item.unit) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="distribution.length" :label="`${sectorName}各指標的分布`" :caption="`${sectorName}上市櫃公司的指標分布（10／25／50／75／90 百分位）`">
+        <thead>
+          <tr>
+            <th scope="col">指標</th>
+            <th scope="col" class="seo-table__num">有值家數</th>
+            <th scope="col" class="seo-table__num">10%</th>
+            <th scope="col" class="seo-table__num">25%</th>
+            <th scope="col" class="seo-table__num">中位數</th>
+            <th scope="col" class="seo-table__num">75%</th>
+            <th scope="col" class="seo-table__num">90%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in distribution" :key="item.label">
+            <th scope="row">{{ item.label }}</th>
+            <td class="seo-table__num">{{ item.stat.count }}</td>
+            <td class="seo-table__num">{{ industryStat(item.stat.p10, item.unit) }}</td>
+            <td class="seo-table__num">{{ industryStat(item.stat.q1, item.unit) }}</td>
+            <td class="seo-table__num">{{ industryStat(item.stat.median, item.unit) }}</td>
+            <td class="seo-table__num">{{ industryStat(item.stat.q3, item.unit) }}</td>
+            <td class="seo-table__num">{{ industryStat(item.stat.p90, item.unit) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <p v-else class="hub-answer">有值的公司少於 5 家，不畫分布。</p>
     </StockQuestionSection>
   </IndustryPage>

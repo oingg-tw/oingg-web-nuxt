@@ -897,9 +897,9 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .smt-card {
   padding: 12px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-card-border-radius, 4px);
-  background: var(--el-bg-color);
+  border: 1px solid var(--el-card-border-color);
+  border-radius: var(--el-card-border-radius);
+  background: var(--el-card-bg-color);
 }
 
 .smt-card__head {
@@ -1169,8 +1169,14 @@ watch(() => props.loading, (loading, wasLoading) => {
   display: none;
 }
 
+/* 格子的內距＝內容格的內距減掉按鈕自己的 4px，欄名才跟下面的數字切齊（一般 12px、第一欄 16px，同全站表格）。原本一律 4px，欄名比數字
+   往外 4～8px（2026-10-23 量到） */
 .screener-result-table :deep(th:has(.screener-result-table__head) .cell) {
-  padding: 0 4px;
+  padding: 0 8px;
+}
+
+.screener-result-table :deep(th.el-table__cell:first-child:has(.screener-result-table__head) .cell) {
+  padding-left: 12px;
 }
 
 .screener-result-table__head {

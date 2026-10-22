@@ -401,8 +401,8 @@ html .el-message .el-message__content {
    regular 字、淡的列線、內容主要文字色、第一欄與最後一欄離邊 16px、滑過的列用主色最淡那一階。斑馬紋各元件不開（stripe 不傳）。
    html 前綴同下面排序箭頭：el-table.css 排在本檔之後 */
 html .el-table {
-  --el-table-bg-color: var(--el-bg-color);
-  --el-table-tr-bg-color: var(--el-bg-color);
+  --el-table-bg-color: var(--app-card-bg);
+  --el-table-tr-bg-color: var(--app-card-bg);
   --el-table-header-bg-color: var(--app-table-head-bg);
   --el-table-header-text-color: var(--el-text-color-regular);
   --el-table-text-color: var(--el-text-color-primary);
@@ -416,6 +416,25 @@ html .el-table .el-table__cell:first-child .cell {
 
 html .el-table .el-table__cell:last-child .cell {
   padding-right: 16px;
+}
+
+/* 卡片裡的最後一列不畫底線，同 .seo-table：卡片的框就是底。el-table 另外在表格底部畫一條（inner-wrapper::before），一起拿掉 */
+html .app-table-card .el-table__body tr:last-child > td.el-table__cell {
+  border-bottom: 0;
+}
+
+html .app-table-card .el-table__inner-wrapper::before {
+  display: none;
+}
+
+/* 卡片統一（2026-10-23，使用者：「圖表卡片 統一 但我認為統一成白底好」）：el-card（每一張圖表卡片 SharedChartCard，與其他用 el-card 的
+   卡片）跟表格卡片同一套——白底（--app-card-bg）、淡的暖色框、圓角 12px。也寫在 html 上：不是 el-card 的卡片（持股、觀察清單、篩選結果
+   在手機上一列一張的 .holdings-card／.smt-card，卡片的頁尾）照這三個變數畫，原本在 el-card 外面讀到的是後備值 4px */
+html,
+html .el-card {
+  --el-card-bg-color: var(--app-card-bg);
+  --el-card-border-color: var(--app-surface-border);
+  --el-card-border-radius: 12px;
 }
 
 /* 排序箭頭（2026-10-21，使用者：「排序的icon 請統一用兩個三角形 有排序的時候只呈現一個三角形 往上 或是往下 這個 icon的規範請整個專案

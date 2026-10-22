@@ -66,9 +66,7 @@ const ACCESS_KEYS = [
       <p class="sitemap-page__note">
         依無障礙規範 2.0 的慣例設定。Windows 的 Chrome、Edge 按 <kbd>Alt</kbd>＋字母；Firefox 按 <kbd>Shift</kbd>＋<kbd>Alt</kbd>＋字母；macOS 按 <kbd>Control</kbd>＋<kbd>Option</kbd>＋字母。
       </p>
-      <SharedTableScroll label="快速鍵">
-      <table class="seo-table sitemap-page__keys">
-        <caption class="visually-hidden">快速鍵：按下後跳到的區塊</caption>
+      <SharedTable label="快速鍵" caption="快速鍵：按下後跳到的區塊" table-class="sitemap-page__keys" :ssr="false">
         <thead>
           <tr>
             <th scope="col">字母</th>
@@ -81,8 +79,7 @@ const ACCESS_KEYS = [
             <td>{{ row.target }}</td>
           </tr>
         </tbody>
-      </table>
-      </SharedTableScroll>
+      </SharedTable>
     </section>
 
     <section id="sitemap-structure" class="sitemap-page__section" aria-labelledby="sitemap-structure-title">

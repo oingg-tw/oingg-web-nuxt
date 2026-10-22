@@ -149,10 +149,16 @@ body {
   height: clamp(15rem, 70vw, 420px);
 }
 
+/* 問句段落的節奏（2026-10-23，使用者：「間距甚麼的似是隨意」）：標題與答句是一組、緊接著（8px），之後各塊（搜尋框、圖卡、表格卡片…）
+   之間 16px。段落與段落之間是 StockPageShell 的事（40px）。頁面不在自己的 scoped 裡改這兩個距離 */
 .stock-page-section {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+}
+
+.stock-page-section__title + .stock-answer {
+  margin-top: -8px;
 }
 
 .stock-page-section__title {
@@ -496,13 +502,14 @@ body {
 
 /* ── 全站表格：卡片＋表格（2026-10-23，使用者：「要以 screener-shell__results 這邊的卡片+表格，為核心去滿足整個網站的所有表格需求。
    先抽為共用樣式，再逐步替換掉網站其他的表格」）。樣子出自篩選結果（同日配色方案 A，使用者選）：
-   - .app-table-card：卡片底色、淡的暖色框、圓角 12px。表格在卡片裡邊到邊；卡片自己的標題列、工具列左右留 16px
+   - .app-table-card：卡片白底（--app-card-bg，同圖表卡片）、淡的暖色框、圓角 12px。表格在卡片裡邊到邊；卡片自己的標題列、工具列
+     左右留 16px
    - 表格：表頭暖色底（--app-table-head-bg）、字 regular、600；列與列之間淡線（--app-divider，不是元件外框那個 3:1 的灰——整片會像
-     試算表格線）；第一欄與最後一欄離卡片邊 16px；不畫斑馬紋。自己畫的 <table> 用 .seo-table；Element 的 el-table 同一組在
-     element-plus.css 的「全站表格」
-   SharedTableScroll（可左右捲、可聚焦的那一層）本身就是這張卡片：伺服器端畫的表格包一層它就好 ── */
+     試算表格線）；第一欄與最後一欄離卡片邊 16px；不畫斑馬紋。Element 的 el-table 同一組在 element-plus.css 的「全站表格」
+   元件只有一個：SharedTable（卡片、捲動區、<table>、caption 都在那裡，頁面只給表頭與表身；「重點是表格元件要統一管理」）。
+   scripts/check-tables.mjs 擋住別處直接寫 <table>、.app-table-card 或改 .seo-table ── */
 .app-table-card {
-  background: var(--el-bg-color);
+  background: var(--app-card-bg);
   border: 1px solid var(--app-surface-border);
   border-radius: 12px;
 }
@@ -513,7 +520,7 @@ body {
   border-collapse: collapse;
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  background: var(--el-bg-color);
+  background: var(--app-card-bg);
 }
 
 /* 內容格垂直置中、表頭對齊底部，同篩選結果的 el-table（2026-10-23，使用者：「shared-table-scroll app-table-card 文字請垂直置中」——
@@ -562,7 +569,7 @@ body {
 }
 
 .seo-table tbody th:first-child {
-  background: var(--el-bg-color);
+  background: var(--app-card-bg);
 }
 
 /* 表格裡沒帶 class 的連結一律是表格連結的樣子（同 .seo-table__link）。原本漏寫 class 的就是瀏覽器預設的藍色（類股排行的類股名稱，
@@ -679,12 +686,13 @@ body.has-bottom-nav-bar .load-failure-notice {
 
 /* 持股管理「表格在手機變卡片」共用的外觀（2026-10-08 使用者：「卡片能做成共用元件嗎？這樣樣式才比較好統一」）。
    用 class 不用元件：HoldingsMetricTable 的卡片是 <tr>（要保留表格語意），持股總覽與已實現損益是 <li>，結構各不相同，
-   共用的只有外觀。原本三處各寫一份，持股總覽的外框較深、圓角 8px、內距 16px，已實現損益的數字字重 600。 */
+   共用的只有外觀。原本三處各寫一份，持股總覽的外框較深、圓角 8px、內距 16px，已實現損益的數字字重 600。框、圓角、底色跟全站卡片
+   同一組（--el-card-*，element-plus.css 的「卡片統一」，2026-10-23） */
 .holdings-card {
   padding: 12px 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-card-border-radius, 4px);
-  background: var(--el-bg-color);
+  border: 1px solid var(--el-card-border-color);
+  border-radius: var(--el-card-border-radius);
+  background: var(--el-card-bg-color);
 }
 
 /* 卡片上最重要的那個數字 */

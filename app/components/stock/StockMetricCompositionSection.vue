@@ -130,23 +130,20 @@ const tableRows = computed(() => [...rows.value].reverse())
   >
     <!-- 圖由呼叫端放進來（2026-10-14 組成搬到自己的頁，StockMetricCompositionPage 放堆疊圖）：先圖表再表格 -->
     <slot />
-    <SharedTableScroll :label="`${shortName} ${code} 的${topic}組成逐期數據（${TIMEFRAME_LABELS[timeframe]}）`">
-      <table class="seo-table" data-ssr-table>
-        <caption class="visually-hidden">{{ shortName }} {{ code }} 的{{ topic }}組成逐期數據（{{ TIMEFRAME_LABELS[timeframe] }}）</caption>
-        <thead>
-          <tr>
-            <th scope="col">期別</th>
-            <th v-for="i in order" :key="partCodes[i]" scope="col">{{ nameOf(partCodes[i]!) }}{{ unit ? `（${unit}）` : '' }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in tableRows" :key="`${row.entry.fiscalYear}-${row.entry.fiscalQuarter}`">
-            <th scope="row">{{ periodLabel(row.entry, timeframe) }}</th>
-            <td v-for="i in order" :key="partCodes[i]">{{ formatSignificantDigits(row.parts[i]!, 4) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </SharedTableScroll>
+    <SharedTable :label="`${shortName} ${code} 的${topic}組成逐期數據（${TIMEFRAME_LABELS[timeframe]}）`">
+      <thead>
+        <tr>
+          <th scope="col">期別</th>
+          <th v-for="i in order" :key="partCodes[i]" scope="col">{{ nameOf(partCodes[i]!) }}{{ unit ? `（${unit}）` : '' }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="row in tableRows" :key="`${row.entry.fiscalYear}-${row.entry.fiscalQuarter}`">
+          <th scope="row">{{ periodLabel(row.entry, timeframe) }}</th>
+          <td v-for="i in order" :key="partCodes[i]">{{ formatSignificantDigits(row.parts[i]!, 4) }}</td>
+        </tr>
+      </tbody>
+    </SharedTable>
   </StockQuestionSection>
   <StockQuestionSection
     v-else-if="notApplicable"

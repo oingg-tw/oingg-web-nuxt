@@ -87,28 +87,25 @@ const { breadcrumbs } = useHubPageSeo({
       <h2 id="preset-conditions-heading" class="stock-page-section__title">這組條件包含哪些指標？</h2>
       <p v-if="template?.description" class="hub-answer">{{ template.description }}</p>
       <p class="hub-answer">共 {{ conditions.length }} 個條件<template v-if="template?.category">，分類「{{ template.category }}」</template>：{{ conditionSummary }}。</p>
-      <SharedTableScroll v-if="conditions.length" :label="`${templateName}篩選條件`">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">「{{ templateName }}」的每一個篩選條件：指標、期間與區間</caption>
-          <thead>
-            <tr>
-              <th scope="col">指標</th>
-              <th scope="col">期間</th>
-              <th scope="col">條件區間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in conditions" :key="row.field">
-              <th scope="row">
-                <NuxtLink v-if="row.metricPage" :to="row.metricPage" class="seo-table__link">{{ row.label }}</NuxtLink>
-                <template v-else>{{ row.label }}</template>
-              </th>
-              <td>{{ row.period }}</td>
-              <td>{{ row.range }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="conditions.length" :label="`${templateName}篩選條件`" :caption="`「${templateName}」的每一個篩選條件：指標、期間與區間`">
+        <thead>
+          <tr>
+            <th scope="col">指標</th>
+            <th scope="col">期間</th>
+            <th scope="col">條件區間</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in conditions" :key="row.field">
+            <th scope="row">
+              <NuxtLink v-if="row.metricPage" :to="row.metricPage" class="seo-table__link">{{ row.label }}</NuxtLink>
+              <template v-else>{{ row.label }}</template>
+            </th>
+            <td>{{ row.period }}</td>
+            <td>{{ row.range }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </section>
 
     <section class="stock-page-section" aria-labelledby="preset-count-heading">

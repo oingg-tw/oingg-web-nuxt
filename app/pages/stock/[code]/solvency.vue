@@ -139,7 +139,7 @@ const history = computed(() => {
   return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '償債能力比率', basis: '單季', count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
 const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
-// 拆解表的表名（caption 藏起來，同 SharedTableScroll 的 label；2026-10-13 統一）
+// 拆解表的表名（caption 藏起來，同 SharedTable 的 label；2026-10-13 統一）
 const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（單季）`
 
 const description = computed(() => {
@@ -184,30 +184,27 @@ const { breadcrumbs } = useStockPageSeo({
     </StockQuestionSection>
 
     <StockQuestionSection v-if="periods.length" id="stock-solvency-history" :question="history.question" :answer="historyAnswer">
-      <SharedTableScroll :label="history.label">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ history.label }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">期別</th>
-              <th scope="col">流動比率（%）</th>
-              <th scope="col">速動比率（%）</th>
-              <th scope="col">現金比率（%）</th>
-              <th scope="col">負債比率（%）</th>
-              <th scope="col">資料時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-              <th scope="row">{{ periodLabel(entry) }}</th>
-              <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
-                {{ rateText(entry.values[metricCode]?.value ?? null) }}
-              </td>
-              <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="history.label">
+        <thead>
+          <tr>
+            <th scope="col">期別</th>
+            <th scope="col">流動比率（%）</th>
+            <th scope="col">速動比率（%）</th>
+            <th scope="col">現金比率（%）</th>
+            <th scope="col">負債比率（%）</th>
+            <th scope="col">資料時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+            <th scope="row">{{ periodLabel(entry) }}</th>
+            <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
+              {{ rateText(entry.values[metricCode]?.value ?? null) }}
+            </td>
+            <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="ladderAnswer" id="stock-solvency-ladder" question="流動、速動、現金比率差在哪裡？" :answer="ladderAnswer">
@@ -218,69 +215,63 @@ const { breadcrumbs } = useStockPageSeo({
            real table markup for a screen reader and for indexing. -->
       <details class="stock-solvency-page__details">
         <summary>看完整項目名稱與逐列數字</summary>
-        <SharedTableScroll :label="breakdownLabel('短期償債比率')">
-          <table class="seo-table" data-ssr-table>
-            <caption class="visually-hidden">{{ breakdownLabel('短期償債比率') }}</caption>
-            <thead>
-              <tr>
-                <th scope="col">項目</th>
-                <th scope="col">佔流動負債比率</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">流動比率</th>
-                <td>{{ rateText(currentRatio) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">減：存貨</th>
-                <td>{{ rateText(inventoryShare === null ? null : Math.abs(inventoryShare)) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">等於：速動比率</th>
-                <td>{{ rateText(quickRatio) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">減：應收帳款等其他速動資產</th>
-                <td>{{ rateText(receivablesShare === null ? null : Math.abs(receivablesShare)) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">等於：現金比率</th>
-                <td>{{ rateText(cashRatio) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </SharedTableScroll>
+        <SharedTable :label="breakdownLabel('短期償債比率')">
+          <thead>
+            <tr>
+              <th scope="col">項目</th>
+              <th scope="col">佔流動負債比率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">流動比率</th>
+              <td>{{ rateText(currentRatio) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">減：存貨</th>
+              <td>{{ rateText(inventoryShare === null ? null : Math.abs(inventoryShare)) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">等於：速動比率</th>
+              <td>{{ rateText(quickRatio) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">減：應收帳款等其他速動資產</th>
+              <td>{{ rateText(receivablesShare === null ? null : Math.abs(receivablesShare)) }}</td>
+            </tr>
+            <tr>
+              <th scope="row">等於：現金比率</th>
+              <td>{{ rateText(cashRatio) }}</td>
+            </tr>
+          </tbody>
+        </SharedTable>
       </details>
 
     </StockQuestionSection>
 
     <StockQuestionSection v-if="structureAnswer" id="stock-solvency-structure" :question="`${stockShortName}的資產有多少是借來的？`" :answer="structureAnswer">
-      <SharedTableScroll :label="breakdownLabel('總資產來源')">
-        <table class="seo-table" data-ssr-table>
-          <caption class="visually-hidden">{{ breakdownLabel('總資產來源') }}</caption>
-          <thead>
-            <tr>
-              <th scope="col">來源</th>
-              <th scope="col">佔總資產比率</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">負債</th>
-              <td>{{ rateText(debtRatio) }}</td>
-            </tr>
-            <tr>
-              <th scope="row">股東權益</th>
-              <td>{{ rateText(equityRatio) }}</td>
-            </tr>
-            <tr>
-              <th scope="row">合計</th>
-              <td>{{ rateText(debtRatio !== null && equityRatio !== null ? debtRatio + equityRatio : null) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable :label="breakdownLabel('總資產來源')">
+        <thead>
+          <tr>
+            <th scope="col">來源</th>
+            <th scope="col">佔總資產比率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">負債</th>
+            <td>{{ rateText(debtRatio) }}</td>
+          </tr>
+          <tr>
+            <th scope="row">股東權益</th>
+            <td>{{ rateText(equityRatio) }}</td>
+          </tr>
+          <tr>
+            <th scope="row">合計</th>
+            <td>{{ rateText(debtRatio !== null && equityRatio !== null ? debtRatio + equityRatio : null) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
 
     </StockQuestionSection>
     <template #guide>

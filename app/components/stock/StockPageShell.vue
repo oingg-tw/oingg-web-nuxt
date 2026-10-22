@@ -14,6 +14,10 @@ import type { StockPageFooterLink } from '~/components/stock/StockPageFooter.vue
 //
 // 特別股與 ETF 的個別頁（2026-10-15 三組篩選重新設計）也用這個骨架：#nav 換成篩選區的導覽（ScreenerNav），subject 換掉
 // 「找不到這檔股票」的「股票」。個股頁什麼都不用傳。
+//
+// 上下的距離也在這裡（2026-10-23，使用者看 /stock/5314/metrics：「間距甚麼的似是隨意」）：原本每一頁自己挑 app-page（24px）、
+// app-page--compact（16px）或什麼都不給（只靠各元素的 margin），同一個骨架在不同頁距離不一樣。現在：摘要卡、導覽、麵包屑一組，
+// 之間 16px；之後每一段（各問句段落、定義區、頁尾）之間 40px（手機 32px）。段落裡面的節奏在 main.css 的 .stock-page-section
 defineProps<{
   code: string
   stock: Stock | null | undefined
@@ -31,18 +35,36 @@ defineProps<{
 </script>
 
 <template>
-  <div v-loading="pending">
+  <div v-loading="pending" class="stock-page-shell">
     <template v-if="pending" />
     <SharedStockNotFound v-else-if="!stock" :subject="subject" />
     <template v-else>
-      <StockSummaryCard :stock="stock" :is-emerging="isEmerging" :short-name="shortName" :topic="topic" />
-      <slot name="nav">
-        <StockPageNav :code="code" />
-      </slot>
-      <StockBreadcrumb :items="breadcrumbs" />
+      <div class="stock-page-shell__head">
+        <StockSummaryCard :stock="stock" :is-emerging="isEmerging" :short-name="shortName" :topic="topic" />
+        <slot name="nav">
+          <StockPageNav :code="code" />
+        </slot>
+        <StockBreadcrumb :items="breadcrumbs" />
+      </div>
       <slot />
       <slot name="guide" />
       <StockPageFooter v-bind="footer" />
     </template>
   </div>
 </template>
+
+<style scoped>
+/* scoped 的屬性選擇器讓它比呼叫端還帶著的 .app-page／.app-page--compact 重，距離一律以這裡為準 */
+.stock-page-shell {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(32px, 4vw, 40px);
+  width: 100%;
+}
+
+.stock-page-shell__head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+</style>

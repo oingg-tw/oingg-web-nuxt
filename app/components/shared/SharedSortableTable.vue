@@ -20,7 +20,7 @@ const props = defineProps<{
   rows: T[]
   columns: SortableColumn<T>[]
   rowKey: (row: T) => string
-  // 捲動區的名稱（SharedTableScroll）
+  // 捲動區的名稱（SharedTable）
   label: string
   // 表格說明；要藏起來（畫面上已有同義的句子）用 captionHidden
   caption?: string
@@ -60,32 +60,30 @@ const sortedRows = computed(() => {
 </script>
 
 <template>
-  <SharedTableScroll :label="label">
-    <table class="seo-table" data-ssr-table>
-      <caption v-if="caption" :class="{ 'visually-hidden': captionHidden }">{{ caption }}</caption>
-      <thead>
-        <tr>
-          <th
-            v-for="column in columns"
-            :key="column.key"
-            scope="col"
-            :class="{ 'seo-table__num': column.num }"
-            :aria-sort="sort?.key === column.key ? sort.dir : undefined"
-          >
-            <button v-if="column.sortValue" type="button" class="sortable-table__button" @click="toggle(column)">
-              {{ column.label }}<SharedSortIcon :state="sort?.key === column.key ? sort.dir : null" />
-            </button>
-            <template v-else>{{ column.label }}</template>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in sortedRows" :key="rowKey(row)">
-          <slot name="row" :row="row" />
-        </tr>
-      </tbody>
-    </table>
-  </SharedTableScroll>
+  <!-- 卡片、捲動區、<table> 與 caption 是 SharedTable 的（全站表格）；沒給 caption 時 SharedTable 用 label 當藏起來的 caption -->
+  <SharedTable :label="label" :caption="caption" :caption-visible="!!caption && !captionHidden">
+    <thead>
+      <tr>
+        <th
+          v-for="column in columns"
+          :key="column.key"
+          scope="col"
+          :class="{ 'seo-table__num': column.num }"
+          :aria-sort="sort?.key === column.key ? sort.dir : undefined"
+        >
+          <button v-if="column.sortValue" type="button" class="sortable-table__button" @click="toggle(column)">
+            {{ column.label }}<SharedSortIcon :state="sort?.key === column.key ? sort.dir : null" />
+          </button>
+          <template v-else>{{ column.label }}</template>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="row in sortedRows" :key="rowKey(row)">
+        <slot name="row" :row="row" />
+      </tr>
+    </tbody>
+  </SharedTable>
   <p class="visually-hidden" role="status">{{ status }}</p>
 </template>
 

@@ -139,77 +139,71 @@ const chartOption = computed(() => {
       <el-card shadow="never" class="macro-erp-page__card">
         <SharedChart v-if="windows.length > 1" class="app-chart macro-erp-page__chart" :option="chartOption" autoresize />
       </el-card>
-      <SharedTableScroll label="四個窗口長度的股票風險溢酬">
-        <table class="seo-table" data-ssr-table>
-          <caption>四個窗口長度的股票風險溢酬（窗口終點相同，起點不同）</caption>
-          <thead>
-            <tr>
-              <th scope="col">窗口</th>
-              <th scope="col">期間</th>
-              <th scope="col">月數</th>
-              <th scope="col">歷史法（幾何）</th>
-              <th scope="col">歷史法（算術）</th>
-              <th scope="col">供給面模型</th>
-              <th scope="col">殖利率法</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="window in windows" :key="window.label">
-              <th scope="row">{{ window.label }}</th>
-              <td>{{ window.windowStart }} ～ {{ window.windowEnd }}</td>
-              <td>{{ window.months }}</td>
-              <td>{{ pct(window.erpGeometric) }}</td>
-              <td>{{ pct(window.erpArithmetic) }}</td>
-              <td>{{ pct(window.supplySideErp) }}</td>
-              <td>{{ pct(window.dividendYieldErp) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable caption-visible label="四個窗口長度的股票風險溢酬" caption="四個窗口長度的股票風險溢酬（窗口終點相同，起點不同）">
+        <thead>
+          <tr>
+            <th scope="col">窗口</th>
+            <th scope="col">期間</th>
+            <th scope="col">月數</th>
+            <th scope="col">歷史法（幾何）</th>
+            <th scope="col">歷史法（算術）</th>
+            <th scope="col">供給面模型</th>
+            <th scope="col">殖利率法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="window in windows" :key="window.label">
+            <th scope="row">{{ window.label }}</th>
+            <td>{{ window.windowStart }} ～ {{ window.windowEnd }}</td>
+            <td>{{ window.months }}</td>
+            <td>{{ pct(window.erpGeometric) }}</td>
+            <td>{{ pct(window.erpArithmetic) }}</td>
+            <td>{{ pct(window.supplySideErp) }}</td>
+            <td>{{ pct(window.dividendYieldErp) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-erp-components-heading">
       <h2 id="macro-erp-components-heading" class="stock-page-section__title">供給面模型是怎麼拆出來的？</h2>
       <p v-if="componentsAnswer" class="hub-answer">{{ componentsAnswer }}</p>
-      <SharedTableScroll label="供給面模型的組成">
-        <table v-if="components" class="seo-table" data-ssr-table>
-          <caption>供給面模型的四個組成與無風險利率（完整窗口）</caption>
-          <thead>
-            <tr>
-              <th scope="col">項目</th>
-              <th scope="col">數值</th>
-              <th scope="col">怎麼取得</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">預期通膨</th>
-              <td>{{ pct(components.expectedInflation) }}</td>
-              <td>窗口內消費者物價指數年增率的平均</td>
-            </tr>
-            <tr>
-              <th scope="row">實質盈餘成長</th>
-              <td>{{ pct(components.realEarningsGrowth) }}</td>
-              <td>以實質 GDP 成長率近似</td>
-            </tr>
-            <tr>
-              <th scope="row">股利殖利率</th>
-              <td>{{ pct(components.dividendYield) }}</td>
-              <td>上市公司市值加權，{{ components.dividendYieldTradeDate ?? '最新交易日' }} 共 {{ components.dividendYieldCompanyCount ?? '—' }} 家</td>
-            </tr>
-            <tr>
-              <th scope="row">本益比成長</th>
-              <td>{{ pct(components.peGrowth) }}</td>
-              <td>固定為 0：估值擴張不是公司供給出來的報酬</td>
-            </tr>
-            <tr>
-              <th scope="row">無風險利率</th>
-              <td>{{ pct(components.riskFreeRate) }}</td>
-              <td>窗口終點的 10 年期公債殖利率</td>
-            </tr>
-          </tbody>
-        </table>
-      </SharedTableScroll>
+      <SharedTable v-if="components" caption-visible label="供給面模型的組成" caption="供給面模型的四個組成與無風險利率（完整窗口）">
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th scope="col">數值</th>
+            <th scope="col">怎麼取得</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">預期通膨</th>
+            <td>{{ pct(components.expectedInflation) }}</td>
+            <td>窗口內消費者物價指數年增率的平均</td>
+          </tr>
+          <tr>
+            <th scope="row">實質盈餘成長</th>
+            <td>{{ pct(components.realEarningsGrowth) }}</td>
+            <td>以實質 GDP 成長率近似</td>
+          </tr>
+          <tr>
+            <th scope="row">股利殖利率</th>
+            <td>{{ pct(components.dividendYield) }}</td>
+            <td>上市公司市值加權，{{ components.dividendYieldTradeDate ?? '最新交易日' }} 共 {{ components.dividendYieldCompanyCount ?? '—' }} 家</td>
+          </tr>
+          <tr>
+            <th scope="row">本益比成長</th>
+            <td>{{ pct(components.peGrowth) }}</td>
+            <td>固定為 0：估值擴張不是公司供給出來的報酬</td>
+          </tr>
+          <tr>
+            <th scope="row">無風險利率</th>
+            <td>{{ pct(components.riskFreeRate) }}</td>
+            <td>窗口終點的 10 年期公債殖利率</td>
+          </tr>
+        </tbody>
+      </SharedTable>
       <ul class="macro-erp-page__limits">
         <li>台灣沒有抗通膨公債，所以預期通膨是用同期實際通膨代替，不是市場對未來通膨的報價。</li>
         <li>盈餘成長長期會因為新股發行稀釋而低於 GDP 成長，所以這一項可能被高估。</li>

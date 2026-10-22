@@ -60,40 +60,35 @@ const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topi
 
 <template>
   <StockQuestionSection v-if="provenance?.entries.length && reconciles" id="stock-metric-provenance" :question="`${topic}是怎麼算出來的？`" :answer="priceAnswer">
-    <!-- SharedTableScroll, same as every other data-ssr-table in this app: the long 用途 strings make
-         this the widest table in the family and it scrolled sideways at 375px without it. -->
-    <SharedTableScroll :label="label">
-      <!-- data-ssr-table="audit"：計算依據是審計（2026-10-14 使用者：「審計功能要保留」），不算在一圖一表的「表」裡 -->
-      <table class="seo-table" data-ssr-table="audit">
-        <caption class="visually-hidden">{{ label }}</caption>
-        <thead>
-          <tr>
-            <th scope="col">用途</th>
-            <th scope="col">會計期別</th>
-            <th scope="col">來源</th>
-            <th scope="col">數值</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in provenance.entries" :key="index">
-            <td>
-              <!-- v-if 的條件必須跟 openProvenanceEntry 的早退條件一字不差（2026-09-28）。原本只看
-                   `type === 'statementField'`，而處理函式在缺 statementType 或 fieldKey 時直接 return——
-                   於是那種列會渲染一顆按得下去、按了什麼都不會發生的按鈕。上游 2026-09-28 讓「這一期
-                   沒有對應欄位」變成一個可表達的狀態（fieldKey 給 null），所以這種列會變多。
-                   兩個條件寫兩次是刻意的：模板決定「能不能按」、函式決定「按了做什麼」，兩邊都得成立。 -->
-              <button v-if="item.type === 'statementField' && item.statementType && item.fieldKey" type="button" class="stock-provenance__link" @click="openProvenanceEntry(item)">
-                {{ item.role }}
-              </button>
-              <template v-else>{{ item.role }}</template>
-            </td>
-            <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
-            <td>{{ provenanceSourceText(item) }}</td>
-            <td>{{ formatProvenanceValue(item) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </SharedTableScroll>
+    <!-- data-ssr-table="audit"：計算依據是審計（2026-10-14 使用者：「審計功能要保留」），不算在一圖一表的「表」裡 -->
+    <SharedTable :label="label" ssr="audit">
+      <thead>
+        <tr>
+          <th scope="col">用途</th>
+          <th scope="col">會計期別</th>
+          <th scope="col">來源</th>
+          <th scope="col">數值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(item, index) in provenance.entries" :key="index">
+          <td>
+            <!-- v-if 的條件必須跟 openProvenanceEntry 的早退條件一字不差（2026-09-28）。原本只看
+                 `type === 'statementField'`，而處理函式在缺 statementType 或 fieldKey 時直接 return——
+                 於是那種列會渲染一顆按得下去、按了什麼都不會發生的按鈕。上游 2026-09-28 讓「這一期
+                 沒有對應欄位」變成一個可表達的狀態（fieldKey 給 null），所以這種列會變多。
+                 兩個條件寫兩次是刻意的：模板決定「能不能按」、函式決定「按了做什麼」，兩邊都得成立。 -->
+            <button v-if="item.type === 'statementField' && item.statementType && item.fieldKey" type="button" class="stock-provenance__link" @click="openProvenanceEntry(item)">
+              {{ item.role }}
+            </button>
+            <template v-else>{{ item.role }}</template>
+          </td>
+          <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
+          <td>{{ provenanceSourceText(item) }}</td>
+          <td>{{ formatProvenanceValue(item) }}</td>
+        </tr>
+      </tbody>
+    </SharedTable>
     <p v-if="provenance.methodologyNote" class="stock-answer">{{ provenance.methodologyNote }}</p>
     <slot />
   </StockQuestionSection>
