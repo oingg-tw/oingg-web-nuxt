@@ -136,42 +136,6 @@ const qrDialogVisible = ref(false)
        of the breadcrumb's 48px). Horizontal padding (20px) untouched — this only removes the
        card's own top/bottom whitespace. -->
   <el-card class="summary-card" shadow="never" :body-style="{ padding: '12px 20px' }">
-    <!-- Mobile-only in-flow action row (2026-09-19, interface-complexity review), replacing the
-         two absolutely-positioned corner icon groups this card used to have: a bare icon circle
-         failed the reference doc's "icon + visible text" rule, and once these buttons gained real
-         text their width no longer fit inside the old 84px title padding reserved for them —
-         measured overlap, not a guess. In normal document flow instead, so there's nothing left
-         to overlap. Desktop's own 最愛 button stays a separate, absolutely-positioned element
-         below (.summary-card__corner-right) — this row is display:none there. -->
-    <div class="summary-card__mobile-actions">
-      <el-button class="summary-card__action-btn" @click="shareStock">
-        <el-icon aria-hidden="true"><Share /></el-icon>分享
-      </el-button>
-      <!-- 真正的 QR 圖示（2026-09-15，「請找真正的qr code icon」）：@element-plus/icons-vue 沒有 QR 字形（Grid 看起來只是格子），
-           用一個內嵌 SVG（三個定位角＋散點，QR 閱讀器圖示的通用語法），不打網路、不加套件。 -->
-      <el-button class="summary-card__action-btn" @click="qrDialogVisible = true">
-        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
-          <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
-        </svg>QR 碼
-      </el-button>
-      <el-popover
-        :visible="pickerOpen === 'mobile'"
-        trigger="click"
-        placement="bottom-end"
-        :width="300"
-        :teleported="false"
-        :disabled="isGuest"
-        @update:visible="(open: boolean) => { pickerOpen = open ? 'mobile' : null }"
-      >
-        <template #reference>
-          <el-button ref="mobileStar" type="warning" :plain="!isFavorite" class="summary-card__action-btn" :aria-expanded="pickerOpen === 'mobile'" aria-haspopup="true" @click="onFavoriteClick">
-            <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
-          </el-button>
-        </template>
-        <WatchlistPickerPanel :code="stock.code" :name="shortName" @close="closePicker" />
-      </el-popover>
-    </div>
-
     <div class="summary-card__corner-right">
       <!-- `warning`（琥珀色）是全站收藏／星號的既有顏色（StockExDividendCard 也用）；`plain` 未收藏時是主題正確的描邊、收藏後整顆
            填色，不新增色票（2026-09-14，預設灰圓鈕在深色模式像沒樣式的灰點）。2026-09-19 起圖示＋可見文字，不需要 aria-label。
@@ -256,6 +220,39 @@ const qrDialogVisible = ref(false)
       </div>
     </div>
 
+    <!-- 手機的三顆按鈕是卡片的頁尾（2026-10-22，使用者：「summary-card 也一起設計吧」，方案頁選 2B）：沒有框、整排平分、上面一條線，
+         同持股卡片的「明細」。原本是卡片最上面一整列有框的按鈕（加入最愛還是黃框黃底），手機上整張卡片 242px 高。
+         2026-09-19 起圖示＋可見文字（介面複雜度檢討：單一圖示圓鈕不合「圖示＋文字」的規則）。桌機不顯示這一列，最愛是右上角那一顆
+         （.summary-card__corner-right），「電腦版不會有 share 與 QR Code」 -->
+    <div class="summary-card__mobile-actions">
+      <el-button text class="summary-card__action-btn" @click="shareStock">
+        <el-icon aria-hidden="true"><Share /></el-icon>分享
+      </el-button>
+      <!-- 真正的 QR 圖示（2026-09-15，「請找真正的qr code icon」）：@element-plus/icons-vue 沒有 QR 字形（Grid 看起來只是格子），
+           用一個內嵌 SVG（三個定位角＋散點，QR 閱讀器圖示的通用語法），不打網路、不加套件。 -->
+      <el-button text class="summary-card__action-btn" @click="qrDialogVisible = true">
+        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
+          <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
+        </svg>QR 碼
+      </el-button>
+      <el-popover
+        :visible="pickerOpen === 'mobile'"
+        trigger="click"
+        placement="bottom-end"
+        :width="300"
+        :teleported="false"
+        :disabled="isGuest"
+        @update:visible="(open: boolean) => { pickerOpen = open ? 'mobile' : null }"
+      >
+        <template #reference>
+          <el-button ref="mobileStar" text type="warning" class="summary-card__action-btn" :aria-expanded="pickerOpen === 'mobile'" aria-haspopup="true" @click="onFavoriteClick">
+            <el-icon aria-hidden="true"><component :is="isFavorite ? StarFilled : Star" /></el-icon>{{ isFavorite ? '已加最愛' : '加入最愛' }}
+          </el-button>
+        </template>
+        <WatchlistPickerPanel :code="stock.code" :name="shortName" @close="closePicker" />
+      </el-popover>
+    </div>
+
     <!-- Dimmed backdrop 2026-09-15 per direct follow-up ("QR Code打開時 要讓背景是灰色壟罩。避免
          視覺失焦") — replaces an earlier el-popover, which has no mask/backdrop at all (the rest
          of the page stayed fully visible and interactive behind it). el-dialog gives the same
@@ -295,25 +292,34 @@ const qrDialogVisible = ref(false)
    so the thing the bar was a shortcut PAST is now barely taller than the bar itself was.
    Restore from git if a taller card ever comes back; nothing else in the app referenced it. */
 
-/* Mobile-only in-flow action row (2026-09-19) — replaces the old .summary-card__corner-left
-   (absolutely-positioned share/QR icon circles). Sits above the title in document order so it
-   reads as this card's toolbar, same visual role the old top-left corner group had, just no
-   longer overlapping the text below it once each button gained real width from its own label. */
+/* 手機的卡片頁尾（2026-10-22 方案頁 2B）：貼齊卡片左右與底邊（抵掉 body 的 12px 20px 內距），三顆平分、沒有框，上面一條線。線用內陰影畫：
+   文字按鈕的框被 main.css 的高對比模式規則蓋掉。不設 overflow: hidden——最愛的清單選單（不搬到 body）會被裁掉，圓角改由兩端的按鈕自己帶 */
 .summary-card__mobile-actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  margin: 12px -20px -12px;
+  box-shadow: inset 0 1px 0 var(--el-border-color-lighter);
 }
 
-/* margin 歸零：Element Plus 的 `.el-button + .el-button { margin-left: 12px }` 在換行後還留著，375px
-   時第三顆「加入最愛」掉到第二行、比上一行多縮 12px（2026-10-06 截圖量到）。間距交給 gap。 */
+/* margin 歸零：Element Plus 的 `.el-button + .el-button { margin-left: 12px }` */
 .summary-card__mobile-actions .summary-card__action-btn {
+  flex: 1;
   min-height: 44px;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 8px;
+  border-radius: 0;
   font-size: 1rem;
+}
+
+.summary-card__mobile-actions .summary-card__action-btn + .summary-card__action-btn {
+  box-shadow: inset 1px 0 0 var(--el-border-color-lighter);
+}
+
+.summary-card__mobile-actions .summary-card__action-btn:first-child {
+  border-bottom-left-radius: 12px;
+}
+
+.summary-card__mobile-actions .summary-card__action-btn:last-of-type {
+  border-bottom-right-radius: 12px;
 }
 
 /* Desktop-only absolutely-positioned 最愛 button (2026-09-19) — the mobile-width equivalent now
@@ -345,8 +351,7 @@ const qrDialogVisible = ref(false)
    from touching its sibling share/QR buttons, which aren't type="warning". */
 /* 2026-10-08 起只在深色模式：C3 把淺色的 --el-color-warning 改成 #8a6823 之後，近黑字在它上面只剩 3.39:1（hover 的 dark-2
    上 2.42:1），淺色改回 Element Plus 預設的白字（5.14:1，hover 7.20:1）。深色的警告色仍是 #e6a23c，近黑字照舊。 */
-html.dark .summary-card__favorite-btn:not(.is-plain),
-html.dark .summary-card__action-btn.el-button--warning:not(.is-plain) {
+html.dark .summary-card__favorite-btn:not(.is-plain) {
   --el-button-text-color: #1a1a1a;
   --el-button-hover-text-color: #1a1a1a;
 }
@@ -369,22 +374,19 @@ html.dark .summary-card__action-btn.el-button--warning:not(.is-plain) {
    深色模式用 Element Plus 自己的 #e6a23c，不為深色另外發明一個色：文字在 #292218 上是 7.18:1。
    邊框要另外指定——EP 深色的 plain 邊框預設實測只有 3.03:1（非文字門檻剛好是 3:1，等於沒有餘裕），
    改用同一個 #e6a23c 之後是 8.56:1。 */
-html:not(.dark) .summary-card__favorite-btn.is-plain,
-html:not(.dark) .summary-card__action-btn.el-button--warning.is-plain {
+html:not(.dark) .summary-card__favorite-btn.is-plain {
   --el-button-text-color: #8a6823;
   --el-button-border-color: #8a6823;
   --el-button-hover-border-color: #8a6823;
 }
 
-html.dark .summary-card__favorite-btn.is-plain,
-html.dark .summary-card__action-btn.el-button--warning.is-plain {
+html.dark .summary-card__favorite-btn.is-plain {
   --el-button-border-color: #e6a23c;
   --el-button-hover-border-color: #e6a23c;
 }
 
 /* 同上，只在深色：淺色 plain 的 hover 底是 #8a6823，用 Element Plus 預設的白字 */
-html.dark .summary-card__favorite-btn.is-plain,
-html.dark .summary-card__action-btn.el-button--warning.is-plain {
+html.dark .summary-card__favorite-btn.is-plain {
   /* hover 的字色跟 :not(.is-plain) 那條一樣用近黑，不是 #8a6823（2026-09-28）。plain warning 一
      hover，Element Plus 就把底填成實心的 #e6a23c，而上一版把 hover 字色留在 #8a6823——金字印在
      橘底上，實測 2.35:1，穩定不變（三個個股頁都有）。#1a1a1a 在同一個 #e6a23c 上是 ~9.6:1，那正是
@@ -395,10 +397,14 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
 /* Height fixed, width free — the shape a mixed set of icons and wordmarks needs. `width`/`height`
    attributes on the element give the browser the intrinsic ratio so the row is the right size
    before the image arrives; without them a lazily-loaded logo would shift the whole card. */
+/* 手機（2B）：標題左邊一個小的；桌機在下面的 min-width 區塊改成跨列、撐滿卡片高 */
 .summary-card__logo {
-  height: 40px;
+  grid-column: 1;
+  grid-row: 1;
+  height: 32px;
   width: auto;
-  max-width: 160px;
+  max-width: 96px;
+  margin-right: 10px;
   object-fit: contain;
   object-position: left center;
 }
@@ -418,38 +424,37 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
    exists does not no-op — it falls back to auto placement, which is what put 2330's price 683px
    to the right of its own heading after the logo came out（measured 2026-09-22）. */
 
-/* Mobile-first arrangement (the 2026-09-16 phone redesign, confirmed "完美"): title centered on
-   its own row, price centered under it. A grid (not nested flex wrappers) so the desktop rule
-   below can re-place the SAME children — title / legal name / price — without any second markup
-   tree. One column since the logo left（2026-09-22）: it was the other half of the pair the title
-   used to sit above. */
+/* 手機（2026-10-22 方案頁 2B，取代 2026-09-16 的置中排法）：靠左，標題一列（logo 在左邊、代碼與簡稱一行、這一頁的主題小一號在下一行），
+   股價與漲跌同一行，按鈕是頁尾。卡片從 242px 降到一百多 px。一個 grid（不是巢狀 flex）：桌機的規則重排同一批子元素，不另寫一份模板。
+   沒有 logo 的公司（約三分之一）第一欄量起來是 0、標題貼齊左邊——logo 自己帶右邊距，不用 column-gap */
 .summary-card__body {
   display: grid;
-  grid-template-columns: auto;
-  justify-content: center;
-  /* 欄本身置中還不夠，欄裡的 logo 與股價也要置中——少了這一行，股價與 logo 靠欄的左緣，
-     整塊看起來偏左（2026-10-06 375px 截圖）。桌機的 min-width 區塊改回 start。 */
-  justify-items: center;
+  grid-template-columns: auto 1fr;
+  justify-items: start;
   align-items: center;
-  row-gap: 16px;
+  row-gap: 8px;
 }
 
-/* No side padding needed any more (2026-09-19) — the corner icon groups that used to sit
-   absolutely over this title on the left AND right are gone at mobile width (moved into
-   .summary-card__mobile-actions, a normal-flow row above this title instead — see that class's
-   own comment); nothing overlaps the title here to clear space for. UA-default h1 margin zeroed —
-   the grid's own row-gap handles spacing. */
+/* UA-default h1 margin zeroed — the grid's own row-gap handles spacing. */
 .summary-card__title {
-  grid-column: 1 / -1;
+  grid-column: 2;
   margin: 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: baseline;
-  gap: 4px 8px;
-  text-align: center;
+  gap: 0 8px;
+  text-align: left;
+  font-size: 1.125rem;
+}
+
+/* 手機：這一頁的主題自己一行、小一號（h1 的一部分，見模板的註解） */
+.summary-card__topic {
+  flex-basis: 100%;
   font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
 }
 
 .summary-card__name {
@@ -466,6 +471,7 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
 /* Desktop-only (see the min-width rule below) — at phone width the short name is the whole
    point of the 2026-09-15 "名稱可以用短名嗎" request, so the full legal name stays out of the way. */
 .summary-card__no-quote {
+  grid-column: 1 / -1;
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
@@ -479,20 +485,23 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
 }
 
 .summary-card__par-value {
+  grid-column: 1 / -1;
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
 
+/* 股價與漲跌同一行（2B）；放不下才折 */
 .summary-card__price {
+  grid-column: 1 / -1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
 }
 
 .summary-card__price-value {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -561,6 +570,7 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
     align-self: stretch;
     height: 0;
     min-height: 100%;
+    max-width: 160px;
     margin-right: 16px;
   }
 
@@ -572,8 +582,17 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
     grid-column: 2;
     padding: 0;
     justify-content: flex-start;
+    gap: 4px 8px;
     text-align: left;
     font-size: 1.125rem;
+  }
+
+  /* 桌機的主題接在簡稱後面、同一個樣子（手機才自己一行、小一號） */
+  .summary-card__topic {
+    flex-basis: auto;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
   }
 
   .summary-card__legal-name {
@@ -581,7 +600,8 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
     display: block;
   }
 
-  .summary-card__par-value {
+  .summary-card__par-value,
+  .summary-card__no-quote {
     grid-column: 2;
   }
 
@@ -590,8 +610,7 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
   }
 
   .summary-card__price {
-    flex-direction: row;
-    align-items: baseline;
+    flex-wrap: nowrap;
     gap: 10px;
   }
 
