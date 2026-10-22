@@ -280,6 +280,15 @@ html .el-message .el-message__content {
   background: var(--el-color-primary-light-9);
 }
 
+/* 「復原」旁邊剩幾秒（undo-toast.ts）：固定兩位寬，10 變 9 時按鈕不縮 */
+.app-toast__countdown {
+  min-width: 2ch;
+  margin-left: 6px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 /* 元素上的 v-loading 轉圈：貼著區塊頂端（留 12px），不是垂直置中。資料陸續到時區塊會長高，置中的轉圈就跟著往下移——2026-10-18 全站
    量測持股各頁手機 0.015～0.047 全是這一段（.el-loading-spinner 從 y=409 移出畫面）；先試過 min(50%, 64px)，區塊一開始很矮時還是會
    從置中移到 64px（0.006）。只管元素上的（.el-loading-parent--relative），全螢幕的載入不動；篩選結果表自己的 sticky 規則權重較高，照它的 */
