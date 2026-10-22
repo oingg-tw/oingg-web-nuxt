@@ -5,6 +5,8 @@
 //     （1101 −22.76），「≤ 15」會把虧損公司篩進來，交易所對虧損公司不公布
 //   - 市值、葛拉漢倍數、本益成長比留「即時」：季資料版同樣停在財報那天；季資料版葛拉漢倍數虧損公司是負數（1101 −15.21）會通過「< 22.5」
 //   - 每股股利留「近12個月」：近四季版今年除息比去年晚就掉成 0（2364 是 0，近12個月 1.82）
+//   - 現金股利殖利率、股東總回饋率也留「近12個月」（2026-10-23，analysis-ts 789ba5e1 新增，使用者核准「新增近一年版」、要預設顯示新的）：
+//     近四季版用現金流量表實際付出的股利，發放日落在窗口外就是 0（2364 股東總回饋率近四季 0%，近12個月 3.02%）。年度版一起藏
 //   - 盈餘收益率兩支都留：一般版是 EPS ÷ 股價，Greenblatt 版是 EBIT ÷ 企業價值，公式不同
 // 存過的篩選條件與欄位組合裡還有左邊的，打開篩選時換成右邊並存回帳號（2026-10-22，使用者：「換成留下來的那一支」。起因是條件選了
 // 「即時 本益成長比 < 1」、欄位卻是舊的「本益成長比」：朋億 0.85 通過，欄位寫 1.04）。每一對的單位相同（倍／元），條件的數字照搬。
@@ -17,7 +19,9 @@ export const REPLACED_METRICS: Record<string, string> = {
   marketCap: 'liveMarketCap.EOD',
   grahamNumber: 'liveGrahamNumber.EOD',
   pegRatio: 'livePegRatio.EOD',
-  dividendPerShare: 'liveDividendPerShare.EOD'
+  dividendPerShare: 'liveDividendPerShare.EOD',
+  cashDividendYield: 'liveCashDividendYield.EOD',
+  shareholderYield: 'liveShareholderYield.EOD'
 }
 
 export const replacedField = (fieldId: string): string => REPLACED_METRICS[fieldId.split('.')[0] ?? ''] ?? fieldId

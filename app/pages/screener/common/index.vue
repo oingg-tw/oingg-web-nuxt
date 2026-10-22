@@ -62,9 +62,11 @@ async function urlSelection(): Promise<DeepLinkSelection | null> {
   // 業務中台要至少一個條件：只有欄位或排序的網址不另外開一組
   const filters = urlState ? filtersFromUrl(urlState.filters, screener.categories) : []
   if (!urlState || !filters.length) return null
-  const columns = urlState.columns.filter(field => field.startsWith('stock.') || locateFieldInSchema(screener.categories, field))
+  // 欄位與排序裡被藏起來的舊指標也換成留下來的那一支（replaced-metrics.ts；條件在 buildSlots 換）：不然舊書籤照樣出現挑選器已經不列的那一欄
+  const columns = replacedFields(urlState.columns).filter(field => field.startsWith('stock.') || locateFieldInSchema(screener.categories, field))
   // 排序的欄位要在欄位裡（或代號），不然 業務中台 回 400
-  const sort = urlState.sort && (urlState.sort.field === 'symbol' || columns.includes(urlState.sort.field)) ? urlState.sort : null
+  const sortField = urlState.sort ? replacedField(urlState.sort.field) : null
+  const sort = urlState.sort && sortField && (sortField === 'symbol' || columns.includes(sortField)) ? { ...urlState.sort, field: sortField } : null
   const selection = await guest.filtersSelection(filters, '網址帶入的篩選')
   return { ...selection, fieldKeys: columns.length ? columns : selection.fieldKeys, options: { ownColumns: columns.length > 0, sort } }
 }
