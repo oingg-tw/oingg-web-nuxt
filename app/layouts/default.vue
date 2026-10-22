@@ -98,7 +98,7 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
            在 375 抓到）。它沒有重的東西，閒下來接手不跟第一個畫面搶。搜尋層跟登入狀態無關、一接手就抓股票目錄，維持打開才接手 -->
       <LazyAppFeatureMenu hydrate-on-idle />
     </AppSlideLayer>
-    <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
+    <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" focus-input @close="close">
       <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />
     </AppSlideLayer>
   </div>

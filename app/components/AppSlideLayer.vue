@@ -28,6 +28,8 @@ const props = defineProps<{
   open: boolean
   // Names the layer for assistive technology and labels its close bar.
   label: string
+  // 打開時游標直接進層裡的輸入框（搜尋層，2026-10-22 使用者：「手機版 按下搜尋以後要自動 focus 進去searchbar」）；沒有就照舊到返回鈕
+  focusInput?: boolean
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -51,6 +53,7 @@ useScrollLock(isOpen)
 // closing leaves it there — measured, a reader who pressed Escape landed on <body> and had to Tab
 // from the top of the document again to get back to where they were.
 const closeButtonRef = ref<HTMLElement | null>(null)
+const bodyRef = ref<HTMLElement | null>(null)
 let returnFocusTo: HTMLElement | null = null
 
 watch(
@@ -62,7 +65,9 @@ watch(
       await nextTick()
       // The close button, not the panel: landing on the exit is what a reader who opened this by
       // mistake needs first, and it is the only control guaranteed to exist in every layer.
-      closeButtonRef.value?.focus()
+      // 搜尋層例外（focusInput）：按「搜尋」就是要打字，游標直接進輸入框
+      if (props.focusInput) focusInputSoon(Date.now() + 1500)
+      else closeButtonRef.value?.focus()
     } else {
       const target = returnFocusTo
       returnFocusTo = null
@@ -73,6 +78,16 @@ watch(
     }
   }
 )
+
+// 第一次打開時搜尋框是延遲載入的元件：先畫的是佔位的輸入框，接手後換成真的（量到約 0.1 秒），焦點會跟著被換掉的元素消失。
+// 所以 1.5 秒內焦點掉到層外就補到目前的輸入框；使用者自己移到返回鈕（層裡）不搶。一直沒有輸入框就退回返回鈕
+function focusInputSoon(deadline: number) {
+  if (!props.open) return
+  const layer = bodyRef.value?.parentElement
+  if (!layer?.contains(document.activeElement)) bodyRef.value?.querySelector<HTMLInputElement>('input')?.focus()
+  if (Date.now() < deadline) setTimeout(() => focusInputSoon(deadline), 100)
+  else if (!layer?.contains(document.activeElement)) closeButtonRef.value?.focus()
+}
 
 // Escape closes, matching every other dismissible surface in this app. Bound on the layer itself
 // rather than document-wide so it cannot swallow Escape from anything else.
@@ -119,7 +134,7 @@ function onKeydown(event: KeyboardEvent) {
       <span class="slide-layer__title">{{ label }}</span>
     </div>
 
-    <div class="slide-layer__body">
+    <div ref="bodyRef" class="slide-layer__body">
       <slot />
     </div>
   </div>

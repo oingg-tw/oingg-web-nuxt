@@ -72,7 +72,7 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
       <!-- 選單層閒下來就接手、搜尋層打開才接手：理由見 layouts/default.vue 同一段 -->
       <LazyAppFeatureMenu hydrate-on-idle />
     </AppSlideLayer>
-    <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" @close="close">
+    <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" focus-input @close="close">
       <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />
     </AppSlideLayer>
   </div>
