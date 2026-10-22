@@ -19,10 +19,12 @@ const baseUrl = process.env.SCREENER_CHECK_URL ?? 'http://localhost:3000'
 
 // SCREENER_CHECK_ONLY=特別股,ETF 只跑其中幾頁
 const only = process.env.SCREENER_CHECK_ONLY?.split(',')
+// wide：欄位多到超出 1440 寬的網址（2026-10-22 表頭折行之後欄位窄了，預設欄位放得下，右緣淡出與橫向捲軸要另外開一頁測）。
+// 普通股的從型錄挑（見 wideQuery），特別股、ETF 用各自範本裡實際有的欄位
 const PAGES = [
   { name: '普通股', universe: 'common', path: '/screener/common?template=value', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
-  { name: '特別股', universe: 'preferred', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率' },
-  { name: 'ETF', universe: 'etf', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '規模' }
+  { name: '特別股', universe: 'preferred', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率', wide: 'c=latestClosePrice,issuePrice,premiumRatePct,nominalDividendRatePct,currentYieldPct,ytwPct,exDividendMonths,cumulativeDividend,participatingExcessDividend,liquidationPreference,votingRights,convertible,redeemable,marketType,issueDate' },
+  { name: 'ETF', universe: 'etf', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '規模', wide: 'c=aum,return1y,expenseRatio,trailing12MonthExpenseRatioPct,nav,market,fundType,return3m,return6m,returnYtd,return2y,return3y,return5y,return10y,holders,netFlow,dcaAmount,marketShareRate' }
 ].filter(target => !only || only.includes(target.name))
 
 const failures = []
@@ -48,6 +50,14 @@ async function waitForCount(page, predicate, timeout = 45000) {
     await page.waitForTimeout(300)
   }
   return { ok: false, text, ms: Date.now() - start }
+}
+
+// 普通股：型錄前 16 個數字欄位，加一個條件（業務中台要至少一個）
+async function wideQuery(target) {
+  if (target.wide) return target.wide
+  const schema = await (await fetch(`${baseUrl}/api/hub/filter-schema`)).json()
+  const fields = schema.categories.flatMap(category => category.metrics).filter(metric => metric.kind !== 'categorical').map(metric => `${metric.key}.${metric.fields[0].key}`).slice(0, 16)
+  return `f=roe.TTM:15~&c=${fields.join(',')}`
 }
 
 const browser = await chromium.launch()
@@ -232,7 +242,7 @@ for (const target of PAGES) {
       firstScreenRows: header ? Math.floor((barTop - header.getBoundingClientRect().bottom) / 41) : 0
     }
   })
-  const desktop = await measureDesktop()
+  let desktop = await measureDesktop()
   expect(target.name, '1440 寬沒有橫向捲軸', desktop.overflow <= 0, `超出 ${desktop.overflow}px`)
   expect(target.name, '排序箭頭兩個三角形分開（不是菱形）', desktop.caretGap >= 1, `間隔 ${desktop.caretGap}px`)
   expect(target.name, '表格捲動區可用鍵盤聚焦、有名稱', /^0\/region\/\S+/.test(desktop.region), desktop.region)
@@ -240,7 +250,16 @@ for (const target of PAGES) {
   expect(target.name, '第一個畫面至少 8 列', desktop.firstScreenRows >= 8, `${desktop.firstScreenRows} 列`)
   // 表格跟著整頁捲、不再一口氣載完：哨兵只在捲到附近才載下一頁（以表身為 root 的舊觀察者會一直看得到它）
   if (desktop.total > 100) expect(target.name, '停在頂端時只載了前幾頁', desktop.rowsCount < desktop.total, `${desktop.rowsCount}／${desktop.total} 列`)
-  // 欄位多到超出右邊時（2026-10-15「篩選的欄位太多 破版了」「我希望橫向scrollbar可以呈現在第一個畫面…用滑鼠往右邊拉動」）
+  // 欄位多到超出右邊時（2026-10-15「篩選的欄位太多 破版了」「我希望橫向scrollbar可以呈現在第一個畫面…用滑鼠往右邊拉動」）。
+  // 預設欄位放得下的話，用網址帶十幾個欄位重開（app/utils/screener-url.ts）
+  if (!desktop.scrollsX) {
+    await page.goto(`${baseUrl}/screener/${target.universe}?${await wideQuery(target)}`, { waitUntil: 'load', timeout: 180000 })
+    await page.addStyleTag({ content: 'nuxt-devtools-frame { display: none !important; }' })
+    await visible(page.locator('.screener-result-table .el-table__body tbody tr'), 90000)
+    await page.evaluate(() => scrollTo(0, 0))
+    await page.waitForTimeout(2000)
+    desktop = await measureDesktop()
+  }
   if (desktop.scrollsX) {
     expect(target.name, '欄位超出時右緣淡出', desktop.fade)
     expect(target.name, '第一個畫面就看得到橫向捲軸、點得到把手', desktop.barInView && desktop.thumbHit, `捲軸在畫面內 ${desktop.barInView}、點到把手 ${desktop.thumbHit}`)

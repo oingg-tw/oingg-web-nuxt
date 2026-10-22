@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Close } from '@element-plus/icons-vue'
+import { Close, EditPen } from '@element-plus/icons-vue'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 // Two halves, two distinct jobs, each reachable exactly one way — no overlap:
 // - Front half (the field name) opens the shared field-picker dialog. Same dialog whether
@@ -94,7 +94,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
         :title="valueText"
         :aria-label="`${fieldLabel}：${valueText}`"
         @click="emit('openValue', $event.currentTarget as HTMLElement)"
-      >{{ valueText }}</button>
+      ><el-icon class="condition-pill__value-icon" aria-hidden="true"><EditPen /></el-icon>{{ valueText }}</button>
     </div>
 
     <!-- A real sibling button, not part of either half above — removing a condition doesn't
@@ -172,14 +172,25 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   font-weight: 400;
 }
 
-/* Value + remove read as one soft-tinted group, instead of boxes stitched together with hard
-   1px divider lines (that literal-boxes look was the main thing behind "看起來醜醜的") — the
-   background tint alone marks the boundary. */
-/* 窄的時候值固定在第二行、整行寬（每一顆都一樣高、底色整行；只有放不下才換行的話，有的一行有的兩行、底色只到字那麼寬） */
+/* 值看起來要能單獨改（2026-10-22，使用者：「condition-pill__main UIUX 樣式要改動 右邊數值的部分 太不像是可以單獨變更了」，方案頁選 3C）：
+   原本值跟 ✕ 共用一塊淺灰底，讀起來像刪除鈕的一部分。現在值前面一支筆、字下面虛線（滑過變實線），✕ 回到中性底色。
+   窄的時候值固定在第二行、整行寬（每一顆都一樣高；只有放不下才換行的話，有的一行有的兩行） */
 .condition-pill__value {
   flex: 1 1 100%;
   color: var(--el-color-primary);
-  background: var(--el-fill-color-light);
+  text-decoration: underline dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+}
+
+.condition-pill__value:hover,
+.condition-pill__value:focus-visible {
+  text-decoration-style: solid;
+}
+
+.condition-pill__value-icon {
+  margin-right: 6px;
+  vertical-align: -2px;
 }
 
 @media (min-width: 768px) {
@@ -215,7 +226,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   justify-content: center;
   width: 44px;
   border: none;
-  background: var(--el-fill-color-light);
+  background: transparent;
   color: var(--el-text-color-secondary);
   cursor: pointer;
   /* Without this, the Close icon renders at ~13px instead of matching the pill's own 16px

@@ -139,14 +139,16 @@ function formatValue(column: ScreenerResultTableColumn, raw: string | null | und
 }
 
 // 河道位置的格子（2026-10-21，使用者：「淨值比河道位置 要上色 破頂 要用紅色 破底要用綠色 比照 河流圖顏色」「剛才說的是篩選的欄位值的
-// 部分」）：前面一塊跟河流圖同色的色塊——破底是最下面那條線（跌色）、破頂是最上面那條線（漲色）、中間五層是河道的填色，跟著使用者的
-// 漲跌色慣例。破頂、破底的字再用漲跌色；中間幾層是黃綠、黃，當字色過不了 4.5:1，只上色塊。字本身就寫是哪一層，顏色不是唯一線索
+// 部分」）：顏色跟河流圖一樣——破底是最下面那條線（跌色）、破頂是最上面那條線（漲色）、中間五層是河道的填色，跟著使用者的漲跌色慣例。
+// 破頂、破底的字再用漲跌色；中間幾層是黃綠、黃，當字色過不了 4.5:1，不上字色。
+// 2026-10-22 前面的色塊換成七格位置軌道（使用者：「我的視覺變色能力沒這麼強 設計上有辦法 更顯眼嗎」，方案頁選 2B）：亮在第幾格就是第幾層，
+// 越右邊越高——看位置不看顏色也讀得出來，顏色與文字照舊
 const { resolvedMode, market } = useAppTheme()
 const riverPalette = computed(() => {
   const colors = getPriceColors(resolvedMode.value, market.value)
   return riverColors(colors.up, colors.down, RIVER_ZONE_NAMES.length - 2)
 })
-function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | undefined): { color: string; textClass: string } | null {
+function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | undefined): { zone: number; color: string; textClass: string } | null {
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   if (raw == null || metric?.kind !== 'categorical' || !metric.key.endsWith('RiverBand')) return null
   const zone = Number(raw)
@@ -154,6 +156,7 @@ function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | und
   if (!Number.isInteger(zone) || zone < 0 || zone > last) return null
   const { lines, fills } = riverPalette.value
   return {
+    zone,
     color: zone === 0 ? lines[0]! : zone === last ? lines.at(-1)! : fills[zone - 1]!,
     textClass: zone === 0 ? priceDirectionClass(-1) : zone === last ? priceDirectionClass(1) : ''
   }
@@ -313,12 +316,19 @@ function sortableFor(field: string): boolean | 'custom' {
   return 'custom'
 }
 
-// 表頭不折行（2026-10-06「我不希望看到有欄位的文字 UI 換行」）：最小寬度跟著標題字數走——每字 16px，
-// 加上排序箭頭（24px，2026-10-15 從 14px 放大）、一個間距與左右內距約 56px（2026-10-21 表頭的移除鈕拿掉後由 88 縮回）。內容比表頭長的欄位
-// 自己帶 minWidth。
-// （觀察清單 2026-10-16 試過表頭折行、拿掉表頭 ✕；2026-10-17 它改用 SharedSheetGrid，那兩個選項跟著刪掉。）
+// 欄寬照「值」估、表頭在欄寬裡折行（2026-10-22，使用者在方案頁選 1B：「希望 screener 表頭寬度 受限於 值寬度去折行 這樣才能在單位寬度內
+// 看到更多數值」——推翻 2026-10-06 的「我不希望看到有欄位的文字 UI 換行」，值本身照舊不折行）。照欄位型別估、不量載入的列：載入更多、
+// 換排序時欄寬才不會跳。數字（百分比、千分位、負號，例如 -123.45%）104px，表頭一行約三個字；類別照最長的選項，河道位置多一條七格軌道；
+//「顯示資料時間」開著時至少放得下日期（10 碼）。內容比這些長的欄位自己帶 minWidth
+const NUMBER_COLUMN_WIDTH = 104
+const RIVER_TRACK_WIDTH = 60
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  return column.minWidth ?? Math.max(120, displayLabel(column).length * 16 + 56)
+  if (column.minWidth) return column.minWidth
+  const metric = locateFieldInSchema(props.categories, column.field)?.metric
+  const value = metric?.kind === 'categorical'
+    ? Math.max(0, ...(metric.options ?? []).map(option => option.label.length)) * 16 + (metric.key.endsWith('RiverBand') ? RIVER_TRACK_WIDTH : 0) + 24
+    : NUMBER_COLUMN_WIDTH
+  return Math.max(NUMBER_COLUMN_WIDTH, value, showCellDates.value ? 112 : 0)
 }
 // el-table 的表身從內部欄位表讀欄位順序，keyed v-for 重排不會重新登記——表頭跟著拖、表身不跟；所以重排後要靠 tableKey 整表重掛。
 const tableKey = ref(0)
@@ -590,7 +600,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
           <div class="screener-result-table__cell">
             <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
-              <i class="screener-result-table__zone-swatch" :style="{ background: riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true" />{{ formatValue(column, row.values[column.field]?.value) }}
+              <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
             </span>
             <span v-else>{{ formatValue(column, row.values[column.field]?.value) }}</span>
             <!-- The actual per-row knowledgeDate this specific number describes (renamed from
@@ -647,7 +657,7 @@ watch(() => props.loading, (loading, wasLoading) => {
               <dd>
                 <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
                   <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
-                    <i class="screener-result-table__zone-swatch" :style="{ background: riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true" />{{ formatValue(column, row.values[column.field]?.value) }}
+                    <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
                   </span>
                   <template v-else>{{ formatValue(column, row.values[column.field]?.value) }}</template>
                   <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ row.values[column.field]!.knowledgeDate }}</span>
@@ -778,9 +788,17 @@ watch(() => props.loading, (loading, wasLoading) => {
   color: var(--el-text-color-secondary);
 }
 
-/* 不折行，見 minWidthFor */
+/* 值不折行；表頭在欄寬裡折行、對齊底部（2026-10-22 方案 1B，見 minWidthFor） */
 .screener-result-table :deep(.cell) {
   white-space: nowrap;
+}
+
+.screener-result-table :deep(th.el-table__cell) {
+  vertical-align: bottom;
+}
+
+.screener-result-table :deep(th.el-table__cell .cell) {
+  white-space: normal;
 }
 
 .screener-result-table :deep(.el-table__row) {
@@ -986,6 +1004,9 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .screener-result-table__column-label {
   order: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .screener-result-table__cell {
@@ -998,13 +1019,33 @@ watch(() => props.loading, (loading, wasLoading) => {
 .screener-result-table__zone {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
-.screener-result-table__zone-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+/* 七格位置軌道（方案 2B，見 riverZoneOf）：第幾格亮就是第幾層。亮的那一格是那一層的顏色（--zone-color）而且高一截，其他是又淺又矮的灰——
+   不分顏色也要看得出哪一格（第一版其他格用 --el-border-color，跟亮的那格明暗差不多，量到看不出位置） */
+.screener-result-table__zone-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.screener-result-table__zone-track i {
+  width: 6px;
+  height: 8px;
+  border-radius: 1.5px;
+  background: var(--el-border-color-lighter);
+}
+
+.screener-result-table__zone-track--0 i:nth-child(1),
+.screener-result-table__zone-track--1 i:nth-child(2),
+.screener-result-table__zone-track--2 i:nth-child(3),
+.screener-result-table__zone-track--3 i:nth-child(4),
+.screener-result-table__zone-track--4 i:nth-child(5),
+.screener-result-table__zone-track--5 i:nth-child(6),
+.screener-result-table__zone-track--6 i:nth-child(7) {
+  height: 16px;
+  background: var(--zone-color);
 }
 
 .screener-result-table__cell-date {
