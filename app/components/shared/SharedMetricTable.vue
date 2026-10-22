@@ -246,8 +246,8 @@ watch(
 //
 // ponytail: 用前綴判斷而不是查型錄。`stock.` 目前只有 price 一個成員，而這個元件手上沒有型錄可
 // 以查；哪天多一個型錄外的欄位、或者 業務中台 讓股價可以排序，改這一行就好。
-// `holding.`：已經持有的帳戶名稱（2026-10-22，業務中台 不能排序，sortField 給它回 400）
-const BACKEND_UNSORTABLE = /^(stock|holding)\./
+// `holding.`：已經持有的帳戶名稱；`sector.`：類股名稱（都是 2026-10-22，業務中台 不能排序，sortField 給它們回 400）
+const BACKEND_UNSORTABLE = /^(stock|holding|sector)\./
 
 // **普通 `sortable` 單獨用是不夠的，必須配 `sort-method`。** el-table 預設拿 `prop` 當物件的鍵去
 // 讀值，而這些動態欄位的值不在 row 的頂層、在 `row.values[field].value`——所以
@@ -260,25 +260,17 @@ const BACKEND_UNSORTABLE = /^(stock|holding)\./
 // `sort-method` 而不是 `sort-by`：後者的型別是回傳 **string**，拿它排數字就是字典序
 //（"168.5" 會排在 "25.5" 前面）。sort-method 收兩列回一個數，才是數值比較。
 //
-// 讀不出數字的列一律沉到最底（-Infinity）：NaN 參與比較會讓順序變成未定義的，而「沒有股價」是
-// 真的會發生的（興櫃、暫停交易、ingest 落後）。
+// 數字比數字；讀不出數字的（日期、帳戶名稱、類股）照字串比；沒有值的算最小，降冪時在最底（「沒有股價」是真的會發生的：
+// 興櫃、暫停交易、ingest 落後）。業務中台 不能排的欄位原本只比數字，文字欄每一列都是 NaN，點表頭順序不動（2026-10-22 改成同一套）
 function sortMethodFor(field: string) {
-  // client 模式：每一欄都由 el-table 自己排。數字比數字；讀不出數字的（例如日期字串）照字串比；
-  // 沒有值的一律沉底。欄位自己標 'client' 的也一樣（特別股全部 28 檔一次讀進來，2026-10-15）
-  if (props.sortMode === 'client' || columnSortable(field) === 'client') {
-    return (a: ScreenerResultRow, b: ScreenerResultRow) => {
-      const x = a.values[field]?.value ?? null
-      const y = b.values[field]?.value ?? null
-      if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
-      return compareFieldValues(x, y)
-    }
+  // client 模式、欄位自己標 'client' 的（特別股全部 28 檔一次讀進來，2026-10-15）、業務中台 不能排的：都由 el-table 排已載入的列
+  if (props.sortMode !== 'client' && columnSortable(field) !== 'client' && !BACKEND_UNSORTABLE.test(field)) return undefined
+  return (a: ScreenerResultRow, b: ScreenerResultRow) => {
+    const x = a.values[field]?.value ?? null
+    const y = b.values[field]?.value ?? null
+    if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
+    return compareFieldValues(x, y)
   }
-  if (!BACKEND_UNSORTABLE.test(field)) return undefined
-  const numberOf = (row: ScreenerResultRow) => {
-    const value = Number(row.values[field]?.value)
-    return Number.isFinite(value) ? value : -Infinity
-  }
-  return (a: ScreenerResultRow, b: ScreenerResultRow) => numberOf(a) - numberOf(b)
 }
 
 // el-table's own Sort type wants a non-null `order`, while this component models「no sort」as

@@ -39,12 +39,6 @@ const title = computed(() => {
   return props.pickerMode === 'column' ? '新增欄位' : '選擇篩選指標'
 })
 const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fieldId ?? null))
-// 新增欄位時不列只能當條件的（普通股的「類股」不是一個能顯示在結果表的數值）
-const pickerCategories = computed(() => props.pickerMode === 'column'
-  ? props.categories
-      .map(category => ({ ...category, metrics: category.metrics.filter(metric => !metric.conditionOnly) }))
-      .filter(category => category.metrics.length)
-  : props.categories)
 // 輸入框後面的單位（元、%、倍、人…），三組型錄的單位都是看得懂的字；「無單位」不顯示
 const unit = computed(() => {
   const value = props.slot?.fieldId ? locateFieldInSchema(props.categories, props.slot.fieldId)?.field.unit : undefined
@@ -66,7 +60,7 @@ const unit = computed(() => {
   >
     <ScreenerIndicatorPickerBody
       v-if="step === 'pick'"
-      :categories="pickerCategories"
+      :categories="categories"
       :current-field-id="currentFieldId"
       :active="open"
       :hide-period="pickerMode === 'condition'"

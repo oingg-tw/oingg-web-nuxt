@@ -130,9 +130,8 @@ export interface Metric {
   // GET /metrics 的普通股指標都是數字型，不帶這兩個欄位；特別股與 ETF 的型錄由各自的資料來源轉成這個形狀時才會帶。
   kind?: 'numeric' | 'categorical'
   // value 是字串（特別股、ETF 的型錄）或數字（GET /metrics 的類別型欄位，例如河道位置 0～6，2026-10-21）；條件原樣送回上游
-  options?: { value: string | number, label: string }[]
-  // 只能當條件、不能加成結果表的欄位（普通股的「類股」，2026-10-15）
-  conditionOnly?: boolean
+  // count：勾選清單在名稱後面括號列的家數（類股）。不放進 label，結果表的欄寬照名稱估、膠囊只寫名稱
+  options?: { value: string | number, label: string, count?: number }[]
   // 條件裡有、選項裡沒有的值要怎麼寫（已經持有：刪掉的帳戶）；不給就照原值
   missingOptionLabel?: string
   // 一格的值可能是好幾個選項用「、」串起來（已經持有的帳戶名稱）：欄寬照全部選項串起來估

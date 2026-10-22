@@ -17,7 +17,7 @@ const props = defineProps<{
   visible: boolean
   // 類別型條件（2026-10-15 三組篩選共用）：勾選項目＋包含／排除，取代數字範圍。數字型照舊
   kind?: 'numeric' | 'categorical'
-  options?: { value: string | number, label: string }[]
+  options?: { value: string | number, label: string, count?: number }[]
   // 輸入框後面的單位（元、%、倍…）；舊的 ETF 編輯器有、共用之後要保留（2026-10-15）
   unit?: string
 }>()
@@ -157,7 +157,7 @@ function reset() {
           <legend class="range-editor__label">{{ exclude ? '排除這些項目' : '只要這些項目' }}</legend>
           <!-- aria-label 要自己給：Element Plus 預設念「checkbox-group」 -->
           <el-checkbox-group v-model="checkedValues" class="range-editor__option-list" :aria-label="exclude ? '排除這些項目' : '只要這些項目'">
-            <el-checkbox v-for="option in options ?? []" :key="option.value" :value="option.value" class="range-editor__option">{{ option.label }}</el-checkbox>
+            <el-checkbox v-for="option in options ?? []" :key="option.value" :value="option.value" class="range-editor__option">{{ option.label }}<template v-if="option.count != null">（{{ option.count }}）</template></el-checkbox>
           </el-checkbox-group>
         </fieldset>
       </template>

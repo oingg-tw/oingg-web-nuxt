@@ -444,7 +444,9 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
         return last
       }
       const allCount = await settledCount()
-      const name = (await options.first().textContent())?.trim() ?? ''
+      const optionText = (await options.first().textContent())?.trim() ?? ''
+      // 勾選清單在名稱後面列家數，膠囊只寫名稱（2026-10-22）
+      const name = optionText.replace(/（\d+）$/, '')
       await options.first().click()
       const included = page.waitForResponse(screenerPost('sectorCodes'), { timeout: 30000 }).catch(() => null)
       await page.getByRole('button', { name: '完成' }).click()
@@ -462,7 +464,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       await page.locator('.condition-panel .indicator-dialog__item').first().click()
       await waitFor(options.first(), 10000)
       const checked = (await page.locator('.condition-panel .range-editor__option.is-checked').allTextContents()).map(text => text.trim())
-      expect('類股', '再選一次類股，打開的是原本那一個（勾選還在）', checked.length === 1 && checked[0] === name, checked.join('、'))
+      expect('類股', '再選一次類股，打開的是原本那一個（勾選還在）', checked.length === 1 && checked[0] === optionText, checked.join('、'))
       await page.locator('.condition-panel .range-editor__include').getByText('排除').click()
       const excludedRequest = page.waitForResponse(screenerPost('excludeSectorCodes'), { timeout: 30000 }).catch(() => null)
       await page.getByRole('button', { name: '完成' }).click()
@@ -476,6 +478,14 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       expect('類股', `排除「${name}」之後檔數變多（只看 ${includeCount} → 排除 ${excludeCount} 檔）`, excludeCount !== null && includeCount !== null && excludeCount > includeCount)
     }
   }
+  // 條件也是欄位（2026-10-22「篩選指標 與 欄位 應該要有非常多重疊才對」）：新增欄位的面板也找得到類股。只看不選
+  await page.getByRole('button', { name: '欄位設定' }).click()
+  await page.locator('.column-settings').getByRole('button', { name: '＋ 新增欄位' }).click()
+  await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
+  await page.getByRole('textbox', { name: '搜尋指標名稱' }).fill('類股')
+  const asColumn = await waitFor(page.locator('.condition-panel .indicator-dialog__item', { hasText: /^\s*類股\s*$/ }), 10000)
+  expect('類股', '新增欄位也找得到「類股」', asColumn.ok)
+  await page.keyboard.press('Escape')
 }
 
 // ── 7. 手機 375px（2026-10-07 篩選器重新設計：卡片、排序選單、欄位設定、條件面板、分頁語意）────────

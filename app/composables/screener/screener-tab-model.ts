@@ -346,8 +346,9 @@ export function withHeldCondition(categories: MetricCategory[], portfolios: { po
   return [...categories, { key: 'holding', name: '我的持股', sort: Number.MAX_SAFE_INTEGER, metrics: [metric] }]
 }
 
-// 挑選面板裡的「類股」：只能當條件，不能當結果表的欄位（conditionOnly）。放在型錄的「基本資料」裡、市場別後面（2026-10-22，使用者：
-//「為什麼 篩選指標 類股 不放在 基本資料中? 產業不算是基本資料嗎」——原本自成一個分類排最後）；型錄沒有基本資料時才自成一類
+// 挑選面板裡的「類股」。放在型錄的「基本資料」裡、市場別後面（2026-10-22，使用者：「為什麼 篩選指標 類股 不放在 基本資料中?
+// 產業不算是基本資料嗎」——原本自成一個分類排最後）；型錄沒有基本資料時才自成一類。
+// 條件也是欄位（同一天：「篩選指標 與 欄位 應該要有非常多重疊才對」）：同已經持有，條件送代碼，欄位是 業務中台 填的類股名稱
 export function withSectorCondition(categories: MetricCategory[], sectors: { code: string; name: string; companyCount: number }[]): MetricCategory[] {
   const profile = categories.find(category => category.key === 'profile')
   const metric = {
@@ -357,8 +358,7 @@ export function withSectorCondition(categories: MetricCategory[], sectors: { cod
     unit: '',
     sort: Math.max(-1, ...(profile?.metrics ?? []).map(item => item.sort)) + 1,
     kind: 'categorical' as const,
-    conditionOnly: true,
-    options: sectors.map(sector => ({ value: sector.code, label: `${sector.name}（${sector.companyCount}）` })),
+    options: sectors.map(sector => ({ value: sector.code, label: sector.name, count: sector.companyCount })),
     fields: [{ key: 'code', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
   }
   if (!profile) return [...categories, { key: 'sector', name: '類股', sort: Number.MAX_SAFE_INTEGER, metrics: [metric] }]
