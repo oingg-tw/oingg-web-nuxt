@@ -73,7 +73,7 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
       <LazyAppFeatureMenu hydrate-on-idle />
     </AppSlideLayer>
     <AppSlideLayer side="right" label="搜尋股票" :open="openLayer === 'search'" focus-input @close="close">
-      <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" stacked />
+      <LazyLandingStockSearch :hydrate-when="openLayer === 'search'" in-layer />
     </AppSlideLayer>
   </div>
 </template>
