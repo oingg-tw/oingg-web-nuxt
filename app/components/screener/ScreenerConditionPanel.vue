@@ -52,6 +52,7 @@ const unit = computed(() => {
     :title="title"
     width="min(960px, 100vw)"
     class="condition-panel"
+    :class="{ 'condition-panel--range': step === 'range' }"
     modal-class="condition-panel-overlay"
     :align-center="false"
     lock-scroll
@@ -144,6 +145,12 @@ const unit = computed(() => {
     max-height: 86vh;
     margin: auto;
     border-radius: var(--el-dialog-border-radius, 8px);
+  }
+
+  /* 設定範圍那一步不用那麼寬（2026-10-22，使用者：「設定範圍 這個彈窗 太寬了 請讓他寬度適中」）：兩個輸入框或三欄勾選就夠，
+     挑指標那一步照舊 960px */
+  .el-dialog.condition-panel.condition-panel--range {
+    width: min(600px, 92vw) !important;
   }
 
   /* 選指標本體在大面板裡拿掉 720px 上限、每欄拉高（同 SharedMetricColumnPicker 的桌機大小） */
