@@ -152,7 +152,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           />
         </section>
 
-        <section class="screener-shell__results" :aria-labelledby="`${uid}-results`">
+        <section class="screener-shell__results app-table-card" :aria-labelledby="`${uid}-results`">
           <div class="screener-shell__results-header">
             <h2 :id="`${uid}-results`" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
             <p class="screener-shell__count" role="status"><template v-if="countParts"><span class="screener-shell__count-prefix">{{ countParts.prefix }}</span>{{ countParts.main }}{{ countParts.note }}</template></p>
@@ -291,16 +291,21 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   min-width: 0;
 }
 
-/* 電腦版的結果放在一張卡片上（2026-10-23，使用者在配色方案頁選 A）：設定區留在頁面底色上，結果（標題、顯示欄位、表格）一張淺色卡片，
-   一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張卡片，外面再包一張就是卡片包卡片。
-   門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。overflow: clip 不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸
-   就黏在卡片裡、不黏在畫面上 */
+/* 電腦版的結果放在一張卡片上（2026-10-23，使用者在配色方案頁選 A；同日抽成全站表格的卡片 .app-table-card，main.css）：設定區留在頁面
+   底色上，結果（標題、顯示欄位、表格）一張卡片，一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張
+   卡片，外面再包一張就是卡片包卡片，所以窄的時候拿掉。門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。
+   overflow: clip 不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸就黏在卡片裡、不黏在畫面上 */
+@container (max-width: 721px) {
+  .screener-shell__results.app-table-card {
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+}
+
 @container (min-width: 722px) {
   .screener-shell__results {
     padding-top: 16px;
-    border: 1px solid var(--app-surface-border);
-    border-radius: 12px;
-    background: var(--el-bg-color);
     overflow: clip;
   }
 

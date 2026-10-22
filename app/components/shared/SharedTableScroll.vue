@@ -6,6 +6,7 @@
 // useFocusableTableScroll (their scroll wrap is EP's own client DOM); these plain <table>s are in
 // the HTML from the start, so the region attributes are simply rendered here. The global
 // :focus-visible ring then marks the container when tabbed to, and arrow keys scroll it.
+// 2026-10-23 起它也是表格的卡片（main.css 的「全站表格」.app-table-card）：表格在卡片裡邊到邊，捲動也在卡片裡
 defineProps<{
   // What the table is（「半導體業公司名單」）— announced as「…，可左右捲動」.
   label: string
@@ -13,7 +14,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="shared-table-scroll" tabindex="0" role="region" :aria-label="`${label}，可左右捲動`">
+  <div class="shared-table-scroll app-table-card" tabindex="0" role="region" :aria-label="`${label}，可左右捲動`">
     <slot />
   </div>
 </template>

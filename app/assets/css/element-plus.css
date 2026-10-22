@@ -397,6 +397,27 @@ html .el-message .el-message__content {
   margin-top: 12px;
 }
 
+/* 全站表格（2026-10-23）：el-table 跟自己畫的 .seo-table 同一個樣子，規則與理由在 main.css 的「全站表格」——卡片底色、表頭暖色底
+   regular 字、淡的列線、內容主要文字色、第一欄與最後一欄離邊 16px、滑過的列用主色最淡那一階。斑馬紋各元件不開（stripe 不傳）。
+   html 前綴同下面排序箭頭：el-table.css 排在本檔之後 */
+html .el-table {
+  --el-table-bg-color: var(--el-bg-color);
+  --el-table-tr-bg-color: var(--el-bg-color);
+  --el-table-header-bg-color: var(--app-table-head-bg);
+  --el-table-header-text-color: var(--el-text-color-regular);
+  --el-table-text-color: var(--el-text-color-primary);
+  --el-table-border-color: var(--app-divider);
+  --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
+}
+
+html .el-table .el-table__cell:first-child .cell {
+  padding-left: 16px;
+}
+
+html .el-table .el-table__cell:last-child .cell {
+  padding-right: 16px;
+}
+
 /* 排序箭頭（2026-10-21，使用者：「排序的icon 請統一用兩個三角形 有排序的時候只呈現一個三角形 往上 或是往下 這個 icon的規範請整個專案
    統一」）。全站的 el-table 一起（篩選結果、持股、交易紀錄、財報），自己畫表頭的表格用 SharedSortIcon，兩邊大小、間距、顏色一樣：
    - 點擊範圍 24×24（WCAG 2.5.8；2026-10-08 量到原本只有 14px，原本只有篩選結果表調過）。Element 的兩個三角形絕對定位在框裡，框拉高後
