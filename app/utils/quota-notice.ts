@@ -9,10 +9,11 @@ import { ElMessage } from 'element-plus'
 // 彈窗裡用不了提示（焦點鎖住時按不到）的地方照抄同一句、自己接「看方案」（欄位設定的新增欄位）
 export const quotaReachedText = (what: string) => `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`
 
-export function showQuotaReached(what: string, detail?: string) {
+// duration：外觀設定的提示預覽傳 0（一直開著，比較設計用）
+export function showQuotaReached(what: string, detail?: string, duration = 8000) {
   const instance = ElMessage({
     type: 'warning',
-    duration: 8000,
+    duration,
     showClose: false,
     message: h('span', { class: 'app-toast' }, [
       // 「看方案」接在句點後面（2026-10-22，使用者：「那個看方案 直接接在句點後面 然後顯眼點?」）：句子的一部分，不另佔一格，

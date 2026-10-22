@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Moon, Sunny } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import type { MarketConvention, ThemeColor } from '~/composables/theme/useAppTheme'
 import type { TextScale } from '~/composables/theme/useTextScale'
 
@@ -72,6 +73,35 @@ const MOCK_CHANGES = [1.2, -0.8, 0.6, -1.6, 2.1, -0.4, 0.9, -1.2, 1.8, -0.7, 0.5
 const MOCK_TREND = MOCK_CHANGES.map((_, i) => {
   const window = MOCK_CHANGES.slice(Math.max(0, i - 2), i + 1)
   return window.reduce((sum, v) => sum + v, 0) / window.length
+})
+
+// 提示訊息預覽（2026-10-23，使用者：「appearance 加上一個選項 可以把 message 打開，只在開發環境顯示，這樣我好比較設計的效果」）：
+// 全站每一種提示一起打開、一直開著，切換上面的設定時直接比較。用的是真的負責函式（show-error-message.ts、undo-toast.ts、
+// quota-notice.ts、watchLoadFailure），看到的就是全站實際的樣子。只在正式環境以外出現：本機 dev（site env development）與
+// DEV 站（apphosting.yaml 的 NUXT_SITE_ENV=preview）；正式站沒設就是 production，不畫
+const showDevTools = useSiteConfig().env !== 'production'
+const messagesOpen = ref(false)
+// 復原那則照實倒數 10 秒，倒數完再開一次（看得到倒數的樣子）
+function openUndoPreview() {
+  undoToast('已刪除「存股名單」，裡面的 6 檔一起刪除。', () => {}, () => {
+    if (messagesOpen.value) openUndoPreview()
+  })
+}
+watch(messagesOpen, (open) => {
+  if (!open) return ElMessage.closeAll()
+  ElMessage({ type: 'success', message: '已儲存。', duration: 0 })
+  showClosableMessage('已複製分享連結。', 'info')
+  showClosableMessage('有 2 檔沒有收盤價，市值先不算進去。', 'warning')
+  showErrorMessage('儲存失敗，請稍後再試。')
+  showQuotaReached('觀察清單', undefined, 0)
+  openUndoPreview()
+})
+// 讀取失敗（右下角、不阻斷的那一種）：照實撐過寬限期（8 秒）才出現；關掉開關或離開頁面就收
+watchLoadFailure('appearance-message-preview', () => messagesOpen.value, () => Promise.resolve(), { scope: 'section' })
+onBeforeUnmount(() => {
+  if (!messagesOpen.value) return
+  messagesOpen.value = false
+  ElMessage.closeAll()
 })
 
 const previewOption = computed(() => {
@@ -228,6 +258,16 @@ const previewOption = computed(() => {
         <SharedChart class="appearance-page__preview-chart" :option="previewOption" autoresize aria-label="漲跌顏色預覽圖表" />
       </div>
     </section>
+
+    <!-- 只在正式環境以外（見 script 的 showDevTools） -->
+    <section v-if="showDevTools" class="appearance-page__section">
+      <h2 class="app-page__h2 appearance-page__section-title">提示訊息（開發環境）</h2>
+      <label class="appearance-page__toggle">
+        <el-switch v-model="messagesOpen" />
+        <span>打開全站每一種提示</span>
+      </label>
+      <p class="appearance-page__note">打開後切換上面的設定直接比較。復原每 10 秒倒數完重開一次；讀取失敗照實等 8 秒才出現。</p>
+    </section>
   </div>
 </template>
 
@@ -317,5 +357,18 @@ const previewOption = computed(() => {
 .appearance-page__preview-chart {
   height: 12.5rem;
   width: 100%;
+}
+
+.appearance-page__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.appearance-page__note {
+  margin: 0;
+  color: var(--el-text-color-regular);
 }
 </style>
