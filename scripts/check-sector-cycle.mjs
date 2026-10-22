@@ -55,17 +55,8 @@ const reference = await get(`${BUSINESS}/macro/business-cycle-reference-dates`)
 const nextMonth = ym => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}` }
 const toIndex = ym => { const [y, m] = ym.split('-').map(Number); return y * 12 + m }
 const span = (from, to) => toIndex(to) - toIndex(from) + 1
-// 上游已知的錯，回報後等修正。修好了這裡會失敗，提醒把那一筆拿掉
-const KNOWN_UPSTREAM_ERRORS = {
-  // 高峰寫成 2014-01；國發會是 2014-10（2012-01 起 33 個月，跟同一筆的擴張 33、收縮 16 個月一致）。2026-10-21 本 check 抓到；
-  // analysis-ts 核對過是 gov-ts 的 export.v_business_cycle_reference_dates 就寫錯（analysis-ts 原樣轉發），已轉給 gov-ts
-  14: 'peak 2014-01 should be 2014-10'
-}
+// 第 14 次的高峰曾寫成 2014-01（國發會 2014-10），2026-10-21 本 check 抓到，gov-ts 2026-10-22 更正
 for (const cycle of reference.entries) {
-  if (KNOWN_UPSTREAM_ERRORS[cycle.cycleNo]) {
-    assert.notEqual(span(nextMonth(cycle.troughStart), cycle.peak), cycle.expansionMonths, `cycle ${cycle.cycleNo} is fixed upstream (${KNOWN_UPSTREAM_ERRORS[cycle.cycleNo]}): remove it from KNOWN_UPSTREAM_ERRORS`)
-    continue
-  }
   if (cycle.peak && cycle.expansionMonths != null) assert.equal(span(nextMonth(cycle.troughStart), cycle.peak), cycle.expansionMonths, `cycle ${cycle.cycleNo} expansion months`)
   if (cycle.peak && cycle.troughEnd && cycle.contractionMonths != null) assert.equal(span(nextMonth(cycle.peak), cycle.troughEnd), cycle.contractionMonths, `cycle ${cycle.cycleNo} contraction months`)
 }
@@ -77,7 +68,7 @@ const industry = await get(`${APP}/api/hub/industry/${SECTORS[0]}`)
 const revenueMonths = industry.revenueTrend.entries.map(entry => entry.yearMonth)
 assert.deepEqual(industry.businessCycle.contractions, within(revenueMonths[0], revenueMonths.at(-1)), 'industry page contractions')
 assert.ok(Object.keys(industry.businessCycle.coincident).length > 24, 'industry page: coincident by month')
-console.log(`ok heatmap ${summary.months.length} months; contractions ${summary.contractions.map(p => `${p.from}～${p.to ?? '…'}`).join('、')}; ${reference.entries.length - Object.keys(KNOWN_UPSTREAM_ERRORS).length} cycles' month counts match, known upstream errors: ${Object.keys(KNOWN_UPSTREAM_ERRORS).join('、') || 'none'}`)
+console.log(`ok heatmap ${summary.months.length} months; contractions ${summary.contractions.map(p => `${p.from}～${p.to ?? '…'}`).join('、')}; ${reference.entries.length} cycles' month counts match`)
 
 // 形狀：每列都有兩個數字或明確的 null，月份字串遞增
 assert.ok(summary.sectors.length >= 30, `only ${summary.sectors.length} sectors`)
