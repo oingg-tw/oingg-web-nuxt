@@ -20,6 +20,9 @@ const pending = ref(false)
 // 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框
 watchLoadFailure('holdings-statistics', () => (performance.value && !performance.value.ok ? performance.value.error ?? null : null), () => loadPerformance())
 
+// 大盤是哪一個指數：含息（業務中台 returnBasis total）時是加權報酬指數，逐日比對與下面的統計都是它
+const indexName = computed(() => benchmarkName(isTotalReturn(performance.value)))
+
 async function loadPerformance() {
   pending.value = true
   performance.value = await fetchPerformance(range.value[0], range.value[1])
@@ -100,9 +103,9 @@ const adjustedRows = computed(() => {
           <section aria-labelledby="statistics-relative-title" :aria-busy="loading">
             <h2 id="statistics-relative-title" class="statistics-page__section-title">相對大盤的統計</h2>
             <p class="statistics-page__note">
-              用實際的每日報酬跟加權指數逐日比對，依 <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">240</span><template v-else>{{ report!.benchmarkComparison.sampleDays }}</template> 個交易日計算。
+              用實際的每日報酬跟{{ indexName }}逐日比對，依 <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">240</span><template v-else>{{ report!.benchmarkComparison.sampleDays }}</template> 個交易日計算。
             </p>
-            <HoldingsMetricTable caption="持股相對加權指數的統計" :rows="comparisonRows" value-label="數值" :loading="loading" />
+            <HoldingsMetricTable :caption="`持股相對${indexName}的統計`" :rows="comparisonRows" value-label="數值" :loading="loading" />
           </section>
 
           <section aria-labelledby="statistics-adjusted-title" :aria-busy="loading">

@@ -145,6 +145,9 @@ export interface HoldingDividendsResult {
 export interface PerformanceResult {
   from: string
   to: string
+  // 口徑（業務中台 ae4c135，2026-10-23）："total" ＝持股的現金股利在除息日計入、大盤用加權報酬指數；舊版沒有這個欄位＝都不含息、
+  // 價格型加權指數。判斷與名稱在 utils/holdings-summary.ts 的 isTotalReturn／benchmarkName
+  returnBasis?: 'total' | 'price'
   // 期間時間加權報酬（小數字串，6 位）；整段沒有持股時是 null
   twr: string | null
   // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）

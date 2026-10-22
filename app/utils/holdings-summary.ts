@@ -113,6 +113,12 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
   }
 }
 
+// ---- 報酬與大盤、績效統計的口徑（2026-10-23，業務中台 ae4c135；使用者選兩邊都含息：「比較接近用戶的真實報酬」）----
+// returnBasis "total"：持股的現金股利在除息日計入、大盤用加權報酬指數（/market/taiex-daily-price 的 totalReturnClose）；舊版沒有這個
+// 欄位＝都不含息、價格型加權指數。還沒讀到時當成含息（現在的業務中台都是），表頭與註腳才不會從「加權指數」換成「加權報酬指數」
+export const isTotalReturn = (outcome: { ok: true; result: { returnBasis?: string } } | { ok: false } | null | undefined): boolean => !outcome?.ok || outcome.result.returnBasis === 'total'
+export const benchmarkName = (totalReturn: boolean): string => (totalReturn ? '加權報酬指數' : '加權指數')
+
 // ---- 與大盤比較：把加權指數對齊到持股的累積報酬 ----
 //
 // 兩條線從**同一天**起算：持股第一次有值的那一天（期間中才開始投資的人，前面那段沒有報酬可比）。

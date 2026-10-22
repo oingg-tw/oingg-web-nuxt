@@ -23,8 +23,8 @@ const range = useHoldingsRange()
 const performance = ref<PerformanceOutcome | null>(null)
 const performancePending = ref(false)
 // 加權指數日收盤（公開資料、這一頁抓一次）。2,100 筆約 8 年，等於個股日線的深度上限——
-// 比那更早的期間 業務中台 本來就會回 400。
-const taiex = ref<Map<string, number> | null>(null)
+// 比那更早的期間 業務中台 本來就會回 400。價格型（close）與報酬指數（totalReturnClose，含息）兩條都留，照業務中台的 returnBasis 用
+const taiex = ref<{ price: Map<string, number>; total: Map<string, number> } | null>(null)
 const TAIEX_ROWS = 2100
 const taiexError = ref<unknown>(null)
 
@@ -37,10 +37,13 @@ async function loadPerformance() {
     fetchPerformance(range.value[0], range.value[1]),
     taiex.value
       ? null
-      : apiFetch<{ entries: { tradeDate: string; close: string | number }[] }>('/market/taiex-daily-price', { query: { interval: 'daily', limit: TAIEX_ROWS } })
+      : apiFetch<{ entries: { tradeDate: string; close: string | number; totalReturnClose?: string | number | null }[] }>('/market/taiex-daily-price', { query: { interval: 'daily', limit: TAIEX_ROWS } })
           .then((response) => {
             taiexError.value = null
-            taiex.value = new Map(response.entries.map(entry => [entry.tradeDate, Number(entry.close)] as const).filter(([, close]) => Number.isFinite(close)))
+            // null 不能變成 0（Number(null)）：沒有值的那天整天不列
+            const series = (pick: (entry: typeof response.entries[number]) => string | number | null | undefined) =>
+              new Map(response.entries.map(entry => [entry.tradeDate, pick(entry) == null ? Number.NaN : Number(pick(entry))] as const).filter(([, close]) => Number.isFinite(close)))
+            taiex.value = { price: series(entry => entry.close), total: series(entry => entry.totalReturnClose) }
           })
           .catch((error) => {
             taiexError.value = error
@@ -62,11 +65,15 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   else performance.value = null
 }, { immediate: true })
 
+// 含息（returnBasis total）時大盤是加權報酬指數：走勢線與「時間加權報酬」那格是這一頁自己用指數日收盤算的，跟著換
+const totalReturn = computed(() => isTotalReturn(performance.value))
+const indexName = computed(() => benchmarkName(totalReturn.value))
+
 // 對齊規則與它的檢查在 utils/holdings-summary.ts 的 compareWithBenchmark。
 const comparison = computed(() => {
   const outcome = performance.value
   if (!outcome?.ok || !taiex.value) return null
-  const result = compareWithBenchmark(outcome.result.series, taiex.value)
+  const result = compareWithBenchmark(outcome.result.series, totalReturn.value ? taiex.value.total : taiex.value.price)
   const entries: LineChartEntry[] = result.points.map(point => ({
     label: point.date,
     values: {
@@ -77,10 +84,10 @@ const comparison = computed(() => {
   return { start: result.start, entries, benchmark: result.benchmark }
 })
 
-const comparisonSeries: LineSeriesSpec[] = [
+const comparisonSeries = computed<LineSeriesSpec[]>(() => [
   { code: 'portfolio', name: '你的持股', lineType: 'solid', symbol: 'circle', baseline: true },
-  { code: 'taiex', name: '加權指數', lineType: 'dashed', symbol: 'triangle' }
-]
+  { code: 'taiex', name: indexName.value, lineType: 'dashed', symbol: 'triangle' }
+])
 
 // 走勢圖的可及名稱：期間與終點的兩個數字（2026-10-07 a11y 盤點：原本沒有 role 與名稱）。同期間的逐年、逐月數字
 // 在下面的表格裡，圖不是唯一的資料路徑。
@@ -89,7 +96,7 @@ const chartLabel = computed(() => {
   if (!result) return ''
   const portfolio = holdingsMetricText(result.twr, 'signedPct', '－', 2)
   const benchmark = comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－'
-  return `${result.from} 到 ${result.to} 的累積報酬走勢：你的持股 ${portfolio}，同期加權指數 ${benchmark}`
+  return `${result.from} 到 ${result.to} 的累積報酬走勢：你的持股 ${portfolio}，同期${indexName.value} ${benchmark}`
 })
 
 function pctAxis(value: number | null): string {
@@ -142,7 +149,7 @@ const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value
 </script>
 
 <template>
-  <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期加權指數" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="performancePending && !performance">
+  <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期大盤" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="performancePending && !performance">
     <template #default="{ loading }">
 
       <HoldingsRangePicker :pending="performancePending" />
@@ -164,7 +171,7 @@ const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value
                  對照表跟下面逐年報酬同一個元件，中性色、不用漲跌色暗示好壞。
                  同日先放過一句答句「這樣進出，比同樣時間買賣大盤多／少 X 元」，使用者看到自己的數字：「這太傷心了請拿掉」——
                  不要把輸給大盤的金額寫成大字答句，只留表格裡的百分比 -->
-            <HoldingsMetricTable class="performance-page__pairs" caption="你的持股與加權指數的報酬對照" :rows="pairRows" market-label="加權指數" meaning-label="比的是" :loading="loading" />
+            <HoldingsMetricTable class="performance-page__pairs" :caption="`你的持股與${indexName}的報酬對照`" :rows="pairRows" :market-label="indexName" meaning-label="比的是" :loading="loading" />
 
             <StockMultiSeriesLineChart
               v-if="loading || comparison?.entries.length"
@@ -184,7 +191,7 @@ const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value
             </p>
 
             <p class="performance-page__footnote">
-              大盤不扣交易成本，你的手續費與證交稅算在你這邊；兩邊都不含股利。<template v-if="!loading && sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬。</template>
+              {{ totalReturn ? '兩邊都含現金股利：你的在除息日計入，大盤用加權報酬指數。' : '兩邊都不含股利。' }}大盤不扣交易成本，你的手續費與證交稅算在你這邊。<template v-if="!loading && sameFlowsOversold">你賣出的金額比同樣時間買大盤能拿回的還多，大盤那邊算不出資金加權報酬。</template>
             </p>
           </template>
         </template>
@@ -193,10 +200,10 @@ const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value
       <template v-if="loading || report">
         <section v-if="loading ? yearCountHint : yearlyRows.length" aria-labelledby="performance-period-title" :aria-busy="loading">
           <h2 id="performance-period-title" class="performance-page__section-title">逐年與逐月報酬</h2>
-          <HoldingsMetricTable caption="持股與加權指數的逐年報酬" :rows="loading ? skeletonYearRows : yearlyRows" :loading="loading" name-label="年度" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
+          <HoldingsMetricTable :caption="`持股與${indexName}的逐年報酬`" :rows="loading ? skeletonYearRows : yearlyRows" :loading="loading" name-label="年度" value-label="你的持股" :market-label="indexName" meaning-label="交易日數" />
           <details v-if="loading || monthlyRows.length" class="performance-page__details app-disclosure">
             <summary>逐月報酬<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（12 個月）</span><template v-else>（{{ monthlyRows.length }} 個月）</template></summary>
-            <HoldingsMetricTable caption="持股與加權指數的逐月報酬" :rows="monthlyRows" name-label="月份" value-label="你的持股" market-label="加權指數" meaning-label="交易日數" />
+            <HoldingsMetricTable :caption="`持股與${indexName}的逐月報酬`" :rows="monthlyRows" name-label="月份" value-label="你的持股" :market-label="indexName" meaning-label="交易日數" />
           </details>
         </section>
 
