@@ -282,7 +282,7 @@ export function findRoeField(categories: MetricCategory[]) {
 
 // ── 類股範圍 ───────────────────────────────────────────────────────────────────
 // 證交所類股是一個類別型條件（2026-10-15）：values 是類股代碼、exclude 是「排除這些類股」。跟指標條件是兩套分類系統，
-// 所以它在型錄裡是自己的一個分類（sectorCategory），送出時從條件裡拿出來、轉成 業務中台 的 sectorCodes／excludeSectorCodes。
+// 所以它不是上游型錄的指標，由前端加進「基本資料」（withSectorCondition），送出時從條件裡拿出來、轉成 業務中台 的 sectorCodes／excludeSectorCodes。
 export const SECTOR_FIELD_ID = 'sector.code'
 
 export function sectorSlot(id: number, codes: string[], exclude: boolean): TabFilterSlot {
@@ -300,22 +300,21 @@ export function sectorScopeFor(tab: Pick<ScreenerTab, 'slots'>): { sectorCodes: 
   return slot?.exclude ? { sectorCodes: [], excludeSectorCodes: codes } : { sectorCodes: codes, excludeSectorCodes: [] }
 }
 
-// 挑選面板裡的「類股」分類：只能當條件，不能當結果表的欄位（conditionOnly）
-export function sectorCategory(sectors: { code: string; name: string; companyCount: number }[]): MetricCategory {
-  return {
+// 挑選面板裡的「類股」：只能當條件，不能當結果表的欄位（conditionOnly）。放在型錄的「基本資料」裡、市場別後面（2026-10-22，使用者：
+//「為什麼 篩選指標 類股 不放在 基本資料中? 產業不算是基本資料嗎」——原本自成一個分類排最後）；型錄沒有基本資料時才自成一類
+export function withSectorCondition(categories: MetricCategory[], sectors: { code: string; name: string; companyCount: number }[]): MetricCategory[] {
+  const profile = categories.find(category => category.key === 'profile')
+  const metric = {
     key: 'sector',
     name: '類股',
-    sort: Number.MAX_SAFE_INTEGER,
-    metrics: [{
-      key: 'sector',
-      name: '類股',
-      path: 'sector',
-      unit: '',
-      sort: 0,
-      kind: 'categorical',
-      conditionOnly: true,
-      options: sectors.map(sector => ({ value: sector.code, label: `${sector.name}（${sector.companyCount}）` })),
-      fields: [{ key: 'code', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
-    }]
+    path: 'sector',
+    unit: '',
+    sort: Math.max(-1, ...(profile?.metrics ?? []).map(item => item.sort)) + 1,
+    kind: 'categorical' as const,
+    conditionOnly: true,
+    options: sectors.map(sector => ({ value: sector.code, label: `${sector.name}（${sector.companyCount}）` })),
+    fields: [{ key: 'code', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
   }
+  if (!profile) return [...categories, { key: 'sector', name: '類股', sort: Number.MAX_SAFE_INTEGER, metrics: [metric] }]
+  return categories.map(category => (category === profile ? { ...category, metrics: [...category.metrics, metric] } : category))
 }

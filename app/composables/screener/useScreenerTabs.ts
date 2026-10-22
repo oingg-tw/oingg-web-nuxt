@@ -591,7 +591,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   })
 
   // ---- ScreenerPageShell 要的形狀（ScreenerWorkspace）----
-  const categories = computed(() => [...(schema.value?.categories ?? []), sectorCategory(sectors.value)])
+  const categories = computed(() => withSectorCondition(schema.value?.categories ?? [], sectors.value))
   const presetItems = computed<PresetSelectItem[]>(() => tabs.value.map(tab => ({
     id: tab.id,
     name: tab.name,
