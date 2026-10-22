@@ -9,8 +9,10 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   insufficient_history: '可比較的歷史資料深度不足',
   // 營收年增率的兩支衍生指標（業務中台 2026-10-20 formulaVersion 2）：年增率主要來自去年同期異常低的月份不採用
   low_base: '去年同期基數異常低，這個月的年增率主要反映去年的低點，不採用',
-  // 年度每股拆解（analysis-ts 6bf86286，2026-10-22）：EPS 太小時反推的全年加權股數不準，不提供。資料是有的，不是尚無資料
-  eps_too_small_to_derive_shares: 'EPS 過小（絕對值不到 0.1 元），反推的全年加權股數誤差會超過 5%，不提供年度每股拆解',
+  // 年度每股拆解（analysis-ts 6bf86286，2026-10-22；同日規則變更 #36）：|EPS| 不到 0.3 元先試股本推算全年加權股數，推回的 EPS 要對得上年報；
+  // 沒採用時 0.1 元以上退回淨利反推（有值）。這個原因只在 |EPS| 不到 0.1 元又沒採用時出現：前一年底到本年四個季底有缺期（多半是只交
+  // 半年報的興櫃、年中掛牌），或推回的 EPS 對不上年報（analysis-ts 同日回覆，2020～2025 年 70 個：61 個缺期、9 個對不上）。資料是有的，不是尚無資料
+  eps_too_small_to_derive_shares: 'EPS 絕對值不到 0.1 元，用淨利反推股數誤差太大；改用股本推算時，前一年底到本年四個季底的財報有缺期，或推回的 EPS 跟年報對不上，所以不提供年度每股拆解',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
