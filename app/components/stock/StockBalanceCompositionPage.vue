@@ -9,8 +9,9 @@ import type { CashFlowCompositionPeriod, StockCashFlowCompositionResponse } from
 //
 // 金額從資產負債表原始科目加總，分組對著 analysis-ts 的占比指標反推、多檔實測對得上（見 shared/utils/balance-composition.ts）。
 // 圖與表的期別、近N年、單位在共用的 StockBalanceCompositionChart。答句固定講最新一季。金融業不分流動與非流動，拆不開就只說一句為什麼。
-// 現金流量的組成（cashFlow，2026-10-17）也是這一頁：資料走 cash-flow-composition、答句講最新一個年度的收入與支出各由什麼組成
-const props = defineProps<{ kind: 'current' | 'noncurrent' | 'debt' | 'equity' | 'cashFlow' }>()
+// 現金流量的組成（cashFlow，2026-10-17）也是這一頁：資料走 cash-flow-composition、答句講最新一個年度的收入與支出各由什麼組成。
+// 無形資產（intangible，2026-10-23，使用者：「個股瀏覽新增指標頁面 無形資產 用柱狀圖」）：只有合計一組柱子，答句是金額與占總資產比
+const props = defineProps<{ kind: 'current' | 'noncurrent' | 'debt' | 'equity' | 'cashFlow' | 'intangible' }>()
 
 // 合計名稱、各項名稱與 shareOfAssets 在 BALANCE_COMPOSITION_KINDS（指標速覽畫同一張圖，共用那一份）
 const KINDS = {
@@ -22,7 +23,9 @@ const KINDS = {
   // 新手專區連到每股淨值，那一頁有完整說明
   // 定義自己寫：型錄沒有「現金流量」本身這一支；新手專區連到營業現金流對淨利比
   cashFlow: { ...CASH_FLOW_COMPOSITION_KIND, shareOfAssets: false, topic: '現金流量的組成', pathSuffix: '/cash-flow-composition', titleKeywords: '現金流量組成收入與支出占比', metricCode: 'ocfToNetIncome', learnLabel: '營業現金流對淨利比怎麼看', guideTopic: '現金流量', definition: '現金流量表記錄一段期間內真正收到與付出的現金，分成營業、投資、籌資三種活動；這一頁把收入與支出各拆成幾個大項。' },
-  equity: { ...BALANCE_COMPOSITION_KINDS.equity, topic: '淨值組成', pathSuffix: '/equity-composition', titleKeywords: '淨值組成股本資本公積與保留盈餘', metricCode: 'equityRatio', learnMetricCode: 'bvps', learnLabel: '每股淨值怎麼看', definition: '淨值是公司的資產扣掉負債之後屬於股東的部分，也叫股東權益；這一頁拆的是歸屬母公司股東的那一份。' }
+  equity: { ...BALANCE_COMPOSITION_KINDS.equity, topic: '淨值組成', pathSuffix: '/equity-composition', titleKeywords: '淨值組成股本資本公積與保留盈餘', metricCode: 'equityRatio', learnMetricCode: 'bvps', learnLabel: '每股淨值怎麼看', definition: '淨值是公司的資產扣掉負債之後屬於股東的部分，也叫股東權益；這一頁拆的是歸屬母公司股東的那一份。' },
+  // 定義用型錄的無形資產占總資產比（括號裡列了專利、商標、軟體、客戶關係與商譽）
+  intangible: { ...BALANCE_COMPOSITION_KINDS.intangible, topic: '無形資產', pathSuffix: '/intangible-assets', titleKeywords: '無形資產商譽專利商標與軟體', metricCode: 'intangibleAssetsToAssets', learnLabel: '無形資產占比怎麼看' }
 } as const
 const page = KINDS[props.kind]
 const sectionId = `stock${page.pathSuffix.replace('/', '-')}`
@@ -58,7 +61,9 @@ const share = (thousand: number, totalAssets: number) => `${((thousand / totalAs
 
 const question = computed(() => (props.kind === 'cashFlow'
   ? `${stockShortName.value}（${code.value}）的現金從哪裡來、花到哪裡去？`
-  : `${stockShortName.value}（${code.value}）的${page.total}由哪些項目組成？`))
+  : props.kind === 'intangible'
+    ? `${stockShortName.value}（${code.value}）帳上有多少無形資產？`
+    : `${stockShortName.value}（${code.value}）的${page.total}由哪些項目組成？`))
 // 現金流量：收入與支出各列最大的三項與占比，最後是現金增減。只陳述數字，不評價
 const flowAnswer = (period: BalanceCompositionPeriod | CashFlowCompositionPeriod, picked: { total: number; parts: Record<string, number> }) => {
   const side = (sign: 1 | -1) => {
@@ -76,6 +81,7 @@ const answer = computed(() => {
   const picked = period && pick(period)
   if (!period || !picked) return null
   if (!('totalAssets' in period)) return flowAnswer(period, picked)
+  if (props.kind === 'intangible') return `${period.fiscalYear} Q${period.fiscalQuarter} 的無形資產 ${money(picked.total)}，占總資產 ${share(picked.total, period.totalAssets)}。`
   const base = page.shareOfAssets ? period.totalAssets : picked.total
   const parts = Object.keys(page.labels)
     .filter(key => (picked.parts[key] ?? 0) > 0)
@@ -85,9 +91,11 @@ const answer = computed(() => {
     ? `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total} ${money(picked.total)}，占總資產 ${share(picked.total, period.totalAssets)}：${parts.join('、')}。括號裡是占總資產的比率。`
     : `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total}（歸屬母公司權益）${money(picked.total)}：${parts.join('、')}。括號裡是占淨值的比率。`
 })
-const emptyAnswer = computed(() => (props.kind === 'equity' || props.kind === 'cashFlow'
-  ? `${stockShortName.value}目前沒有可以拆開的${props.kind === 'equity' ? '淨值' : '現金流量'}資料。`
-  : `${stockShortName.value}沒有可以拆開的${page.total}。銀行、保險、證券與金控的資產負債表不分流動與非流動，這一頁不適用。`))
+const emptyAnswer = computed(() => (props.kind === 'intangible'
+  ? `${stockShortName.value}近幾季的資產負債表沒有申報無形資產。`
+  : props.kind === 'equity' || props.kind === 'cashFlow'
+    ? `${stockShortName.value}目前沒有可以拆開的${props.kind === 'equity' ? '淨值' : '現金流量'}資料。`
+    : `${stockShortName.value}沒有可以拆開的${page.total}。銀行、保險、證券與金控的資產負債表不分流動與非流動，這一頁不適用。`))
 
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], page.metricCode)?.metric ?? null)
 const definition = computed(() => ('definition' in page ? page.definition : firstSentence(metricEntry.value?.description)))
@@ -115,7 +123,14 @@ const footerLinks = computed(() => props.kind === 'cashFlow' ? [
   { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` }
 ])
 
-const description = computed(() => clampDescription(answer.value ?? emptyAnswer.value))
+// 無形資產的答句只有一句，當描述太短（搜尋結果的摘要要 50 字以上）：補上資料最早那一期，在搜尋結果就看得到這幾年的變化
+const earliestClause = computed(() => {
+  const first = periods.value.find(period => pick(period) !== null)
+  const picked = first && pick(first)
+  if (props.kind !== 'intangible' || !first || !picked || !('totalAssets' in first) || first === latestPeriod.value) return ''
+  return `資料最早的 ${first.fiscalYear} Q${first.fiscalQuarter} 是 ${money(picked.total)}，占總資產 ${share(picked.total, first.totalAssets)}；每季底的金額與占比列在表格裡。`
+})
+const description = computed(() => clampDescription(answer.value ? `${answer.value}${earliestClause.value}` : emptyAnswer.value))
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: page.topic, titleKeywords: page.titleKeywords, pathSuffix: page.pathSuffix, stock, summary, description, sectorCode })
 </script>

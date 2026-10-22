@@ -248,6 +248,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '負債比率', perspective: '佔比', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
       { label: '流動資產組成', perspective: '組成', to: code => `/stock/${code}/current-asset-composition`, hook: '一年內能變現的資產，是現金、應收帳款還是存貨' },
       { label: '非流動資產組成', perspective: '組成', to: code => `/stock/${code}/non-current-asset-composition`, hook: '長期資產是廠房設備、轉投資還是無形資產' },
+      // 沒有 perspective：它是資產負債表上一科的金額（同月營收的理由），占總資產比寫在表格與答句裡
+      { label: '無形資產', to: code => `/stock/${code}/intangible-assets`, hook: '專利、商標、軟體，以及併購時多付的商譽，帳上記了多少' },
       { label: '負債組成', perspective: '組成', to: code => `/stock/${code}/debt-composition`, hook: '借來的錢裡，一年內要還的占多少' },
       { label: '流動比率', perspective: '倍數', to: code => `/stock/${code}/current-ratio`, hook: '一年內要還的錢，手上一年內能變現的資產夠不夠' },
       { label: '速動比率', perspective: '倍數', to: code => `/stock/${code}/quick-ratio`, hook: '同上，但不把還沒賣掉的存貨算進去' },

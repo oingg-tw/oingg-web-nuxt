@@ -9,6 +9,8 @@ export interface BalanceCompositionPeriod {
   assets: AssetComposition | null
   debt: DebtComposition | null
   equity: EquityComposition | null
+  // 無形資產（含商譽）這一科的金額（2026-10-23 無形資產頁）。直接讀科目、不經流動／非流動的拆分，金融業也有；沒申報是 null
+  intangibleAssets: number | null
 }
 
 export interface StockBalanceCompositionResponse {

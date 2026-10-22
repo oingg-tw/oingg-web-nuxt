@@ -23,7 +23,8 @@ const toPeriod = (statement: FinancialStatementResponse | null): BalanceComposit
     totalAssets,
     assets: assetCompositionOf(rows),
     debt: debtCompositionOf(rows),
-    equity: equityCompositionOf(rows)
+    equity: equityCompositionOf(rows),
+    intangibleAssets: rows.intangible_assets_and_goodwill == null ? null : Number(rows.intangible_assets_and_goodwill)
   }
 }
 

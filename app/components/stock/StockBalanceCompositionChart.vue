@@ -27,6 +27,8 @@ const isFlow = computed(() => props.kind === 'cashFlow')
 const kindDef = computed(() => (props.kind === 'cashFlow' ? CASH_FLOW_COMPOSITION_KIND : BALANCE_COMPOSITION_KINDS[props.kind]))
 const labels = computed(() => kindDef.value.labels)
 const totalLabel = computed(() => kindDef.value.total)
+// 只有合計、沒有分項（無形資產，2026-10-23）：合計自己就是那一組柱子，表格只有一欄，提示框不再重複寫合計
+const single = computed(() => Object.keys(labels.value).length === 0)
 const shareOfAssets = computed(() => 'shareOfAssets' in kindDef.value && kindDef.value.shareOfAssets)
 
 // 現金流量預設年度（單季的現金流很跳：股利、還債集中在某一季）；還沒有完整一年的公司沒有年度那一份，就從單季開始，不然整張圖不出現
@@ -63,7 +65,9 @@ const unit = computed(() => {
   const max = Math.max(0, ...shown.value.flatMap(row => [Math.abs(row.total), ...Object.values(row.parts).map(Math.abs)]))
   return max >= 1e5 ? { divisor: 1e5, label: '億元' } : { divisor: 10, label: '萬元' }
 })
-const layers = computed(() => order.value.map(key => ({ name: labels.value[key]!, values: shown.value.map(row => (row.parts[key] ?? 0) / unit.value.divisor) })))
+const layers = computed(() => (single.value
+  ? [{ name: totalLabel.value, values: shown.value.map(row => row.total / unit.value.divisor) }]
+  : order.value.map(key => ({ name: labels.value[key]!, values: shown.value.map(row => (row.parts[key] ?? 0) / unit.value.divisor) }))))
 
 const money = (thousand: number) => formatMoney(thousand * 1000)
 const table = computed(() => historyTableText({
@@ -106,7 +110,7 @@ const cell = (thousand: number, row: Row) => {
         :unit="unit.label"
         :total-name="totalLabel"
         :value-formatter="value => money(value * unit.divisor)"
-        :tooltip-header="index => `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`"
+        :tooltip-header="index => (single ? `${shown[index]?.label}` : `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`)"
       />
     </SharedChartCard>
     <StockQuestionSection v-if="!chartOnly" :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
@@ -116,8 +120,9 @@ const cell = (thousand: number, row: Row) => {
         <thead>
           <tr>
             <th scope="col">期別</th>
-            <th scope="col">{{ totalLabel }}</th>
-            <th v-for="key in order" :key="key" scope="col">{{ labels[key] }}</th>
+            <!-- 數字欄的表頭跟數字一起靠右（同股利歷史表）；無形資產只有這一欄、很寬，靠左的話表頭與數字隔整張表 -->
+            <th scope="col" class="seo-table__num">{{ totalLabel }}</th>
+            <th v-for="key in order" :key="key" scope="col" class="seo-table__num">{{ labels[key] }}</th>
           </tr>
         </thead>
         <tbody>

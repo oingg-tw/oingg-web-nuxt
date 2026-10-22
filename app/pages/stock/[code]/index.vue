@@ -55,6 +55,7 @@ const SPECIAL_FIELDS: Record<string, string> = {
   'cash-flow-composition': 'ocfPerShare.TTM',
   'current-asset-composition': 'currentAssetsToAssets.Q',
   'non-current-asset-composition': 'nonCurrentAssetsToAssets.Q',
+  'intangible-assets': 'intangibleAssetsToAssets.Q',
   'debt-composition': 'debtRatio.Q',
   'solvency': 'currentRatio.Q',
   'cash-cycle': 'cashConversionCycle.TTM'
@@ -79,6 +80,7 @@ const VALUE_PREFIX: Record<string, string> = {
   'cash-flow-composition': '每股營業現金流 ',
   'current-asset-composition': '流動資產占總資產比 ',
   'non-current-asset-composition': '非流動資產占總資產比 ',
+  'intangible-assets': '無形資產占總資產比 ',
   'debt-composition': '負債比率 ',
   'solvency': '流動比率 ',
   'cash-cycle': '現金轉換循環 '

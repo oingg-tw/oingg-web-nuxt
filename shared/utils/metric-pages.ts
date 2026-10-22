@@ -270,7 +270,7 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
-  | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' }
+  | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' | 'intangible' }
   | { kind: 'dividend' | 'monthly-revenue' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
@@ -299,7 +299,9 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡
   'debt-composition': { topic: '負債組成', chart: { kind: 'balance', part: 'debt' } },
   'current-asset-composition': { topic: '流動資產組成', chart: { kind: 'balance', part: 'current' } },
-  'non-current-asset-composition': { topic: '非流動資產組成', chart: { kind: 'balance', part: 'noncurrent' } }
+  'non-current-asset-composition': { topic: '非流動資產組成', chart: { kind: 'balance', part: 'noncurrent' } },
+  // 無形資產（2026-10-23）：同一套頁面與圖，只有合計一組柱子
+  'intangible-assets': { topic: '無形資產', chart: { kind: 'balance', part: 'intangible' } }
   // 三大報表四頁（financial-statements…）不在這裡：只有表格，也不是 related 的目的地
 }
 

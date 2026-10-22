@@ -178,12 +178,16 @@ export const BALANCE_COMPOSITION_KINDS = {
   current: { total: '流動資產', labels: CURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true },
   noncurrent: { total: '非流動資產', labels: NONCURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true },
   debt: { total: '負債', labels: DEBT_PART_LABELS as Record<string, string>, shareOfAssets: true },
-  equity: { total: '淨值', labels: EQUITY_PART_LABELS as Record<string, string>, shareOfAssets: false }
+  equity: { total: '淨值', labels: EQUITY_PART_LABELS as Record<string, string>, shareOfAssets: false },
+  // 無形資產（2026-10-23，使用者：「個股瀏覽新增指標頁面 無形資產 用柱狀圖」）：只有合計、沒有分項——商譽與其他無形資產的拆分只有
+  // 少數公司申報（量 10 家最新一季只有 1101 有），所以圖是一組柱子、表格一欄
+  intangible: { total: '無形資產', labels: {} as Record<string, string>, shareOfAssets: true }
 } as const
 export type BalanceCompositionKind = keyof typeof BALANCE_COMPOSITION_KINDS
 
 // 從一期取出這一塊的合計與各項（千元）；拆不開回 null
-export function pickBalanceComposition(kind: BalanceCompositionKind, period: { assets: AssetComposition | null; debt: DebtComposition | null; equity: EquityComposition | null }): { total: number; parts: Record<string, number> } | null {
+export function pickBalanceComposition(kind: BalanceCompositionKind, period: { assets: AssetComposition | null; debt: DebtComposition | null; equity: EquityComposition | null; intangibleAssets: number | null }): { total: number; parts: Record<string, number> } | null {
+  if (kind === 'intangible') return period.intangibleAssets === null ? null : { total: period.intangibleAssets, parts: {} }
   if (kind === 'debt') return period.debt ? { total: period.debt.liabilities, parts: period.debt.parts } : null
   if (kind === 'equity') return period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null
   if (!period.assets) return null
