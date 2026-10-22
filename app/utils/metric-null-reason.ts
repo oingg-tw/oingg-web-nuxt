@@ -9,6 +9,8 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   insufficient_history: '可比較的歷史資料深度不足',
   // 營收年增率的兩支衍生指標（業務中台 2026-10-20 formulaVersion 2）：年增率主要來自去年同期異常低的月份不採用
   low_base: '去年同期基數異常低，這個月的年增率主要反映去年的低點，不採用',
+  // 年度每股拆解（analysis-ts 6bf86286，2026-10-22）：EPS 太小時反推的全年加權股數不準，不提供。資料是有的，不是尚無資料
+  eps_too_small_to_derive_shares: 'EPS 過小（絕對值不到 0.1 元），反推的全年加權股數誤差會超過 5%，不提供年度每股拆解',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
