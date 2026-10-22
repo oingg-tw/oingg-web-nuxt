@@ -16,7 +16,8 @@ import type { PresetChanges } from '~/utils/preset-changes'
 // 上方盡量少佔高度（使用者：「就是擔心上面的篩選太高，佔用了下面的結果表格」）：顯示欄位與欄位設定同一列。
 // 設定區 2026-10-19 重新設計（使用者：「我選了四個條件，screener-shell__setup 排版看起來就亂亂的」，選了「等寬兩欄」）：原本寬的時候
 // 我的篩選與條件左右並排，條件一多就在右邊那塊各自長短地往下疊、左下空一大塊。現在我的篩選固定在上面一列，條件在下面排成
-// 一樣寬的兩欄（ScreenerFilters），四個條件兩列就放完。
+// 一樣寬的兩欄（ScreenerFilters），四個條件兩列就放完。2026-10-22 使用者選方案 B（手機與電腦一起）：條件不再各自一個框，
+// 排成一張清單；手機上「我的篩選」併成一行（5 個條件時設定區從 721px 降下來）。
 const props = defineProps<{
   // 標題、說明、主詞都從 SCREENER_ZONE_ITEMS 讀（側欄與 /screener 首頁也讀它），三處的名稱不會分家
   universe: ScreenerUniverse
@@ -131,6 +132,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           <h2 :id="`${uid}-setup`" class="visually-hidden">篩選條件</h2>
           <ScreenerPresetSelect
             label="我的篩選"
+            compact-label="篩選"
             add-label="新增篩選"
             save-label="存成我的篩選"
             :items="screener.presetItems"
@@ -278,8 +280,11 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   color: var(--el-text-color-secondary);
 }
 
-/* 設定區一個框：我的篩選＋條件是同一件事（「篩什麼」），跟下面的結果分開。上下排列：我的篩選一列、條件在下面（2026-10-19） */
+/* 設定區一個框：我的篩選＋條件是同一件事（「篩什麼」），跟下面的結果分開。上下排列：我的篩選一列、條件清單在下面（2026-10-19；
+   清單 2026-10-22 方案 B）。container：窄於 720px 時「我的篩選」併成一行（ScreenerPresetSelect 的 compactLabel，同結果區）。
+   不會困住裡面的對話框：container-type 不帶 layout containment，「管理」的遮罩照樣蓋滿畫面 */
 .screener-shell__setup {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 12px;

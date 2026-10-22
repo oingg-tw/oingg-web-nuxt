@@ -76,26 +76,23 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
 
 <template>
   <div class="condition-pill" :class="{ 'condition-pill--empty': !fieldLabel }">
-    <!-- 名稱與值包一層：窄的時候在這層裡放不下就換行（值到第二行），寬的時候這層 display: contents，兩顆直接排進膠囊的格子 -->
-    <div class="condition-pill__main">
-      <!-- title 帶完整名稱：等寬格子裡名稱太長會加刪節號（可及名稱本來就是按鈕上的全名） -->
-      <button
-        type="button"
-        class="condition-pill__field"
-        :title="fieldLabel ? `${fieldLabel}：變更篩選項目` : '選擇篩選項目'"
-        @click="emit('changeField', $event.currentTarget as HTMLElement)"
-      >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
+    <!-- title 帶完整名稱：兩欄時名稱太長會加刪節號（可及名稱本來就是按鈕上的全名） -->
+    <button
+      type="button"
+      class="condition-pill__field"
+      :title="fieldLabel ? `${fieldLabel}：變更篩選項目` : '選擇篩選項目'"
+      @click="emit('changeField', $event.currentTarget as HTMLElement)"
+    >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
 
-      <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
-      <button
-        v-if="fieldLabel"
-        type="button"
-        class="condition-pill__value"
-        :title="valueText"
-        :aria-label="`${fieldLabel}：${valueText}`"
-        @click="emit('openValue', $event.currentTarget as HTMLElement)"
-      ><el-icon class="condition-pill__value-icon" aria-hidden="true"><EditPen /></el-icon>{{ valueText }}</button>
-    </div>
+    <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
+    <button
+      v-if="fieldLabel"
+      type="button"
+      class="condition-pill__value"
+      :title="valueText"
+      :aria-label="`${fieldLabel}：${valueText}`"
+      @click="emit('openValue', $event.currentTarget as HTMLElement)"
+    ><el-icon class="condition-pill__value-icon" aria-hidden="true"><EditPen /></el-icon>{{ valueText }}</button>
 
     <!-- A real sibling button, not part of either half above — removing a condition doesn't
          need the field picker or range editor to be open first. Icon sits in its own small
@@ -112,59 +109,45 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
 </template>
 
 <style scoped>
-/* 2026-10-19 起膠囊填滿 ScreenerFilters 的等寬格子（使用者選「等寬兩欄」）：
-   - 窄（手機）：名稱一行、值一行，兩段都可以再換行、不截斷；✕ 在右邊、跟著膠囊一樣高。以前三段硬擠一行，
-     「類股：包含 水泥工業（7）、食品工業（34）等 3 項」這種長的值會把名稱擠成一團、值本身也被切掉（375 量到）。
-   - 寬（768px 以上，跟 useIsDesktop 同一個斷點）：名稱｜值｜✕ 一行（grid）。名稱至少 4em、值要多寬給多寬，放不下才加刪節號
-     （名稱先讓、全名在 title 與可及名稱裡）——同一列的兩格要一樣高，不能有的換行有的不換。
+/* 條件清單的一列（2026-10-22 使用者選設定區方案 B「一張條件清單」，手機與電腦一起）：原本每個條件各自一個框，手機上名稱一行、
+   值一行，5 個條件就比一個畫面還高（721px）。現在不畫框，列與列之間一條細線；名稱｜值｜✕ 一行，跟持股總覽「一個面板、對齊的列」同一套。
+   名稱至少 4em、值要多寬給多寬：
+   - 一欄（手機）：放不下就在自己那一格折行，不截斷（「五年加權平均股東權益報酬率」折兩行、長的類股值也是）
+   - 兩欄（ScreenerFilters 760px 以上）：同一列的兩格要一樣高，不換行、放不下加刪節號（名稱先讓，全名在 title 與可及名稱裡）
    44px 高（觸控下限）：名稱、值、移除各自都是夠大的按鈕。 */
 .condition-pill {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(4em, 1fr) minmax(0, max-content) 44px;
   min-height: 44px;
-  border: 1px solid var(--el-border-color-lighter);
-  /* Squarish rounded corners rather than a fully-rounded capsule shape — slightly softer
-     than the original 8px, reads less "boxy" (reported: 看起來醜醜的) without drifting
-     toward a full pill/capsule. */
-  border-radius: 10px;
-  background: var(--el-fill-color-blank);
-  overflow: hidden;
-  transition: border-color 0.15s ease;
-}
-
-.condition-pill:hover {
-  border-color: var(--el-color-primary-light-3);
-}
-
-.condition-pill--empty {
-  border-style: dashed;
-}
-
-.condition-pill__main {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  min-width: 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 /* block 而不是 flex：刪節號只對 block 裡的文字有效（flex 容器裡的文字是匿名項目，text-overflow 套不上） */
 .condition-pill__field,
 .condition-pill__value {
   display: block;
-  min-height: 44px;
+  min-width: 0;
   padding: 10px 12px;
   font-size: 1rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
+  /* 折行時兩行一樣長：360 寬「股東權益報酬率」原本折成「股東權益報酬／率」 */
+  text-wrap: balance;
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
 }
 
+/* 名稱貼齊清單左緣（跟上面「我的篩選」的選單切齊） */
 .condition-pill__field {
-  flex: 1 1 auto;
+  padding-left: 0;
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.condition-pill__field:hover {
+  color: var(--el-color-primary);
 }
 
 .condition-pill--empty .condition-pill__field {
@@ -173,11 +156,10 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
 }
 
 /* 值看起來要能單獨改（2026-10-22，使用者：「condition-pill__main UIUX 樣式要改動 右邊數值的部分 太不像是可以單獨變更了」，方案頁選 3C）：
-   原本值跟 ✕ 共用一塊淺灰底，讀起來像刪除鈕的一部分。現在值前面一支筆、字下面虛線（滑過變實線），✕ 回到中性底色。
-   窄的時候值固定在第二行、整行寬（每一顆都一樣高；只有放不下才換行的話，有的一行有的兩行） */
+   值前面一支筆、字下面虛線（滑過變實線）。靠右：名稱左、值右（同卡片「名稱左、數字右」） */
 .condition-pill__value {
-  flex: 1 1 100%;
   color: var(--el-color-primary);
+  text-align: right;
   text-decoration: underline dashed;
   text-decoration-thickness: 1px;
   text-underline-offset: 5px;
@@ -193,35 +175,19 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
   vertical-align: -2px;
 }
 
-@media (min-width: 768px) {
-  .condition-pill {
-    display: grid;
-    grid-template-columns: minmax(4em, 1fr) minmax(0, max-content) 44px;
-  }
-
-  .condition-pill__main {
-    display: contents;
-  }
-
+@container (min-width: 760px) {
   .condition-pill__field,
   .condition-pill__value {
-    min-height: 0;
-    padding: 0 12px;
-    line-height: 42px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
-  /* 還沒選欄位的膠囊沒有值那一格：移除鈕照樣在最後一欄 */
-  .condition-pill__remove {
-    grid-column: -2;
-  }
 }
 
+/* 還沒選欄位的那一列沒有值那一格：移除鈕照樣在最後一欄 */
 .condition-pill__remove {
+  grid-column: -2;
   display: flex;
-  flex: 0 0 44px;
   align-items: center;
   justify-content: center;
   width: 44px;
