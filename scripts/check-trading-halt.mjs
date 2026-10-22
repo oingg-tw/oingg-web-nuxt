@@ -1,6 +1,6 @@
 // 摘要卡的停止買賣那一句（app/utils/trading-halt.ts）。前三例是 2026-10-22 業務中台 GET /stocks 的真實資料。Run: node scripts/check-trading-halt.mjs
 import assert from 'node:assert/strict'
-import { tradingHaltText } from '../app/utils/trading-halt.ts'
+import { delistingText, tradingHaltText } from '../app/utils/trading-halt.ts'
 
 // 1516 川飛：減資換發中
 assert.equal(tradingHaltText({ status: 'active', reason: 'capital_reduction', haltFrom: '2026-10-15', haltTo: '2026-10-23', resumeOn: '2026-10-27' }), '停止買賣中（減資換發，10/15～10/23），預計 10/27 恢復')
@@ -15,5 +15,11 @@ assert.equal(tradingHaltText({ status: 'active', reason: 'other', haltFrom: '202
 assert.equal(tradingHaltText({ status: 'resumed', reason: 'capital_reduction', haltFrom: '2026-10-15', haltTo: '2026-10-16', resumeOn: null }), null)
 assert.equal(tradingHaltText(null), null)
 assert.equal(tradingHaltText(undefined), null)
+
+// 1589 永冠-KY：已公告下市；生效後的 90 天內寫「已於」；沒見過的狀態不顯示
+assert.equal(delistingText({ status: 'announced', date: '2026-11-18' }), '已公告 11/18 下市')
+assert.equal(delistingText({ status: 'effective', date: '2026-11-18' }), '已於 11/18 下市')
+assert.equal(delistingText({ status: 'cancelled', date: '2026-11-18' }), null)
+assert.equal(delistingText(null), null)
 
 console.log('PASS: trading halt')

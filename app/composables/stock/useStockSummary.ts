@@ -1,4 +1,4 @@
-import type { TradingHalt } from '~/utils/trading-halt'
+import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 
 // GET /stocks/{symbol} — 業務中台's real quote endpoint (confirmed live 2026-09-14 by reading
 // oingg-bff-ts/src/domainBff/stock/stock.openapi.ts directly, after a reported "打2330出404" bug:
@@ -27,8 +27,9 @@ export interface StockSummary {
   symbol: string
   price: StockSummaryPrice | null
   valuation: StockSummaryValuation | null
-  // 停止買賣（2026-10-22 請 業務中台／analysis-ts 在這支帶出，形狀同 GET /stocks 每一列）；沒有停止買賣是 null
+  // 停止買賣與下市（2026-10-22 請 業務中台／analysis-ts 在這支帶出，形狀同 GET /stocks 每一列）；沒有是 null
   tradingHalt: TradingHalt | null
+  delisting: Delisting | null
 }
 
 interface RawStockQuote {
@@ -36,6 +37,7 @@ interface RawStockQuote {
   price: { tradeDate: string; close: string | null } | null
   valuation: { tradeDate: string; peRatio: string | null; pbRatio: string | null; dividendYield: string | null } | null
   tradingHalt?: TradingHalt | null
+  delisting?: Delisting | null
 }
 
 function toNumber(value: string | null | undefined): number | null {
@@ -73,7 +75,8 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
                 dividendYield: toNumber(raw.valuation.dividendYield)
               }
             : null,
-          tradingHalt: raw.tradingHalt ?? null
+          tradingHalt: raw.tradingHalt ?? null,
+          delisting: raw.delisting ?? null
         }
       } catch (error) {
         devWarn('stock-summary', `GET /api/cached/stocks/${current} unavailable`, error)

@@ -1,6 +1,6 @@
-// 停止買賣的一句話（2026-10-22，使用者：「做吧」——摘要卡股價下面一行灰字，同興櫃「沒有成交價」那句）。停止買賣期間股價與逐日指標
-// 都停住，讀者會以為資料壞了。資料是 業務中台 的 tradingHalt（analysis 依台北日期算好 status；admin-vue 的公司檢視寫法相同）。
-// 被 scripts/check-trading-halt.mjs 直接 import，所以零 import
+// 停止買賣與下市的一句話（2026-10-22，使用者：「做吧」「好」——摘要卡股價下面的灰字，同興櫃「沒有成交價」那句）。停止買賣期間股價與
+// 逐日指標都停住，讀者會以為資料壞了。資料是 業務中台 的 tradingHalt、delisting（analysis 依台北日期算好 status；admin-vue 的公司檢視
+// 寫法相同）。被 scripts/check-trading-halt.mjs 直接 import，所以零 import
 export interface TradingHalt {
   // 'active' 停止買賣中、'upcoming' 已公告還沒開始；其他值不顯示（說不出對的話）
   status: string
@@ -28,4 +28,20 @@ export function tradingHaltText(halt: TradingHalt | null | undefined): string | 
   const reason = halt.reason ? REASONS[halt.reason] : undefined
   const resume = halt.resumeOn ? `，預計 ${day(halt.resumeOn)} 恢復` : ''
   return `${halt.status === 'active' ? '停止買賣中' : '將停止買賣'}（${reason ? `${reason}，` : ''}${span}）${resume}`
+}
+
+// 下市：上游只給還沒生效的公告，加上 90 天內剛生效的（證交所會重複使用代號）
+export interface Delisting {
+  // 'announced' 已公告、還沒到；'effective' 已生效；其他值不顯示
+  status: string
+  date: string
+}
+
+// 日期只寫 M/D：公告到下市通常一兩個月，不會讀錯年
+export function delistingText(delisting: Delisting | null | undefined): string | null {
+  if (!delisting) return null
+  const day = `${Number(delisting.date.slice(5, 7))}/${Number(delisting.date.slice(8, 10))}`
+  if (delisting.status === 'announced') return `已公告 ${day} 下市`
+  if (delisting.status === 'effective') return `已於 ${day} 下市`
+  return null
 }
