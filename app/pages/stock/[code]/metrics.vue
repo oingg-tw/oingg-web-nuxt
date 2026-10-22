@@ -220,7 +220,7 @@ const { breadcrumbs } = useStockPageSeo({
         :id="section.id"
         open
         :key="section.id"
-        class="stock-metric-index-page__group"
+        class="stock-metric-index-page__group app-disclosure"
       >
         <summary>
           <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
@@ -364,19 +364,7 @@ const { breadcrumbs } = useStockPageSeo({
   scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 16px);
 }
 
-.stock-metric-index-page__group > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* 48px 是本站的觸控底線 */
-  min-height: 48px;
-  padding: 0 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
+/* 標題列（箭頭、44px、hover／focus）是 .app-disclosure（main.css）——2026-10-22 方案頁 1B 起加上箭頭，看得出可以收起來 */
 .stock-metric-index-page__group > :not(summary) {
   padding: 0 4px 16px;
 }
@@ -520,11 +508,60 @@ const { breadcrumbs } = useStockPageSeo({
     padding: 0;
   }
 
-  /* 圖示按鈕：觸控面積維持 48×48，文字進 aria-label。文字節點留著只是被藏起來，不是移除。 */
-  .stock-metric-index-page__pin {
-    min-width: 48px;
-    width: 48px;
+  /* 圖示按鈕：觸控面積 44×44，文字進 aria-label。文字節點留著只是被藏起來，不是移除。
+     沒有框（2026-10-22，使用者：「手機版本 個股 指標總覽 看起來髒髒的 有不必要的裝飾」，方案頁選 1B）：只剩 ＋，已釘選是實心圓裡的 ✓ */
+  .stock-metric-index-page__pin,
+  .stock-metric-index-page__pin.is-pinned,
+  .stock-metric-index-page__pin.is-pinned:hover:not(:disabled) {
+    min-width: 44px;
+    width: 44px;
+    min-height: 44px;
     padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--el-color-primary);
+  }
+
+  .stock-metric-index-page__pin .stock-metric-index-page__pin-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+  }
+
+  .stock-metric-index-page__pin.is-pinned .stock-metric-index-page__pin-icon {
+    background: var(--el-color-primary);
+    color: var(--app-on-primary);
+  }
+
+  /* 拿掉框線、底線與底色（1B）：表格不另塗底色、一列只留 tr 那一條線（原本 td 自己的線跟它錯開成兩條，沒有釘選鈕的那一列剩一小段），
+     名稱用主色加粗表示可以點、不加底線（整頁是一份連結清單） */
+  .seo-table,
+  :deep(.seo-table th[scope='row']) {
+    background: transparent;
+  }
+
+  :deep(.seo-table td) {
+    border-bottom: 0;
+  }
+
+  :deep(.seo-table__link) {
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  /* 分組跳轉：三欄的文字連結，不是 11 顆有框的膠囊 */
+  .stock-metric-index-page__jump {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 8px;
+  }
+
+  .stock-metric-index-page__jump-link {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    color: var(--el-color-primary-dark-2);
+    font-weight: 600;
   }
 
   .stock-metric-index-page__pin-text {
