@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Star, StarFilled, Share } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/stock/useStocks'
+import type { NormalizedCompanyProfile } from '~/composables/stock/useCompanyProfile'
 
 const props = defineProps<{
   stock: Stock
@@ -37,6 +38,14 @@ const { data: logoData } = await useAsyncData(
   { watch: [logoSymbol], default: () => null }
 )
 const logo = computed(() => logoData.value?.logo ?? null)
+
+// 面額不是 10 元的公司寫出實際面額（2026-10-22，使用者選「頁尾一句＋摘要卡寫面額」）：簡稱後面的 * 就是這個意思（強生* 是 5 元）。
+// 讀頁面已經抓好的公司資料（useCompanyProfile 的同一個 key），不另外發請求；ETF、特別股頁沒有這份資料就不顯示
+const { data: companyProfile } = useNuxtData<NormalizedCompanyProfile | null>(`company-profile-${props.stock.code}`)
+const unusualParValue = computed(() => {
+  const par = companyProfile.value?.parValue
+  return par != null && par !== 10 ? par : null
+})
 
 // 加入觀察清單（2026-10-19 多組觀察清單）：星號按下去跳出勾選選單（WatchlistPickerPanel），這張卡就是唯一的負責者——原本 25 個頁面
 // 一路把 isFavorite／toggleFavorite 往下傳，現在卡片自己讀 useStocks。訪客按下去是登入。手機一列、桌機右上角各一顆，各自一個 popover
@@ -228,6 +237,7 @@ const qrDialogVisible = ref(false)
         <span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
+      <p v-if="unusualParValue !== null" class="summary-card__par-value">{{ shortName.includes('*') ? '名稱後的 *：' : '' }}每股面額 {{ unusualParValue }} 元，不是一般的 10 元</p>
       <!-- Price stacked above change/percent at mobile width (2026-09-16, "股價變動放在股價下面"),
            side by side on one baseline at desktop width — same two elements, CSS only. -->
       <!-- 沒有股價就整塊不渲染，而不是印「－」與「－ (－%)」（2026-10-01）。三個破折號看起來像壞掉，
@@ -468,6 +478,12 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
   color: var(--el-text-color-secondary);
 }
 
+.summary-card__par-value {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--el-text-color-secondary);
+}
+
 .summary-card__price {
   display: flex;
   flex-direction: column;
@@ -563,6 +579,10 @@ html.dark .summary-card__action-btn.el-button--warning.is-plain {
   .summary-card__legal-name {
     grid-column: 2;
     display: block;
+  }
+
+  .summary-card__par-value {
+    grid-column: 2;
   }
 
   .summary-card__price {
