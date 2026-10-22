@@ -37,6 +37,14 @@ import type { StockNavNode } from '~/utils/stock-page-nav'
 // server/api/__sitemap__/stocks.get.ts 的 INDEXABLE_SUFFIXES 就好，一行。
 const TOPIC = '指標總覽'
 
+// 「這些指標的數字是哪一期的？」那張表（期別對著型錄：負債比率、股價淨值比只有單季；本益比是近四季 EPS）
+const PERIOD_RULES = [
+  { kind: '損益表上的比率', examples: '毛利率、營業利益率', period: '近四季', reason: '單季會被淡旺季帶著走' },
+  { kind: '成長年增率', examples: '營收、淨利', period: '單季，跟去年同一季比', reason: '不跟上一季比：很多產業第四季本來就比第三季旺' },
+  { kind: '資產負債表上的數字', examples: '每股淨值、負債比率', period: '每季底那一天', reason: '是結算那一天的快照，沒有「近四季」' },
+  { kind: '股價倍數', examples: '本益比、股價淨值比', period: '財報公告那天的收盤價', reason: '不是今天的股價' }
+]
+
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
@@ -173,7 +181,7 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 有查詢字：平鋪的結果表，母項當第一欄。不動手風琴的 open 狀態（見 script 的註解）。 -->
       <template v-if="normalizedQuery">
         <SharedTableScroll v-if="matches.length" :label="`${stockShortName} ${code} 符合「${query.trim()}」的指標`">
-          <table class="seo-table">
+          <table class="seo-table stock-metric-index-page__links">
             <caption class="visually-hidden">{{ stockShortName }} {{ code }} 符合「{{ query.trim() }}」的指標</caption>
             <thead class="visually-hidden">
               <tr>
@@ -231,7 +239,7 @@ const { breadcrumbs } = useStockPageSeo({
                預算內。說明句塞進 summary 每列會變 72px，11 列就爆掉。 -->
           <p v-if="section.answer" class="stock-answer">{{ section.answer }}</p>
           <SharedTableScroll :label="`${stockShortName} ${code} 的${section.label}指標`">
-            <table class="seo-table" data-ssr-table>
+            <table class="seo-table stock-metric-index-page__links" data-ssr-table>
               <caption class="visually-hidden">{{ stockShortName }} {{ code }} 的{{ section.label }}指標</caption>
               <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
                    存在，caption 也還在。 -->
@@ -282,17 +290,32 @@ const { breadcrumbs } = useStockPageSeo({
     </StockQuestionSection>
 
     <!-- 「釘選的指標會跟著我的帳號嗎？」一段（含上移／下移排序清單）2026-10-07 依直接指示拿掉。 -->
+    <!-- 2026-10-23 從四條條列改成一張表（使用者：「stock-metric-timeframe 這邊也再設計下，現在看起來亂，沒整理過」）：種類｜看哪一期｜為什麼
+         三欄對齊，一眼比得出差別。同時改正「比率類（負債比率）預設近四季」：負債比率是資產負債表的時點數字，型錄只有單季 -->
     <StockQuestionSection
       id="stock-metric-timeframe"
       question="這些指標的數字是哪一期的？"
-      answer="看指標的性質而定，每一頁自己會寫清楚，這裡先講共用的規則。"
+      answer="看指標的性質而定，每一頁自己會寫清楚；共用的規則如下。"
     >
-      <ul class="stock-metric-index-page__note-list">
-        <li>比率類（毛利率、負債比率等）預設看近四季，因為單季會被淡旺季帶著走。</li>
-        <li>成長年增率一律是單季對去年同一季，不是跟上一季比——很多產業第四季本來就比第三季旺。</li>
-        <li>資產負債表的數字（每股淨值、負債比率）是每季結算那一天的快照，沒有「近四季」這個概念。</li>
-        <li>倍數類（本益比、股價淨值比）用的是財報公告那天的收盤價，不是今天的股價。</li>
-      </ul>
+      <SharedTableScroll label="指標的數字是哪一期的">
+        <table class="seo-table stock-metric-index-page__periods">
+          <caption class="visually-hidden">各種指標的數字是哪一期的</caption>
+          <thead>
+            <tr>
+              <th scope="col">指標的種類</th>
+              <th scope="col">看哪一期</th>
+              <th scope="col">為什麼</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="rule in PERIOD_RULES" :key="rule.kind">
+              <th scope="row">{{ rule.kind }}<span class="stock-metric-index-page__period-examples">{{ rule.examples }}</span></th>
+              <td>{{ rule.period }}</td>
+              <td>{{ rule.reason }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </SharedTableScroll>
     </StockQuestionSection>
   </StockPageShell>
 </template>
@@ -375,12 +398,70 @@ const { breadcrumbs } = useStockPageSeo({
   font-weight: 600;
 }
 
-.stock-metric-index-page__note-list {
-  margin: 0;
-  padding-left: 1.5em;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 期別表：說明要折行（.seo-table 預設不折），手機才不會整張左右捲；例子在種類下面一行、灰一階 */
+.stock-metric-index-page__periods th,
+.stock-metric-index-page__periods td {
+  white-space: normal;
+}
+
+.stock-metric-index-page__period-examples {
+  display: block;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+/* 手機：三欄擠在 343px 裡每格折好幾行，改成每一種兩行——種類（例子接在後面），下一行是看哪一期（粗）與為什麼。表頭只是看不見，
+   報讀照舊有欄名 */
+@media (max-width: 600px) {
+  .stock-metric-index-page__periods thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .stock-metric-index-page__periods,
+  .stock-metric-index-page__periods tbody {
+    display: block;
+  }
+
+  .stock-metric-index-page__periods tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--app-divider);
+  }
+
+  .stock-metric-index-page__periods tr:last-child {
+    border-bottom: 0;
+  }
+
+  .stock-metric-index-page__periods th,
+  .stock-metric-index-page__periods td {
+    padding: 0;
+    border: 0;
+  }
+
+  .stock-metric-index-page__periods th[scope='row'] {
+    grid-column: 1 / -1;
+    position: static;
+    background: transparent;
+  }
+
+  .stock-metric-index-page__period-examples {
+    display: inline;
+    margin-left: 8px;
+  }
+
+  .stock-metric-index-page__periods td:first-of-type {
+    font-weight: 600;
+  }
+
+  .stock-metric-index-page__periods td:last-of-type {
+    color: var(--el-text-color-regular);
+  }
 }
 
 .stock-metric-index-page__pin-cell {
@@ -442,14 +523,15 @@ const { breadcrumbs } = useStockPageSeo({
   cursor: not-allowed;
 }
 
-/* 全域的 .seo-table 把每一格設成 white-space: nowrap（數字欄要的就是那個），在這一頁會把說明文字
-   切掉。不改全域——41 處 data-ssr-table 在吃它——只在這一頁覆寫。 */
-:deep(.seo-table td),
-:deep(.seo-table th[scope='row']) {
+/* 指標清單（搜尋結果與各組的表，.stock-metric-index-page__links）自己的版面。只寫這個 class，不寫 .seo-table：原本寫的是整個
+   .seo-table，2026-10-23 加的期別表也被改成兩欄格子、手機上整張散掉。
+   全域的 .seo-table 把每一格設成 white-space: nowrap（數字欄要的就是那個），在這一頁會把說明文字切掉，只在這裡覆寫。 */
+.stock-metric-index-page__links td,
+.stock-metric-index-page__links th[scope='row'] {
   white-space: normal;
 }
 
-:deep(.seo-table th[scope='row']) {
+.stock-metric-index-page__links th[scope='row'] {
   width: 1%;
   white-space: nowrap;
   padding-right: 32px;
@@ -467,23 +549,28 @@ const { breadcrumbs } = useStockPageSeo({
    改版前這裡只把 table/tr/td 設成 display: block，而 .pin-cell 一條覆寫都沒有，於是那顆
    88×48 的按鈕變成獨立的一整橫列——量到的列高 132px，六成是它造成的。 */
 @media (max-width: 600px) {
-  .seo-table,
-  .seo-table tbody {
+  .stock-metric-index-page__links,
+  .stock-metric-index-page__links tbody {
     display: block;
     width: 100%;
   }
 
-  .seo-table tr {
+  /* 列與列之間的線是全站表格那一條淡的；左右 16px 跟卡片邊切齊 */
+  .stock-metric-index-page__links tr {
     display: grid;
     grid-template-columns: 1fr 48px;
     grid-template-areas: 'name pin' 'hook pin';
     align-items: center;
     column-gap: 8px;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    padding: 6px 12px 6px 16px;
+    border-bottom: 1px solid var(--app-divider);
   }
 
-  :deep(.seo-table th[scope='row']) {
+  .stock-metric-index-page__links tr:last-child {
+    border-bottom: 0;
+  }
+
+  .stock-metric-index-page__links th[scope='row'] {
     grid-area: name;
     display: block;
     width: auto;
@@ -535,16 +622,16 @@ const { breadcrumbs } = useStockPageSeo({
 
   /* 拿掉框線、底線與底色（1B）：表格不另塗底色、一列只留 tr 那一條線（原本 td 自己的線跟它錯開成兩條，沒有釘選鈕的那一列剩一小段），
      名稱用主色加粗表示可以點、不加底線（整頁是一份連結清單） */
-  .seo-table,
-  :deep(.seo-table th[scope='row']) {
+  .stock-metric-index-page__links,
+  .stock-metric-index-page__links th[scope='row'] {
     background: transparent;
   }
 
-  :deep(.seo-table td) {
+  .stock-metric-index-page__links td {
     border-bottom: 0;
   }
 
-  :deep(.seo-table__link) {
+  .stock-metric-index-page__links .seo-table__link {
     font-weight: 600;
     text-decoration: none;
   }
@@ -570,7 +657,7 @@ const { breadcrumbs } = useStockPageSeo({
 
   /* 全域讓 .seo-table 的第一個 th 黏在左邊（寬資料表要的），目錄頁不需要，而且 th 在這裡已經是
      display: block，黏著本來就失效。明寫出來免得以後有人以為它還在作用。 */
-  :deep(.seo-table tbody th:first-child) {
+  .stock-metric-index-page__links tbody th:first-child {
     position: static;
   }
 }
