@@ -1,3 +1,10 @@
+// 收起每張圖的提示框（2026-10-22，使用者：「手機版本 sidebar 展開時…手指點開的圖表的tooltip關掉」）。手指點開的提示框沒有「移開」可以收，
+// 會一直開著，而且 ECharts 提示框的 z-index（9999999）比任何遮罩、圖層都高。蓋住頁面的東西打開時呼叫；每張圖由 SharedChart 接收
+export const HIDE_CHART_TIPS = 'app:hide-chart-tips'
+export function hideChartTips(): void {
+  window.dispatchEvent(new Event(HIDE_CHART_TIPS))
+}
+
 // ECharts tooltips default to a white box, which reads as invisible white-on-white
 // against this app's light tooltip text — give them an explicit dark surface instead,
 // UNCONDITIONALLY regardless of the site's own light/dark theme (a floating tooltip

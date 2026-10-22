@@ -61,6 +61,8 @@ watch(
   async open => {
     if (!import.meta.client) return
     if (open) {
+      // 手指點開的圖表提示框會浮在圖層上面（見 chart-palette.ts 的 hideChartTips）
+      hideChartTips()
       returnFocusTo = document.activeElement as HTMLElement | null
       await nextTick()
       // The close button, not the panel: landing on the exit is what a reader who opened this by

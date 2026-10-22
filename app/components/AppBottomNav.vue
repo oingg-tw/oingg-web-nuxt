@@ -7,7 +7,7 @@
 // <details> 內容照樣在 markup 裡，drawer 沒打開就不在）。這段理由最早寫在 StockPageNav 2026-09-23 的註解。
 //
 // 這次補上的行為（原本只有個股頁有這條，而且以下都沒有）：
-//   - 點外面、按 Esc 會收起來，Esc 收起時焦點回到這條（<details> 本身只能點 summary 開關）
+//   - 點外面（遮罩）、按 Esc 會收起來，Esc 收起時焦點回到這條（<details> 本身只能點 summary 開關）
 //   - 換頁時收起來（同一個元件在不同路由間被重用時，<details> 會保持打開）
 //   - 展開的清單可以用鍵盤捲動（tabindex=0＋名稱；AppNavRail 早就有同樣的處理）
 //   - <body> 的底部留白與 scroll-padding 由這裡統一加（main.css 的 has-bottom-nav-bar），聚焦到底部的
@@ -29,8 +29,16 @@ function close(returnFocus: boolean) {
   if (returnFocus) summaryRef.value?.focus()
 }
 
-function onPointerDown(event: PointerEvent) {
-  if (open.value && detailsRef.value && !detailsRef.value.contains(event.target as Node)) close(false)
+// 展開時收起手指點開的圖表提示框：它浮在遮罩與清單上面（2026-10-22 使用者）
+function onToggle() {
+  open.value = !!detailsRef.value?.open
+  if (open.value) hideChartTips()
+}
+
+// 鍵盤 Tab 出了清單就收起來，焦點不會落到遮罩後面看不清楚的地方。點遮罩時焦點到 body（relatedTarget 是 null），那一下由遮罩自己收
+function onFocusOut(event: FocusEvent) {
+  const next = event.relatedTarget as Node | null
+  if (next && !detailsRef.value?.contains(next)) close(false)
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -40,14 +48,8 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
-  document.addEventListener('pointerdown', onPointerDown)
-  document.addEventListener('keydown', onKeydown)
-})
-onUnmounted(() => {
-  document.removeEventListener('pointerdown', onPointerDown)
-  document.removeEventListener('keydown', onKeydown)
-})
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 const route = useRoute()
 watch(() => route.fullPath, () => close(false))
@@ -56,7 +58,11 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
 </script>
 
 <template>
-  <details ref="detailsRef" class="app-bottom-nav" @toggle="open = !!detailsRef?.open">
+  <!-- 遮罩（2026-10-22，使用者：「手機版本 sidebar 展開時希望後面有overlay阻擋操作」）：原本點外面是 pointerdown 就收，那一下同時落在後面的
+       連結或圖表上（換頁、點開提示框）。現在後面整片（連頁首）由遮罩接住，點遮罩只收清單；收在 click 而不是 pointerdown，手指放開時遮罩
+       還在，那一下不會穿到後面。在 <details> 前面、同一個 z-index：清單畫在遮罩上面 -->
+  <div v-if="open" class="app-bottom-nav__overlay" aria-hidden="true" @click="close(false)" />
+  <details ref="detailsRef" class="app-bottom-nav" @toggle="onToggle" @focusout="onFocusOut">
     <summary ref="summaryRef" class="app-bottom-nav__bar">
       <span class="app-bottom-nav__label">其他頁面</span>
       <span v-if="props.current" class="app-bottom-nav__current">目前：{{ props.current }}</span>
@@ -69,6 +75,15 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
 </template>
 
 <style scoped>
+/* 跟對話框同一個遮罩色。touch-action: none：手指在遮罩上拖不會捲動後面的頁面 */
+.app-bottom-nav__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--el-overlay-color-lighter);
+  touch-action: none;
+}
+
 .app-bottom-nav {
   position: fixed;
   left: 0;
@@ -139,18 +154,22 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
 .app-bottom-nav__sheet {
   max-height: 60dvh;
   overflow-y: auto;
+  /* 捲到清單盡頭時不接著捲後面的頁面 */
+  overscroll-behavior: contain;
   border-top: 1px solid var(--el-border-color-lighter);
 }
 
 /* 寬螢幕交給 AppNavRail。斷點與站上其他七處一致（見 layouts/default.vue）。 */
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
-  .app-bottom-nav {
+  .app-bottom-nav,
+  .app-bottom-nav__overlay {
     display: none;
   }
 }
 
 @media print {
-  .app-bottom-nav {
+  .app-bottom-nav,
+  .app-bottom-nav__overlay {
     display: none;
   }
 }

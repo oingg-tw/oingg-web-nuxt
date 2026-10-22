@@ -68,6 +68,15 @@ function withStaticLegend(option: Record<string, unknown>): Record<string, unkno
 
 const scaledOption = computed(() => withStaticLegend(scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>))
 
+// 有東西蓋住頁面時收起提示框與指示線（hideChartTips，見 chart-palette.ts）。只發 hideTip 的話軸上的指示線還在
+const chartRef = ref<InstanceType<typeof VChart> | null>(null)
+function hideTip() {
+  chartRef.value?.dispatchAction({ type: 'hideTip' })
+  chartRef.value?.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' })
+}
+onMounted(() => window.addEventListener(HIDE_CHART_TIPS, hideTip))
+onUnmounted(() => window.removeEventListener(HIDE_CHART_TIPS, hideTip))
+
 const label = computed(() => {
   if (typeof attrs['aria-label'] === 'string' && attrs['aria-label']) return attrs['aria-label']
   const series = props.option.series
@@ -79,5 +88,5 @@ const label = computed(() => {
 </script>
 
 <template>
-  <VChart v-bind="attrs" role="img" :aria-label="label" :option="scaledOption" :theme="theme" :init-options="INIT_OPTIONS" />
+  <VChart ref="chartRef" v-bind="attrs" role="img" :aria-label="label" :option="scaledOption" :theme="theme" :init-options="INIT_OPTIONS" />
 </template>
