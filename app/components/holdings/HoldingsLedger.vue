@@ -35,7 +35,11 @@ const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries]
 //
 // 自動入帳的除權配股（source "stock-dividend"）是 業務中台 依除權息行事曆即時算的虛擬列：不能改也不能刪，
 // note 寫著配發比例與除權前持股。成本不明的取得（costUnknown）也標出來，不讓它看起來像一筆價格 0 的買進。
+// 減資（action REDUCE，2026-10-23，使用者：減資「要」列在交易紀錄）同樣是虛擬列：股數寫「減資前 → 減資後」、沒有成交價，
+// 退還股款在 note（業務中台寫好的一句，例如「…1000 股 → 400 股，退還股款 6,000 元」）
+const isVirtual = (transaction: Transaction) => transaction.source === 'stock-dividend' || transaction.action === 'REDUCE'
 function actionWord(transaction: Transaction): string {
+  if (transaction.action === 'REDUCE') return '減資（自動）'
   if (transaction.source === 'stock-dividend') return '配股（自動）'
   // 匯入時補的期初部位：source "opening"（舊流程），或 externalRef 以 |pre 結尾的買進（見 broker-trade-csv.ts 的
   // preWindowLots——一檔可能有好幾批不同成本，所以改用一般買進列）。只用來決定顯示文字，不影響計算。
@@ -65,6 +69,16 @@ function label(transaction: Transaction): string {
 function plainNumber(value: string | number): string {
   return groupThousands(String(Number(value)))
 }
+
+function quantityText(transaction: Transaction): string {
+  const reduction = transaction.capitalReduction
+  return reduction ? `${groupThousands(reduction.heldBefore)} → ${groupThousands(reduction.heldAfter)}` : groupThousands(transaction.quantity)
+}
+
+function priceText(transaction: Transaction): string {
+  if (transaction.action === 'REDUCE') return '－'
+  return transaction.costUnknown ? '不明' : plainNumber(transaction.price)
+}
 </script>
 
 <template>
@@ -79,10 +93,10 @@ function plainNumber(value: string | number): string {
         <template #default="{ row }">{{ actionCell(tableRow<Transaction>(row)) }}</template>
       </el-table-column>
       <el-table-column label="股數" align="right" min-width="80">
-        <template #default="{ row }">{{ groupThousands(tableRow<Transaction>(row).quantity) }}</template>
+        <template #default="{ row }">{{ quantityText(tableRow<Transaction>(row)) }}</template>
       </el-table-column>
       <el-table-column label="成交價" align="right" min-width="80">
-        <template #default="{ row }">{{ tableRow<Transaction>(row).costUnknown ? '不明' : plainNumber(tableRow<Transaction>(row).price) }}</template>
+        <template #default="{ row }">{{ priceText(tableRow<Transaction>(row)) }}</template>
       </el-table-column>
       <!-- 手續費與交易稅合成一欄（2026-10-05 展開版面改版：精簡交易表）。分開的數字在編輯對話框裡看得到。 -->
       <el-table-column label="費稅" align="right" min-width="80">
@@ -95,7 +109,7 @@ function plainNumber(value: string | number): string {
            觸控目標仍是 44px 高（.ledger__actions 的 min-height）。 -->
       <el-table-column v-if="!readonly" label="操作" min-width="120">
         <template #default="{ row }">
-          <div v-if="tableRow<Transaction>(row).source !== 'stock-dividend'" class="ledger__actions">
+          <div v-if="!isVirtual(tableRow<Transaction>(row))" class="ledger__actions">
             <el-button link type="primary" :aria-label="`編輯 ${label(tableRow<Transaction>(row))}`" @click="emit('edit', tableRow<Transaction>(row))">編輯</el-button>
             <el-button link type="danger" :aria-label="`刪除 ${label(tableRow<Transaction>(row))}`" @click="emit('remove', tableRow<Transaction>(row), label(tableRow<Transaction>(row)))">刪除</el-button>
           </div>
@@ -109,9 +123,9 @@ function plainNumber(value: string | number): string {
       <li v-if="!sorted.length" class="ledger__empty">{{ range ? '期間結束前沒有交易紀錄' : '這一檔沒有交易紀錄' }}</li>
       <li v-for="transaction in sorted" :key="transaction.id" class="ledger__item">
         <span>{{ transaction.tradeDate }} <span class="ledger__action">{{ actionCell(transaction) }}</span></span>
-        <span class="ledger__end">{{ groupThousands(transaction.quantity) }} 股 @ {{ transaction.costUnknown ? '不明' : plainNumber(transaction.price) }}</span>
+        <span class="ledger__end">{{ quantityText(transaction) }} 股<template v-if="transaction.action !== 'REDUCE'"> @ {{ priceText(transaction) }}</template></span>
         <span class="ledger__sub">費稅 {{ plainNumber(Number(transaction.fee) + Number(transaction.tax)) }}<template v-if="transaction.note">・{{ transaction.note }}</template></span>
-        <span v-if="!readonly && transaction.source !== 'stock-dividend'" class="ledger__actions ledger__end">
+        <span v-if="!readonly && !isVirtual(transaction)" class="ledger__actions ledger__end">
           <el-button link type="primary" :aria-label="`編輯 ${label(transaction)}`" @click="emit('edit', transaction)">編輯</el-button>
           <el-button link type="danger" :aria-label="`刪除 ${label(transaction)}`" @click="emit('remove', transaction, label(transaction))">刪除</el-button>
         </span>

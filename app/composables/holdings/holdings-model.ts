@@ -16,7 +16,8 @@ export interface Transaction {
   // 哪個帳戶（2026-10-19，業務中台 c7d949a）。全部帳戶模式下明細會標出來
   portfolioId: string
   symbol: string
-  action: 'BUY' | 'SELL'
+  // REDUCE：依官方減資公告自動算的減資列（業務中台 8224dff，2026-10-23），source "capital-reduction"；quantity 是減資後股數，價格與費稅都是 "0"
+  action: 'BUY' | 'SELL' | 'REDUCE'
   quantity: number
   price: string
   fee: string
@@ -24,12 +25,16 @@ export interface Transaction {
   tradeDate: string
   note: string | null
   // 匯入的列才有（業務中台 f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"；
-  // 自動入帳的除權配股是 source "stock-dividend"——那是 業務中台 即時算的虛擬列，id 不是 UUID，不能改也不能刪。
+  // 自動入帳的除權配股是 source "stock-dividend"、減資是 "capital-reduction"——都是 業務中台 即時算的虛擬列，id 不是 UUID，不能改也不能刪
+  //（PATCH／DELETE 回 400）。
   source: string | null
   externalRef: string | null
   importId: string | null
   // 取得成本不明的買進（業務中台 a742fff）：庫存照算、已實現損益不計入、報酬率當成以市值轉入
   costUnknown: boolean
+  // 減資列才有：減資前後股數、退還股款（4 位小數字串；彌補虧損是 "0.0000"，金額不明的混合式是 null）、每仟股換發股數、
+  // 種類（cash_refund／loss_offset／mixed／other，開放的列舉）。note 另有一句中文說明
+  capitalReduction?: { heldBefore: number; heldAfter: number; refund: string | null; newSharesPerThousand: string; kind: string } | null
 }
 
 export interface TransactionInput {
