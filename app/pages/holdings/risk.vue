@@ -240,7 +240,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
           <section aria-labelledby="risk-metrics-title">
             <h2 id="risk-metrics-title" class="risk-page__section-title">波動和跌幅跟大盤比起來如何？</h2>
-            <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權指數的風險指標" :rows="shownMetricRows" market-label="同期加權指數" :loading="loading" />
+            <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權報酬指數的風險指標" :rows="shownMetricRows" market-label="加權報酬指數" :loading="loading" />
             <el-button link type="primary" class="risk-page__toggle" :aria-expanded="showAllMetrics" :aria-controls="metricsTableId" @click="showAllMetrics = !showAllMetrics">
               {{ showAllMetrics ? '只看主要指標' : `顯示全部指標（另有 ${metricRows.length - shownMetricRows.length} 項）` }}
             </el-button>
@@ -260,9 +260,10 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
               <li>實際經歷的跌幅：依你每天實際的持股計算，買進、賣出都算進去；期間內沒有持股就不列。</li>
               <li>其餘用現在每一檔的市值比例<template v-if="report?.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
               <li>波動占比（風險貢獻）：每一檔占整體波動的比例，合計約 100%。</li>
-              <li>除權配股已還原，現金股利未還原，與價格型加權指數相同。</li>
+              <!-- 含息、還原減資（業務中台 5593cce，2026-10-23）：個股用還原收盤價，跟 analysis-ts 的 Beta 同一套；大盤用報酬指數 -->
+              <li>股價含息：現金股利、股票股利與分割、減資退還的股款都已還原；大盤用發行量加權股價報酬指數（含息）。</li>
               <li v-if="report && drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
-              <li v-if="report && drawdownDates(report.benchmark.maxDrawdown)">加權指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
+              <li v-if="report && drawdownDates(report.benchmark.maxDrawdown)">加權報酬指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
             </ul>
           </details>
 
