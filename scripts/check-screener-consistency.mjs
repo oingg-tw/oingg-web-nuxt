@@ -323,22 +323,33 @@ for (const target of isDevServer ? [] : PAGES) {
   }
 }
 
-// ── 6. 除權息月覽的「在篩選器打開」（2026-10-22）：?exDividendMonth=7 打開一組只有「除權息月份：包含 7 月」的篩選、網址參數用完拿掉。
+// ── 6. 網址就是篩選（2026-10-22，使用者要書籤與分享，app/utils/screener-url.ts）：除權息月覽的連結 ?f=exDividendMonths(.EOD):7 打開一組只有
+//「除權息月份：包含 7 月」的篩選；網址一直帶著目前的條件，拿同一個網址在新的瀏覽器再開一次（書籤）是同一組、同樣的檔數。
 // 檔數跟月覽的 7 月比：篩選只含還在交易的，已下市、已收回的不算（analysis-ts 2026-10-22 量 DEV：普通股、特別股 7 月各差 1、ETF 一致），
 // 所以只能比月覽少、最多少 3。還沒到的月份兩邊都用去年同月（上游對過 9～12 月），這裡不重複
 const july = (await (await fetch(`${baseUrl}/api/hub/ex-dividend-months`)).json()).cells.find(cell => cell.month.endsWith('-07'))
+const pillTexts = async page => (await page.locator('.condition-pill').allTextContents()).map(text => text.replace(/\s+/g, '')).join('|')
 for (const target of PAGES) {
-  console.log(`\n== ${target.name} /screener/${target.universe}?exDividendMonth=7`)
+  const path = `/screener/${target.universe}?f=${target.universe === 'common' ? 'exDividendMonths.EOD' : 'exDividendMonths'}:7`
+  console.log(`\n== ${target.name} ${path}`)
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
-  await page.goto(`${baseUrl}/screener/${target.universe}?exDividendMonth=7`, { waitUntil: 'load', timeout: 180000 })
+  await page.goto(`${baseUrl}${path}`, { waitUntil: 'load', timeout: 180000 })
   const counted = await waitForCount(page, text => /符合上述條件 \d+ 檔/.test(text), 90000)
-  const pills = (await page.locator('.condition-pill').allTextContents()).map(text => text.replace(/\s+/g, ''))
-  expect(target.name, '打開「除權息月份：包含 7 月」、網址參數拿掉', pills.join('|') === '除權息月份包含7月' && !page.url().includes('?'), `${pills.join('|')} ${page.url()}`)
+  const pills = await pillTexts(page)
+  expect(target.name, '打開「除權息月份：包含 7 月」', pills === '除權息月份包含7月', pills)
   const found = Number(counted.text.match(/(\d+) 檔/)?.[1])
   const listed = july.counts[target.universe]
   expect(target.name, '檔數比月覽 7 月少 0～3 檔（已下市、已收回的不算）', counted.ok && listed - found >= 0 && listed - found <= 3, `篩選 ${found}、月覽 ${listed}`)
+  const bookmark = page.url()
+  expect(target.name, '網址帶著目前的條件', decodeURIComponent(bookmark).includes('exDividendMonths'), bookmark.replace(baseUrl, ''))
   await context.close()
+  const reopened = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const again = await reopened.newPage()
+  await again.goto(bookmark, { waitUntil: 'load', timeout: 180000 })
+  const recount = await waitForCount(again, text => /符合上述條件 \d+ 檔/.test(text), 90000)
+  expect(target.name, '用同一個網址再開是同一組（書籤）', (await pillTexts(again)) === pills && recount.text === counted.text, `${recount.text}`)
+  await reopened.close()
 }
 
 await browser.close()

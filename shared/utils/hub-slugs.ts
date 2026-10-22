@@ -244,13 +244,11 @@ export function commonScreenerPath(query: { template?: string, sector?: string }
   return search ? `${SCREENER_PATHS.common}?${search}` : SCREENER_PATHS.common
 }
 
-// 除權息月覽的「到篩選器打開」（2026-10-22）：三組篩選都收 ?exDividendMonth=7，打開一組只有「除權息月份：包含 7 月」的未儲存篩選
+// 除權息月覽的「到篩選器打開」（2026-10-22）：篩選頁的網址就是篩選本身（?f=…，格式在 app/utils/screener-url.ts），帶一個
+//「除權息月份：包含 N 月」的條件。普通股的欄位有期別（.EOD），特別股、ETF 的沒有
 export function exDividendMonthScreenerPath(universe: keyof typeof SCREENER_PATHS, month: number): string {
-  return `${SCREENER_PATHS[universe]}?exDividendMonth=${month}`
+  return `${SCREENER_PATHS[universe]}?f=${universe === 'common' ? 'exDividendMonths.EOD' : 'exDividendMonths'}:${month}`
 }
-
-// 網址來的月份：只認 1～12
-export const exDividendMonthOf = (value: unknown): number | null => (typeof value === 'string' && /^(?:[1-9]|1[0-2])$/.test(value) ? Number(value) : null)
 
 // 特別股個別頁 2026-10-18 搬到 /preferred/{代號}（底下四個面向）；舊的 /screener/preferred/{代號} 由 server/middleware/legacy-redirects.ts 301 過來
 export function preferredStockPath(code: string): string {

@@ -106,11 +106,9 @@ export function useGuestScreener() {
     return template ? selectionOf(template) : null
   }
 
-  // 除權息月覽的 ?exDividendMonth（2026-10-22）：一組只有「除權息月份：包含 N 月」的未儲存篩選，欄位同範本（總覽）。
-  // 值是整數：普通股型錄的選項值是 1～12（analysis-ts 617ba6bb）
-  async function exDividendMonthSelection(month: number): Promise<GuestSelection> {
-    const filters = [{ field: 'exDividendMonths.EOD', min: null, max: null, exclude: false, values: [month] }]
-    return { filters, fieldKeys: await resolveOverviewFieldKeys(), name: `${month} 月除權息` }
+  // 網址帶來的條件（?f=…，2026-10-22）：一組未儲存的篩選，欄位同範本（總覽）；網址也帶了欄位的話頁面會換掉
+  async function filtersSelection(filters: GuestSelection['filters'], name: string): Promise<GuestSelection> {
+    return { filters, fieldKeys: await resolveOverviewFieldKeys(), name }
   }
 
   // Deep link from a /screener/{slug} condition page's「套用至篩選器」(2026-09-19, the SEO build):
@@ -126,6 +124,6 @@ export function useGuestScreener() {
     loadTemplates,
     resolveSelection,
     templateBySlug,
-    exDividendMonthSelection
+    filtersSelection
   }
 }

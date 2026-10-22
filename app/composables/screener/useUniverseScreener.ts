@@ -567,9 +567,9 @@ export function useUniverseScreener(source: UniverseSource) {
     unsaved: !set.saved && set.fields.join('|') !== source.defaultColumns.join('|')
   })))
 
-  // 除權息月覽的 ?exDividendMonth（2026-10-22）：第一次載入時內建那一組換成「除權息月份：包含 N 月」、選它，用完把網址的參數拿掉
-  const router = useRouter()
-  let deepLinkMonth = exDividendMonthOf(useRoute().query.exDividendMonth)
+  // 網址帶篩選（2026-10-22，使用者要書籤與分享，選了條件＋欄位＋排序）：第一次載入時讀一次 ?f=…&c=…&sort=…（app/utils/screener-url.ts，
+  // 欄位名不帶 .snapshot）。條件跟已存的哪一組一樣就選那一組，不然套進內建的那一組；網址帶的欄位換掉內建的「基本欄位」。之後網址跟著畫面走
+  let pendingUrlState = decodeScreenerQuery(useRoute().query)
 
   // ---- 載入：登入狀態確定、型錄到了才開始。登入或登出後重讀，但內建那兩組的修改留著（訪客按「存成…」登入之後還在）----
   let bootSeq = 0
@@ -588,23 +588,53 @@ export function useUniverseScreener(source: UniverseSource) {
         ?? columnPresets.find(preset => preset.isDefault)?.id
         ?? BUILT_IN_ID
 
+      // 網址的欄位先套上（下面建的每一組都用目前的欄位組合）；跟目前選的那一組一樣就不動
+      const urlState = pendingUrlState
+      pendingUrlState = null
+      const urlColumns = urlState?.columns.map(snapshotFieldId) ?? []
+      if (urlColumns.length && urlColumns.join('|') !== activeColumnSet.value?.fields.join('|')) {
+        columnSets.value[0]!.fields = urlColumns
+        activeColumnSetId.value = BUILT_IN_ID
+      }
+
       const builtInTab = tabs.value.find(tab => !tab.saved) ?? makeTab(BUILT_IN_ID, source.allName, false, [])
       builtInTab.columns = columnsOf(activeColumnSet.value?.fields ?? source.defaultColumns)
       builtInTab.searched = false
-      const month = deepLinkMonth
-      deepLinkMonth = null
-      if (month) {
-        builtInTab.slots = slotsOf([{ field: 'exDividendMonths', min: null, max: null, exclude: false, values: [String(month)] }])
-        router.replace({ query: {} })
+      const savedTabs = presets.map(presetToTab)
+      let urlTab: UniverseTab | undefined
+      if (urlState) {
+        urlTab = urlState.filters.length ? savedTabs.find(tab => sameFilters(urlFiltersOf(tab.slots, snapshotField), urlState.filters)) : undefined
+        if (!urlTab) {
+          builtInTab.slots = slotsOf(filtersFromUrl(urlState.filters, source.categories.value, snapshotFieldId).map(filter => ({ ...filter, field: snapshotField(filter.field) })))
+          urlTab = builtInTab
+        }
+        // 排序只收代號或畫面上有的欄位：ETF 的上游對其他欄位回 400
+        const sortField = urlState.sort && (urlState.sort.field === 'symbol' ? 'symbol' : snapshotFieldId(urlState.sort.field))
+        if (sortField && (sortField === 'symbol' || urlTab.columns.some(column => column.field === sortField))) {
+          urlTab.sortField = sortField
+          urlTab.sortOrder = urlState.sort!.order
+        }
       }
-      tabs.value = [builtInTab, ...presets.map(presetToTab)]
+      tabs.value = [builtInTab, ...savedTabs]
       const rememberedTab = rememberedChoice(tabKey)
-      activeTabId.value = month ? BUILT_IN_ID : tabs.value.find(tab => tab.id === rememberedTab)?.id ?? BUILT_IN_ID
+      activeTabId.value = urlTab?.id ?? tabs.value.find(tab => tab.id === rememberedTab)?.id ?? BUILT_IN_ID
       ready.value = true
       if (activeTab.value) search(activeTab.value)
     },
     { immediate: true }
   )
+
+  // 之後網址跟著目前這一組走；欄位是預設的「基本欄位」就不寫進網址（一般打開不帶一長串參數）
+  useScreenerUrlSync(() => {
+    const tab = activeTab.value
+    if (!ready.value || !tab) return null
+    const columns = (activeColumnSet.value?.fields ?? []).map(snapshotField)
+    return {
+      filters: urlFiltersOf(tab.slots, snapshotField),
+      columns: columns.join('|') === source.defaultColumns.map(snapshotField).join('|') ? [] : columns,
+      sort: tab.sortField && tab.sortOrder ? { field: snapshotField(tab.sortField), order: tab.sortOrder } : null
+    }
+  })
 
   return {
     ready,

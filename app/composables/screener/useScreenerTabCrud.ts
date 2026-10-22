@@ -112,10 +112,19 @@ export function useScreenerTabCrud(ctx: {
     }
   }
 
-  // 訪客挑好範本、或登入的人從 ?template 進來：打開一組未儲存的，不替他建
-  async function addLocalTab(filters: FilterCriterion[], fieldKeys: string[], name: string) {
-    const tab = registerTab(buildLocalTab(ctx.buildSlots(filters), fieldKeys, name))
-    await ctx.runSearch(tab)
+  // 訪客挑好範本、或登入的人從 ?template 進來：打開一組未儲存的，不替他建。
+  // 網址帶來的（?f=…&c=…&sort=…，2026-10-22）：欄位照網址（ownColumns，不換成登入者自己的預設欄位組合）、排序照網址
+  async function addLocalTab(filters: FilterCriterion[], fieldKeys: string[], name: string, options: { ownColumns?: boolean, sort?: { field: string, order: 'asc' | 'desc' } | null } = {}) {
+    const tab = buildLocalTab(ctx.buildSlots(filters), fieldKeys, name)
+    if (options.ownColumns) {
+      tab.columnPresetId = null
+      tab.columns = fieldKeys.map(field => ({ field, label: field }))
+    }
+    if (options.sort) {
+      tab.sortField = options.sort.field
+      tab.sortOrder = options.sort.order
+    }
+    await ctx.runSearch(registerTab(tab))
   }
 
   // ?sector 遇到一組已存的：複製成未儲存的（條件換成呼叫端給的），不改到已存的那一組

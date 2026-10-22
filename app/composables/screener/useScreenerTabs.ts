@@ -57,6 +57,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // which already threads the real label through separately — see its own fieldLabel param).
   function labelForField(fieldId: string): string {
     if (fieldId === SECTOR_FIELD_ID) return '類股'
+    // 類股不在型錄裡（前端加的條件），從網址或存檔還原時名稱照膠囊原本的寫法
+    if (fieldId === SECTOR_FIELD_ID) return '類股'
     if (!schema.value) return fieldId
     for (const category of schema.value.categories) {
       for (const metric of category.metrics) {
@@ -248,6 +250,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     // directly on every stateless search; there's no owned ColumnPreset resource to persist
     // them into (and no login to persist against in the first place).
     if (!currentUser.value) return
+    // 未儲存、又沒有綁欄位組合的一組（網址帶來的欄位）：欄位只改在畫面上，不替他建一組「顯示欄位 N」吃額度（2026-10-22）
+    if (tab.unsaved && tab.columnPresetId === null) return
     const fields = tab.columns.map(column => column.field)
     if (tab.columnPresetId === null) {
       if (!fields.length) return
@@ -672,8 +676,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     columnPresetTemplatesLoading,
     confirmCustomColumnPreset,
     applyColumnPresetTemplate,
-    // 普通股自己的入口（頁面用）：訪客挑好範本、?template、?sector
+    // 普通股自己的入口（頁面用）：訪客挑好範本、?template、?sector、網址帶來的篩選（tabs：找跟網址同一組條件、已存的那一組）
     addLocalTab,
-    addLocalCopy
+    addLocalCopy,
+    tabs
   }
 }

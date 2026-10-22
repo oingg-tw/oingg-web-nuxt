@@ -32,7 +32,7 @@ const BACKEND_OWNED = []
 // 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數；
 // 景氣時鐘 2026-10-21 起是 /macro）
 // 除權息月覽的熱力格是那個月清單的連結（?month=，2026-10-21，canonical 不帶參數）
-const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/screener\/(common|etf|preferred)\?exDividendMonth=\d{1,2}$/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}$/]
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/screener\/(common|etf|preferred)\?f=exDividendMonths(\.EOD)?(:|%3A)\d{1,2}$/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}$/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
@@ -233,8 +233,8 @@ const browser = await chromium.launch()
 //
 // 這不是把斷言放寬——逾時仍然是 FAIL、仍然印出等了多久。改的只是執行順序。
 // Deep link from a condition page: a guest landing on /screener/common?template=value gets that
-// template's tab（no onboarding dialog）, real result rows, the unsaved screen's 存成我的篩選, and a URL with the
-// query dropped once applied.
+// template's tab（no onboarding dialog）, real result rows, the unsaved screen's 存成我的篩選, and a URL that then
+// carries the screen itself (?f=…) instead of ?template.
 {
   const context = await browser.newContext({ viewport: { width, height: 900 } })
   const page = await context.newPage()
@@ -312,7 +312,8 @@ const browser = await chromium.launch()
   }))
   expect('/screener/common?template=value', 'guest tab from template', state.unsaved && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
   expect('/screener/common?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
-  expect('/screener/common?template=value', 'query dropped', state.search === '', state.search)
+  // 2026-10-22 起網址帶著篩選本身（?f=…&c=…，書籤與分享用）：?template 用過就換成那組範本的條件
+  expect('/screener/common?template=value', 'template param replaced by the screen (?f=)', !state.search.includes('template=') && state.search.includes('f='), state.search)
   expect('/screener/common?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
   console.log(`/screener/common?template=value: ${failures.some(failure => failure.startsWith('/screener/common?template=value ')) ? 'FAIL' : 'ok'}`)
   await context.close()
