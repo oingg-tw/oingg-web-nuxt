@@ -722,7 +722,7 @@ watch(() => props.loading, (loading, wasLoading) => {
                  for the same field (e.g. one hasn't filed this quarter's report yet), so this
                  can't be hoisted up to the column header the way the period-type suffix above is. -->
             <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">
-              {{ row.values[column.field]!.knowledgeDate }}
+              {{ cellPeriodText(row.values[column.field]!) }}
             </span>
           </div>
           </slot>
@@ -784,7 +784,7 @@ watch(() => props.loading, (loading, wasLoading) => {
                     <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
                   </span>
                   <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
-                  <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ row.values[column.field]!.knowledgeDate }}</span>
+                  <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ cellPeriodText(row.values[column.field]!) }}</span>
                 </slot>
               </dd>
             </div>

@@ -102,7 +102,7 @@ const fields = computed(() => [...new Set(rows.value.map(row => row.field).filte
 // 頁尾的資料來源（2026-10-11 補上）：釘選的那幾個欄位各自的型錄來源
 const dataSources = computed(() => collectMetricSources(schema.value?.categories ?? [], fields.value.map(field => field.split('.')[0]!)))
 
-interface ScreenerValue { value: string | null; knowledgeDate: string | null }
+interface ScreenerValue { value: string | null; knowledgeDate: string | null; fiscalPeriod?: string | null }
 const { data: values, status: valuesStatus, error: valuesError, refresh: refreshValues } = useAsyncData(
   () => `quick-view-${code.value}-${fields.value.join(',')}`,
   async () => {
@@ -226,8 +226,8 @@ function valueText(field: string | null, slug?: string): string {
 function periodText(field: string | null): string {
   if (!field) return '整頁內容'
   const basis = field.split('.')[1] as MetricsHistoryTimeframe | 'EOD'
-  const date = values.value[field]?.knowledgeDate
-  return `${(TIMEFRAME_LABELS as Record<string, string | undefined>)[basis] ?? basis}${date ? `（${date}）` : ''}`
+  const cell = values.value[field]
+  return `${(TIMEFRAME_LABELS as Record<string, string | undefined>)[basis] ?? basis}${cell?.knowledgeDate ? `（${cellPeriodText(cell)}）` : ''}`
 }
 
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
@@ -363,7 +363,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     </StockQuestionSection>
 
     <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
-    <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料日期。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
+    <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料時間。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
       <!-- 不畫捲動區（:scrollable="false"）：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動。
            卡片本身是窄寬切換的容器（.stock-quick-view-page__table-wrap） -->
       <SharedTable
@@ -377,7 +377,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <tr>
             <th scope="col">指標</th>
             <th scope="col" class="seo-table__num">最新數值</th>
-            <th scope="col">期別（資料日期）</th>
+            <th scope="col">期別（資料時間）</th>
             <th scope="col">調整</th>
           </tr>
         </thead>

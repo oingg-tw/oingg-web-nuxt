@@ -2,6 +2,7 @@
 //   node scripts/check-number-format.mjs
 import assert from 'node:assert/strict'
 import { formatMoney, formatSignificantDigits, groupThousands } from '../shared/utils/number-format.ts'
+import { cellPeriodText } from '../app/utils/screener-value.ts'
 
 assert.equal(groupThousands(2446), '2,446')
 assert.equal(groupThousands('-1234567.89'), '-1,234,567.89')
@@ -19,4 +20,10 @@ assert.equal(formatSignificantDigits(123.45, 4), '123.5')
 assert.equal(formatSignificantDigits(1234.5, 4), '1,235')
 assert.equal(formatSignificantDigits(56_780_000, 4), '5,678萬')
 assert.equal(formatSignificantDigits(-0.00004, 1), '-0.00004')
+// 一格數字的資料時間（app/utils/screener-value.ts）：有財報期別寫期別，季別寫成 26Q2；沒有期別（逐日、即時）才寫日期
+assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalPeriod: '2026Q2' }), '26Q2')
+assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalPeriod: '2025' }), '2025') // 每季更新的年度指標：值是 2025 年度的
+assert.equal(cellPeriodText({ knowledgeDate: '2026-10-10', fiscalPeriod: '2026-09' }), '2026-09')
+assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22', fiscalPeriod: null }), '2026-10-22')
+assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22' }), '2026-10-22')
 console.log('number format: ok')
