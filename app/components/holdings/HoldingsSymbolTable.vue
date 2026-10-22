@@ -170,7 +170,7 @@ function toggle(symbol: string, event?: MouseEvent) {
       <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH" sortable :sort-method="compareBy('symbol')">
         <template #default="{ row }">
           <div class="symbol-table__name">
-            <NuxtLink :to="tableRow<T>(row).link">{{ tableRow<T>(row).name }}</NuxtLink>
+            <NuxtLink :to="tableRow<T>(row).link" class="stock-name-link">{{ tableRow<T>(row).name }}</NuxtLink>
             <span class="symbol-table__code">{{ tableRow<T>(row).symbol }}</span>
             <el-tag v-if="tableRow<T>(row).kind === 'etf'" size="small" effect="plain">ETF</el-tag>
             <el-tag v-else-if="tableRow<T>(row).kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
@@ -210,8 +210,8 @@ function toggle(symbol: string, event?: MouseEvent) {
       <template v-if="skeletonRows">
         <li v-for="index in skeletonRows" :key="index" class="symbol-table__card holdings-card" aria-hidden="true">
           <div class="symbol-table__name"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /></div>
-          <dl v-if="summaryColumns.length" class="symbol-table__rows">
-            <div v-for="column in summaryColumns" :key="column.key" class="symbol-table__row">
+          <dl v-if="summaryColumns.length" class="holdings-card__rows">
+            <div v-for="column in summaryColumns" :key="column.key" class="holdings-card__row">
               <dt>{{ column.label }}</dt>
               <dd><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" /></dd>
             </div>
@@ -223,20 +223,20 @@ function toggle(symbol: string, event?: MouseEvent) {
       </template>
       <li v-for="row in sortedRows" v-else :key="row.symbol" class="symbol-table__card holdings-card">
         <div class="symbol-table__name">
-          <NuxtLink :to="row.link">{{ row.name }}</NuxtLink>
+          <NuxtLink :to="row.link" class="stock-name-link">{{ row.name }}</NuxtLink>
           <span class="symbol-table__code">{{ row.symbol }}</span>
           <el-tag v-if="row.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
           <el-tag v-else-if="row.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
         </div>
-        <dl v-if="summaryColumns.length" class="symbol-table__rows">
-          <div v-for="column in summaryColumns" :key="column.key" class="symbol-table__row">
+        <dl v-if="summaryColumns.length" class="holdings-card__rows">
+          <div v-for="column in summaryColumns" :key="column.key" class="holdings-card__row">
             <dt>{{ column.label }}</dt>
             <dd :class="toneClass(column, row)">{{ (column.cardText ?? column.text)(row) }}</dd>
           </div>
         </dl>
         <div v-if="slots.detail && expanded.includes(row.symbol)" class="symbol-table__more">
-          <dl v-if="detailColumns.length" class="symbol-table__rows">
-            <div v-for="column in detailColumns" :key="column.key" class="symbol-table__row">
+          <dl v-if="detailColumns.length" class="holdings-card__rows">
+            <div v-for="column in detailColumns" :key="column.key" class="holdings-card__row">
               <dt>{{ column.label }}</dt>
               <dd :class="toneClass(column, row)">{{ (column.cardText ?? column.text)(row) }}</dd>
             </div>
@@ -396,29 +396,7 @@ function toggle(symbol: string, event?: MouseEvent) {
   transform: rotate(180deg);
 }
 
-/* 所有數字一種排法：名稱靠左、數字靠右，一列一項（同持股總覽的面板） */
-.symbol-table__rows {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-}
-
-.symbol-table__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.symbol-table__row dt {
-  color: var(--el-text-color-regular);
-}
-
-.symbol-table__row dd {
-  margin: 0;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+/* 所有數字一種排法：名稱靠左、數字靠右，一列一項——.holdings-card__rows（main.css，觀察清單的卡片也用） */
 
 /* 展開的部分：一條分隔線之後接著列下去（股數、預估年股利，再來是明細面板的平均成本…），列與列之間跟上面一樣 4px */
 .symbol-table__more {

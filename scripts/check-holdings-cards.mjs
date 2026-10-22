@@ -80,7 +80,7 @@ if (dir) await page.locator('.symbol-table__cards').screenshot({ path: `${dir}/c
 await toggle.click(); await page.waitForTimeout(1500)
 state = await foot()
 check(state.last && state.expanded === 'true', '展開：明細還在最底下（內容長在它上面），aria-expanded=true')
-const rights = await card.evaluate(el => [...el.querySelectorAll('.symbol-table__row dd, .detail__facts dd, .ledger__end')].map(node => Math.round(node.getBoundingClientRect().right)))
+const rights = await card.evaluate(el => [...el.querySelectorAll('.holdings-card__row dd, .detail__facts dd, .ledger__end')].map(node => Math.round(node.getBoundingClientRect().right)))
 check(rights.length >= 10 && new Set(rights).size === 1, `卡片的列、明細、交易紀錄的數字右緣切齊（${[...new Set(rights)].join('／')}，${rights.length} 個）`)
 check(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth) === 0, '沒有橫向捲動')
 await page.mouse.move(0, 0); await page.waitForTimeout(800)

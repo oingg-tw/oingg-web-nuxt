@@ -654,6 +654,46 @@ body.has-bottom-nav-bar .load-failure-notice {
   font-variant-numeric: tabular-nums;
 }
 
+/* 卡片裡的數字：名稱靠左、數字靠右，一列一項。持股明細的卡片（原本寫在 HoldingsSymbolTable 裡）與觀察清單共用（2026-10-22，使用者在
+   方案頁選 4B「跟持股卡片同一種排法」） */
+.holdings-card__rows {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.holdings-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.holdings-card__row dt {
+  color: var(--el-text-color-regular);
+}
+
+.holdings-card__row dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 清單裡的股票名稱連結（持股明細、觀察清單的表格與卡片）。2026-10-22 以前沒有樣式，是瀏覽器預設的藍色底線字；卡片上的名稱再加粗 */
+.stock-name-link {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: none;
+}
+
+.stock-name-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.holdings-card .stock-name-link {
+  font-weight: 600;
+}
+
 /* 配息月曆（/calendar、/holdings/dividends）不畫週六、週日（2026-10-22，使用者：「是不是沒有人六日配息? 那 calendar 能簡化嗎? 爭取手機版本顯示空間」）。
    2026-10-22 量全市場 2024-01～2026-12 共 8,146 筆：除權息日週末 0 筆（交易日才除權息）；發放日週六 22 筆，全在 2024-02-17（補班日）。
    所以只在那份資料沒有週末的日子時才加這個 class（hasWeekendDate）；有的話照畫七欄，事件不會被藏掉。el-calendar 第一欄是日、最後一欄是六 */

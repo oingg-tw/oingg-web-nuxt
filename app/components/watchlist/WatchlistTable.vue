@@ -155,7 +155,7 @@ const sortedCards = computed(() => {
         <span v-else-if="loading" class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" />
         <template v-else-if="column.key === 'name'">
           <div class="watchlist-name">
-            <NuxtLink :to="linkOf(row)" :title="row.name">{{ row.name }}</NuxtLink>
+            <NuxtLink :to="linkOf(row)" :title="row.name" class="stock-name-link">{{ row.name }}</NuxtLink>
             <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
           </div>
           <p v-if="notes[row.code]" class="watchlist-note">{{ notes[row.code] }}</p>
@@ -166,23 +166,25 @@ const sortedCards = computed(() => {
     </SharedSheetGrid>
   </div>
 
+  <!-- 手機卡片跟持股明細的卡片同一種排法（2026-10-22，使用者：「觀察清單在手機版 看起來 髒髒的」，方案頁選 4B）：名稱靠左、數字靠右、一列一項
+       （.holdings-card__rows），備註與移除是卡片的頁尾、沒有框。原本數字排兩欄、名稱在上數字在下，每張卡片底下一顆有框的備註、一顆紅框的移除 -->
   <ul class="view-card watchlist-cards">
-    <li v-for="row in sortedCards" :key="row.code" class="watchlist-card">
+    <li v-for="row in sortedCards" :key="row.code" class="watchlist-card holdings-card">
       <div v-if="loading" class="watchlist-name" aria-hidden="true"><span class="app-skeleton app-skeleton--inline watchlist-skeleton" /></div>
       <div v-else class="watchlist-name">
-        <NuxtLink :to="linkOf(row)">{{ row.name }}</NuxtLink>
+        <NuxtLink :to="linkOf(row)" class="stock-name-link">{{ row.name }}</NuxtLink>
         <span class="watchlist-name__code">{{ row.code }}</span>
         <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
       </div>
       <p v-if="notes[row.code]" class="watchlist-note">{{ notes[row.code] }}</p>
-      <dl class="watchlist-card__figures">
-        <div v-for="column in columns" :key="column.field" :class="{ 'watchlist-card__wide': column.label.length > 7 || column.field === WATCHLIST_EX_DIVIDEND }">
+      <dl class="holdings-card__rows">
+        <div v-for="column in columns" :key="column.field" class="holdings-card__row">
           <dt>{{ column.label }}</dt>
           <dd v-if="loading"><span class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" /></dd>
           <dd v-else :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
         </div>
       </dl>
-      <div v-if="actions" class="watchlist-row-actions">
+      <div v-if="actions" class="watchlist-card__foot">
         <slot name="actions" :row="row" view="card" :loading="loading" />
       </div>
     </li>
@@ -269,34 +271,38 @@ const sortedCards = computed(() => {
   gap: 12px;
 }
 
+/* 外框、內距、底色是 .holdings-card（main.css） */
 .watchlist-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
+  gap: 10px;
 }
 
-.watchlist-card__figures {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
+/* 頁尾：貼齊卡片左右與底邊（抵掉 .holdings-card 的 12px 16px 內距），兩顆平分、沒有框，同持股卡片的「明細」。線用內陰影畫：
+   文字按鈕的框被 main.css 的高對比模式規則（border: 1px solid transparent !important）蓋掉 */
+.watchlist-card__foot {
+  display: flex;
+  margin: 2px -16px -12px;
+  box-shadow: inset 0 1px 0 var(--el-border-color-lighter);
+}
+
+.watchlist-card__foot :deep(.el-button) {
+  flex: 1;
+  min-height: 44px;
   margin: 0;
+  border-radius: 0;
 }
 
-.watchlist-card__wide {
-  grid-column: 1 / -1;
+.watchlist-card__foot :deep(.el-button + .el-button) {
+  box-shadow: inset 1px 0 0 var(--el-border-color-lighter);
 }
 
-.watchlist-card__figures dt {
-  color: var(--el-text-color-regular);
+.watchlist-card__foot :deep(.el-button:first-child) {
+  border-bottom-left-radius: var(--el-card-border-radius, 4px);
 }
 
-.watchlist-card__figures dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
+.watchlist-card__foot :deep(.el-button:last-child) {
+  border-bottom-right-radius: var(--el-card-border-radius, 4px);
 }
 
 /* 表格／卡片切換點 1279px，跟持股頁同一個（2026-10-05「a11y 要求放大 200% 也不可以跑版」）：1280 寬的

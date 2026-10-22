@@ -315,8 +315,9 @@ async function submitNote() {
           </SharedColumnSettings>
         </template>
         <template #actions="{ row, view, loading }">
-          <el-button v-if="loading || watchlistIds[row.code]" :disabled="loading" :link="view === 'table'" :type="view === 'table' ? 'primary' : undefined" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
-          <el-button :link="view === 'table'" type="danger" :plain="view === 'card'" :aria-label="`從觀察清單移除 ${row.name}`" :disabled="loading" @click="removeStock(row.code)">移除</el-button>
+          <!-- 卡片上是頁尾的文字鈕（2026-10-22 方案頁 4B）：沒有框，移除只用紅字 -->
+          <el-button v-if="loading || watchlistIds[row.code]" :disabled="loading" :link="view === 'table'" :text="view === 'card'" type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
+          <el-button :link="view === 'table'" :text="view === 'card'" type="danger" :aria-label="`從觀察清單移除 ${row.name}`" :disabled="loading" @click="removeStock(row.code)">移除</el-button>
         </template>
       </WatchlistTable>
     </div>
