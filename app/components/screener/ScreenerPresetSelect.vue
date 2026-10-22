@@ -28,6 +28,8 @@ const props = defineProps<{
   saveLabel: string
   // 不畫「管理」（顯示欄位，見上面）
   hideManage?: boolean
+  // 卡片版面時（結果區窄於 720px）標籤收進選單框裡當前綴、「＋新增」只留「＋」（2026-10-22 篩選結果操作區方案 A，「顯示欄位」用「欄位」）
+  compactLabel?: string
 }>()
 
 const activeId = defineModel<string>('activeId', { required: true })
@@ -49,7 +51,7 @@ function optionLabel(item: PresetSelectItem) {
 </script>
 
 <template>
-  <div class="screener-preset-select" role="group" :aria-labelledby="labelId">
+  <div class="screener-preset-select" :class="{ 'screener-preset-select--compact': compactLabel }" role="group" :aria-labelledby="labelId">
     <span :id="labelId" class="screener-preset-select__label">{{ label }}</span>
     <!-- aria-label（不是 aria-labelledby）：Element Plus 只把 aria-label 轉給裡面真正的輸入框，aria-labelledby 留在外框（2026-10-15 axe 量到） -->
     <el-select
@@ -58,10 +60,13 @@ function optionLabel(item: PresetSelectItem) {
       :aria-label="label"
       @update:model-value="(id: string) => { activeId = id }"
     >
+      <template v-if="compactLabel" #prefix>
+        <span class="screener-preset-select__prefix" aria-hidden="true">{{ compactLabel }}</span>
+      </template>
       <el-option v-for="item in items" :key="item.id" :label="optionLabel(item)" :value="item.id" />
     </el-select>
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button" @click="emit('save')">{{ saveLabel }}</el-button>
-    <el-button v-if="!hideAdd" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋新增</el-button>
+    <el-button v-if="!hideAdd" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
     <template v-if="!hideManage">
       <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
       <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
@@ -115,6 +120,41 @@ function optionLabel(item: PresetSelectItem) {
     flex: 0 1 280px;
     width: 280px;
     min-width: 160px;
+  }
+}
+
+.screener-preset-select__prefix {
+  display: none;
+  color: var(--el-text-color-secondary);
+}
+
+/* compactLabel（篩選結果的「顯示欄位」，操作區方案 A）：卡片版面——SharedMetricTable 的結果區（容器）窄於 720px——時標籤收進選單框、
+   ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 560px 那段 */
+@container (max-width: 719px) {
+  .screener-preset-select--compact {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .screener-preset-select--compact .screener-preset-select__label,
+  .screener-preset-select--compact .screener-preset-select__add-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .screener-preset-select--compact .screener-preset-select__select {
+    flex: 1 1 10em;
+    width: auto;
+    min-width: 0;
+  }
+
+  .screener-preset-select--compact .screener-preset-select__prefix {
+    display: inline;
   }
 }
 </style>

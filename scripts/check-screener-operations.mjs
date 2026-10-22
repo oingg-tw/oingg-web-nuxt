@@ -519,11 +519,21 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const groups = await m.getByRole('group', { name: /^(我的篩選|顯示欄位)$/ }).count()
     expect('手機', '「我的篩選」「顯示欄位」兩組選單都在', groups === 2, `${groups} 組`)
 
-    // 排序選單：選「本益比」→ 後端排序（多一次 POST）
+    // 排序選單：選「本益比」→ 後端排序（多一次 POST）。方向鍵一直在：沒選排序時停用，選了本益比是小到大（估值倍數的第一下），
+    // 按一下換成大到小、再打一次後端
+    const direction = m.locator('.smt-direction')
+    expect('手機', '沒選排序時方向鍵停用', await direction.isDisabled())
     const requestsBefore = upstream.length
-    await m.locator('.smt-toolbar__select').first().selectOption({ label: '本益比' })
+    await m.getByRole('combobox', { name: '排序', exact: true }).selectOption({ label: '本益比' })
     await m.waitForTimeout(4000)
     expect('手機', '排序選單選本益比會打後端', upstream.length > requestsBefore && upstream.at(-1) === 200, `多發了 ${upstream.length - requestsBefore} 次`)
+    const directionText = await direction.textContent() ?? ''
+    expect('手機', '選了本益比，方向是小到大', !await direction.isDisabled() && directionText.includes('小到大'), directionText)
+    const requestsBeforeToggle = upstream.length
+    await direction.click()
+    await m.waitForTimeout(4000)
+    const toggledText = await direction.textContent() ?? ''
+    expect('手機', '按方向鍵換成大到小並打後端', toggledText.includes('大到小') && upstream.length > requestsBeforeToggle && upstream.at(-1) === 200, `${toggledText}，多發了 ${upstream.length - requestsBeforeToggle} 次`)
     expect('手機', '排序後卡片還在', await m.locator('.smt-card').count() > 0)
 
     // 欄位設定（彈窗，手機滿版）：下移第一欄、儲存 → 卡片裡的欄位順序跟著換

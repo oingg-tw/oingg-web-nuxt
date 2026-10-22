@@ -306,14 +306,18 @@ for (const target of PAGES) {
       const style = getComputedStyle(element)
       if (/(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1) nested.push(element.className.split(' ')[0])
     }
+    // 超出時寫出是誰撐出去的（最外層那幾個；fixed 的抽屜本來就停在畫面外）
+    const width = document.documentElement.clientWidth
+    const wide = [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > width + 1 && getComputedStyle(element).position !== 'fixed')
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
+      wide: wide.filter(element => !wide.includes(element.parentElement)).slice(0, 3).map(element => `${String(element.className).split(' ')[0]} 右緣 ${Math.round(element.getBoundingClientRect().right)}`),
       cardsVisible: !!cards && cards.getBoundingClientRect().height > 0 && getComputedStyle(cards).display !== 'none',
       cardCount: document.querySelectorAll('.smt-card').length,
       nested
     }
   })
-  expect(target.name, '375 寬沒有橫向捲軸', mobile.overflow <= 0, `超出 ${mobile.overflow}px`)
+  expect(target.name, '375 寬沒有橫向捲軸', mobile.overflow <= 0, `超出 ${mobile.overflow}px${mobile.overflow > 0 ? `：${mobile.wide.join('、')}` : ''}`)
   expect(target.name, '手機結果是卡片', mobile.cardsVisible && mobile.cardCount > 0, `${mobile.cardCount} 張`)
   expect(target.name, '卡片不在巢狀捲動框裡', mobile.nested.length === 0, mobile.nested.join(',') || '無')
 

@@ -38,14 +38,15 @@ watch(() => [tab.value?.id, tab.value?.loading] as const, () => {
   if (tab.value && !tab.value.loading) countedWithConditions.value = hasConditions.value
 }, { immediate: true })
 
-// 「符合上述條件 N 檔」：條件一變就念出來；還沒查過、查詢中不念數字。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）
-const countText = computed(() => {
+// 「符合上述條件 N 檔」：條件一變就念出來；還沒查過、查詢中不念數字。個位數時加一句中性提醒（知識庫「分層篩選的樣本衰減」）。
+// 分三段：手機上字首（符合上述條件／全部）不畫、照樣念（2026-10-22 操作區方案 A），檔數短了，同一行右邊的開關才不會被推走
+const countParts = computed(() => {
   const current = tab.value
-  if (!current?.searched) return ''
-  if (current.loading) return '搜尋中…'
-  if (!countedWithConditions.value) return `全部 ${groupThousands(current.total)} 檔`
-  const count = `符合上述條件 ${groupThousands(current.total)} 檔`
-  return current.total > 0 && current.total < 10 ? `${count}；檔數少，條件稍微變動結果就可能不同` : count
+  if (!current?.searched) return null
+  if (current.loading) return { prefix: '', main: '搜尋中…', note: '' }
+  const main = `${groupThousands(current.total)} 檔`
+  if (!countedWithConditions.value) return { prefix: '全部 ', main, note: '' }
+  return { prefix: '符合上述條件 ', main, note: current.total > 0 && current.total < 10 ? '；檔數少，條件稍微變動結果就可能不同' : '' }
 })
 
 const empty = computed(() => !!tab.value?.searched && !tab.value.loading && tab.value.total === 0 && hasConditions.value)
@@ -152,7 +153,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
         <section class="screener-shell__results" :aria-labelledby="`${uid}-results`">
           <div class="screener-shell__results-header">
             <h2 :id="`${uid}-results`" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
-            <p class="screener-shell__count" role="status">{{ countText }}</p>
+            <p class="screener-shell__count" role="status"><template v-if="countParts"><span class="screener-shell__count-prefix">{{ countParts.prefix }}</span>{{ countParts.main }}{{ countParts.note }}</template></p>
             <p v-if="screener.dataDate" class="screener-shell__date">資料日期 {{ screener.dataDate }}</p>
             <div v-if="$slots['result-meta']" class="screener-shell__result-meta">
               <slot name="result-meta" />
@@ -193,6 +194,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             <template #toolbar>
               <ScreenerPresetSelect
                 hide-manage
+                compact-label="欄位"
                 label="顯示欄位"
                 add-label="新增欄位組合"
                 save-label="存成我的欄位組合"
@@ -328,6 +330,33 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 @media (min-width: 560px) {
   .screener-shell__result-meta {
     flex-basis: auto;
+    margin-left: auto;
+  }
+}
+
+/* 手機（操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，個位數的提醒在
+   自己那一格裡折行——推不動開關，上面那條 2026-10-16 的位移不會回來 */
+@media (max-width: 559px) {
+  .screener-shell__results-header {
+    flex-wrap: nowrap;
+  }
+
+  .screener-shell__count {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .screener-shell__count-prefix {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .screener-shell__result-meta {
+    flex: none;
     margin-left: auto;
   }
 }

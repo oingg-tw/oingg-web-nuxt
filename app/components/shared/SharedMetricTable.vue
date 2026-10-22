@@ -588,25 +588,28 @@ watch(() => props.loading, (loading, wasLoading) => {
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--cards': cards }">
+    <!-- 卡片版面時兩列（2026-10-22 使用者選操作區方案 A）：顯示欄位＋欄位設定一列，排序＋方向一列；表格版面只有第一列 -->
     <div v-if="toolbar" class="smt-toolbar">
-      <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
-      <slot name="toolbar" />
-      <label v-if="cards" class="smt-toolbar__field smt-toolbar__sort">
-        <span>排序</span>
-        <select class="app-select smt-toolbar__select" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
-          <option value="">預設順序</option>
-          <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-        </select>
-      </label>
-      <label v-if="cards && activeSort.field" class="smt-toolbar__field smt-toolbar__sort">
-        <span>方向</span>
-        <select class="app-select smt-toolbar__select" :value="activeSort.order ?? 'descending'" @change="applySort(activeSort.field, ($event.target as HTMLSelectElement).value as 'ascending' | 'descending')">
-          <option value="descending">大到小</option>
-          <option value="ascending">小到大</option>
-        </select>
-      </label>
-      <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
-      <el-button v-if="!readonly" class="smt-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
+      <div class="smt-toolbar__row">
+        <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
+        <slot name="toolbar" />
+        <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
+        <el-button v-if="!readonly" class="smt-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
+      </div>
+      <div v-if="cards" class="smt-toolbar__row smt-toolbar__sort">
+        <!-- 標籤疊在選單框裡（不攔點擊），名稱照樣是「排序」 -->
+        <label class="smt-sort">
+          <span class="smt-sort__label">排序</span>
+          <select class="app-select smt-sort__select" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
+            <option value="">預設順序</option>
+            <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+        </label>
+        <!-- 方向一直在（沒選排序欄位時停用），選了欄位不會多冒出一個選單把版面推開 -->
+        <el-button class="smt-direction" :disabled="!activeSort.field" @click="applySort(activeSort.field, activeSort.order === 'ascending' ? 'descending' : 'ascending')">
+          <span class="visually-hidden">排序方向：</span><span aria-hidden="true">{{ activeSort.order === 'ascending' ? '↑' : '↓' }}&nbsp;</span>{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}
+        </el-button>
+      </div>
     </div>
     <SharedColumnSettings
       v-if="toolbar && !readonly"
@@ -811,30 +814,55 @@ watch(() => props.loading, (loading, wasLoading) => {
   }
 
   .smt-cards-view,
-  /* 兩個 class：同特異性時排在後面的 .smt-toolbar__field { display: flex } 會贏 */
+  /* 兩個 class：同特異性時排在後面的 .smt-toolbar__row { display: flex } 會贏 */
   .smt-toolbar .smt-toolbar__sort {
     display: none;
   }
-
-  /* 表格模式這一列只剩「顯示欄位」與欄位設定，置中對齊；卡片模式維持 flex-end（排序選單的標籤在選單上面） */
-  .smt-toolbar {
-    align-items: center;
-  }
 }
 
+/* minmax(0, 1fr)：auto 欄寬的下限是內容的最小寬度，原生選單的最小寬度是最長的選項——欄位名一長，兩列一起撐出畫面（375 寬量到右緣 452） */
 .smt-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   margin-bottom: 12px;
 }
 
-.smt-toolbar__field {
+/* flex-start：「存成我的欄位組合」出現時顯示欄位那一組會換成兩行，欄位設定對齊第一行的選單 */
+.smt-toolbar__row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--el-text-color-regular);
+  align-items: flex-start;
+  gap: 8px 12px;
+}
+
+/* 同寬（「欄位設定」四個字的寬度）：兩列右邊的按鈕上下對齊 */
+.smt-toolbar__row > .el-button {
+  flex: none;
+  min-width: 6em;
+  margin: 0;
+}
+
+.smt-sort {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.smt-sort__label {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--el-text-color-secondary);
+  pointer-events: none;
+}
+
+/* 左邊留給疊上去的「排序」兩個字 */
+.smt-sort__select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: calc(12px + 2em + 8px);
 }
 
 .smt-cards {
