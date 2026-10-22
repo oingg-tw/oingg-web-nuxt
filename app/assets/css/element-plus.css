@@ -182,6 +182,32 @@ html .el-alert.el-alert .el-alert__description {
     min-width: 44px !important;
   }
 }
+
+/* 按鈕型的勾選／單選被上面那段撐到 44px 高時，字要跟著置中：Element Plus 的內框是 inline-block、行高 1，撐高的部分全落在字的下面
+   （2026-10-22，使用者：「我用手機看的時候 el-checkbox-group 有高度跑板問題 但是用電腦模擬器看沒問題 我的手機是motorola」——配息月曆的
+   「除息／除權／除權息」字離上緣 4px、離下緣 16px。電腦模擬器沒套到觸控那一段，所以看不出來） */
+html .el-checkbox-button__inner,
+html .el-radio-button__inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* el-calendar 的標頭（配息月曆、持股的配息月曆）：手機的中文字型（Android 的思源黑體）比電腦寬，「2026 年 10 月」加「上個月／今天／下個月」
+   在 360 寬擠不下，標題折成兩行、三顆按鈕也被擠成兩排（同一天、同一支手機）。標題不折、三顆按鈕不拆，放不下時整排換到下一行 */
+html .el-calendar__header {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+html .el-calendar__title {
+  white-space: nowrap;
+}
+
+html .el-calendar__button-group .el-button-group {
+  display: inline-flex;
+}
 /* 全站提示（ElMessage，以及讀取失敗那條固定提示）的外觀。2026-10-22 第二次重新設計（使用者：「el-message__content 太醜可以重新設計嗎
    然後全站統一」，方案頁 https://claude.ai/artifact/S9N9Y2MkCpFN2Pg9Df3VuV 選 B）：一塊深色底、淺色字，沒有框也沒有色條；類型只看左邊的圖示。
    2026-10-08 那一版是浮層底＋左側 4px 類型色條，色條跟著圓角彎起來像被裁掉一角，外面又一圈灰框加陰影，資訊類是灰圖示配灰色條、看不出類型。
