@@ -5,7 +5,7 @@
 // 提示不假設「一個券商一個帳戶」（2026-10-21，使用者：「未必是 一個券商一個帳戶 也可能是 小孩幫媽媽錢 或是 反過來，所以提示也要提示對方向」）
 useSeoMeta({ title: '帳戶管理', robots: 'noindex, nofollow' })
 
-const { portfolios, createPortfolio, renamePortfolio, deletePortfolio, reorderPortfolios } = useHoldingsPortfolios()
+const { portfolios, createPortfolio, renamePortfolio, hidePortfolio, deletePortfolio, reorderPortfolios } = useHoldingsPortfolios()
 // 讀的時候畫上次那麼多列骨架（2026-10-20，useLayoutHint，帳戶數由側欄 HoldingsNav 記）；0＝上次一個帳戶都沒有，直接是那句說明
 const accountCountHint = useLayoutHint('holdings-accounts', 1)
 </script>
@@ -30,6 +30,7 @@ const accountCountHint = useLayoutHint('holdings-accounts', 1)
         :delete-label="(name: string) => `刪除「${name}」和它的所有交易`"
         :create="createPortfolio"
         :rename="renamePortfolio"
+        :hide="hidePortfolio"
         :remove="deletePortfolio"
         :reorder="reorderPortfolios"
       />

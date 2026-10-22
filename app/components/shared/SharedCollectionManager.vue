@@ -2,8 +2,9 @@
 // 「幾組東西」的管理頁內容（2026-10-19）：持股的帳戶管理（/holdings/accounts）、觀察清單的清單管理（/watchlist/lists）。使用者先在持股選了
 // 「側欄加一頁帳戶管理」，再要觀察清單「比照持股那邊的設計辦理」——同一套操作兩個地方用，所以抽成這一個（CLAUDE.md 的負責元件表）。
 //   - 每一組一列：名稱｜改名、上移、下移、刪除，都是真按鈕（排序不靠拖曳，WCAG 2.5.7）
-//   - 刪除比照全站「可以復原的動作不先確認」：那一列先藏起來，提示寫明會一起刪掉什麼（呼叫端給 deleteMessage），10 秒內可以復原，
-//     時間到才呼叫 remove。只剩一組時不給刪
+//   - 刪除比照全站「可以復原的動作不先確認」：呼叫端先把那一組從自己的清單拿掉（hide，側欄跟著馬上消失——2026-10-22 使用者：「sidebar
+//     沒有馬上刪掉。我認為應馬上刪掉，用戶點選還原再還原」），提示寫明會一起刪掉什麼（deleteMessage），10 秒內可以復原（放回原位），
+//     時間到才呼叫 remove，沒刪成（回 false）也放回去。只剩一組時不給刪
 //   - 下面一個新增表單。同名、額度、名稱長度的提示由呼叫端的 create 處理（它回 null 就是沒建成）
 // 改名用 promptPresetName（同篩選器，1～20 字）。上移、下移、新增的結果念給螢幕閱讀器。
 interface Item { id: string; name: string }
@@ -23,7 +24,10 @@ const props = defineProps<{
   deleteLabel: (name: string) => string
   create: (name: string) => Promise<Item | null>
   rename: (id: string, name: string) => Promise<unknown>
-  remove: (id: string) => Promise<unknown>
+  // 先從清單（含側欄）拿掉，回傳還原的函式
+  hide: (id: string) => () => void
+  // 真的刪；回 false 是沒刪成
+  remove: (id: string) => Promise<boolean>
   // 要剛好是全部的 id（業務中台的 reorder 規則）
   reorder: (ids: string[]) => Promise<unknown>
   // 資料還沒到：畫這麼多列骨架（useLayoutHint 記住的組數），0＝資料到了（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」）
@@ -31,8 +35,8 @@ const props = defineProps<{
 }>()
 
 const uid = useId()
-const pendingRemoval = ref<string[]>([])
-const visible = computed(() => props.items.filter(item => !pendingRemoval.value.includes(item.id)))
+// 已經藏起來、還在 10 秒復原期間的：清單裡沒有了，但伺服器上還在，重新排序要帶上（業務中台要全部的 id）
+const pendingRemoval = ref<Item[]>([])
 const status = ref('')
 
 async function renameItem(item: Item) {
@@ -42,29 +46,32 @@ async function renameItem(item: Item) {
   status.value = `已改名為「${name}」`
 }
 
-// 藏起來、等刪除的那幾組也要帶上（reorder 要全部的 id）
+// 藏起來、等刪除的那幾組接在最後（reorder 要全部的 id）
 function move(item: Item, offset: -1 | 1) {
-  const index = visible.value.indexOf(item)
-  const neighbor = visible.value[index + offset]
+  const index = props.items.indexOf(item)
+  const neighbor = props.items[index + offset]
   if (!neighbor) return
   const ids = props.items.map(each => each.id)
-  const from = ids.indexOf(item.id)
-  const to = ids.indexOf(neighbor.id)
-  ;[ids[from], ids[to]] = [ids[to]!, ids[from]!]
-  void props.reorder(ids)
+  ;[ids[index], ids[index + offset]] = [ids[index + offset]!, ids[index]!]
+  void props.reorder([...ids, ...pendingRemoval.value.map(each => each.id)])
   status.value = `「${item.name}」移到第 ${index + offset + 1} 個`
 }
 
 function removeItem(item: Item) {
-  if (visible.value.length <= 1) return
-  pendingRemoval.value = [...pendingRemoval.value, item.id]
+  if (props.items.length <= 1) return
+  const restore = props.hide(item.id)
+  pendingRemoval.value = [...pendingRemoval.value, item]
+  const settle = () => { pendingRemoval.value = pendingRemoval.value.filter(each => each.id !== item.id) }
   let undone = false
   undoToast(props.deleteMessage(item.name), () => {
     undone = true
-    pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id)
+    settle()
+    restore()
   }, async () => {
-    if (!undone) await props.remove(item.id)
-    pendingRemoval.value = pendingRemoval.value.filter(id => id !== item.id)
+    if (undone) return
+    const removed = await props.remove(item.id)
+    settle()
+    if (!removed) restore()
   })
 }
 
@@ -97,15 +104,15 @@ async function add() {
         </div>
       </li>
     </ul>
-    <p v-else-if="!visible.length" class="collection-manager__text">{{ emptyText }}</p>
+    <p v-else-if="!items.length" class="collection-manager__text">{{ emptyText }}</p>
     <ul v-else class="collection-manager__list">
-      <li v-for="(item, index) in visible" :key="item.id" class="collection-manager__row">
+      <li v-for="(item, index) in items" :key="item.id" class="collection-manager__row">
         <span class="collection-manager__name">{{ item.name }}</span>
         <div class="collection-manager__actions">
           <el-button link type="primary" :aria-label="`幫「${item.name}」改名`" @click="renameItem(item)">改名</el-button>
           <el-button link :disabled="index === 0" :aria-label="`把「${item.name}」上移`" @click="move(item, -1)">上移</el-button>
-          <el-button link :disabled="index === visible.length - 1" :aria-label="`把「${item.name}」下移`" @click="move(item, 1)">下移</el-button>
-          <el-button v-if="visible.length > 1" link type="danger" :aria-label="deleteLabel(item.name)" @click="removeItem(item)">刪除</el-button>
+          <el-button link :disabled="index === items.length - 1" :aria-label="`把「${item.name}」下移`" @click="move(item, 1)">下移</el-button>
+          <el-button v-if="items.length > 1" link type="danger" :aria-label="deleteLabel(item.name)" @click="removeItem(item)">刪除</el-button>
         </div>
       </li>
     </ul>

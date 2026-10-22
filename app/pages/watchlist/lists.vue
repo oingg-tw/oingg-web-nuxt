@@ -12,7 +12,7 @@ const { resolving, member } = useMemberGate()
 const synced = useState('watchlist-synced-from-server', () => false)
 const syncPending = useState('watchlist-sync-pending', () => false)
 const loading = computed(() => resolving.value || (!!currentUser.value && (!synced.value || syncPending.value)))
-const { watchlists, createWatchlist, renameWatchlist, deleteWatchlist, reorderWatchlists } = useStocks()
+const { watchlists, createWatchlist, renameWatchlist, hideWatchlist, deleteWatchlist, reorderWatchlists } = useStocks()
 // 組數由側欄（WatchlistNav）記
 const listCountHint = useLayoutHint('watchlist-lists', 1)
 </script>
@@ -43,6 +43,7 @@ const listCountHint = useLayoutHint('watchlist-lists', 1)
       :delete-label="(name: string) => `刪除「${name}」和裡面的股票`"
       :create="createWatchlist"
       :rename="renameWatchlist"
+      :hide="hideWatchlist"
       :remove="deleteWatchlist"
       :reorder="reorderWatchlists"
     />

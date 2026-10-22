@@ -105,6 +105,22 @@ export function useHoldingsPortfolios() {
   }
 
   // 刪除帳戶＝連同底下的交易一起刪（業務中台）。ScreenerPresetSelect 已經等過 10 秒的復原才通知，這裡直接送
+  // 刪除的 10 秒復原期間先從清單拿掉（2026-10-22，使用者：「已刪除「媽媽的帳戶」和它的所有交易 但是sidebar沒有馬上刪掉。我認為應馬上
+  // 刪掉，用戶點選還原再還原」）：側欄的帳戶切換讀的就是這份清單。回傳還原的函式：放回原本的位置，原本選著它就再選回來
+  function hidePortfolio(id: string): () => void {
+    const index = portfolios.value.findIndex(portfolio => portfolio.id === id)
+    if (index < 0) return () => {}
+    const portfolio = portfolios.value[index]!
+    const wasSelected = selectedPortfolioId.value === id
+    portfolios.value = portfolios.value.filter(item => item.id !== id)
+    if (wasSelected) selectedPortfolioId.value = null
+    return () => {
+      if (portfolios.value.some(item => item.id === id)) return
+      portfolios.value = [...portfolios.value.slice(0, index), portfolio, ...portfolios.value.slice(index)]
+      if (wasSelected) selectedPortfolioId.value = id
+    }
+  }
+
   async function deletePortfolio(id: string): Promise<boolean> {
     try {
       await request(`/portfolios/${id}`, { method: 'DELETE' })
@@ -134,6 +150,6 @@ export function useHoldingsPortfolios() {
 
   return {
     portfolios, selectedPortfolioId, selected, ready, holdingsScope, scopeQuery, writeTarget, loadFailed,
-    loadPortfolios, clearPortfolios, ensurePortfolio, createPortfolio, renamePortfolio, deletePortfolio, reorderPortfolios
+    loadPortfolios, clearPortfolios, ensurePortfolio, createPortfolio, renamePortfolio, hidePortfolio, deletePortfolio, reorderPortfolios
   }
 }

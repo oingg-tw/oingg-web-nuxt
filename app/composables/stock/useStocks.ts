@@ -233,14 +233,31 @@ export function useStocks() {
   }
 
   // ScreenerPresetSelect 的刪除已經等過 10 秒的復原，這裡直接刪（裡面的項目業務中台一起刪）
-  async function deleteWatchlistById(id: string) {
+  // 刪除的 10 秒復原期間先從清單拿掉（2026-10-22，同持股帳戶：側欄讀的就是 watchlists），回傳還原的函式
+  function hideWatchlist(id: string): () => void {
+    const index = watchlists.value.findIndex(list => list.id === id)
+    if (index < 0) return () => {}
+    const list = watchlists.value[index]!
+    const items = watchlistItems.value.filter(item => item.watchlistId === id)
+    watchlists.value = watchlists.value.filter(each => each.id !== id)
+    watchlistItems.value = watchlistItems.value.filter(item => item.watchlistId !== id)
+    return () => {
+      if (watchlists.value.some(each => each.id === id)) return
+      watchlists.value = [...watchlists.value.slice(0, index), list, ...watchlists.value.slice(index)]
+      watchlistItems.value = [...watchlistItems.value, ...items]
+    }
+  }
+
+  // 沒刪成回 false（管理頁會把先藏起來的放回去）
+  async function deleteWatchlistById(id: string): Promise<boolean> {
     const previous = { lists: watchlists.value, items: watchlistItems.value }
     watchlists.value = watchlists.value.filter(list => list.id !== id)
     watchlistItems.value = watchlistItems.value.filter(item => item.watchlistId !== id)
-    if (await deleteWatchlist(id)) return
+    if (await deleteWatchlist(id)) return true
     watchlists.value = previous.lists
     watchlistItems.value = previous.items
     showErrorMessage('清單沒有刪除，請稍後再試')
+    return false
   }
 
   async function reorderWatchlistIds(ids: string[]) {
@@ -268,6 +285,7 @@ export function useStocks() {
     createWatchlist,
     importToWatchlist,
     renameWatchlist,
+    hideWatchlist,
     deleteWatchlist: deleteWatchlistById,
     reorderWatchlists: reorderWatchlistIds
   }
