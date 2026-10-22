@@ -2,8 +2,8 @@
 // 配息從哪來的互動拆解外框（2026-10-12 從 /learn/dividend-source/{code} 抽出來；新手專區首頁拿它當主線）。
 // 類比那一句、卡片、StockDividendSegmentLine，再加上首頁才有的「這一步可以往下看」。
 //
-// 包在卡片裡（2026-09-26「公司這一年賣了多少 希望放在卡片中，這樣用戶才會知道底下的上下一步跟圖表一組的」）：標題、圖、說明、
-// 上一步／下一步是同一個元件的四個部分，卡片就是那個邊界。類比那一句在卡片外（2026-09-29「有點冗長，希望放在卡片外面不要占用
+// 卡片在 StockDividendSegmentLine 裡（2026-09-26「公司這一年賣了多少 希望放在卡片中，這樣用戶才會知道底下的上下一步跟圖表一組的」；
+// 2026-10-22 起卡片只放標題、圖與上一步／下一步，說明在卡片下面）。類比那一句在卡片外（2026-09-29「有點冗長，希望放在卡片外面不要占用
 // 說明的空間」）：它是整張圖的前提、不隨步驟變。
 //
 // 「這一步可以往下看」（stepLinks）：五個階段跟圖上的五刀一一對應（DIVIDEND_CHAIN_INDEX），連到新手專區的教學頁。全部在 SSR 裡
@@ -53,9 +53,7 @@ const stages = DIVIDEND_CHAIN_INDEX.map(stage => ({
 <template>
   <div class="learn-dividend-chain">
     <p class="learn-dividend-chain__analogy">說明以餐廳類比；圖上與文字裡的每個數字，都是這家公司自己的財報數字。</p>
-    <el-card shadow="never">
-      <StockDividendSegmentLine :key="segmentKey" v-bind="segment" @step="current = $event" />
-    </el-card>
+    <StockDividendSegmentLine :key="segmentKey" v-bind="segment" @step="current = $event" />
 
     <div v-if="stepLinks" class="learn-dividend-chain__steps">
       <section

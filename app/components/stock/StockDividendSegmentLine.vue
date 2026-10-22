@@ -210,48 +210,63 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 
 <template>
   <div v-if="usable" ref="rootEl" class="segline" :class="{ 'segline--single': index === 0, 'segline--back': back }">
-    <p class="segline__title">
-      <span class="segline__title-step">{{ step?.title }}</span>
-      <span class="segline__title-all">{{ fiscalYear === null ? '' : `${fiscalYear} 年度` }}每股營收怎麼一路分到股利</span>
-    </p>
+    <!-- 卡片只放圖與上一步／下一步，說明在卡片下面（2026-10-22「把上下一步的UI放到緊貼圖表的下面 這樣底下文字長度就不拘限。
+         卡片只放圖表與上下一步」）。原本說明夾在圖與按鈕中間，五步說明長短不一，只好把格子撐到最長那一步、按鈕才不跳，
+         短的那幾步就空一大塊。標題留在卡片裡：它是這張圖的標題 -->
+    <el-card shadow="never" class="segline__card">
+      <p class="segline__title">
+        <span class="segline__title-step">{{ step?.title }}</span>
+        <span class="segline__title-all">{{ fiscalYear === null ? '' : `${fiscalYear} 年度` }}每股營收怎麼一路分到股利</span>
+      </p>
 
-    <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
-         repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
-         it（layouts/default.vue:96-106）— and `hidden` would additionally make this a scroll
-         container, which changes `position: sticky` and fragment links inside it AND is what axe's
-         scrollable-region-focusable rule walks. The track advances by button only, so it gets no
-         tabindex and no role="region"; those belong to regions a user can scroll. -->
-    <!-- 無障礙：這張圖對螢幕閱讀器是**裝飾**（2026-09-30 使用者問「圖表內容與下面的說明，對語音
-         朗讀來說是不是重複資訊？」——實測是，逐步量過五步）。原本是 role="img" 加 aria-label，而那個
-         標籤跟下面的算式段帶著同樣三個標籤、同樣三個數字，只差連接詞：
+      <!-- `clip`, never `hidden`: a transformed child still contributes scrollable overflow — this
+           repo measured scrollWidth 750 at a 390px viewport once and got a horizontal scrollbar for
+           it（layouts/default.vue:96-106）— and `hidden` would additionally make this a scroll
+           container, which changes `position: sticky` and fragment links inside it AND is what axe's
+           scrollable-region-focusable rule walks. The track advances by button only, so it gets no
+           tabindex and no role="region"; those belong to regions a user can scroll. -->
+      <!-- 無障礙：這張圖對螢幕閱讀器是**裝飾**（2026-09-30 使用者問「圖表內容與下面的說明，對語音
+           朗讀來說是不是重複資訊？」——實測是，逐步量過五步）。原本是 role="img" 加 aria-label，而那個
+           標籤跟下面的算式段帶著同樣三個標籤、同樣三個數字，只差連接詞：
 
-             img   每股營收 146.92 元 分成 營業成本 58.93 元、毛利 87.99 元
-             live  每股營收 146.92 元，扣掉營業成本 58.93 元，剩下毛利 87.99 元。
+               img   每股營收 146.92 元 分成 營業成本 58.93 元、毛利 87.99 元
+               live  每股營收 146.92 元，扣掉營業成本 58.93 元，剩下毛利 87.99 元。
 
-         留算式段而不是留圖的標籤：它是完整的句子（「扣掉…剩下…」講出了這一步在做什麼），圖的標籤
-         只是把三個數字並列；而且算式段是 aria-live，換步驟會自己播報，aria-label 不會。
+           留算式段而不是留圖的標籤：它是完整的句子（「扣掉…剩下…」講出了這一步在做什麼），圖的標籤
+           只是把三個數字並列；而且算式段是 aria-live，換步驟會自己播報，aria-label 不會。
 
-         無 JS 模式本來靠這個 aria-label，但它其實只說得出第一個數字（isHidden 依 index 判斷，沒有
-         JS 就停在第 0 步，圖上也真的只有一根柱子）。所以那一段改成五步的說明各自帶自己的算式——
-         數字補齊了，圖在兩種模式下就都可以是裝飾。子樹裡沒有可聚焦元素（全是 div），aria-hidden
-         不會製造 axe 的 aria-hidden-focus 問題。 -->
-    <div class="segline__viewport" aria-hidden="true">
-      <div class="segline__track">
-        <div
-          v-for="(bar, slot) in track"
-          :key="slot"
-          class="segline__part"
-          :class="[`is-${roleOf(slot)}`, { 'is-hidden': isHidden(slot) }]"
-          :style="{ '--size': sizeOf(bar.amount), '--base': baseOf(bar.base) }"
-        >
-          <div class="segline__slot"><div class="segline__bar" /></div>
-          <p class="segline__part-label">
-            <span class="segline__part-name">{{ bar.label }}</span>
-            <span class="segline__part-amount">{{ bar.amount.toFixed(2) }}</span>
-          </p>
+           無 JS 模式本來靠這個 aria-label，但它其實只說得出第一個數字（isHidden 依 index 判斷，沒有
+           JS 就停在第 0 步，圖上也真的只有一根柱子）。所以那一段改成五步的說明各自帶自己的算式——
+           數字補齊了，圖在兩種模式下就都可以是裝飾。子樹裡沒有可聚焦元素（全是 div），aria-hidden
+           不會製造 axe 的 aria-hidden-focus 問題。 -->
+      <div class="segline__viewport" aria-hidden="true">
+        <div class="segline__track">
+          <div
+            v-for="(bar, slot) in track"
+            :key="slot"
+            class="segline__part"
+            :class="[`is-${roleOf(slot)}`, { 'is-hidden': isHidden(slot) }]"
+            :style="{ '--size': sizeOf(bar.amount), '--base': baseOf(bar.base) }"
+          >
+            <div class="segline__slot"><div class="segline__bar" /></div>
+            <p class="segline__part-label">
+              <span class="segline__part-name">{{ bar.label }}</span>
+              <span class="segline__part-amount">{{ bar.amount.toFixed(2) }}</span>
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+
+      <div class="segline__controls">
+        <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
+        <!-- 口徑掛在進度列上，不另開一個元素（2026-09-25）. 這一頁的主句是盈餘所屬年度（台積電 114
+             年度 EPS 66.26 元），圖上的 EPS 卻是近四季的 86.27——同一個標籤兩個數字。整頁改成年度之後
+             兩者不再衝突，但年度仍然要寫出來：讀者需要知道圖上這些數字是哪一年的，而互動模式的標題是
+             各步驟自己的句子，沒有地方放。 -->
+        <p class="segline__progress">{{ fiscalYear === null ? '' : `${fiscalYear} 年度 · ` }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
+        <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
+      </div>
+    </el-card>
 
     <!-- 說明在下方，而且帶著去處（「讓用戶知道每一個環節的細項拆解去哪裡找」）. This page is the
          teaching AND index page, so each step routes to where its own link of the chain is answered
@@ -260,42 +275,18 @@ const figures = computed<string | null>(() => figuresAt(index.value))
          第二步起就直接用餐廳的語言（食材、外場、舊烤箱），而我原本以為「步驟只能從第一步點進去」
          就夠——無 JS 版不是，它把五步的說明同時列出來，其中三步完全沒有標記。所以標記放在這裡：
          兩種模式共用、只出現一次。後半句是重點，它回答的是「那數字是不是也是編的」。 -->
-    <!-- 高度由「最長的那一步」撐出來，不是寫死的常數（2026-09-30「希望這一塊統一高度，不然上下一步
-         UI 跳動」）。先前用量出來的 min-height，但那是照 2317 量的，而說明文案逐檔不同——2330 第三步
-         多一句研發費用，實測就超出：1440px 93→117、768px 117→171、375px 226→361，按鈕跟著跳 136px。
-         照一檔量的常數註定會被下一檔打破。
-
-         做法是把五步都放進同一個 grid 格子，只有當前那一步看得見：格子的高度自然等於最高的那一步，
-         每個寬度、每個代號、文字放大之後都自己對。佔位層 visibility:hidden ＋ aria-hidden，所以
-         不進無障礙樹。aria-live 仍然只掛在真正那一層，播報行為跟先前量到的一樣。
-         2026-10-18 起這一份也在伺服器輸出裡（不再等掛載），下面那份「五步全列」只在沒有 JS 時顯示（@media (scripting: none)），
-         兩份同時在 HTML 裡、同一時間只看得到一份。 -->
-    <div class="segline__note segline__note--stack">
-      <div class="segline__note-layer">
-        <p class="segline__figures" aria-live="polite">{{ figures }}</p>
-        <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
-      </div>
-      <div v-for="(item, i) in steps" :key="item.title" class="segline__note-layer segline__note-ghost" aria-hidden="true">
-        <p class="segline__figures">{{ figuresAt(i) }}</p>
-        <p class="segline__explain">{{ item.explain }}</p>
-      </div>
+    <!-- 高度跟著這一步的文字走：按鈕在上面，說明長短不再推動它們（2026-09-30 為了「上下一步 UI 跳動」把五步疊在同一格、
+         撐到最長那一步，2026-10-22 按鈕移到圖下面之後拿掉）。下面那份「五步全列」只在沒有 JS 時顯示（@media (scripting: none)），
+         兩份同時在 HTML 裡、同一時間只看得到一份 -->
+    <div class="segline__note segline__note--current">
+      <p class="segline__figures" aria-live="polite">{{ figures }}</p>
+      <p class="segline__explain" aria-live="polite">{{ step?.explain }}</p>
     </div>
     <div class="segline__note segline__note--all">
       <div v-for="(item, i) in steps" :key="item.title" class="segline__note-all">
         <p class="segline__explain"><strong>{{ item.title }}</strong>：{{ figuresAt(i) }}{{ item.explain }}</p>
       </div>
     </div>
-
-    <div class="segline__controls">
-      <el-button :disabled="atStart" @click="goPrev">上一步</el-button>
-      <!-- 口徑掛在進度列上，不另開一個元素（2026-09-25）. 這一頁的主句是盈餘所屬年度（台積電 114
-           年度 EPS 66.26 元），圖上的 EPS 卻是近四季的 86.27——同一個標籤兩個數字。整頁改成年度之後
-           兩者不再衝突，但年度仍然要寫出來：讀者需要知道圖上這些數字是哪一年的，而互動模式的標題是
-           各步驟自己的句子，沒有地方放。 -->
-      <p class="segline__progress">{{ fiscalYear === null ? '' : `${fiscalYear} 年度 · ` }}第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
-      <el-button type="primary" :disabled="atEnd" @click="goNext">下一步</el-button>
-    </div>
-
   </div>
 </template>
 
@@ -303,7 +294,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 .segline {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   /* Two beats, not one（「他真的是圖層交疊嗎？」2026-09-25）. Measured, the one-beat version had the
      parent travelling 400px during the same 0.6s the pair was emerging — 毛利 went x=813→411 while
      its own two pieces came out, so the curtain ran away with what it was meant to hide and the
@@ -362,6 +353,12 @@ const figures = computed<string | null>(() => figuresAt(index.value))
      row is the same height. Measured, they were not — 50/50/56, because the remainder's label is
      the emphasised one. */
   --row: 68px;
+}
+
+.segline__card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .segline__title {
@@ -620,24 +617,6 @@ const figures = computed<string | null>(() => figuresAt(index.value))
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-/* 五層疊在同一個 grid 格子裡，格子的高度＝最高的那一層。不用 min-height 常數的理由見模板那段註解。 */
-.segline__note--stack {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.segline__note--stack > .segline__note-layer {
-  grid-area: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.segline__note-ghost {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .segline__note-all {
@@ -902,7 +881,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
    瀑布，五步的說明全列。放在檔尾、選擇器跟原本一樣重（三個 class），同分時靠順序贏過上面 is-future／is-hidden 那些規則 ---- */
 @media (scripting: none) {
   .segline__title-step,
-  .segline__note--stack {
+  .segline__note--current {
     display: none;
   }
 
