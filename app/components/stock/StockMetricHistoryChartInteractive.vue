@@ -295,7 +295,7 @@ const { chartOption } = useMetricHistoryChartOption(
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
     <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
-    <div v-else class="stock-metric-history-chart-interactive__chart" aria-hidden="true" />
+    <div v-else class="stock-metric-history-chart-interactive__chart app-skeleton" aria-hidden="true" />
 
   </SharedChartCard>
 </template>

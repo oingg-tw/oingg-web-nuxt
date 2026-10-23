@@ -183,8 +183,9 @@ const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric'>, str
 }
 const pinnedKinds = computed(() => new Set(pinnedSlugs.value.map(slug => quickViewChartOf(slug)?.kind)))
 const pageData = new Map<string, Ref<unknown>>()
+const pageStatus = new Map<string, Ref<string>>()
 function usePageData<T>(kind: keyof typeof PAGE_DATA) {
-  const { data } = useAsyncData(
+  const { data, status } = useAsyncData(
     () => `quick-view-${kind}-${code.value}`,
     async () => {
       if (!pinnedKinds.value.has(kind)) return null
@@ -196,11 +197,13 @@ function usePageData<T>(kind: keyof typeof PAGE_DATA) {
     { server: false, watch: [pinnedSlugs], default: () => null }
   )
   pageData.set(kind, data)
+  pageStatus.set(kind, status)
   return data
 }
-// 讀到了卻沒有可以畫的（金融業不分流動與非流動、沒有存貨與應收帳款…）說一句，不要只留標題；讀取中與讀不到（null）留空，
-// 照全站「讀不到不說沒有資料」的慣例
+// 讀到了卻沒有可以畫的（金融業不分流動與非流動、沒有存貨與應收帳款…）說一句，不要只留標題；讀不到（null）留空，照全站「讀不到不說
+// 沒有資料」的慣例。讀取中放同尺寸的骨架（2026-10-23，使用者：「stock/1475 圖表多的時候 有時會等待 希望每張卡片加上loader」）
 const loadedEmpty = (kind: QuickViewChart['kind']) => pageData.get(kind)?.value != null
+const pageLoading = (kind: QuickViewChart['kind']) => ['idle', 'pending'].includes(pageStatus.get(kind)?.value ?? '')
 const dividendYieldHistory = usePageData<StockDividendYieldHistoryResponse>('dividend')
 const monthlyRevenue = usePageData<StockMonthlyRevenuePageResponse>('monthly-revenue')
 const monthlyRevenueGrowth = usePageData<StockMonthlyRevenuePageResponse>('monthly-revenue-growth')
@@ -323,6 +326,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>
+          <div v-else-if="pageLoading(item.spec.kind)" class="stock-quick-view-page__placeholder app-skeleton" aria-hidden="true" />
         </SharedChartCard>
         </template>
         <button type="button" class="stock-quick-view-page__add" @click="pickerOpen = true">
@@ -357,7 +361,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <div class="stock-quick-view-page__grid">
             <SharedChartCard v-for="item in charts" :key="item.slug">
               <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
-              <div class="stock-quick-view-page__placeholder" aria-hidden="true" />
+              <div class="stock-quick-view-page__placeholder app-skeleton" aria-hidden="true" />
             </SharedChartCard>
             <button type="button" class="stock-quick-view-page__add">
               <el-icon aria-hidden="true"><Plus /></el-icon>加入指標

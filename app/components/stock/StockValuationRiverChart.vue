@@ -319,7 +319,7 @@ const chartOption = computed(() => ({
     <p v-if="notApplicable" class="valuation-river__empty">{{ spec.ratioLabel }}{{ NULL_REASON_SHORT_LABELS.not_applicable_industry }}，所以沒有河流圖。</p>
     <p v-else-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
     <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
-    <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" />
+    <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" :class="{ 'app-skeleton': riverStatus !== 'error' }" aria-hidden="true" />
     <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
   </SharedChartCard>
 </template>
