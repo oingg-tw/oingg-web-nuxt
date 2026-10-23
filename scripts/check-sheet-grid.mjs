@@ -2,7 +2,7 @@
 // (formulaReferences in app/utils/holdings-formula.ts). Pure, no network, no browser.
 //
 // Run: node scripts/check-sheet-grid.mjs
-import { estimateTextWidth, maskedText, moveCell, rangeOf, SHEET_REFERENCE_COLORS, sortRowsBy, toCsv, toHtmlTable, toTsv } from '../app/utils/sheet-grid.ts'
+import { estimateTextWidth, maskedText, moveCell, rangeOf, SHEET_REFERENCE_COLORS, sortRowsBy, toHtmlTable, toTsv } from '../app/utils/sheet-grid.ts'
 import { formulaReferences } from '../app/utils/holdings-formula.ts'
 
 let failures = 0
@@ -32,8 +32,6 @@ assert(same(moveCell({ r: 2, c: 1 }, 'right', 5, 4, true, cell => cell.c >= 2), 
 console.log('複製成 Excel 讀得懂的格式')
 const tsv = toTsv([[1085, 'a\tb', null], [0.487, 'say "hi"', 'x\ny']])
 assert(tsv === '1085\t"a\tb"\t\r\n0.487\t"say ""hi"""\t"x\ny"', 'Tab 分隔、\\r\\n 換列；有 Tab、換行、雙引號的照 RFC 4180 包起來')
-const csv = toCsv([['名稱', '殖利率'], ['台積電, 2330', 0.0123], ['=HYPERLINK("x")', null], ['-1.5', '+12.3% (+1)'], ['雜訊', 85 / 4165]])
-assert(csv === '﻿名稱,殖利率\r\n"台積電, 2330",0.0123\r\n"\'=HYPERLINK(""x"")",\r\n-1.5,\'+12.3% (+1)\r\n雜訊,0.0204081632653\r\n', 'CSV：BOM、逗號與雙引號照 RFC 4180 包、= + - @ 開頭的非數字文字前面補 \'、數字字串不動、浮點雜訊去掉')
 const html = toHtmlTable([[0.487, '<b>']], ['0.00%', undefined], ['殖利率', '名稱'])
 assert(html === `<table><tr><th>殖利率</th><th>名稱</th></tr><tr><td style="mso-number-format:'0.00%'">0.487</td><td>&lt;b&gt;</td></tr></table>`, 'HTML 版本：數字帶 mso-number-format、文字有跳脫、可加表頭')
 

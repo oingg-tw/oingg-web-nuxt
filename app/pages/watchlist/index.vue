@@ -273,7 +273,6 @@ async function submitNote() {
         :notes="watchlistNotes"
         :order-label="isGuest ? '市值順序' : '加入順序'"
         :actions="!isGuest"
-        :download-name="activeWatchlist?.name ?? '觀察清單'"
         movable
         @reorder="reorderColumns"
         @remove-column="removeColumn"

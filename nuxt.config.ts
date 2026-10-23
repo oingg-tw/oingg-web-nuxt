@@ -5,6 +5,8 @@ export default defineNuxtConfig({
   // — content/blog/*.md (see content.config.ts) is now the only source for blog posts, the old
   // useBlogPosts.ts hand-written array is gone.
   modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', '@nuxt/content'],
+  // Content 的 SQLite 用 Node 內建的 node:sqlite（2026-10-23，取代要編譯原生模組的 better-sqlite3；Node 22.5 起才有，engines 是 ≥ 24）
+  content: { experimental: { sqliteConnector: 'native' } },
   // Real production domain (see docs/0_researches/oingg.com 首頁背景漸層設計研究報告.md — the
   // actual intended domain, currently just a Squarespace placeholder, not deployed yet per
   // this repo's own memory of "zero deploy config"). Both @nuxtjs/robots and @nuxtjs/sitemap

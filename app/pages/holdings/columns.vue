@@ -287,8 +287,6 @@ function copyValue(value: FormulaValue | undefined): string | number | null {
   return value
 }
 const shownColumn = (column: HoldingColumn) => (column.id === editingId.value ? draft : column)
-// 下載時預設不勾的欄（會透露部位大小，規則在 holdings-formula.ts 的 sizeRevealingLetters）
-const sizeLetters = computed(() => sizeRevealingLetters(columns.value.map((column, index) => ({ letter: letters.value[index]!, formula: shownColumn(column).formula, format: shownColumn(column).format }))))
 // 骨架：同一張 SharedSheetGrid（表頭、列高、框線都一樣），欄是「股票」加上次那麼多欄、只有字母，列是空的
 const skeletonRows = computed(() => Array.from({ length: rowCountHint.value }, (_, index) => ({ symbol: `skeleton-${index}`, name: '', values: {} }) as unknown as ColumnRow))
 const skeletonSheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
@@ -310,14 +308,13 @@ const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
       sortValue: (row) => {
         const value = row.values[letter]
         return typeof value === 'number' && Number.isFinite(value) ? value : null
-      },
-      sensitive: sizeLetters.value.has(letter)
+      }
     }
   })
 ])
 // ---- 排序工具列（2026-10-23，使用者：「holdings/columns 要有排序功能，希望能設計出來 類似 Excel 那樣的Toolbar」，方案頁選 A「一條工具列」）----
 // 跟 Excel 一樣排「選取的格子所在的那一欄」：試算表回報作用中的欄（activeColumn），工具列用 v-model:sort 下排序（toolbar-sort：點表頭
-// 照舊是改公式）。只改畫面上的順序；複製與下載照排序後的順序（sortRowsBy 同一個函式）。同一顆再按一次，或按「取消排序」，回到原本的順序
+// 照舊是改公式）。只改畫面上的順序；複製照排序後的順序。同一顆再按一次，或按「取消排序」，回到原本的順序
 type SheetSort = { key: string; order: 'ascending' | 'descending' }
 const ORDER_TEXT = { ascending: '由小到大', descending: '由大到小' } as const
 const sheetSort = ref<SheetSort | null>(null)
@@ -335,10 +332,6 @@ function clearSort() {
   sheetSort.value = null
   statusText.value = '取消排序'
 }
-const downloadRows = computed(() => {
-  const column = columnOf(sheetSort.value?.key)
-  return sheetSort.value && column?.sortValue ? sortRowsBy(rows.value, column.sortValue, sheetSort.value.order) : rows.value
-})
 
 // ---- 指標的值（METRIC）----
 // 代碼從所有欄的公式收集（含正在編輯的草稿，打字時整欄就能預覽）。目錄還沒到時先全部當作認得（不會閃 #NAME?），到了只留目錄裡
@@ -479,7 +472,6 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
             <el-button :disabled="!sheetSort" @click="clearSort">取消排序</el-button>
             <span v-if="sheetSort && sortedLabel && sheetSort.key !== selectedKey" class="columns-toolbar__status">目前依{{ sortedLabel }}{{ ORDER_TEXT[sheetSort.order] }}</span>
           </div>
-          <SharedDownloadButton class="columns-toolbar__download" :rows="loading ? [] : downloadRows" :columns="sheetColumns" filename="持股自訂欄位" />
         </div>
         <p v-if="atQuota && !editingId" class="columns-toolbar__help" role="status">
           你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
@@ -795,10 +787,6 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 
 .columns-toolbar__status {
   color: var(--el-text-color-regular);
-}
-
-.columns-toolbar__download {
-  margin-left: auto;
 }
 
 .columns-toolbar__help {

@@ -88,11 +88,9 @@ const dayText = (date: string) => (date.slice(0, 4) === latestPriceDate.value?.s
 // 跟持股總覽共用（2026-10-08）；預設依已實現損益由大到小，同持股總覽「最大的先看」。
 const expanded = ref<string[]>([])
 const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
-  // 下載（2026-10-18）：已實現損益是金額、會透露部位大小，預設不下載；收盤價不會
   // 卡片上報酬率寫在金額後面（同持股總覽的未實現損益）
-  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), cardText: row => (row.pct === null ? holdingsSignedMoney(row.value) : `${holdingsSignedMoney(row.value)} ${holdingsSignedPct(row.pct)}`), sortValue: row => row.value, value: row => row.value, sensitive: true, tone: row => Math.round(row.value) },
-  // 報酬率是比例、不透露部位大小，預設下載
-  { key: 'pct', label: '報酬率', minWidth: 110, sortLabel: '報酬率（高到低）', text: row => holdingsSignedPct(row.pct), sortValue: row => row.pct, value: row => row.pct, tone: row => (row.pct === null ? null : Number((row.pct * 100).toFixed(2))) },
+  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), cardText: row => (row.pct === null ? holdingsSignedMoney(row.value) : `${holdingsSignedMoney(row.value)} ${holdingsSignedPct(row.pct)}`), sortValue: row => row.value, tone: row => Math.round(row.value) },
+  { key: 'pct', label: '報酬率', minWidth: 110, sortLabel: '報酬率（高到低）', text: row => holdingsSignedPct(row.pct), sortValue: row => row.pct, tone: row => (row.pct === null ? null : Number((row.pct * 100).toFixed(2))) },
   {
     key: 'price',
     label: latestPriceDate.value ? `收盤價（${dayText(latestPriceDate.value)}）` : '收盤價',
@@ -100,8 +98,7 @@ const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
     card: 'summary',
     sortLabel: '收盤價（高到低）',
     text: row => (row.price === null ? '－' : `${groupThousands(String(row.price))}${row.priceDate && row.priceDate !== latestPriceDate.value ? `（${dayText(row.priceDate)}）` : ''}`),
-    sortValue: row => row.price,
-    value: row => row.price
+    sortValue: row => row.price
   }
 ])
 
@@ -187,7 +184,6 @@ const tradingRows = computed(() => {
             :rows="loading ? [] : rows"
             :columns="columns"
             default-sort="value"
-            download-name="已實現損益"
             :toggle-labels="['交易明細', '收合明細']"
             @open="loadTransactions"
           >

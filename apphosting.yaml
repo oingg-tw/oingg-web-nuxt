@@ -7,7 +7,7 @@
 # runConfig：
 # - minInstances 0：沒流量時不收錢，代價是冷啟動（Nitro 的快取在記憶體裡，縮到 0 就清空，第一個訪客比較慢）
 # - maxInstances 2：還沒對外發布，先壓低上限；業務中台以 IP 限流 300 次／60 秒，多開 instance 也會多佔額度
-# - memoryMiB 1024：SSR＋@nuxt/content 啟動時在工作目錄建 sqlite（better-sqlite3）
+# - memoryMiB 1024：SSR＋@nuxt/content 啟動時在工作目錄建 sqlite（Node 內建的 node:sqlite）
 runConfig:
   minInstances: 0
   maxInstances: 2

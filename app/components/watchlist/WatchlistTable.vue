@@ -19,12 +19,10 @@ const props = withDefaults(defineProps<{
   // 拖表頭換欄位順序（emit reorder，呼叫端決定存不存）
   movable?: boolean
   actions?: boolean
-  // 給了就在工具列放下載（檔名前半段）
-  downloadName?: string
   // 資料還沒到（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）：rows 是呼叫端給的空列（列數照上次），
-  // 表頭、卡片上的欄名照畫，名稱與數字是骨架；操作鈕由呼叫端依 slot 的 loading 停用，不能下載
+  // 表頭、卡片上的欄名照畫，名稱與數字是骨架；操作鈕由呼叫端依 slot 的 loading 停用
   loading?: boolean
-}>(), { notes: () => ({}), storageKey: 'watchlist', movable: false, actions: false, downloadName: undefined, loading: false })
+}>(), { notes: () => ({}), storageKey: 'watchlist', movable: false, actions: false, loading: false })
 const emit = defineEmits<{ reorder: [fields: string[]], removeColumn: [field: string] }>()
 defineSlots<{
   toolbar?: () => unknown
@@ -72,7 +70,7 @@ const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
   ...props.columns.map((column): SheetColumn<WatchlistRow> => {
     // 表頭的欄位選單（2026-10-22）：自己的清單（movable）每一欄都能從選單移除；分享頁只能排序
     const removable = props.movable
-    // 複製與下載給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，下載時會被當成公式擋掉（toCsv）
+    // 複製給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，貼進 Excel 會被當成公式
     if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, removable, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
     if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, removable, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
     const located = locateFieldInSchema(schema.value.categories, column.field)
@@ -136,7 +134,6 @@ const sortedCards = computed(() => {
       </label>
     </div>
     <slot name="toolbar" />
-    <SharedDownloadButton v-if="downloadName" :rows="loading ? [] : rows" :columns="sheetColumns" :filename="downloadName" />
   </div>
   <div class="view-table">
     <SharedSheetGrid

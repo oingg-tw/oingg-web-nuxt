@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Sortable from 'sortablejs'
 import type { StockNavNode } from '~/utils/stock-page-nav'
 
 // 區內導覽的連結清單——個股頁面（STOCK_NAV_ITEMS＋使用者釘選的指標）與產業特區共用（2026-10-01「請使用共用元件。不可重造
@@ -31,36 +30,24 @@ const emit = defineEmits<{ reorder: [oldIndex: number, newIndex: number] }>()
 const leadingItems = computed(() => props.items.filter(item => !item.trailing))
 const trailingItems = computed(() => props.items.filter(item => item.trailing))
 
-// 拖曳排序（2026-10-13 個股自選指標起，使用者：「sidebar 自選指標 希望可以用拖曳的方式就更新排序」）。sortablejs 的設定照
-// PresetFolder.vue（篩選器分頁拖曳）調過的那一組：forceFallback（連結的原生拖曳會搶走手勢）、30ms 延遲、8px 容忍讓點連結仍是
-// 點連結；粗指標（手機）不掛，免得跟捲動底部清單打架。鍵盤與單指替代路徑由呼叫端提供（個股是指標速覽表格的上移／下移，WCAG 2.5.7）。
-// onEnd 先還原 sortable 自己搬的 DOM，交給 Vue 依呼叫端的新順序重畫，同 PresetFolder 的理由。
+// 拖曳排序（2026-10-13 個股自選指標起，使用者：「sidebar 自選指標 希望可以用拖曳的方式就更新排序」）。2026-10-23 從 sortablejs 換成
+// useColumnDrag（Pragmatic DnD，同表頭換欄）：拖的時候清單不動、插入的縫畫一條線、放手才搬。原生拖曳要移動一段距離才開始，點連結仍是
+// 點連結；粗指標（手機）不能拖，免得跟捲動底部清單打架。鍵盤與單指替代路徑由呼叫端提供（個股是指標速覽表格的上移／下移，WCAG 2.5.7）。
 // 呼叫端指定目前位置時照它（物件綁定：undefined 也要蓋掉路由在完全符合那一列設的 aria-current，見 SectionNav）
 const mark = (item: StockNavNode) => (item.current === undefined ? {} : { 'aria-current': item.current ? 'page' as const : undefined })
 // 只有一列（或還在讀）就沒有東西可排：不畫握把、不掛拖曳
 const draggable = computed(() => props.sortableItems.length > 1 && !props.sortableItems.some(item => item.skeleton))
 const sortableList = ref<HTMLElement>()
-let sortable: Sortable | undefined
-
-watch([sortableList, draggable], ([el, enabled]) => {
-  sortable?.destroy()
-  sortable = undefined
-  if (!el || !enabled || matchMedia('(pointer: coarse)').matches) return
-  sortable = Sortable.create(el, {
-    animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150,
-    delay: 30,
-    delayOnTouchOnly: false,
-    forceFallback: true,
-    fallbackTolerance: 8,
-    onEnd({ oldIndex, newIndex, item, from }) {
-      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
-      from.removeChild(item)
-      from.insertBefore(item, from.children[oldIndex] ?? null)
-      emit('reorder', oldIndex, newIndex)
-    }
-  })
+const dragKeys = computed(() => props.sortableItems.map(item => ({ field: item.label })))
+const { headerClassFor: dragClassFor } = useColumnDrag({
+  headerCells: () => Array.from(sortableList.value?.children ?? []) as HTMLElement[],
+  columns: dragKeys,
+  readonly: () => !draggable.value,
+  headerClass: 'stock-page-nav__draggable',
+  canDrag: () => !matchMedia('(pointer: coarse)').matches,
+  axis: 'y',
+  onReorder: (_updated, oldIndex, newIndex) => emit('reorder', oldIndex, newIndex)
 })
-onUnmounted(() => sortable?.destroy())
 </script>
 
 <template>
@@ -78,9 +65,9 @@ onUnmounted(() => sortable?.destroy())
              原本線畫在小標題上，ETF 不給小標題就連線也沒了。上面沒有骨幹列時不畫 -->
         <li :class="{ 'rail-divided': !sortableHeading && leadingItems.length }">
           <ul ref="sortableList" class="stock-page-nav__sublist">
-            <li v-for="(item, index) in sortableItems" :key="item.skeleton ? `skeleton-${index}` : item.label" class="stock-page-nav__pinned" :aria-hidden="item.skeleton || undefined">
+            <li v-for="(item, index) in sortableItems" :key="item.skeleton ? `skeleton-${index}` : item.label" class="stock-page-nav__pinned" :class="dragClassFor({ field: item.label }, index)" :aria-hidden="item.skeleton || undefined">
               <span v-if="item.skeleton" class="rail-item"><span class="app-skeleton app-skeleton--inline stock-page-nav__skeleton" /></span>
-              <!-- draggable="false"：連結的原生拖曳（拖出網址）會搶走 sortable 的手勢 -->
+              <!-- draggable="false"：連結自己的原生拖曳（拖出網址）會搶走整列的拖曳 -->
               <NuxtLink v-else :to="item.to!(code)" class="rail-item" draggable="false" v-bind="mark(item)">
                 <el-icon v-if="item.icon" aria-hidden="true" class="stock-page-nav__icon"><component :is="item.icon" /></el-icon>{{ item.label }}
                 <!-- 靠右的拖曳記號（2026-10-13「sidebar 靠右加上 icon 讓用戶知道他可以操作」）：整列都能拖，這只是提示；
@@ -145,8 +132,16 @@ onUnmounted(() => sortable?.destroy())
   width: 5em;
 }
 
-/* 拖曳中留在原位的那一列（sortable 的預設 ghostClass） */
-.stock-page-nav__pinned.sortable-ghost {
+/* 拖曳中：那一列變淡，插入的縫畫一條線（同表頭換欄；放手才搬） */
+.stock-page-nav__pinned.is-dragging {
   opacity: 0.4;
+}
+
+.stock-page-nav__pinned.is-insert-before {
+  box-shadow: inset 0 3px 0 0 var(--el-color-primary);
+}
+
+.stock-page-nav__pinned.is-insert-after {
+  box-shadow: inset 0 -3px 0 0 var(--el-color-primary);
 }
 </style>

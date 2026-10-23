@@ -4,7 +4,6 @@ import type { StockBadges } from '#shared/types/stock-badges'
 import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
 import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
-import type { CompanyRankResponse, PayerPercentile } from '#shared/types/stock-context'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
 
@@ -124,27 +123,6 @@ export const cachedDailyCloses = defineCachedFunction(
   { name: 'stock-daily-closes', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// 殖利率在「有配息公司」裡的百分位, derived from the rank this page already fetches（2026-09-24）.
-//
-// This was a pair of POST /screener counts for a few hours today, because GET /screener/company-rank
-// silently dropped its `excludeZero` query parameter — 業務中台's own zod schema had no such field,
-// so the flag never reached analysis-ts, which had supported it all along. The result was two
-// contradicting percentiles on one screen: the answer sentence read company-rank's undiluted
-// 1,723-company population（PR27）while the gauge counted its own 1,445（PR13）, and the sentence
-// called the first one「有配息公司中」.
-//
-// 業務中台 shipped the fix the same day（d02bc1b）: excludeZero=true now returns totalCount 1445 with
-// the rank unchanged at 1259 — correct, since the 278 excluded companies all yield 0 and already
-// sorted below this one. So the counts are gone and this derives from `ranks`, which the dividend
-// plan fetches regardless. Two network calls and forty lines removed, same numbers.
-function payerPercentileFrom(rank: CompanyRankResponse | null | undefined): PayerPercentile | null {
-  if (!rank?.found || rank.value === null || rank.rank === null || !rank.totalCount) return null
-  // Inclusive of the company itself, which is what a percentile-at-or-below means: the top-ranked
-  // company is at 100, not at (total-1)/total.
-  const atOrBelow = rank.totalCount - rank.rank + 1
-  return { value: rank.value, total: rank.totalCount, atOrBelow, percentile: (atOrBelow / rank.totalCount) * 100 }
-}
-
 // 填息 per cash-dividend event — see DividendFillEvent for what is compared and why.
 //
 // Two cases it refuses to compute rather than guessing, both surfaced to the reader as a stated
@@ -229,17 +207,7 @@ export const cachedMetricProvenance = defineCachedFunction(
 
 // cachedPeerGroup / cachedPeerValues (GET /stocks/:symbol/peer-group, POST /screener/values for
 // the peer table) removed 2026-09-20 — analysis-ts hard-deleted GET /companies/peer-group with
-// no replacement (commit a7489d65); see shared/types/stock-context.ts's own header comment.
-
-// GET /screener/company-rank — `direction` is required by 業務中台 (asc|desc). `excludeZero`
-// (analysis-ts, 2026-09-20) drops companies whose value is exactly 0 from the ranked population —
-// see CompanyRankResponse's own comment. Omitted from the query (not sent as `excludeZero=false`)
-// when unset, matching 業務中台's own GET /screener/distribution convention elsewhere in this file.
-export const cachedCompanyRank = defineCachedFunction(
-  (symbol: string, field: string, direction: 'asc' | 'desc', excludeZero?: boolean) =>
-    businessFetch<CompanyRankResponse>('/screener/company-rank', { query: { symbol, field, order: direction, excludeZero: excludeZero || undefined } }),
-  { name: 'stock-company-rank', getKey: (symbol, field, direction, excludeZero) => `${symbol}:${field}:${direction}:${excludeZero ?? false}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
-)
+// no replacement (commit a7489d65).
 
 // GET /stocks/:symbol/financial-statement — 查詢參數是西元 fiscalYear＋整數 fiscalQuarter（2026-10-10 業務中台 d8f4753，
 // 取代民國 year＋字串 season）；兩個都不帶＝最新一期。回應的期別也是西元 fiscalYear／fiscalQuarter（2026-10-10 起）；科目 key 是 mops 第三階段（2026-10-12）之後的長名。
@@ -324,9 +292,6 @@ interface SeriesPagePlan {
   dividendHistory?: boolean
   // Implies dividendHistory — the fills are computed FROM it, plus the daily closes.
   dividendFills?: boolean
-  // Field whose payers-only percentile to derive from `ranks`（see payerPercentileFrom）.
-  payerPercentileField?: string
-  ranks?: { field: string; direction: 'asc' | 'desc'; excludeZero?: boolean }[]
 }
 
 // Order matters: the digest keeps the FIRST group that carries a code, so the TTM "latest"
@@ -335,10 +300,9 @@ interface SeriesPagePlan {
 const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // FY_CORE_1 feeds the index page's FAQ（連續配息年數）.
   index: { groups: ['TTM_CORE_1', 'FY_CORE_1', 'PE_TTM_20', 'PB_Q_20'] },
-  // The 殖利率 market rank replaces the old two-POST percentile bracketing card's own fetch.
-  // excludeZero: true (2026-09-20, analysis-ts's own recommendation) — a company IS ranked
-  // against payers only, not diluted by the ~16% of the market that pays no dividend at all.
-  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, dividendFills: true, payerPercentileField: 'dividendYield.EOD', ranks: [{ field: 'dividendYield.EOD', direction: 'desc', excludeZero: true }] },
+  // 殖利率在全市場（有配息公司）的排名與百分位 2026-10-23 拿掉：頁面 10/15 就不畫了（使用者：「跟其他配息公司比，殖利率在哪裡
+  // 這個先刪掉。我另外想想怎麼辦」），每次讀這頁還多打一次 GET /screener/company-rank。要放回來從 git 找 cachedCompanyRank
+  dividend: { groups: ['TTM_DIV_40', 'FY_CORE_1'], dividendHistory: true, dividendFills: true },
   // 配息從哪來（2026-09-24）— no new group: TTM_CORE_1 already carries the three margins, eps and
   // dividendPayoutRatio, and TTM_PER_SHARE_1 already carries revenuePerShare plus the per-share
   // cash figures. Between them every link of the chain is covered, so this page costs one more
@@ -365,7 +329,7 @@ export function isStockSeriesPage(value: string): value is StockSeriesPage {
 
 export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage): Promise<StockSeriesResponse> {
   const plan = SERIES_PLANS[page]
-  const [groupResults, dividendHistory, dailyCloses, ranks] = await Promise.all([
+  const [groupResults, dividendHistory, dailyCloses] = await Promise.all([
     Promise.all(
       plan.groups.map(async name => {
         const group = SERIES_GROUPS[name]
@@ -373,10 +337,7 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
       })
     ),
     plan.dividendHistory ? settle(cachedDividendHistory(symbol)) : Promise.resolve(undefined),
-    plan.dividendFills ? settle(cachedDailyCloses(symbol)) : Promise.resolve(undefined),
-    plan.ranks
-      ? Promise.all(plan.ranks.map(async ({ field, direction, excludeZero }) => ({ field, direction, rank: await settle(cachedCompanyRank(symbol, field, direction, excludeZero)) })))
-      : Promise.resolve(undefined)
+    plan.dividendFills ? settle(cachedDailyCloses(symbol)) : Promise.resolve(undefined)
   ])
   const groups: StockSeriesResponse['groups'] = {}
   for (const [name, series] of groupResults) groups[name] = series
@@ -385,9 +346,5 @@ export async function runStockSeriesPlan(symbol: string, page: StockSeriesPage):
   // Both inputs can fail independently; either one missing means no fills rather than a partial
   // table, since a row without its pre-ex close says nothing.
   if (dailyCloses !== undefined) response.dividendFills = computeDividendFills(dividendHistory ?? null, dailyCloses ?? [])
-  if (ranks !== undefined) response.ranks = ranks
-  if (plan.payerPercentileField) {
-    response.payerPercentile = payerPercentileFrom(ranks?.find(item => item.field === plan.payerPercentileField)?.rank)
-  }
   return response
 }

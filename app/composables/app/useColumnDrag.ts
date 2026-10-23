@@ -1,7 +1,8 @@
 import type { Ref } from 'vue'
 
 // 表頭拖曳換欄位順序（2026-10-08 從 SharedMetricTable 抽出；2026-10-17 改名、不再自己去 el-table 裡找表頭——表頭格子由呼叫端給，
-// SharedMetricTable 的 el-table 與 SharedSheetGrid 的原生表格共用這一份）。
+// SharedMetricTable 的 el-table 與 SharedSheetGrid 的原生表格共用這一份）。2026-10-23 起直的清單也用（axis: 'y'，StockPageNavList
+// 的側欄排序，取代 sortablejs）：同一套「拖曳中不動、縫發亮、放手才搬」。
 // Pragmatic Drag and Drop 而不是 SortableJS（它會在拖過另一欄時就把 <th> 真的換位）：使用者要的是來源欄位拖曳中不動，只用
 // 發亮的邊框標示會插到哪個縫（「該位置左邊 div 的右邊 border 發亮、右邊 div 的左邊 border 發亮」），放手才換。
 // dropInsertIndex 是欄位之間的縫（0..length，orderedColumns 的索引空間）：指標在某一欄左半＝它前面的縫、右半＝後面的縫；緊貼著
@@ -28,13 +29,16 @@ function loadDnd() {
 export function useColumnDrag<T extends { field: string }>(options: {
   // 可拖的表頭格子，順序跟 columns 相同
   headerCells: () => HTMLElement[]
-  columns: Ref<T[]>
+  columns: Readonly<Ref<T[]>>
   readonly: () => boolean
   // headerClassFor 回傳的 class 一定帶它（el-table 用它標記哪些 <th> 可以拖）
   headerClass: string
-  onReorder: (updated: T[]) => void
+  // startIndex／finishIndex 跟 reorder() 同一個索引空間（finishIndex 是搬完之後的位置）
+  onReorder: (updated: T[], startIndex: number, finishIndex: number) => void
   // 這一次按下去能不能開始拖（SharedSheetGrid：按在欄寬把手上是調欄寬，不是拖欄）
   canDrag?: () => boolean
+  // x＝左右排的欄（預設），y＝上下排的列
+  axis?: 'x' | 'y'
 }) {
   let cleanup: (() => void) | undefined
   const draggingField = ref<string | null>(null)
@@ -50,10 +54,11 @@ export function useColumnDrag<T extends { field: string }>(options: {
     return classes.join(' ')
   }
 
-  // 指標在 element 的左半→index 前面的縫，右半→後面的縫；緊貼來源欄的兩個縫回 null（放手不會動）
-  function resolveInsertIndex(element: HTMLElement, clientX: number, index: number): number | null {
+  // 指標在 element 的左（上）半→index 前面的縫，右（下）半→後面的縫；緊貼來源欄的兩個縫回 null（放手不會動）
+  function resolveInsertIndex(element: HTMLElement, input: { clientX: number; clientY: number }, index: number): number | null {
     const rect = element.getBoundingClientRect()
-    const insertIndex = clientX < rect.left + rect.width / 2 ? index : index + 1
+    const before = options.axis === 'y' ? input.clientY < rect.top + rect.height / 2 : input.clientX < rect.left + rect.width / 2
+    const insertIndex = before ? index : index + 1
     if (dragStartIndex.value !== null && (insertIndex === dragStartIndex.value || insertIndex === dragStartIndex.value + 1)) return null
     return insertIndex
   }
@@ -94,10 +99,10 @@ export function useColumnDrag<T extends { field: string }>(options: {
             getData: () => ({ field }),
             canDrop: ({ source }) => source.data.field !== field,
             onDragEnter: ({ location }) => {
-              dropInsertIndex.value = resolveInsertIndex(th, location.current.input.clientX, index)
+              dropInsertIndex.value = resolveInsertIndex(th, location.current.input, index)
             },
             onDrag: ({ location }) => {
-              dropInsertIndex.value = resolveInsertIndex(th, location.current.input.clientX, index)
+              dropInsertIndex.value = resolveInsertIndex(th, location.current.input, index)
             },
             onDragLeave: () => {
               if (dropInsertIndex.value === index || dropInsertIndex.value === index + 1) dropInsertIndex.value = null
@@ -112,7 +117,7 @@ export function useColumnDrag<T extends { field: string }>(options: {
               // reorder() 的 finishIndex 是「來源已移除」的索引空間：插到比來源晚的位置要左移一格
               const finishIndex = startIndex < targetIndex ? targetIndex - 1 : targetIndex
               if (finishIndex === startIndex) return
-              options.onReorder(reorder({ list: options.columns.value, startIndex, finishIndex }))
+              options.onReorder(reorder({ list: options.columns.value, startIndex, finishIndex }), startIndex, finishIndex)
             }
           })
         ]

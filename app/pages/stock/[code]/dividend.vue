@@ -7,7 +7,7 @@ import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-divi
 // 2026-10-15 第一段改成先跟自己比（使用者：「重新設計 dividend 該指標都先跟自己比，就像其他多數指標一樣」）：殖利率歷年走勢＋答句
 // 寫這檔自己近幾年的區間。殖利率歷史是業務中台 4dcd116 的 GET /stocks/:symbol/dividend-yield-history（月底取樣，口徑同摘要卡）。
 // 原本第一段的全市場百分位與分布圖（StockDividendYieldPercentileCard）同日先拿掉（使用者：「跟其他配息公司比，殖利率在哪裡 這個
-// 先刪掉。我另外想想怎麼辦」）；元件與 series 的 payerPercentile 先留著，等決定怎麼放回來。
+// 先刪掉。我另外想想怎麼辦」）；元件、分布圖的資料與 series 的 payerPercentile 2026-10-23 一起刪了（git 找得回來）。
 // 2026-09-24 移出兩段：填息搬到 /stock/:code/dividend-fill（同一份 payload，填息仍在這裡的伺服器端算，只有渲染搬走）；
 // 「股息從哪裡來」整段刪除（「這個區塊整個刪掉」，連同它唯一的卡片元件）。
 const route = useRoute()

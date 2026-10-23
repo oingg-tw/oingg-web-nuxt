@@ -55,21 +55,6 @@ export function toTsv(matrix: SheetCopyValue[][]): string {
   return matrix.map(row => row.map(cell).join('\t')).join('\r\n')
 }
 
-// 下載用的 CSV（2026-10-18，使用者：「holdings 或是 watchlist 希望可以下載」，選了 CSV）。逗號分隔、\r\n 換列、開頭 UTF-8 BOM——沒有
-// BOM，Excel 雙擊開啟會把中文當成系統編碼讀成亂碼。有逗號、雙引號、換行的字串照 RFC 4180 包起來。
-// 公式注入（CSV injection）：文字格以 = + - @ 開頭、又不是一個數字時，Excel 會把它當公式執行，前面補一個 '（OWASP 的做法）。
-// 數字格是 number，不會走到這條
-export function toCsv(matrix: SheetCopyValue[][]): string {
-  const cell = (value: SheetCopyValue) => {
-    if (value === null) return ''
-    // 12 位有效數字：去掉浮點雜訊（85/4165 → 0.020408163265306124），精度遠超過畫面上任何一欄
-    if (typeof value === 'number') return Number.isFinite(value) ? String(Number(value.toPrecision(12))) : ''
-    const text = /^[=+\-@\t\r]/.test(value) && !Number.isFinite(Number(value)) ? `'${value}` : value
-    return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
-  }
-  return `﻿${matrix.map(row => row.map(cell).join(',')).join('\r\n')}\r\n`
-}
-
 const escapeHtml = (text: string) => text.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!)
 
 // 同一份資料的 HTML 版本，給 Excel／Google 試算表：數字格帶 mso-number-format（例如 '0.00%'），貼上後是數字、格式也留著；
@@ -105,7 +90,7 @@ export function estimateTextWidth(text: string): number {
   return width
 }
 
-// 依一欄排序：試算表的表頭排序與 /holdings/columns 的排序工具列共用（下載跟畫面才是同一個順序）。沒有值（null）一律排最後、
+// 依一欄排序：試算表的表頭排序與 /holdings/columns 的排序工具列共用。沒有值（null）一律排最後、
 // 同值照原本的順序；數字比大小，其他照中文排序
 export function sortRowsBy<R>(rows: readonly R[], value: (row: R) => number | string | null, order: 'ascending' | 'descending'): R[] {
   const direction = order === 'ascending' ? 1 : -1

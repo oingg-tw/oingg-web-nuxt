@@ -1,7 +1,9 @@
 allowBuilds:
   '@firebase/util': true
   '@parcel/watcher': true
-  better-sqlite3: true
+  # Content 的 SQLite 改用 Node 內建的 node:sqlite（nuxt.config 的 content.experimental.sqliteConnector，2026-10-23），不再編譯它。
+  # 它是 @nuxt/content／db0 的選用 peer，pnpm 照樣會裝；不明寫 false 的話，沒核准的原生建置會讓整個 install 失敗（ERR_PNPM_IGNORED_BUILDS）
+  better-sqlite3: false
   esbuild: true
   protobufjs: true
 

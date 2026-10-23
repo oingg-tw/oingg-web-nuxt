@@ -23,9 +23,6 @@ export interface HoldingsSymbolColumn<T> {
   cardText?: (row: T) => string
   // 排序選單的字；預設「欄名（大到小）」
   sortLabel?: string
-  // 下載（SharedDownloadButton）：value＝下載的值（數字給數字、百分比給比例），不給就下載 text；sensitive＝會透露部位大小，預設不下載
-  value?: (row: T) => string | number | null
-  sensitive?: boolean
 }
 </script>
 
@@ -51,12 +48,10 @@ const props = withDefaults(defineProps<{
   defaultSort: string
   // [收合時, 展開時]
   toggleLabels?: [string, string]
-  // 給了就在表格上方放「下載」（檔名前半段，例如「持股明細」）。下載的是目前的排序
-  downloadName?: string
   // 資料還沒到：畫這麼多列骨架（useLayoutHint 記住的列數），0＝資料到了（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」
   //「然後不要閃動」）。表頭、卡片上的欄名、「明細」照畫，數字是骨架，大小跟資料到了一樣
   skeletonRows?: number
-}>(), { toggleLabels: () => ['明細', '收合'], downloadName: undefined, skeletonRows: 0 })
+}>(), { toggleLabels: () => ['明細', '收合'], skeletonRows: 0 })
 const emit = defineEmits<{ open: [symbol: string] }>()
 const expanded = defineModel<string[]>('expanded', { default: () => [] })
 // variant：明細畫在桌機的展開列（table）還是手機卡片裡（card）——卡片裡的排法不同（見 HoldingsDetailPanel）
@@ -98,13 +93,6 @@ function onSortChange({ prop }: { prop: string | null }) {
   if (prop) sortKey.value = prop
 }
 
-// 下載的欄：代號、名稱分兩欄（表格裡是同一格），後面接數字欄
-const downloadColumns = computed(() => [
-  { key: 'symbol', label: '代號', text: (row: T) => row.symbol },
-  { key: 'name', label: '名稱', text: (row: T) => row.name },
-  ...props.columns
-])
-
 const summaryColumns = computed(() => props.columns.filter(column => column.card === 'summary'))
 const detailColumns = computed(() => props.columns.filter(column => column.card === 'detail'))
 
@@ -135,7 +123,6 @@ function toggle(symbol: string, event?: MouseEvent) {
           <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
-      <SharedDownloadButton v-if="downloadName" class="symbol-table__download" :rows="sortedRows" :columns="downloadColumns" :filename="downloadName" />
       <slot name="toolbar" />
     </div>
 
@@ -255,7 +242,7 @@ function toggle(symbol: string, event?: MouseEvent) {
 </template>
 
 <style scoped>
-/* 排序選單（只在卡片模式）與下載鈕同一列，下載靠右 */
+/* 排序選單（只在卡片模式）與呼叫端放的工具列（#toolbar）同一列 */
 .symbol-table__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -270,10 +257,6 @@ function toggle(symbol: string, event?: MouseEvent) {
 
 .symbol-table__toolbar--reserved {
   min-height: 44px;
-}
-
-.symbol-table__download {
-  margin-left: auto;
 }
 
 .symbol-table__sort {
