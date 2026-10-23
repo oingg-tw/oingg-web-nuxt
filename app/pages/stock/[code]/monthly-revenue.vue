@@ -10,7 +10,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '月營收'
 
-const { data, ascending, descending, latest, hasData, readFailed, dataSources } = await useMonthlyRevenuePage(code)
+const { data, ascending, descending, latest, hasData, readFailed, dataSources, pending } = await useMonthlyRevenuePage(code)
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 // 定義與研究文獻在新手專區（2026-10-13「monthly-revenue 版面請精簡 比照別的模板」，同杜邦／現金循環）：這裡只留一句與頁尾連結
 const TOPIC_GUIDE = findLearnTopic('monthly-revenue')!
@@ -62,8 +62,14 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-monthly-revenue" :question="`${stockShortName}（${code}）每個月的營收是多少？`" :answer="answer">
+    <StockQuestionSection
+      id="stock-monthly-revenue"
+      :question="`${stockShortName}（${code}）每個月的營收是多少？`"
+      :answer="answer"
+      :answer-skeleton="pending ? `${stockShortName}（${code}）2026 年 9 月營收 0,000 億元，比去年同月多 00.00%、今年累計 0,000 億元。` : null"
+    >
       <StockMonthlyRevenueChart v-if="hasData && data" measure="amount" :entries="ascending" :monthly-prices="data.monthlyPrices" :price-break-months="data.priceBreakMonths" />
+      <SharedChartCard v-else-if="pending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
       <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
       <template v-else-if="readFailed" />
       <p v-else class="stock-monthly-revenue-page__line">

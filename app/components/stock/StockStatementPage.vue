@@ -21,7 +21,7 @@ const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 await useFilterSchema()
 
-const { latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed } = await useStockStatements(code, stockShortName)
+const { latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed, pending } = await useStockStatements(code, stockShortName, { lazy: true })
 const definition = STATEMENT_DEFINITIONS.find(item => item.key === props.statement)!
 
 // 問句已經帶公司名與期別，接上答句才穩定超過 50 個字的描述下限（只申報一兩個科目的公司，單靠名稱＋答句量過會不足）
@@ -56,6 +56,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         :prior-label="labelsOf(statement).prior"
         :show-title="false"
       />
+    </StockQuestionSection>
+    <StockQuestionSection
+      v-else-if="pending"
+      :id="sectionId"
+      :question="statementQuestions[statement]"
+      :answer-skeleton="`營業收入 0,000,000,000 千元（去年同期 0,000,000,000 千元，增減 00.00%）、本期淨利 000,000,000 千元、基本每股盈餘 00.00 元。`"
+    >
+      <div class="app-skeleton app-skeleton--chart" aria-hidden="true" />
     </StockQuestionSection>
     <StockQuestionSection v-else-if="!readFailed" :id="sectionId" :question="`${stockShortName}的${page.topic}在哪裡？`">
       <p class="stock-answer">目前沒有這檔股票的財務報表申報資料。</p>

@@ -19,7 +19,8 @@ const code = computed(() => String(route.params.code))
 const TOPIC = '填權填息'
 
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
-const { digest, description: digestDescription, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName })
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要，填息表讀取中放骨架；伺服器照樣等
+const { digest, description: digestDescription, series, pending: digestPending } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, lazy: true })
 
 const fills = computed<DividendFillEvent[]>(() => series.value?.dividendFills ?? [])
 
@@ -102,6 +103,14 @@ const { breadcrumbs } = useStockPageSeo({
           </tr>
         </tbody>
       </SharedTable>
+    </StockQuestionSection>
+    <StockQuestionSection
+      v-else-if="digestPending"
+      id="stock-dividend-fill-table"
+      :question="`${stockShortName}（${code}）配息之後，股價填回來了嗎？`"
+      answer-skeleton="近 5 次除息裡有 0 次在 00 個交易日內填息，最近一次是 2026-07-14 除息、還沒有填回來。"
+    >
+      <div class="app-skeleton app-skeleton--chart" aria-hidden="true" />
     </StockQuestionSection>
 
     <StockQuestionSection id="stock-dividend-fill-limits" question="什麼情況下算不出填息？" :answer="limitAnswer" />

@@ -25,13 +25,16 @@ await useFilterSchema()
 const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
 const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'dividendYield')?.metric.description))
 
-const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices })
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要與殖利率歷史，第一段讀取中放骨架；伺服器照樣等
+const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices, lazy: true })
 
 // 殖利率歷史：次要資料，讀不到不擋整頁（scope section），只少第一段的圖與「自己的區間」那半句
-const { data: yieldHistory, refresh: refreshYieldHistory } = await useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
+const { data: yieldHistory, status: yieldStatus, refresh: refreshYieldHistory } = await useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
   key: () => `stock-dividend-yield-history-${code.value}`,
-  watch: [code]
+  watch: [code],
+  lazy: true
 })
+const yieldPending = computed(() => yieldStatus.value === 'pending' || yieldStatus.value === 'idle')
 watchLoadFailure(() => `stock-dividend-yield-history:${code.value}`, () => yieldHistory.value?.entries === null, refreshYieldHistory, { scope: 'section' })
 const yieldEntries = computed(() => yieldHistory.value?.entries ?? [])
 
@@ -122,8 +125,15 @@ const exDividendAnswer = computed(() => {
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: digest?.sources ?? [], freshness: digest && buildDigestFreshnessText(digest), links: footerLinks }"
   >
-    <StockQuestionSection id="stock-dividend-yield" :question="`${stockShortName}（${code}）殖利率是多少？`" :answer="overviewAnswer">
+    <!-- 讀取中整句用骨架：答句的後半句要等殖利率歷史，先出前半句再長出後半句會把下面推動 -->
+    <StockQuestionSection
+      id="stock-dividend-yield"
+      :question="`${stockShortName}（${code}）殖利率是多少？`"
+      :answer="yieldPending ? null : overviewAnswer"
+      :answer-skeleton="yieldPending ? '殖利率 0.00%（2026-10-22）。2021-10 以來每月月底的殖利率介於 0.00% 到 0.00%，中位數 0.00%。' : null"
+    >
       <StockDividendYieldHistoryChart v-if="yieldEntries.length" :entries="yieldEntries" :cash-dividends="yieldHistory?.cashDividends ?? []" />
+      <SharedChartCard v-else-if="yieldPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="historyText.question" :answer="historyAnswer">

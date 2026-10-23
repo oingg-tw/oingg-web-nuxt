@@ -21,7 +21,9 @@ function periodLabel(year: number, season: number, statementType: StatementType)
   return statementType === 'balanceSheet' ? `${year}年${quarterEnd(season)}` : `${year}年01/01–${quarterEnd(season)}`
 }
 
-export async function useStockStatements(code: Ref<string>, shortName: Ref<string>) {
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等報表，呼叫端讀 pending 畫骨架；伺服器照樣等。單張報表頁（StockStatementPage）開；
+// 財務報表總頁不開——它的期別選單靠這份資料決定預設期別，不等的話選單會先顯示舊期別再跳
+export async function useStockStatements(code: Ref<string>, shortName: Ref<string>, options: { lazy?: boolean } = {}) {
   // Nuxt-instance-dependent calls (useState/useAsyncData) all happen BEFORE the single await
   // below — a useState() call after an await inside a plain (non-SFC-compiled) function loses
   // Nuxt's async context and throws; see useStockPageDigest.ts's own comment on the identical
@@ -43,8 +45,9 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
       if (!symbol) return null
       return readOrNull($fetch<StockStatementsResponse>(`/api/stock/${symbol}/statements`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-statements')
     },
-    { watch: [code], default: () => null }
+    { watch: [code], default: () => null, lazy: options.lazy ?? false }
   )
+  const pending = computed(() => statementsData.status.value === 'pending' || statementsData.status.value === 'idle')
   // Seed the shared period selection from the latest filing — before StockPeriodSelector and the
   // statement card read it (they mount after this setup, on financial-statements.vue only).
   // Registered before the await so a client-side navigation to another symbol re-seeds; called
@@ -124,5 +127,5 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     }
   })
 
-  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed }
+  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed, pending }
 }

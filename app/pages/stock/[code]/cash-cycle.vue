@@ -30,7 +30,8 @@ const TOPIC = '現金循環的組成'
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
-const { series, readFailed: seriesReadFailed, refresh: refreshSeries } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName })
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等這份，時間軸讀取中放骨架、不落到「沒有這組數字」；伺服器照樣等
+const { series, readFailed: seriesReadFailed, refresh: refreshSeries, pending: seriesPending } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName, lazy: true })
 const { data: filterSchema } = await useFilterSchema()
 // 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：這一頁畫的那組指標各自的來源，從型錄來
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], series.value?.groups?.TTM_CYCLE_20?.codes ?? []))
@@ -175,12 +176,18 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-cash-cycle-value" :question="`${stockShortName}（${code}）的錢，從進貨到收回來要幾天？`" :answer="cycleAnswer">
+    <StockQuestionSection
+      id="stock-cash-cycle-value"
+      :question="`${stockShortName}（${code}）的錢，從進貨到收回來要幾天？`"
+      :answer="cycleAnswer"
+      :answer-skeleton="seriesPending ? `${stockShortName}（${code}）2026 Q2 近四季的現金轉換循環 00.0 天：存貨 00.0 天、收款 00.0 天、付款 00.0 天。` : null"
+    >
       <!-- 互動時間軸包在卡片裡，跟 /dividend-source 同一個理由（2026-09-26「希望用戶知道底下的上下
            一步跟圖表一組的」）：標題、圖、說明、按鈕是同一個元件的四部分，散在區塊裡沒有邊界的話
            按鈕讀起來像頁面層級的控制項。 -->
       <StockCashCycleTimeline v-if="latest" :entry="latest" />
-      <p v-if="!hasCycle && !cycleReadFailed" class="stock-answer">
+      <SharedChartCard v-else-if="seriesPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
+      <p v-if="!hasCycle && !cycleReadFailed && !seriesPending" class="stock-answer">
         這家公司沒有這組數字。金融、保險、租賃業沒有存貨與應收帳款這個概念，這幾個天數對它們不適用。
       </p>
       <p v-else-if="isStale" class="stock-answer">

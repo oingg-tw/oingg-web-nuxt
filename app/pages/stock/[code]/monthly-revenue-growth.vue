@@ -20,7 +20,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '月營收年增率'
 
-const { data, ascending, descending, latest, hasData, readFailed, dataSources } = await useMonthlyRevenuePage(code)
+const { data, ascending, descending, latest, hasData, readFailed, dataSources, pending } = await useMonthlyRevenuePage(code)
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 const TOPIC_GUIDE = findLearnTopic('monthly-revenue')!
 const footerLinks = computed(() => [
@@ -76,8 +76,14 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-monthly-revenue-growth" :question="`${stockShortName}（${code}）的月營收比去年同月多還是少？`" :answer="answer">
+    <StockQuestionSection
+      id="stock-monthly-revenue-growth"
+      :question="`${stockShortName}（${code}）的月營收比去年同月多還是少？`"
+      :answer="answer"
+      :answer-skeleton="pending ? `${stockShortName}（${code}）2026-09 月營收年增率 00.00%、今年累計營收年增率 00.00%。` : null"
+    >
       <StockMonthlyRevenueChart v-if="hasData && data" measure="yoy" :entries="ascending" :monthly-prices="data.monthlyPrices" :price-break-months="data.priceBreakMonths" />
+      <SharedChartCard v-else-if="pending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
       <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「沒有申報資料」 -->
       <template v-else-if="readFailed" />
       <p v-else class="stock-monthly-revenue-page__line">

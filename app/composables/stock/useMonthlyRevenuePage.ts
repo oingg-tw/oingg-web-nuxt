@@ -6,11 +6,15 @@ import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthl
 //
 // 所有 composable、computed、watch 都在 await 之前建好，最後才一起等：composable 裡一 await，Nuxt 與元件的實例就斷了（只有
 // <script setup> 會自動接回），之後再呼叫 useFilterSchema 會 500（2026-10-23 量到）
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等這份，頁面讀 pending 畫骨架；伺服器照樣等，所以下面的 503 只在伺服器端會發生，
+// 瀏覽器裡讀不到交給全站讀取失敗彈窗（同其他頁）
 export async function useMonthlyRevenuePage(code: Ref<string>) {
   const page = useFetch<StockMonthlyRevenuePageResponse>(() => `/api/stock/${code.value}/monthly-revenue`, {
     key: () => `stock-monthly-revenue-${code.value}`,
-    watch: [code]
+    watch: [code],
+    lazy: true
   })
+  const pending = computed(() => page.status.value === 'pending' || page.status.value === 'idle')
   const schema = useFilterSchema()
   const { data } = page
 
@@ -28,7 +32,7 @@ export async function useMonthlyRevenuePage(code: Ref<string>) {
   await Promise.all([page, schema])
   if (page.error.value) throw createError({ statusCode: 503, statusMessage: '月營收資料暫時無法取得', fatal: true })
 
-  return { data, ascending, descending, latest, hasData, readFailed, dataSources }
+  return { data, ascending, descending, latest, hasData, readFailed, dataSources, pending }
 }
 
 // 申報的千元換成億元。只在前端這一層換：analysis-ts 照約定原樣轉千元，換單位的那一層也要寫單位。
