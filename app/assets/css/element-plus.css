@@ -179,7 +179,9 @@ html .el-alert.el-alert .el-alert__description {
   .el-dialog__headerbtn,
   button:not(.el-button),
   select,
-  [role='button'],
+  /* 數字輸入框的「－」「＋」不算（2026-10-23，使用者：「Screener 設定範圍 彈出視窗 在手機有點跑版」）：它們貼在 44px 的框裡、上下各
+     內縮 1px，被撐到 44px 就多出 1px 壓掉框的底線。可點範圍跟著框，本來就是框的高度 */
+  [role='button']:not(.el-input-number__decrease, .el-input-number__increase),
   input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not(.el-input__inner) {
     /* !important：Element Plus 自己的 .el-select__wrapper 也寫 min-height，且它的樣式表載在這個檔之後（2026-10-08 實測篩選器的
        類股下拉停在 32px）；這是無障礙的下限，不能輸給元件預設 */

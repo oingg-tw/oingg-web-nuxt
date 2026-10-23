@@ -385,10 +385,12 @@ function reset() {
   min-width: 0;
 }
 
+/* 照字的長度自然換行（2026-10-23，使用者：「類股 選擇項目的 彈窗，希望可以display flex 然後自然換行」）：原本是至少 180px 的固定欄，
+   「水泥工業」跟「其他電子業」佔一樣寬，一排只放得下兩三個 */
 .range-editor__option-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
-  gap: 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
   margin-top: 4px;
 }
 

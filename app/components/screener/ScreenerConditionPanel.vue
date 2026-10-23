@@ -107,15 +107,17 @@ const unit = computed(() => {
   max-width: none;
   max-height: 92dvh;
   margin: 0;
+  /* 手機底部的安全區留在面板最下緣（設定範圍那一步最下面是按鈕列，不是內容區） */
+  padding-bottom: calc(var(--el-dialog-padding-primary, 16px) + env(safe-area-inset-bottom));
   border-radius: 16px 16px 0 0;
 }
 
+/* 內距只留焦點框的位置：面板本身已有 16px，內容區再給 16px 就是兩層（2026-10-23，手機上內容被縮成兩邊各 32px） */
 .el-dialog.condition-panel .el-dialog__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  padding: 4px;
 }
 
 .el-dialog.condition-panel .el-dialog__headerbtn {
