@@ -41,11 +41,13 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 const { data: filterSchema } = await useFilterSchema()
 
 // await 在頂層：同 key 的 useAsyncData 沒 await 會被多個同時掛載的元件卡在初始值（2026-09-09 根因過一次）
-const { data, error, refresh } = await useAsyncData(
+// lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放答句與圖的骨架、不落到「沒有申報」（伺服器照樣等）
+const { data, error, status, refresh } = await useAsyncData(
   () => `stock-${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition-${code.value}`,
   () => $fetch<StockBalanceCompositionResponse | StockCashFlowCompositionResponse>(`/api/stock/${code.value}/${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition`),
-  { watch: [code], default: () => null }
+  { watch: [code], default: () => null, lazy: true }
 )
+const pending = computed(() => status.value === 'pending' || status.value === 'idle')
 watchLoadFailure(() => `stock-balance-composition:${code.value}`, () => error.value, refresh)
 
 const periods = computed<(BalanceCompositionPeriod | CashFlowCompositionPeriod)[]>(() => data.value?.periods ?? [])
@@ -149,6 +151,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   >
     <StockQuestionSection v-if="answer" :id="sectionId" :question="question" :answer="answer">
       <StockBalanceCompositionChart :periods="periods" :kind="kind" :short-name="stockShortName" :code="code" :table-section-id="`${sectionId}-table`" />
+    </StockQuestionSection>
+    <StockQuestionSection
+      v-else-if="pending"
+      :id="sectionId"
+      :question="question"
+      :answer-skeleton="`${stockShortName}（${code}）2026 Q2 的合計為 0,000 億元，占總資產 00.0%，最大的一項是 00.0%，其次是 00.0%。`"
+    >
+      <SharedChartCard><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>
     <StockQuestionSection v-else-if="!error" :id="sectionId" :question="question" :answer="emptyAnswer" />
     <template #guide>

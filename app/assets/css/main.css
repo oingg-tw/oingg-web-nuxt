@@ -358,6 +358,12 @@ body {
   box-decoration-break: clone;
 }
 
+/* 圖卡裡一張圖的位置（2026-10-23，個股頁換頁不等資料）：20rem 跟多數圖同高，放在 SharedChartCard 裡，圖到了不會把下面推動 */
+.app-skeleton--chart {
+  height: 20rem;
+  margin-top: 12px;
+}
+
 @keyframes app-skeleton-shimmer {
   from {
     background-position: 100% 50%;

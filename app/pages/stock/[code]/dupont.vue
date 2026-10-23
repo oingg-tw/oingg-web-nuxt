@@ -24,11 +24,14 @@ const { data: dupontData, error: dupontError, status: dupontDataStatus, refresh:
   async () => {
     return readOrNull($fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-dupont')
   },
-  { watch: [code], default: () => null }
+  { watch: [code], default: () => null, lazy: true }
 )
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => dupontDataStatus.value !== 'pending' && (!!dupontError.value || dupontData.value?.series === null))
+// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中放答句與圖的骨架
+const dupontPending = computed(() => dupontDataStatus.value === 'pending' || dupontDataStatus.value === 'idle')
+const answerSkeleton = computed(() => (dupontPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的股東權益報酬率（近四季）為 00.00%、稅後淨利率 00.00%、資產週轉率 0.00 次、權益乘數 0.00 倍。` : null))
 watchLoadFailure(() => `stock-dupont:${code.value}`, () => dupontError.value ?? readFailed.value, refreshDupontData)
 
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
@@ -148,9 +151,10 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer">
+    <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
       <!-- 讀不到時交給全站讀取失敗彈窗，畫面留空 -->
       <StockDupontChart v-if="dupontData && !readFailed" v-model:basis="basis" :data="dupontData" />
+      <SharedChartCard v-else-if="dupontPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">

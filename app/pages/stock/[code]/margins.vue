@@ -44,11 +44,14 @@ const { data: marginsData, error: marginsError, status: marginsDataStatus, refre
   async () => {
     return readOrNull($fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-margins')
   },
-  { watch: [code], default: () => null }
+  { watch: [code], default: () => null, lazy: true }
 )
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || marginsData.value?.series === null))
+// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中放答句與圖的骨架，不落到「目前沒有資料」
+const marginsPending = computed(() => marginsDataStatus.value === 'pending' || marginsDataStatus.value === 'idle')
+const answerSkeleton = computed(() => (marginsPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的財報三率（單季）、毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
 
 // 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
@@ -291,8 +294,9 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer">
+    <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
       <StockRatioLinesChart v-if="hasRates" page="margins" :entries="ascending" />
+      <SharedChartCard v-else-if="marginsPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
       <template v-else-if="readFailed" />
       <p v-else class="stock-margins-page__line">
         目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。

@@ -37,11 +37,14 @@ const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, re
   async () => {
     return readOrNull($fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-solvency')
   },
-  { watch: [code], default: () => null }
+  { watch: [code], default: () => null, lazy: true }
 )
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (!!solvencyError.value || solvencyData.value?.series === null))
+// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中放答句與圖的骨架，不落到「目前沒有資料」
+const solvencyPending = computed(() => solvencyDataStatus.value === 'pending' || solvencyDataStatus.value === 'idle')
+const answerSkeleton = computed(() => (solvencyPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的償債能力比率（單季）、流動比率 000.00%、速動比率 000.00%、現金比率 000.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value ?? readFailed.value, refreshSolvencyData)
 
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
@@ -175,8 +178,9 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-solvency-value" :question="`${stockShortName}（${code}）的償債能力比率分別是多少？`" :answer="valueAnswer">
+    <StockQuestionSection id="stock-solvency-value" :question="`${stockShortName}（${code}）的償債能力比率分別是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
       <StockRatioLinesChart v-if="hasLiquidity" page="solvency" :entries="ascending" />
+      <SharedChartCard v-else-if="solvencyPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
       <template v-else-if="readFailed" />
       <p v-else class="stock-solvency-page__line">
         目前沒有這檔股票的償債能力比率資料。這三個比率都以流動負債為分母，銀行與保險業的資產負債表沒有流動／非流動的劃分，因此不會有這組數字。

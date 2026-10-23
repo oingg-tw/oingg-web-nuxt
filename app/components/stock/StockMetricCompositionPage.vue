@@ -22,11 +22,13 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 const { data: filterSchema } = await useFilterSchema()
 
 // 跟指標頁同一個 key：從指標頁點過來不用重抓
-const { data: metricData, error, refresh } = await useAsyncData<StockMetricPageResponse | null>(
+// lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放同一段的問句、答句與圖的骨架（伺服器照樣等）
+const { data: metricData, error, status, refresh } = await useAsyncData<StockMetricPageResponse | null>(
   () => `stock-metric-${code.value}-${props.parentSlug}`,
   () => readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: props.parentSlug }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric'),
-  { watch: [code], default: () => null }
+  { watch: [code], default: () => null, lazy: true }
 )
+const pending = computed(() => status.value === 'pending' || status.value === 'idle')
 watchLoadFailure(() => `stock-metric-composition:${props.parentSlug}:${code.value}`, () => error.value ?? (metricData.value?.series === null ? true : null), refresh)
 
 const categories = computed(() => filterSchema.value?.categories ?? [])
@@ -91,6 +93,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         :part-names="partNames"
       />
     </StockMetricCompositionSection>
+    <StockQuestionSection
+      v-else-if="pending"
+      id="stock-metric-composition"
+      :question="`${valueTopic}由哪些項目組成？`"
+      :answer-skeleton="`${stockShortName}2026 Q2 的${valueTopic}為 00.00，其中最大的一項是 00.00（占 00%），其次是 00.00（占 00%）。`"
+    >
+      <SharedChartCard><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
+    </StockQuestionSection>
 
     <StockQuestionSection id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
     <template #guide>
