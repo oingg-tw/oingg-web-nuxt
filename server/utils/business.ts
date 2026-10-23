@@ -104,11 +104,7 @@ export const HOUR = 60 * 60
 
 // Latest knowledgeDate among a set of ISO date strings (null when none).
 export function maxIsoDate(dates: (string | null | undefined)[]): string | null {
-  let latest: string | null = null
-  for (const date of dates) {
-    if (date && (!latest || date > latest)) latest = date
-  }
-  return latest
+  return dates.reduce<string | null>((latest, date) => (date && (!latest || date > latest) ? date : latest), null)
 }
 
 // 業務中台 sends every metric value as a decimal string（"34.78"）; the pages want numbers, parsed

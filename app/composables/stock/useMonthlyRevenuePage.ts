@@ -14,9 +14,8 @@ export async function useMonthlyRevenuePage(code: Ref<string>) {
     watch: [code],
     lazy: true
   })
-  const pending = computed(() => page.status.value === 'pending' || page.status.value === 'idle')
   const schema = useFilterSchema()
-  const { data } = page
+  const { data, pending } = page
 
   // 由舊到新。沒有資料與讀不到是兩回事，頁面說法不同——興櫃與剛上市的公司本來就沒有（上櫃有，2026-10-11 實測）
   const ascending = computed(() => data.value?.entries ?? [])

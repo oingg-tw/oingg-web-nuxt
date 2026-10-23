@@ -22,7 +22,6 @@ import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
 
-const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchColumns, saveColumns } = useHoldings()
 // 欄位數上限讀共用的方案狀態（useEntitlement，2026-10-06）。使用者 2026-10-05 定價「免費 3 個、付費無上限」；

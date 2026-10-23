@@ -70,7 +70,7 @@ const leadAnswer = computed(() => {
 
 const chartAnswer = computed(() => {
   if (!rows.value.length) return null
-  const base = `每一個點是一個類股：橫軸是營收近四季年增率的中位數，縱軸是淨利近四季年增率的中位數${summary.value?.fundamentalsDate ? `（財報資料到 ${summary.value.fundamentalsDate}）` : ''}。點的大小是營收年增率有值的公司數。`
+  const base = `每一個點是一個類股：橫軸是營收近四季年增率的中位數，縱軸是淨利近四季年增率的中位數。點的大小是營收年增率有值的公司數。`
   const names = excluded.value.map(row => `${row.name}（營收 ${row.revenueGrowthRate.count} 家、淨利 ${row.netIncomeGrowthRate.count} 家）`)
   return names.length ? `${base}任一軸少於 ${MIN_SAMPLE} 家的類股沒有畫，共 ${names.length} 個：${names.join('、')}。` : base
 })

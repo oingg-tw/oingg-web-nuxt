@@ -32,7 +32,8 @@ const TOPIC = '安全韌性的組成'
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
+// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中（pending）放答句與圖的骨架，不落到「目前沒有資料」
+const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, pending: solvencyPending, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
   () => `stock-solvency-${code.value}`,
   async () => {
     return readOrNull($fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-solvency')
@@ -42,8 +43,6 @@ const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, re
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (!!solvencyError.value || solvencyData.value?.series === null))
-// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中放答句與圖的骨架，不落到「目前沒有資料」
-const solvencyPending = computed(() => solvencyDataStatus.value === 'pending' || solvencyDataStatus.value === 'idle')
 const answerSkeleton = computed(() => (solvencyPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的償債能力比率（單季）、流動比率 000.00%、速動比率 000.00%、現金比率 000.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value ?? readFailed.value, refreshSolvencyData)
 
@@ -82,11 +81,7 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}/balance-sheet`, label: '資產負債表' }
 ])
 
-// Fixed 2 decimals for the same reason margins.vue states: this page's claim is that its columns
-// add up, and 3 significant digits would print 245.76 as "246" and make a reader's own arithmetic
-// disagree with the page.
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
-const signedText = (value: number | null): string => (value === null ? '尚無資料' : `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(2)}%`)
+// 數字一律固定兩位小數（rateText／signedText，shared/utils/number-format.ts）：3 位有效數字會把 245.76 印成「246」，讀者自己加減就跟頁面對不上
 
 const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value) : ''))
 

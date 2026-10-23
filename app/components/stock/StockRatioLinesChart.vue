@@ -38,8 +38,7 @@ const charts = computed(() => CHARTS[props.page])
 const plotted = computed(() => props.entries.filter(entry => charts.value.some(chart => chart.some(series => entry.values[series.code]?.value != null))))
 const { period, shown } = useChartPeriod({ all: plotted, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
 
-// 固定兩位小數，不用全站的 4 位有效數字：兩頁的表格要逐項加減對得起來，理由見 margins.vue 的 rateText
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
+// 固定兩位小數（rateText，shared/utils/number-format.ts）：兩頁的表格要逐項加減對得起來
 </script>
 
 <template>

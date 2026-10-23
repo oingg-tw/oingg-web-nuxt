@@ -41,7 +41,6 @@ interface ErpResponse {
   months: number
   erpGeometric: number | null
   erpArithmetic: number | null
-  dataCoverage?: { taiexDateRange?: { min: string; max: string } }
   supplySide: (EquityRiskPremiumComponents & { erp: number | null }) | null
 }
 
@@ -78,8 +77,7 @@ export const getEquityRiskPremium = defineCachedFunction(
         toWindow('完整', full),
         ...rest.map((response, index) => toWindow(`${ERP_WINDOW_YEARS[index]} 年`, response))
       ],
-      components: full.supplySide ? (components as EquityRiskPremiumComponents) : null,
-      taiexRange: full.dataCoverage?.taiexDateRange ?? null
+      components: full.supplySide ? (components as EquityRiskPremiumComponents) : null
     }
   },
   { name: 'hub-equity-risk-premium', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
@@ -143,20 +141,9 @@ export const getMacroPage = defineCachedFunction(
     ])
 
     const keys = page.series.map(spec => spec.key)
-    // Two upstream contracts, not one. The monthly series carry `period` because this
-    // app asked analysis-ts to assemble it（the same (year, month) reassembly done per client is
-    // the same bug per client）. usd-twd-rate does NOT: it shares /market/taiex-daily-price's own
-    // contract and carries `tradeDate`, which is why it also takes interval/limit. Derived here so
-    // the page template never learns there were two shapes — found by the exchange-rate page
-    // rendering one empty row, since a missing `period` fell straight through the filter below.
-    const periodOf = (entry: Record<string, unknown>): string => {
-      const period = entry.period
-      if (typeof period === 'string' && period.length > 0) return period
-      const tradeDate = entry.tradeDate
-      return typeof tradeDate === 'string' ? tradeDate.slice(0, 7) : ''
-    }
+    // 月序列帶 `period`（YYYY-MM），是請 analysis-ts 組好的：每個用戶端各自拿 (year, month) 重組，就是每個用戶端各有一份同樣的 bug
     const series: MacroSeriesPoint[] = source.entries.map(entry => ({
-      period: periodOf(entry),
+      period: typeof entry.period === 'string' ? entry.period : '',
       values: Object.fromEntries(keys.map(key => {
         const raw = entry[key]
         const value = typeof raw === 'string' ? Number(raw) : raw

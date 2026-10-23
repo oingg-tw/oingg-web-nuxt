@@ -15,9 +15,6 @@ export interface MacroSeriesSpec {
   name: string
   lineType: 'solid' | 'dashed' | 'dotted'
   symbol: 'circle' | 'triangle' | 'rect'
-  // Decimal places for this series' own numbers, default 2. 景氣對策信號分數 is an integer count of
-  // signal points, and printing it as「41.00 分」invents a precision the NDC never published.
-  decimals?: number
 }
 
 export interface MacroPageDefinition {
@@ -32,9 +29,6 @@ export interface MacroPageDefinition {
   // 一支序列對照加權指數（模板也能畫兩支，2026-10-11 貨幣供給頁刪除後目前沒有兩支的頁）。
   series: MacroSeriesSpec[]
   unit: string
-  // One sentence of page-specific caveat, rendered under the chart. Only where the DATA has a
-  // property a reader would otherwise misread — not a place for commentary.
-  caveat?: string
 }
 
 export const MACRO_PAGES: MacroPageDefinition[] = [

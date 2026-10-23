@@ -14,7 +14,6 @@ const props = defineProps<{
 
 const YIELD_CODE = 'dividendYield'
 const CASH_CODE = 'cashDividend'
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 const cashText = (value: number | null): string => (value === null ? '這個月沒有除息' : `${formatSignificantDigits(value, 4)} 元`)
 // 單位不寫進名稱：兩個軸自己標了 % 與 元（同月營收圖，375 寬時圖例會折到軸名上）
 const SERIES: LineSeriesSpec[] = [

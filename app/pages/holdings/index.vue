@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { Delete, Edit, Plus, Upload } from '@element-plus/icons-vue'
+import { Delete, Plus, Upload } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 import type { Holding, OpeningPosition, Transaction } from '~/composables/holdings/holdings-model'
 import type { ImportedTrade } from '~/utils/broker-trade-csv'

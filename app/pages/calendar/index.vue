@@ -5,7 +5,7 @@ useSeoMeta({ title: '配息月曆', robots: 'noindex, nofollow' })
 
 // 登入後的首頁：只有配息月曆（2026-09-10「應該以配息月曆為核心才對」）。原本是儀表板卡片格，2026-09-16 依
 // 「總覽 除了配息月曆以外的卡片都先拿掉」關閉、2026-10-08 連程式碼一起刪（git 找得回來）；同日由 dashboard.vue
-// 改名 calendar.vue。useDashboardExperienceMode 仍由特別股頁使用，不屬於這一頁。
+// 改名 calendar.vue。
 </script>
 
 <template>

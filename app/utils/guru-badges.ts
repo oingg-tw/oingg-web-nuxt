@@ -86,27 +86,6 @@ export interface GuruBadge {
   sourceUrl: string | null
 }
 
-// A badge's fieldId is `${metricKey}.${fieldKey}` (e.g. "sue.Q", "chowderNumber.FY") —
-// metric-provenance's own `metricCode` param is exactly that leading metricKey segment.
-export function guruBadgeMetricCode(badge: GuruBadge): string {
-  return badge.fieldId.split('.')[0]!
-}
-
-// Was a transitional safety net (業務中台's GET /metrics mapping lagged analysis-ts's own
-// hasProvenance field by several hours on 2026-09-14) — removed once 業務中台 confirmed synced the
-// same day (verified live via curl: 12 metricCodes, exactly matching analysis-ts's own list).
-// Just reads the live field now; see Metric.hasProvenance's own comment for the full field
-// history.
-export function metricHasProvenance(metric: Metric): boolean {
-  return metric.hasProvenance ?? false
-}
-
-// 「數字可回溯到原始申報資料」：直接轉發 Metric.hasProvenance（2026-09-14 拿掉前端自己維護的白名單——payablesTurnover 上游
-// 支援了而名單沒更新，沒人發現；analysis-ts：「不要自己另外維護清單」）。
-export function guruBadgeHasProvenance(badge: GuruBadge): boolean {
-  return badge.hasProvenance
-}
-
 // Piotroski F-Score 2026-09-10 拆成 3 個徽章、2026-09-19 依使用者決定合併回「一個指標、一個徽章」：型錄的 badge 欄位直接帶
 // name／author／summary／detail／denominator(9)，GET /stocks/:symbol/badges 帶 passed／value（0–9），跟其他徽章一樣走
 // metricBadgeToGuruBadge()。唯一的特殊處理在明細：九項訊號（GET /stocks/:symbol/piotroski-breakdown）在 StockGuruBadgeDialog 裡
@@ -143,7 +122,9 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: Metric): Gu
     fieldId,
     summary: badge.summary,
     detail: badge.detail,
-    hasProvenance: metricHasProvenance(metric),
+    // 「數字可回溯到原始申報資料」直接讀型錄的 hasProvenance，不自己維護名單（2026-09-14：payablesTurnover 上游支援了而前端的名單
+    // 沒更新，沒人發現；analysis-ts：「不要自己另外維護清單」）
+    hasProvenance: metric.hasProvenance ?? false,
     sourceUrl: badge.sourceUrl ?? null,
     threshold: {
       description: threshold.description,

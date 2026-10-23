@@ -63,10 +63,11 @@ console.log('第二批（業務中台 9d691cd）')
 
 console.log('(c) 風險頁：利率缺、其餘不受影響')
 {
-  const r = fixture('c-risk-free-null.risk')
+  // 這個情境只有績效那份不同；風險、已實現跟 (a) 同一份
+  const r = fixture('a-normal-1y.risk')
   assert(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS) === null && r.portfolio.valueAtRisk95 !== null, 'VaR 照常有值（樣本夠）')
   assert(r.portfolio.annualizedVolatility !== null && r.diversificationRatio !== null, '波動度與分散化比率不受利率影響')
-  const c = fixture('c-risk-free-null.realized')
+  const c = fixture('a-normal-1y.realized')
   assert(c.tradeStats.sellCount === 2 && holdingsMetricText(c.tradeStats.winRate, 'pct') === '50.0%', '已實現統計照常：2 筆賣出、獲利筆數占比 50.0%')
 }
 

@@ -488,24 +488,6 @@ body {
   text-underline-offset: 3px;
 }
 
-.hub-stat-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 12px 24px;
-  margin: 0;
-}
-
-.hub-stat-list__item dt {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.hub-stat-list__item dd {
-  margin: 4px 0 0;
-  color: var(--el-text-color-regular);
-  font-variant-numeric: tabular-nums;
-}
-
 /* ── 全站表格：卡片＋表格（2026-10-23，使用者：「要以 screener-shell__results 這邊的卡片+表格，為核心去滿足整個網站的所有表格需求。
    先抽為共用樣式，再逐步替換掉網站其他的表格」）。樣子出自篩選結果（同日配色方案 A，使用者選）：
    - .app-table-card：卡片白底（--app-card-bg，同圖表卡片）、淡的暖色框、圓角 12px。表格在卡片裡邊到邊；卡片自己的標題列、工具列

@@ -52,7 +52,6 @@ const { breadcrumbs } = useStockPageSeo({
   titleKeywords: '月營收年增率',
   pathSuffix: '/monthly-revenue-growth',
   stock,
-  summary: computed(() => null),
   description: computed(() =>
     clampDescription(
       hasData.value

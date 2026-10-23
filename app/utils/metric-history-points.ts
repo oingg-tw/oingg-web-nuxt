@@ -37,9 +37,8 @@ export function metricHistoryPoints(entries: MetricsHistoryEntry[], metricCode: 
 // number to null with `zero_or_negative_denominator` — the ratio is undefined because free cash
 // flow was zero or negative, which is a fact about the company, not a gap in the data.
 //
-// Reuses the labels and the title-attribute convention StockHistoricalStatisticsTable and
-// StockMetricSeriesTable already share（app/utils/metric-null-reason.ts）rather than inventing a
-// third wording: 不適用 for the industry case, 無法計算 for the rest, with the specific reason in
+// Reuses the labels and the title-attribute convention StockHistoricalStatisticsTable already
+// uses（app/utils/metric-null-reason.ts）rather than inventing another wording: 不適用 for the industry case, 無法計算 for the rest, with the specific reason in
 // the cell's own title. Only「no record at all」still reads 尚無資料.
 export function metricCellText(point: { value: number | null; nullReason: string | null } | null | undefined, unit: string): string {
   if (!point) return '尚無資料'

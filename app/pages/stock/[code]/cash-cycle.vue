@@ -152,7 +152,6 @@ const { breadcrumbs } = useStockPageSeo({
   titleKeywords: '現金循環 存貨天數與收款付款天數',
   pathSuffix: '/cash-cycle',
   stock,
-  summary: computed(() => null),
   description: computed(() =>
     clampDescription(
       hasCycle.value

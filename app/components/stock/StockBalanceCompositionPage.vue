@@ -42,12 +42,11 @@ const { data: filterSchema } = await useFilterSchema()
 
 // await 在頂層：同 key 的 useAsyncData 沒 await 會被多個同時掛載的元件卡在初始值（2026-09-09 根因過一次）
 // lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放答句與圖的骨架、不落到「沒有申報」（伺服器照樣等）
-const { data, error, status, refresh } = await useAsyncData(
+const { data, error, pending, refresh } = await useAsyncData(
   () => `stock-${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition-${code.value}`,
   () => $fetch<StockBalanceCompositionResponse | StockCashFlowCompositionResponse>(`/api/stock/${code.value}/${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition`),
   { watch: [code], default: () => null, lazy: true }
 )
-const pending = computed(() => status.value === 'pending' || status.value === 'idle')
 watchLoadFailure(() => `stock-balance-composition:${code.value}`, () => error.value, refresh)
 
 const periods = computed<(BalanceCompositionPeriod | CashFlowCompositionPeriod)[]>(() => data.value?.periods ?? [])

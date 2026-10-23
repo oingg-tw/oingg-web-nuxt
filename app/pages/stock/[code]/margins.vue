@@ -39,7 +39,8 @@ const TOPIC = '財報三率'
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: marginsData, error: marginsError, status: marginsDataStatus, refresh: refreshMarginsData } = await useAsyncData<StockMarginsPageResponse | null>(
+// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中（pending）放答句與圖的骨架，不落到「目前沒有資料」
+const { data: marginsData, error: marginsError, status: marginsDataStatus, pending: marginsPending, refresh: refreshMarginsData } = await useAsyncData<StockMarginsPageResponse | null>(
   () => `stock-margins-${code.value}`,
   async () => {
     return readOrNull($fetch<StockMarginsPageResponse>(`/api/stock/${code.value}/margins`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-margins')
@@ -49,8 +50,6 @@ const { data: marginsData, error: marginsError, status: marginsDataStatus, refre
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || marginsData.value?.series === null))
-// 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中放答句與圖的骨架，不落到「目前沒有資料」
-const marginsPending = computed(() => marginsDataStatus.value === 'pending' || marginsDataStatus.value === 'idle')
 const answerSkeleton = computed(() => (marginsPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的財報三率（單季）、毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
 
@@ -81,20 +80,7 @@ const rdIntensity = computed(() => valueOf(latest.value, 'rdIntensity'))
 
 const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 
-// Fixed 2 decimals, NOT this app's usual formatSignificantDigits(value, 4) — the one place a page
-// here departs from that helper, and for a reason specific to this page. Every figure on it is a
-// percentage in the same range, and the decomposition table's whole claim is that its column adds
-// up; 3 significant digits renders 64.23 as "64.2" and 56.10 as "56.1", so a reader checking
-// 64.2 − 2.24 − 6.07 gets 55.89 against a printed 56.1 and the page contradicts itself in front of
-// them (measured on 2330 before this changed). Two decimals is what the filed figures carry anyway.
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
-
-// Signed form for the two adjustment rows — a bare "5.72%" on a row labelled 加減 reads as the
-// opposite of what it does half the time, and 業外損益與所得稅 genuinely falls either way
-// (measured: −5.72 on 2330, +1.15 on 2454, where 業外收益 exceeded the tax charge). Both rows'
-// values are defined as the amount to ADD to the running figure above them, so the column can be
-// chained straight down with no sign gymnastics.
-const signedText = (value: number | null): string => (value === null ? '尚無資料' : `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(2)}%`)
+// 數字一律固定兩位小數（rateText／signedText，shared/utils/number-format.ts）：拆解表要逐項加減對得起來
 
 // The three rates all divide by the SAME 營收, which is the only reason they can be subtracted from
 // each other at all — that is the whole mechanism this page exists to show, and it is also why a

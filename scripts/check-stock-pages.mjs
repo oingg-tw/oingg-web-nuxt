@@ -28,7 +28,7 @@ const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
 // list: pulling /consecutive-profit-years and /earnings-to-record-high on 2026-09-22 left it
 // pointing at two routes that now 404, and the run died waiting for a nav that a 404 never renders.
 // Deriving it means a registry change can't leave this behind — the same「one registry decides what
-// exists」rule the sitemap, the page components and check-metric-page-copy.mjs already follow.
+// exists」rule the sitemap, the page components and check-metric-copy-drift.mjs already follow.
 const registrySlugs = [...METRIC_PAGES, ...BADGE_PAGES].map(page => `/${page.slug}`)
 const METRIC_ROUTES = new Set(METRIC_PAGES.map(page => `/${page.slug}`))
 const BADGE_ROUTES = new Set(BADGE_PAGES.map(page => `/${page.slug}`))

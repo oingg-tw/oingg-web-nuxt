@@ -76,15 +76,6 @@ export function badgePageChartMetricCode(page: BadgePageDefinition): string {
   return page.provenanceMetricCode ?? page.metricCode
 }
 
-// 反查：給徽章的 GET /metrics key（GuruBadge.id）找它的專頁；其餘約 32 個徽章只有共用對話框
-export function findBadgePageByMetric(metricCode: string): BadgePageDefinition | null {
-  return BADGE_PAGES.find(page => page.metricCode === metricCode) ?? null
-}
-
-export function badgePagePath(code: string, slug: string): string {
-  return `/stock/${code}/${slug}`
-}
-
 // 指標專頁：沒有徽章的指標（2026-09-20「stock/2330/eps 這樣的，除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」「月營收等等
 // 也比照這個模板」）。跟徽章頁是兩份登記表、兩個模板（使用者：「把徽章與指標頁面區分成兩個模板會比較容易些」）：徽章頁的主軸是
 // 門檻與計算依據，EPS 沒有這兩樣——它有數值、歷史與定義。共用一個模板會讓每一段都掛 v-if="isBadge"。

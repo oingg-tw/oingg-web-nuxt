@@ -148,8 +148,10 @@ export async function useDividendSourceChain(code: Ref<string>, stockShortName: 
     prevFiscalYear.value === null
       ? null
       : (series.value?.dividendHistory?.entries ?? []).find(entry => entry.fiscalYear === prevFiscalYear.value)?.cashDividend ?? null)
-  // 營業費用 read from the filing rather than derived — see TTM_OPEX_1's own note in stock-data.ts.
-  // Still null on symbols the backfill has not reached, so every consumer treats it as optional.
+  // 營業費用 read from the filing rather than derived: 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額, so
+  // 毛利率 − 營業利益率 silently folds that last term in（2330 2026Q2: filed 14.23, derived 13.92, shipped for a
+  // few hours under the label「營業費用」）. Still null on symbols the backfill has not reached, so every
+  // consumer treats it as optional.
   const operatingExpense = computed(() => fy('operatingExpensePerShare'))
   const otherOperatingIncome = computed(() => fy('netOtherIncomeExpensesPerShare'))
   const researchExpense = computed(() => fy('researchAndDevelopmentExpensePerShare'))

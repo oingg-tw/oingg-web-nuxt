@@ -1,4 +1,5 @@
 import type { BusinessCycleIndicatorPoint, BusinessCyclePeriod, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, ExDividendKind, ExDividendMonthCell, ExDividendRow, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import katex from 'katex'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
 // /metrics）— 2026-09-19, the SEO build. 總經特區的資料在 macro-data.ts（2026-10-08 拆出）。 Same defineCachedFunction rules as stock-data.ts:
@@ -72,20 +73,18 @@ export const getMarketDirectory = defineCachedFunction(
     const others: DirectoryCompany[] = []
     let offset = 0
     let total = Infinity
-    let listed = 0
     while (offset < total) {
       const response = await businessFetch<StocksCollectionResponse>('/stocks', { query: { limit: STOCKS_PAGE_LIMIT, offset } })
       total = response.count
       if (!response.entries.length) break
       for (const entry of response.entries) {
         if (!LISTED_SYMBOL.test(entry.symbol)) continue
-        listed += 1
         // isEmerging 帶上來但**不在這裡過濾**（2026-09-26「industry 請先不要顯示興櫃的公司」）：這份
         // directory 不只餵 /industry，在源頭砍掉會連帶改到沒被指名的頁面。哪一頁要不要顯示興櫃是那一頁
         // 自己的決定，資料在這裡備好就好。興櫃股的代號同樣是四碼（6744、6748…），所以 LISTED_SYMBOL
         // 那道正規表示式擋不掉它們——這個欄位是唯一可靠的判準。
         // name 可能是 null（業務中台 f750e92）：用代號頂上，產業頁表格與搜尋都假設它是字串
-        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.name ?? entry.symbol, market: entry.market ?? null, isEmerging: entry.isEmerging ?? false }
+        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.name ?? entry.symbol, isEmerging: entry.isEmerging ?? false }
         const code = entry.sectorCode ?? null
         if (code && SECTORS[code]) {
           const list = bySector.get(code) ?? []
@@ -101,7 +100,7 @@ export const getMarketDirectory = defineCachedFunction(
     const sectors: DirectorySector[] = [...bySector.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([code, companies]) => ({ code, name: SECTORS[code]!.name, slug: SECTORS[code]!.slug, companyCount: companies.length, companies: companies.sort(bySymbol) }))
-    return { sectors, others: others.sort(bySymbol), total: listed }
+    return { sectors, others: others.sort(bySymbol) }
   },
   { name: 'hub-market-directory', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
@@ -126,7 +125,7 @@ interface ScreenerRunResponse {
 // 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by 業務中台,
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'eps.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -187,7 +186,6 @@ export const getSectorCompanies = defineCachedFunction(
           pbRatio: number('exchangePbRatio.EOD'),
           dividendYield: number('dividendYield.EOD'),
           roe: number('roe.TTM'),
-          eps: number('eps.TTM'),
           debtRatio: number('debtRatio.Q'),
           dividendGrowthRate3y: number('dividendGrowthRate3y.FY'),
           revenueGrowthRate: number('revenueGrowthRate.TTM'),
@@ -247,19 +245,18 @@ export const getSectorGrowthSummary = defineCachedFunction(
           slug: slugOf.get(row.sectorCode)!,
           revenueGrowthRate: stat(row.fields[GROWTH_FIELDS[0]]),
           netIncomeGrowthRate: stat(row.fields[GROWTH_FIELDS[1]])
-        })),
-      fundamentalsDate: null
+        }))
     }
   },
   { name: 'hub-sector-growth-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// 類股指標中位數逐期（產業頁三率走勢）。只收季報型指標，每股類上游回 400。個股指標頁的「跟同類股中位數比」2026-10-14 拿掉
-//（指標頁一致性盤點，只有 5 頁有）。
+// 類股指標中位數逐期（產業頁三率走勢，近四季 20 期）。只收季報型指標，每股類上游回 400。個股指標頁的「跟同類股中位數比」
+// 2026-10-14 拿掉（指標頁一致性盤點，只有 5 頁有）。
 export const getSectorMetricHistory = defineCachedFunction(
-  (code: string, metricCode: string, timeframe: string, limit: number): Promise<SectorMetricHistory> =>
-    businessFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, timeframe, limit } }),
-  { name: 'hub-sector-metric-history', getKey: (code, metricCode, timeframe, limit) => `${code}:${metricCode}:${timeframe}:${limit}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  (code: string, metricCode: string): Promise<SectorMetricHistory> =>
+    businessFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, timeframe: 'TTM', limit: 20 } }),
+  { name: 'hub-sector-metric-history', getKey: (code, metricCode) => `${code}:${metricCode}:TTM:20`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // 類股月營收（冷查詢 1～2 秒，上游建議快取）。抓到上游上限 132 個月（2026-10-10 業務中台與 analysis-ts 758a2b90 一起從
@@ -460,11 +457,7 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
   }))
 
   return {
-    slug: definition.slug,
-    field: definition.field,
     direction: definition.direction,
-    metricName: spec.metricName ?? column?.metricName ?? definition.label,
-    fieldName: column?.fieldName ?? '',
     unit: spec.unit ?? column?.unit ?? null,
     rows,
     asOf: maxIsoDate(rows.map(row => row.knowledgeDate))
@@ -514,11 +507,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     .map(key => Number(key.slice(-4))))
   const valueYear = definition.fullYear && latestYear && leaderValues[`${definition.field}${latestYear}`] === leaderValues[definition.field] ? latestYear : null
   return {
-    slug: definition.slug,
-    field: definition.field,
     direction: definition.direction,
-    metricName: definition.label,
-    fieldName: '',
     unit: definition.unit ?? null,
     rows,
     groups,
@@ -569,11 +558,7 @@ export const getRanking = defineCachedFunction(
       return { rank: index + 1, symbol: result.symbol, name: result.name, value: parseDecimal(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
     })
     return {
-      slug,
-      field: definition.field,
       direction: definition.direction,
-      metricName: column?.metricName ?? definition.label,
-      fieldName: column?.fieldName ?? '',
       unit: column?.unit ?? null,
       rows,
       asOf: maxIsoDate(rows.map(row => row.knowledgeDate))
@@ -626,13 +611,22 @@ export const getFilterSchemaCatalog = defineCachedFunction(
 )
 
 // 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，
-// 跟原本三個呼叫端（新手專區、兩種徽章對話框）一樣。呼叫端先驗過 metricKey 的字元，任意字串不會變成快取鍵
+// 跟原本三個呼叫端（新手專區、兩種徽章對話框）一樣。呼叫端先驗過 metricKey 的字元，任意字串不會變成快取鍵。
+// throwOnError: false：壞掉的字串（analysis-ts 管公式，理論上不會有，但仍是外來的顯示內容）畫成 KaTeX 自己的行內錯誤標示，不讓
+// 整個請求失敗。排好的字串只拿來顯示，不要拿它（或原始 LaTeX）回算數值：analysis-ts 的真值是 bigint 精度，KaTeX 是浮點。
 export const getFormulaHtml = defineCachedFunction(
   async (metricKey: string): Promise<string | null> => {
     const catalog = await getMetricsCatalog()
     for (const category of catalog.categories as LooseRecord[]) {
       const metric = (category.metrics as LooseRecord[]).find(item => item.key === metricKey)
-      if (metric) return renderFormulaHtml(metric.formulaLatex as string | null, true)
+      if (!metric) continue
+      const latex = metric.formulaLatex as string | null
+      if (!latex) return null
+      try {
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true })
+      } catch {
+        return null
+      }
     }
     return null
   },

@@ -9,8 +9,7 @@ import type { MacroPageData } from '#shared/types/hub'
 // NO CAUSAL CLAIM, the standing rule this zone needs most. Every one of these pairings has a folk
 // story attached —「M1B 黃金交叉代表資金流入股市」、「藍燈買紅燈賣」、「升息股市跌」— and not one
 // of them is a published, citable rule the way 三率三升 is. So the page draws both series, states
-// what each number is, and stops. The caveats in the registry are properties of the DATA（an axis
-// that runs backwards, a one-month lag, a band definition published by the NDC）, never readings.
+// what each number is, and stops.
 //
 // An unregistered ECharts piece throws nothing and silently draws nothing — found 2026-09-21 by
 // counting shapes rather than eyeballing.
@@ -37,10 +36,10 @@ const rowsDesc = computed(() => [...rows.value].reverse())
 const latest = computed(() => rowsDesc.value[0] ?? null)
 
 const unit = page.unit
-const valueText = (value: number | null | undefined, decimals = 2): string =>
-  value === null || value === undefined ? '尚無資料' : `${value.toFixed(decimals)}${unit}`
-const seriesValueText = (row: { values: Record<string, number | null> }, spec: { key: string; decimals?: number }): string =>
-  valueText(row.values[spec.key], spec.decimals ?? 2)
+const seriesValueText = (row: { values: Record<string, number | null> }, spec: { key: string }): string => {
+  const value = row.values[spec.key]
+  return value === null || value === undefined ? '尚無資料' : `${value.toFixed(2)}${unit}`
+}
 
 
 const latestAnswer = computed(() => {
@@ -182,7 +181,6 @@ const chartOption = computed(() => {
       <el-card shadow="never" class="macro-page__card">
         <SharedChart v-if="rows.length > 1" class="app-chart macro-page__chart" :option="chartOption" autoresize />
       </el-card>
-      <p v-if="page.caveat" class="hub-answer hub-sources macro-page__caveat">{{ page.caveat }}</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-table-heading">

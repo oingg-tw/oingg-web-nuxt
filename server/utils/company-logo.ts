@@ -29,7 +29,6 @@ const TTL_LOGO_STALE = 24 * 60 * 60
 interface ManifestImage {
   name: string
   ext?: string
-  bytes?: number
   width?: number | null
   height?: number | null
   // Mean Rec.709 luminance over pixels with alpha ≥ 128, 0–255. null when the format could not be
@@ -41,25 +40,16 @@ interface ManifestImage {
   sha256?: string | null
 }
 
+// 只列這裡讀到的欄位；manifest 本身（mops 產生）還有更多
 interface ManifestEntry {
-  name?: string
-  sourceRule?: string
-  hasViewBox?: boolean | null
   origin: ManifestImage | null
   webp: ManifestImage | null
-  outcome?: string
-  // Licence metadata, present on the entries mops did not take from the company's own site
-  // （2026-09-24）. `nonFree: true` marks a fair-use file — 5 companies as of today（1216, 2002,
-  // 2330, 5434, 5876）, all from zh.wikipedia. `attribution` is null on those; the rights holder
-  // is the company itself and the file page carries the rationale.
-  nonFree?: boolean
+  // Licence metadata, present on the entries mops did not take from the company's own site（2026-09-24）.
   license?: string | null
-  attribution?: string | null
   licensePage?: string | null
 }
 
 interface LogoManifest {
-  generatedAt: string
   basePath: string
   webpBasePath: string
   logos: Record<string, ManifestEntry>

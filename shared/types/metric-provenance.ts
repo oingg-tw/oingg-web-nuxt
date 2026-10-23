@@ -1,11 +1,9 @@
 import type { StatementType } from './financial-statement'
 
 // GET /stocks/:symbol/metric-provenance (業務中台 proxy of analysis-ts's own
-// GET /companies/:symbol/metric-provenance) — moved here 2026-09-20 from
-// app/composables/stock/useMetricProvenance.ts so server/utils/stock-data.ts's Nitro cache layer
-// can share the wire shape with the browser composable (same reason financial-statement.ts and
-// stock-badges.ts live here); useMetricProvenance.ts re-exports these, every existing import
-// keeps working.
+// GET /companies/:symbol/metric-provenance). Lives in shared/ so server/utils/stock-data.ts's Nitro
+// cache layer and the browser share one wire shape (same reason financial-statement.ts and
+// stock-badges.ts live here).
 export interface MetricProvenanceEntry {
   role: string
   fiscalYear: number

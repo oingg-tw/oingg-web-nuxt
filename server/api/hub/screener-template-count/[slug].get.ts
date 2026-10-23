@@ -4,9 +4,5 @@
 export default defineEventHandler(async event => {
   const slug = getRouterParam(event, 'slug') ?? ''
   if (!screenerTemplateNameBySlug(slug)) throw createError({ statusCode: 404, statusMessage: 'unknown template' })
-  try {
-    return { slug, count: await getTemplateMatchCount(slug) }
-  } catch {
-    return { slug, count: null }
-  }
+  return { slug, count: await getTemplateMatchCount(slug).catch(() => null) }
 })

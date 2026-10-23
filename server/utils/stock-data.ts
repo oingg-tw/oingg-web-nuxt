@@ -287,16 +287,6 @@ const SERIES_GROUPS = {
   TTM_CORE_1: { timeframe: 'TTM', codes: ['eps', 'roe', 'roa', 'grossMargin', 'operatingMargin', 'netProfitMargin', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare', 'dividendPayoutRatio'], limit: 1 },
   FY_CORE_1: { timeframe: 'FY', codes: ['consecutiveDividendYears', 'dividendGrowthRate5y', 'epsCagr5y', 'revenueCagr5y', 'consecutiveProfitYears', 'chowderNumber'], limit: 1 },
   TTM_PER_SHARE_1: { timeframe: 'TTM', codes: ['revenuePerShare', 'eps', 'ocfPerShare', 'fcfPerShare', 'dividendPerShare'], limit: 1 },
-  // 營業費用的組成（2026-09-24, analysis-ts's 12 new per-share lines）. Its own group rather than
-  // extra codes on TTM_CORE_1/TTM_PER_SHARE_1, because those two are shared by index/
-  // financial-statements and widening them would change both digests for one page's benefit.
-  //
-  // netOtherIncomeExpensesPerShare is the reason this group exists at all, not an extra:
-  // 營業利益 = 毛利 − 營業費用 + 其他營業收益費損淨額, so deriving 營業費用 as 毛利率 − 營業利益率
-  // silently folds that last term in. 2330 2026Q2 — filed 營業費用 14.23, 其他營業收益 0.31, derived
-  // 13.92 — was shipped for a few hours with the derived figure under the label「營業費用」.
-  // Coverage of the 其他 line is ~5%, which is exactly why it went unnoticed on 2317/1101/1216.
-  TTM_OPEX_1: { timeframe: 'TTM', codes: ['operatingExpensePerShare', 'netOtherIncomeExpensesPerShare', 'researchAndDevelopmentExpensePerShare', 'operatingIncomePerShare', 'nonOperatingIncomeExpensesPerShare', 'incomeTaxExpensePerShare', 'nonControllingInterestsPerShare'], limit: 1 },
   // 配息從哪來整頁改成年度（2026-09-25，使用者定案「整頁改成年度」）。損益表那條鏈的 15 支每股金額
   // 在同一天全部拿得到 FY 了，所以瀑布圖不必再用三率去推導金額——直接讀申報值，而且鏈的最後一格就是
   // 年報公告的 EPS。股利那一格從 dividend-history 讀，它的 fiscalYear 是盈餘所屬年度，跟這裡的

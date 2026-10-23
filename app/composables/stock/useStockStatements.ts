@@ -47,7 +47,6 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     },
     { watch: [code], default: () => null, lazy: options.lazy ?? false }
   )
-  const pending = computed(() => statementsData.status.value === 'pending' || statementsData.status.value === 'idle')
   // Seed the shared period selection from the latest filing — before StockPeriodSelector and the
   // statement card read it (they mount after this setup, on financial-statements.vue only).
   // Registered before the await so a client-side navigation to another symbol re-seeds; called
@@ -127,5 +126,5 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     }
   })
 
-  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed, pending }
+  return { statements, latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed, pending: statementsData.pending }
 }

@@ -9,7 +9,6 @@ import type { HoldingDividendEvent, HoldingDividendsResult } from '~/composables
 // 金額是應收（股數 × 每股），還沒扣匯費與二代健保補充保費，實際入帳可能略少——寫在表頭與頁尾，不寫成「實領」。
 useSeoMeta({ title: '配息日程', robots: 'noindex, nofollow' })
 
-const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { fetchDividends } = useHoldings()
 const { routeFor } = useStockSearch()

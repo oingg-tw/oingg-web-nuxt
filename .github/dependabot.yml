@@ -28,11 +28,6 @@ updates:
       # TypeScript 7.0 沒有程式介面，Volar／vue-tsc 要等 7.1（oingg-mops-ts 2026-10-13 查證）。只擋 7.0.x，7.1 一發布照常開 PR；升完刪這條
       - dependency-name: typescript
         versions: [">=7.0.0 <7.1.0"]
-      # @types/node 的大版本要跟執行期的 Node 一致（本機、CI、之後的部署都是 26）：型別比執行期新，伺服器端用到執行期沒有的 API
-      # 也照樣過型別檢查。目前 @types/node 是 Nuxt 間接帶進來的（版本更新只管直接依賴，這條暫時用不到），先擋著，免得哪天變成直接依賴時
-      # 被升過頭。Node 升大版本時一起改
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
 
   # workflow 裡的 action 用 commit SHA 釘住，靠這一段更新 SHA（保留 tag 註解）
   - package-ecosystem: github-actions

@@ -18,7 +18,6 @@ import type { PerformanceOutcome, RiskDrawdown, RiskOutcome, RiskReport } from '
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 
-const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { fetchRisk, fetchPerformance } = useHoldings()
 

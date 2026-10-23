@@ -15,7 +15,6 @@ import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMul
 // Personal page: out of the index, and out of the sitemap via nuxt.config's sitemap.exclude (/holdings/**).
 useSeoMeta({ title: '報酬與大盤', robots: 'noindex, nofollow' })
 
-const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { fetchPerformance } = useHoldings()
 

@@ -37,7 +37,6 @@ const { breadcrumbs } = useStockPageSeo({
   pathSuffix: '',
   learnPath: computed(() => `/learn/dividend-source/${code.value}`),
   stock,
-  summary: computed(() => null),
   description: computed(() =>
     clampDescription(
       hasChain.value

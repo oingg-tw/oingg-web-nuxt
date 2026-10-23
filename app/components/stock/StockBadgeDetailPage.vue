@@ -35,7 +35,7 @@ if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown sto
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()
 
-const { data: badgeData, error: badgeError, status: badgeStatus, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
+const { data: badgeData, error: badgeError, status: badgeStatus, pending: badgePending, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
   () => `stock-badge-${code.value}-${slug.value}`,
   async () => {
     return readOrNull($fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-badge')
@@ -43,7 +43,6 @@ const { data: badgeData, error: badgeError, status: badgeStatus, refresh: refres
   // lazy：瀏覽器裡換頁不等這一頁的資料（2026-10-23，見 StockMetricDetailPage 同一處的註解）
   { watch: [code, slug], default: () => null, lazy: true }
 )
-const badgePending = computed(() => badgeStatus.value === 'pending' || badgeStatus.value === 'idle')
 
 // The badge's own catalog definition (name/author/summary/threshold/source link) — same
 // buildGuruBadges() every badge UI reads, so this page and the dialog never disagree.
@@ -51,11 +50,6 @@ const badgePending = computed(() => badgeStatus.value === 'pending' || badgeStat
 // takedown rounds) — the page still renders (its own value/provenance are independent data), it
 // just drops the 徽章門檻 line and the 是什麼 section's summary/author, and goes `noindex`.
 const badgeDefinition = computed(() => buildGuruBadges(filterSchema.value?.categories ?? []).find(badge => badge.id === badgePage.metricCode) ?? null)
-// The badge's OWN threshold source (catalog `badge.sourceUrl`, 2026-09-20) — never the metric's
-// referenceUrl, which answers "what is this metric" rather than "why is the threshold ≥ 40%".
-// Renders nothing when absent (毛利率 and 淨利率 are exactly that case: their threshold comes from
-// a print book); see GuruBadge.sourceUrl's own comment.
-const sourceUrl = computed(() => badgeDefinition.value?.sourceUrl ?? null)
 const unit = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], badgePage.metricCode)?.metric.unit ?? '')
 // The metricCode the 目前值 chart queries — same provenanceMetricCode substitution the
 // calculation-audit table already makes (see badgePageChartMetricCode's own comment). Reusing

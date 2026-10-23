@@ -5,12 +5,9 @@ export default defineEventHandler(async (event) => {
   const metricKey = getRouterParam(event, 'key') ?? ''
   // 指標代碼只有英數與底線：其他字串不往下送，也不會變成快取鍵
   if (!/^\w+$/.test(metricKey)) throw createError({ statusCode: 404, statusMessage: 'unknown metric' })
-  let html: string | null
-  try {
-    html = await getFormulaHtml(metricKey)
-  } catch {
+  const html = await getFormulaHtml(metricKey).catch(() => {
     throw createError({ statusCode: 503, statusMessage: 'metric catalog unavailable' })
-  }
+  })
   setResponseHeader(event, 'cache-control', 'public, max-age=3600')
   return { html }
 })

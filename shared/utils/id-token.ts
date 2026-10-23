@@ -15,7 +15,7 @@ export function jwtExpiry(token: string): number | null {
   }
 }
 
-// 到期前 marginSeconds 秒就換新；讀不到 exp 的一律當作要換（寧可多要一次，不拿過期的去打）
-export function idTokenNeedsRefresh(exp: number | null, nowSeconds: number, marginSeconds = 300): boolean {
-  return exp === null || nowSeconds >= exp - marginSeconds
+// 到期前 5 分鐘就換新；讀不到 exp 的一律當作要換（寧可多要一次，不拿過期的去打）
+export function idTokenNeedsRefresh(exp: number | null, nowSeconds: number): boolean {
+  return exp === null || nowSeconds >= exp - 300
 }

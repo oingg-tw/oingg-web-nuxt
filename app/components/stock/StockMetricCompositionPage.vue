@@ -23,12 +23,11 @@ const { data: filterSchema } = await useFilterSchema()
 
 // 跟指標頁同一個 key：從指標頁點過來不用重抓
 // lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放同一段的問句、答句與圖的骨架（伺服器照樣等）
-const { data: metricData, error, status, refresh } = await useAsyncData<StockMetricPageResponse | null>(
+const { data: metricData, error, pending, refresh } = await useAsyncData<StockMetricPageResponse | null>(
   () => `stock-metric-${code.value}-${props.parentSlug}`,
   () => readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: props.parentSlug }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric'),
   { watch: [code], default: () => null, lazy: true }
 )
-const pending = computed(() => status.value === 'pending' || status.value === 'idle')
 watchLoadFailure(() => `stock-metric-composition:${props.parentSlug}:${code.value}`, () => error.value ?? (metricData.value?.series === null ? true : null), refresh)
 
 const categories = computed(() => filterSchema.value?.categories ?? [])

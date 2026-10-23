@@ -112,11 +112,7 @@ export interface Metric {
   // showed had gone stale the moment a non-badge metric (payablesTurnover) got provenance support
   // but wasn't a badge, so nothing in this app ever noticed. Read this field directly instead of
   // maintaining a second list — analysis-ts's own words: "之後我們每次擴大範圍，這個欄位會自動
-  // 反映，你們不用再改". Optional/defensive typing only because this app hasn't confirmed 業務中台
-  // has synced it yet (same lag pattern seen on other recent breaking changes) — don't read this
-  // raw field directly, call guru-badges.ts's own metricHasProvenance(metric) instead, which
-  // falls back to a small legacy allowlist only for the transitional window while this field is
-  // genuinely absent from 業務中台's own response.
+  // 反映，你們不用再改". Optional because 業務中台 may omit it; read it as `hasProvenance ?? false`.
   hasProvenance?: boolean
   // Plain-language explanation trio added by analysis-ts 2026-09-19 (commit cf2d409a) on this
   // app's request for the /metrics/{code} explanation pages: one-sentence definition, the

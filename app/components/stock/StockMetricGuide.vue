@@ -17,8 +17,6 @@ const props = withDefaults(defineProps<{
   // 段落 id：`${idPrefix}-definition`／`-howto`／`-reading`；小標用 `${idPrefix}-guide-*`，不跟頁面自己的段落 id 撞（dividend-fill 的 -limits 撞過）
   idPrefix: string
   topic: string
-  // 第 2、3 段標題用的主詞，預設同 topic（指標頁有「近四季 EPS」這種帶期別的寫法）
-  valueTopic?: string
   definitionQuestion?: string
   definitionAnswer?: string | null
   definition: string[]
@@ -29,7 +27,6 @@ const props = withDefaults(defineProps<{
   limitations?: string[]
   misreadings?: string[]
 }>(), {
-  valueTopic: undefined,
   definitionQuestion: undefined,
   definitionAnswer: null,
   rule: null,
@@ -39,9 +36,8 @@ const props = withDefaults(defineProps<{
   misreadings: () => []
 })
 
-const subject = computed(() => props.valueTopic ?? props.topic)
 // 標題隨內容變（2026-09-30）：沒有「跟誰比」的指標，標題不寫「要跟誰比」
-const readingQuestion = computed(() => (props.reading?.compare ? `${subject.value}要跟誰比、什麼時候會看錯？` : `${subject.value}什麼時候會看錯？`))
+const readingQuestion = computed(() => (props.reading?.compare ? `${props.topic}要跟誰比、什麼時候會看錯？` : `${props.topic}什麼時候會看錯？`))
 const hasReadingSection = computed(() => !!props.reading?.compare || props.limitations.length > 0 || props.misreadings.length > 0)
 
 const notes = computed(() => [
@@ -76,7 +72,7 @@ const Rich = (rich: { text: string }) => rich.text.split('**').map((value, index
 
        兩格是固定模板（變大／變小），不是自由文字——理由見 metric-copy.ts 的型別註解。
        只有前端有文案的指標才有這一段；沒有的就跳過，不會印半截。 -->
-  <StockQuestionSection v-if="reading" :id="`${idPrefix}-howto`" :question="`${subject}變大或變小代表什麼？`">
+  <StockQuestionSection v-if="reading" :id="`${idPrefix}-howto`" :question="`${topic}變大或變小代表什麼？`">
     <div class="stock-metric-guide__notes">
       <section class="stock-metric-guide__note" :aria-labelledby="`${idPrefix}-guide-up`">
         <h3 :id="`${idPrefix}-guide-up`" class="stock-metric-guide__note-title">數字變大</h3>

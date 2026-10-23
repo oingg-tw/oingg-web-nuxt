@@ -2,10 +2,6 @@
 // browser-side useFilterSchema reads; hub pages（/metrics, /rank, /screener/{slug}）read it
 // through here so a crawl of every hub page costs 業務中台 one catalog call an hour, not one per
 // render.
-export default defineEventHandler(async () => {
-  try {
-    return await getMetricsCatalog()
-  } catch {
-    throw createError({ statusCode: 503, statusMessage: 'metric catalog unavailable' })
-  }
-})
+export default defineEventHandler(() => getMetricsCatalog().catch(() => {
+  throw createError({ statusCode: 503, statusMessage: 'metric catalog unavailable' })
+}))

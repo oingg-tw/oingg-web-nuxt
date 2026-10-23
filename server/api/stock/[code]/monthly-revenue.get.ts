@@ -52,7 +52,7 @@ export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePage
   //（2026-10-11 實測：興櫃 5／5 檔 0 筆，上櫃 1264／1294／1295 各有 128／65／49 個月）. null, separately, means
   // the read itself failed — the page tells those two apart.
   // Independent reads: a price hiccup must not cost the reader the revenue table, and vice versa.
-  const [revenue, prices] = await Promise.all([settle(cachedMonthlyRevenue(code, MONTHS)), settle(cachedMonthlyPrices(code))])
+  const [revenue, prices] = await Promise.all([settle(cachedMonthlyRevenue(code)), settle(cachedMonthlyPrices(code))])
 
   return { symbol: code, entries: revenue?.entries ?? null, monthlyPrices: prices?.monthlyPrices ?? [], priceBreakMonths: prices?.breakMonths ?? [] }
 })
@@ -60,11 +60,11 @@ export default defineEventHandler(async (event): Promise<StockMonthlyRevenuePage
 // Cached beside the route rather than in server/utils: it has exactly one caller, and the utils
 // file is for reads more than one page shares.
 const cachedMonthlyRevenue = defineCachedFunction(
-  (symbol: string, limit: number) =>
-    businessFetch<MonthlyRevenueHistoryResponse>(`/stocks/${symbol}/monthly-revenue-history`, { query: { limit } }),
+  (symbol: string) =>
+    businessFetch<MonthlyRevenueHistoryResponse>(`/stocks/${symbol}/monthly-revenue-history`, { query: { limit: MONTHS } }),
   {
     name: 'stock-monthly-revenue',
-    getKey: (symbol, limit) => `${symbol}:${limit}`,
+    getKey: (symbol: string) => `${symbol}:${MONTHS}`,
     // Monthly data changes once a month, on the 10th — a day's staleness is invisible and the
     // whole market re-reading it on the same morning is not.
     maxAge: 6 * 60 * 60,

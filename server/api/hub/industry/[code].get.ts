@@ -10,14 +10,10 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
   const known = SECTORS[code]
   if (!known) throw createError({ statusCode: 404, statusMessage: 'unknown sector' })
 
-  let listed: Awaited<ReturnType<typeof getListedSectorCompanies>>
-  try {
-    listed = await getListedSectorCompanies(code)
-  } catch {
-    throw createError({ statusCode: 503, statusMessage: 'sector data unavailable' })
-  }
   // 興櫃的排除與統計重算都在 getListedSectorCompanies（hub-data.ts）。
-  const { companies, members } = listed
+  const { companies, members } = await getListedSectorCompanies(code).catch(() => {
+    throw createError({ statusCode: 503, statusMessage: 'sector data unavailable' })
+  })
   const ranked = new Set(companies.rows.map(row => row.symbol))
   // A sector nobody is listed under（19 綜合 today）is a 404, not an empty 200. A sector with
   // members but no screener rows（13 電子工業（舊分類））still renders its member list; the page
@@ -42,7 +38,7 @@ export default defineEventHandler(async (event): Promise<IndustryPageData> => {
     settle(getSectorMonthlyRevenue(code)),
     settle(getBusinessCycleIndicators()),
     settle(getBusinessCycleReferenceDates()),
-    ...SECTOR_MARGIN_CODES.map(metricCode => settle(getSectorMetricHistory(code, metricCode, 'TTM', 20)))
+    ...SECTOR_MARGIN_CODES.map(metricCode => settle(getSectorMetricHistory(code, metricCode)))
   ])
   // 營收圖疊景氣同時指標與景氣收縮期（2026-10-21，使用者選「B＋類股頁加景氣線」）：只留營收有資料的月份，跟 /industries/cycle 同一份
   const first = revenueTrend?.entries[0]?.yearMonth

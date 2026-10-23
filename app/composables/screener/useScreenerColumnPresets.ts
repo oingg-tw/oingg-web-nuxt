@@ -53,12 +53,12 @@ export function useScreenerColumnPresets(universe: ScreenerUniverse = 'common') 
     }
   }
 
-  async function create(name: string, fields: string[], isDefault = false): Promise<ScreenerColumnPreset | null> {
+  async function create(name: string, fields: string[]): Promise<ScreenerColumnPreset | null> {
     if (!currentUser.value) return null
     try {
       const response = await authedFetch<{ columnPreset: ScreenerColumnPreset }>('/screener/column-presets', {
         method: 'POST',
-        body: { universe, name, isDefault, columns: fields.map(field => ({ field })) }
+        body: { universe, name, isDefault: false, columns: fields.map(field => ({ field })) }
       })
       return response.columnPreset
     } catch (error) {

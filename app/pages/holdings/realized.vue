@@ -11,7 +11,6 @@ import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolT
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '已實現損益', robots: 'noindex, nofollow' })
 
-const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { fetchRealized, fetchPerformance, transactions, loadTransactions, market, quotesFailed, loadQuotes } = useHoldings()
 const { routeFor } = useStockSearch()

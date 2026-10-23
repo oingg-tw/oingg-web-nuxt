@@ -27,7 +27,7 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 // 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁。
 // lazy（2026-10-23，使用者：「手機…點按頁面以後，仍是呈現上一個頁面，經過一段時間以後才切換」）：瀏覽器裡換頁不等這一頁的資料，
 // 先換上結構與骨架；伺服器照樣等資料再輸出（Nuxt 的 lazy 只影響瀏覽器，asyncData.js 的 onServerPrefetch）
-const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, refresh: refreshMetricData }] = await Promise.all([
+const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, pending: metricPending, refresh: refreshMetricData }] = await Promise.all([
   useFilterSchema(),
   useAsyncData<StockMetricPageResponse | null>(
     () => `stock-metric-${code.value}-${slug.value}`,
@@ -37,7 +37,6 @@ const [{ data: filterSchema }, { data: metricData, error: metricError, status: m
     { watch: [code, slug], default: () => null, lazy: true }
   )
 ])
-const metricPending = computed(() => metricStatus.value === 'pending' || metricStatus.value === 'idle')
 
 // The metric's own catalog entry — unit, formula, sources and (when analysis-ts has written them)
 // the description/limitations/misreadings prose. Never a frontend copy of any of it: this app

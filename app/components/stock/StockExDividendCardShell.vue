@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// StockExDividendCard 的載入中骨架：頁面層的 useExDividendNotices() 還沒回來時顯示。同 StockProfileCardShell 的
-// 「只做版面結構，不放任何數字」慣例；文字是「資料載入中」，不是早期沒有 API 時的「資料尚未提供」。
+// StockExDividendCard 的載入中骨架：頁面層的 useExDividendNotices() 還沒回來時顯示。只做版面結構，不放任何數字；
+// 文字是「資料載入中」，不是早期沒有 API 時的「資料尚未提供」。
 const FIELDS = ['除權息基準日', '類型', '現金股利', '股票股利比例']
 </script>
 

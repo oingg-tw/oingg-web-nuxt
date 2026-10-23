@@ -49,12 +49,11 @@ const footerLinks = computed(() => [
 
 // await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在初始值（2026-09-09 根因過一次）。
 // lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放答句與圖的骨架（伺服器照樣等）。仍在 top-level await，上面那條規則照守
-const { data: breakdown, error: breakdownError, status: breakdownStatus, refresh: refreshBreakdown } = await useAsyncData(
+const { data: breakdown, error: breakdownError, pending: breakdownPending, refresh: refreshBreakdown } = await useAsyncData(
   () => `stock-book-value-breakdown-${code.value}`,
   () => $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`),
   { watch: [code], default: () => null, lazy: true }
 )
-const breakdownPending = computed(() => breakdownStatus.value === 'pending' || breakdownStatus.value === 'idle')
 // 讀取失敗交給全站彈窗（2026-10-11）
 watchLoadFailure(() => `stock-book-value-breakdown:${code.value}`, () => breakdownError.value, refreshBreakdown)
 
@@ -85,7 +84,6 @@ const { breadcrumbs } = useStockPageSeo({
   titleKeywords: '每股淨值的逐年變動與來源',
   pathSuffix: '/equity-source',
   stock,
-  summary: computed(() => null),
   description: computed(() => clampDescription(flowAnswer.value
     ?? `${stockShortName.value}（${code.value}）目前沒有可以拆解每股淨值逐年變動的申報資料。每股淨值的逐年變動來自權益變動表。`)),
   sectorCode: computed(() => profile.value?.sectorCode ?? null)

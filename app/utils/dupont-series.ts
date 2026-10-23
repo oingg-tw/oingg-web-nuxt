@@ -23,6 +23,5 @@ export function trimDupontEntries(all: MetricsHistoryEntry[]): MetricsHistoryEnt
   return all.slice(first, last + 1)
 }
 
-export const dupontRateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
 export const dupontTimesText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 次`)
 export const dupontMultipleText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 倍`)

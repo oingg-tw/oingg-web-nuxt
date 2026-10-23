@@ -2,9 +2,7 @@
 export default defineEventHandler(async event => {
   const slug = getRouterParam(event, 'slug') ?? ''
   if (!findRankPage(slug)) throw createError({ statusCode: 404, statusMessage: 'unknown rank page' })
-  try {
-    return await getRanking(slug)
-  } catch {
+  return getRanking(slug).catch(() => {
     throw createError({ statusCode: 503, statusMessage: 'ranking unavailable' })
-  }
+  })
 })

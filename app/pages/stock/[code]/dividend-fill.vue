@@ -20,7 +20,7 @@ const TOPIC = '填權填息'
 
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 // lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要，填息表讀取中放骨架；伺服器照樣等
-const { digest, description: digestDescription, series, pending: digestPending } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, lazy: true })
+const { digest, series, pending: digestPending } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, lazy: true })
 
 const fills = computed<DividendFillEvent[]>(() => series.value?.dividendFills ?? [])
 
@@ -52,7 +52,6 @@ const { breadcrumbs } = useStockPageSeo({
   titleKeywords: '除息後多久填息與逐次紀錄',
   pathSuffix: '/dividend-fill',
   stock,
-  summary: computed(() => null),
   description: computed(() =>
     clampDescription(
       fills.value.length

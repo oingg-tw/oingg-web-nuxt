@@ -2,10 +2,10 @@ import type { MaybeRefOrGetter } from 'vue'
 import type { StockBreadcrumbItem } from '~/composables/stock/useStockPageSeo'
 
 // <head> for the hub pages（/stock, /industry/…, /rank/…, /screener/{slug}, /metrics/…）—
-// 2026-09-19, the SEO build. The generalised twin of useStockPageSeo: title/description/og/
-// twitter, a self canonical WITHOUT the query string（view state never becomes a separate URL）,
-// optional `noindex, follow`, and a BreadcrumbList built from the same array the visible
-// StockBreadcrumb renders, so the trail search engines are told about is the one people see.
+// 2026-09-19, the SEO build; useStockPageSeo builds on it too. Title/description/og/twitter, a self
+// canonical WITHOUT the query string（view state never becomes a separate URL）, optional
+// `noindex, follow`, and a BreadcrumbList built from the same array the visible StockBreadcrumb
+// renders, so the trail search engines are told about is the one people see.
 //
 // Titles are written per page in the「[核心關鍵字]+[核心利益]」form（the brand suffix comes from
 // app.vue's global titleTemplate）and kept ≤ 32 CJK-equivalent characters; descriptions aim for
@@ -17,6 +17,8 @@ export interface HubPageSeoOptions {
   path: MaybeRefOrGetter<string>
   breadcrumbs: MaybeRefOrGetter<StockBreadcrumbItem[]>
   noindex?: MaybeRefOrGetter<boolean>
+  // 整個 robots 值（個股頁「找不到這檔」要的是純 noindex）；有給就不看 noindex
+  robots?: MaybeRefOrGetter<string | undefined>
 }
 
 export function useHubPageSeo(options: HubPageSeoOptions) {
@@ -25,7 +27,7 @@ export function useHubPageSeo(options: HubPageSeoOptions) {
   const description = computed(() => toValue(options.description))
   const pageUrl = computed(() => `${origin}${toValue(options.path)}`)
   const breadcrumbs = computed(() => toValue(options.breadcrumbs))
-  const robots = computed<string | undefined>(() => (toValue(options.noindex) ? 'noindex, follow' : undefined))
+  const robots = computed<string | undefined>(() => (options.robots ? toValue(options.robots) : toValue(options.noindex) ? 'noindex, follow' : undefined))
 
   useSeoMeta({
     title,

@@ -25,7 +25,5 @@ export async function useIndustry(facet: IndustryFacetKey) {
   return { code, sectorName: known.name, data, rows, noindex }
 }
 
-export type Industry = Awaited<ReturnType<typeof useIndustry>>
-
 // 側欄面向的順序（拖曳），同 ETF；「指標速覽」固定在最上面
 export const useIndustryFacetOrder = () => useFacetOrder('industry-facet-order', INDUSTRY_FACETS.filter(facet => facet.key !== 'overview'))

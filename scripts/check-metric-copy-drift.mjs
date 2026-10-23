@@ -9,7 +9,7 @@
 // So every entry pins the fingerprint below as it was when the copy was written. This
 // recomputes that from the live catalog and fails on any change, which turns a formula revision
 // into a forced copy review. It also fails on a metric that has a page but neither frontend copy
-// nor backend copy, which is the hole check-metric-page-copy.mjs used to be the only guard against.
+// nor backend copy, and on a page whose own name drifted from the catalog's `name`.
 //
 // Run: node scripts/check-metric-copy-drift.mjs        (業務中台 must be up; no browser needed)
 //
@@ -60,7 +60,7 @@ const pinOf = (metric) => createHash('sha256').update([
 
 const pins = new Map(Object.entries(METRIC_COPY).map(([code, copy]) => [code, copy.pin]))
 
-const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode }))
+const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode, topic: page.topic, ownName: !page.valueTopic }))
 
 const response = await fetch(`${API}/metrics`, { signal: AbortSignal.timeout(30_000) })
 if (!response.ok) {
@@ -106,5 +106,14 @@ if (holes.length) {
   console.log(`\n⚠ ${holes.length} 頁沒有任何文案可用：`)
   for (const line of holes) console.log(`  ${line}`)
 }
-if (!drifted.length && !holes.length) console.log('公式、期別與後端敘述都沒動，也沒有缺文案的頁面。')
+
+// 頁名（2026-10-11 生態系詞彙表）：頁面就是那支指標本身時，頁名一律等於 analysis-ts 的 `name`；只有「同一支指標、不同頁面」
+// （設了 valueTopic）可以有自己的頁名。
+// ponytail: topic 仍寫在 metric-pages.ts（SSR 標題、側欄、sitemap 都同步讀它），這裡只擋漂移；要完全不存一份得把頁名改成執行期讀型錄。
+const renamed = pages.filter(page => page.ownName && page.topic && byCode.get(page.metricCode) && byCode.get(page.metricCode).name !== page.topic)
+if (renamed.length) {
+  console.log(`\n⚠ ${renamed.length} 頁的頁名與 /metrics name 不一致：`)
+  for (const page of renamed) console.log(`  ${page.slug.padEnd(34)}頁名「${page.topic}」　型錄「${byCode.get(page.metricCode).name}」`)
+}
+if (!drifted.length && !holes.length && !renamed.length) console.log('公式、期別與後端敘述都沒動，也沒有缺文案或頁名不一致的頁面。')
 else process.exitCode = 1

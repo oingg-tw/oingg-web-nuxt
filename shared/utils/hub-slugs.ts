@@ -130,8 +130,7 @@ export interface RankPageDefinition {
     sortField?: string
     // 排序值 = 第一欄 − 第二欄。給了這個就不用 sortField，而且會把所有頁都抓回來。
     derivedMinus?: [string, string]
-    // 畫面上的指標名與單位。derivedMinus 的頁面在型錄裡沒有對應的指標，所以名字要自己給。
-    metricName?: string
+    // 畫面上的單位。derivedMinus 的頁面在型錄裡沒有對應的指標，所以要自己給。
     unit?: string
     // 母體說明。**screener 頁面一定要給**：這一頁的答句原本寫「全市場有 X 資料的公司依數值排序」，
     // 而那句話對篩過族群的頁面是錯的——由虧轉盈那頁只收「去年同季虧損、本季獲利」的公司，
@@ -198,7 +197,6 @@ export const RANK_PAGES: RankPageDefinition[] = [
     filters: [{ field: 'epsPriorYear.Q', max: -0.0001 }, { field: 'eps.Q', min: 0.0001 }],
     columns: ['eps.Q', 'epsPriorYear.Q'],
     derivedMinus: ['eps.Q', 'epsPriorYear.Q'],
-    metricName: '每股盈餘由虧轉盈幅度',
     unit: '元',
     population: '只收去年同季虧損、本季獲利的公司，排的是兩者相差幾元。這不是獲利高低的排行：轉盈幅度大不代表現在賺得多。'
   } },

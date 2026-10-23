@@ -9,7 +9,6 @@ import type { PerformanceOutcome } from '~/composables/holdings/holdings-model'
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '績效統計', robots: 'noindex, nofollow' })
 
-const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const { fetchPerformance } = useHoldings()
 

@@ -22,8 +22,6 @@ const props = defineProps<{
   items: PresetSelectItem[]
   // 「＋新增」的可及名稱：「新增篩選」「新增欄位組合」
   addLabel: string
-  // 沒有「＋新增」（例如訪客的欄位組合只有一組）
-  hideAdd?: boolean
   // 目前這一組未儲存時的按鈕文字：「存成我的篩選」「存成我的欄位組合」
   saveLabel: string
   // 不畫「管理」（顯示欄位，見上面）
@@ -67,7 +65,7 @@ function optionLabel(item: PresetSelectItem) {
       <el-option v-for="item in items" :key="item.id" :label="optionLabel(item)" :value="item.id" />
     </el-select>
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button screener-preset-select__save" @click="emit('save')">{{ saveLabel }}</el-button>
-    <el-button v-if="!hideAdd" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
+    <el-button class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
     <template v-if="!hideManage">
       <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
       <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />

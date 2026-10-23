@@ -29,12 +29,11 @@ const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filte
 const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices, lazy: true })
 
 // 殖利率歷史：次要資料，讀不到不擋整頁（scope section），只少第一段的圖與「自己的區間」那半句
-const { data: yieldHistory, status: yieldStatus, refresh: refreshYieldHistory } = await useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
+const { data: yieldHistory, pending: yieldPending, refresh: refreshYieldHistory } = await useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
   key: () => `stock-dividend-yield-history-${code.value}`,
   watch: [code],
   lazy: true
 })
-const yieldPending = computed(() => yieldStatus.value === 'pending' || yieldStatus.value === 'idle')
 watchLoadFailure(() => `stock-dividend-yield-history:${code.value}`, () => yieldHistory.value?.entries === null, refreshYieldHistory, { scope: 'section' })
 const yieldEntries = computed(() => yieldHistory.value?.entries ?? [])
 
@@ -49,7 +48,7 @@ const history = computed(() => series.value?.dividendHistory?.entries ?? [])
 // ① 殖利率是多少？— scoped down to just the cash yield itself (2026-09-21, direct request
 // 「stock/2330/dividend 不要有總覽概念，這樣資訊會太多。dividend 就讓它是現金殖利率就好。總回饋律那邊
 // 才把股票股利與買回等等加總看」). Used to also state dividendPerShare/dividendPayoutRatio/
-// shareholderYield/consecutiveDividendYears via factTexts() — dropped, not trimmed for length:
+// shareholderYield/consecutiveDividendYears from the digest's fact texts — dropped, not trimmed for length:
 // those four are a different question (how much did the company pay in total, from which
 // mechanisms) than this one (what's the cash yield), and shareholderYield in particular now has
 // its own dedicated page (/stock/:code/shareholder-yield, 2026-09-21) that IS the "add cash

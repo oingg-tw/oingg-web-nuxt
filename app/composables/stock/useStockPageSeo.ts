@@ -73,8 +73,8 @@ export interface StockPageSeoOptions {
   learnPath?: Ref<string>
   stock: Ref<Stock | undefined>
   // useAsyncData's own `data` type — `undefined` before the first fetch, `null` when the backend
-  // had nothing.
-  summary: Ref<StockSummary | null | undefined>
+  // had nothing. Pages with their own `description` leave it out.
+  summary?: Ref<StockSummary | null | undefined>
   // Richer, digest-built description when the page has one; falls back to the summary-based
   // sentence below when absent or empty.
   description?: Ref<string | null | undefined>
@@ -98,19 +98,11 @@ function fallbackDescription(shortName: string, code: string, topic: string, sum
 }
 
 export function useStockPageSeo(options: StockPageSeoOptions) {
-  const requestUrl = useRequestURL()
-  const origin = requestUrl.origin
-
   const pagePath = computed(() => options.learnPath?.value ?? `/stock/${options.code.value}${options.pathSuffix}`)
-  const pageUrl = computed(() => `${origin}${pagePath.value}`)
   const title = computed(() => `${options.shortName.value} ${options.code.value} ${unref(options.titleKeywords) || options.topic}`)
   const description = computed(() => {
     const override = options.description?.value
-    return override && override.length > 0 ? override : fallbackDescription(options.shortName.value, options.code.value, options.topic, options.summary.value)
-  })
-  const robots = computed<string | undefined>(() => {
-    if (unref(options.noindex)) return 'noindex, follow'
-    return options.stock.value ? undefined : 'noindex'
+    return override && override.length > 0 ? override : fallbackDescription(options.shortName.value, options.code.value, options.topic, options.summary?.value)
   })
 
   const breadcrumbs = computed<StockBreadcrumbItem[]>(() => {
@@ -125,39 +117,11 @@ export function useStockPageSeo(options: StockPageSeoOptions) {
     return items
   })
 
-  useSeoMeta({
+  return useHubPageSeo({
     title,
     description,
-    ogTitle: title,
-    ogDescription: description,
-    ogType: 'website',
-    ogUrl: pageUrl,
-    ogSiteName: '安盈選股',
-    ogLocale: 'zh_TW',
-    twitterCard: 'summary',
-    robots
+    path: pagePath,
+    breadcrumbs,
+    robots: () => (unref(options.noindex) ? 'noindex, follow' : options.stock.value ? undefined : 'noindex')
   })
-
-  useHead({
-    link: [{ rel: 'canonical', href: pageUrl }],
-    script: [
-      {
-        type: 'application/ld+json',
-        innerHTML: computed(() =>
-          JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: breadcrumbs.value.map((item, index) => ({
-              '@type': 'ListItem',
-              position: index + 1,
-              name: item.label,
-              item: `${origin}${item.to}`
-            }))
-          })
-        )
-      }
-    ]
-  })
-
-  return { title, description, breadcrumbs }
 }

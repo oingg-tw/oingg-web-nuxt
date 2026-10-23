@@ -13,9 +13,8 @@ export interface HubSector {
 export interface DirectoryCompany {
   symbol: string
   name: string
-  market: 'TWSE' | 'TPEx' | null
   // 興櫃。上游 GET /stocks 自己的欄位——興櫃股的代號同樣是四碼（6744、6748…），所以靠代號長度或
-  // market 值都認不出來，這是唯一可靠的判準。過濾與否由各頁自己決定，directory 只負責帶上來。
+  // 市場別都認不出來，這是唯一可靠的判準。過濾與否由各頁自己決定，directory 只負責帶上來。
   isEmerging: boolean
 }
 
@@ -28,7 +27,6 @@ export interface DirectorySector extends HubSector {
 export interface MarketDirectory {
   sectors: DirectorySector[]
   others: DirectoryCompany[]
-  total: number
 }
 
 // One row of a sector's company table — POST /screener columns parsed to numbers on the server
@@ -41,7 +39,6 @@ export interface SectorCompanyRow {
   pbRatio: number | null
   dividendYield: number | null
   roe: number | null
-  eps: number | null
   debtRatio: number | null
   // 股利 3 年成長率（2026-10-01）。加這一欄是為了讓產業頁畫得出公司版的散佈圖——軸跟
   // /industries/dividend 的類股版一樣（X 成長率、Y 殖利率），所以讀者從總覽點進來看到的是同一張
@@ -96,8 +93,6 @@ export interface SectorGrowthRow {
 
 export interface SectorGrowthSummary {
   sectors: SectorGrowthRow[]
-  // 成長率欄位裡最新的 knowledgeDate（各公司財報期別不一，這是最晚的那一家）
-  fundamentalsDate: string | null
 }
 
 // /industries/cycle（2026-10-10，「讓用戶看出哪些產業屬於景氣循環股」）：每個類股兩個數字，都從類股月營收算——
@@ -229,11 +224,7 @@ export interface RankingRow {
 
 // /api/hub/rank/:slug — GET /screener/ranking (limit ≤ 50) for one RANK_PAGES entry.
 export interface RankingPageData {
-  slug: string
-  field: string
   direction: 'asc' | 'desc'
-  metricName: string
-  fieldName: string
   unit: string | null
   rows: RankingRow[]
   // ETF 排行才有：基金類型（上游 fundType）各自的前 50 檔，名次從 1 起算（排行頁的簡易篩選）
@@ -378,7 +369,6 @@ export interface EquityRiskPremiumPageData {
   // 預設（完整）窗口的供給面組成。短窗口的組成不列——四組數字並排會把頁面變成一張比較表，而
   // 這一段要回答的是「這四個數字怎麼來的」，不是「它們在不同窗口差多少」。
   components: EquityRiskPremiumComponents | null
-  taiexRange: { min: string; max: string } | null
 }
 
 // /industries 的散佈圖（2026-09-30）— 每個證交所類股一個點：Y 軸是配息公司的平均殖利率、X 軸是

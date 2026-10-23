@@ -152,8 +152,8 @@ export function useScreenerTabColumnPresets(ctx: {
   // tab-bootstrap path (presetToTab below, and removeColumnPresetOption's own fallback when
   // the active preset gets deleted) runs through this instead of hardcoding null, now that
   // there's no "預設" tab left to represent that state in the UI.
-  function resolveDefaultColumnPresetId(excludeId?: string): string | null {
-    const options = columnPresetOptions.value.filter(option => option.id !== excludeId)
+  function resolveDefaultColumnPresetId(): string | null {
+    const options = columnPresetOptions.value
     return options.find(option => option.isDefault)?.id ?? options[0]?.id ?? null
   }
 

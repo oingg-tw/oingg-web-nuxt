@@ -1,5 +1,3 @@
-import type { StockPageDigest } from '~/utils/stock-digest'
-
 // Pure sentence builders for the question-form sections of the /stock/:code pages (2026-09-19, the
 // SEO build). Same contract as stock-digest.ts: deterministic on both renders（no Date, no locale
 // formatting）, the compliance register（numbers and statistical positions, no adjectives）, and a
@@ -15,17 +13,6 @@ export function joinClauses(clauses: (string | null | undefined)[], end = '。')
 export function joinSentences(sentences: (string | null | undefined)[]): string | null {
   const kept = sentences.filter((sentence): sentence is string => !!sentence)
   return kept.length ? kept.join('') : null
-}
-
-// The digest's own「近四季 EPS 86.27 元」texts for the requested codes, in the requested order.
-export function factTexts(digest: StockPageDigest | null, codes: string[]): string[] {
-  if (!digest) return []
-  const byCode = new Map(digest.facts.map(fact => [fact.code, fact.text]))
-  return codes.map(code => byCode.get(code) ?? null).filter((text): text is string => text !== null)
-}
-
-export function factValue(digest: StockPageDigest | null, code: string): number | null {
-  return digest?.facts.find(fact => fact.code === code)?.value ?? null
 }
 
 // 千分位 groupThousands 2026-10-12 搬到 shared/utils/number-format.ts（跟 formatSignificantDigits 放一起）

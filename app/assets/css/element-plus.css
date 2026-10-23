@@ -157,8 +157,7 @@ html .el-alert.el-alert .el-alert__description {
 
 .el-form-item__error,
 .el-input__count,
-.el-input .el-input__count .el-input__count-inner,
-.el-picker-panel__shortcut {
+.el-input .el-input__count .el-input__count-inner {
   font-size: 1rem !important;
 }
 
@@ -461,24 +460,19 @@ html .el-table .sort-caret.descending {
   border-top-color: var(--el-text-color-secondary);
 }
 
+/* 排序中只留那一個方向，移到中間（同 SharedSortIcon 只剩一個時置中）：三角形是 10px 框裡有顏色的那一半，看得到的 5px 落在 24px 框的
+   9.5～14.5 */
 html .el-table .ascending .sort-caret.ascending {
+  top: 4.5px;
   border-bottom-color: var(--el-color-primary);
 }
 
 html .el-table .descending .sort-caret.descending {
+  bottom: 4.5px;
   border-top-color: var(--el-color-primary);
 }
 
 html .el-table .ascending .sort-caret.descending,
 html .el-table .descending .sort-caret.ascending {
   display: none;
-}
-
-/* 剩下的那一個移到中間（同 SharedSortIcon 只剩一個時置中）：三角形是 10px 框裡有顏色的那一半，看得到的 5px 落在 24px 框的 9.5～14.5 */
-html .el-table .ascending .sort-caret.ascending {
-  top: 4.5px;
-}
-
-html .el-table .descending .sort-caret.descending {
-  bottom: 4.5px;
 }

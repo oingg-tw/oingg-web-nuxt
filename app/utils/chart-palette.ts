@@ -297,7 +297,8 @@ function contrastRatio(a: string, b: string): number {
   return (lighter! + 0.05) / (darker! + 0.05)
 }
 
-export function ensureContrast(hex: string, mode: 'LIGHT' | 'DARK', min = 3): string {
+// 對卡片底色至少 3:1（WCAG 1.4.11 非文字對比）
+export function ensureContrast(hex: string, mode: 'LIGHT' | 'DARK'): string {
   const surface = CARD_SURFACE[mode]
   const [hue, saturation, lightness] = hexToHsl(hex)
   // hexToHsl 的 s／l 是 **0–100 不是 0–1**（見它自己的實作）。第一版用 0.01 的步長又夾到 [0, 1]，
@@ -307,7 +308,7 @@ export function ensureContrast(hex: string, mode: 'LIGHT' | 'DARK', min = 3): st
   // 50 步 × 2 ＝ 走完整個明度範圍。走不到就回最後一步，不無限迴圈。
   for (let i = 0; i < 50; i += 1) {
     const candidate = hslToHex(hue, saturation, current)
-    if (contrastRatio(candidate, surface) >= min) return candidate
+    if (contrastRatio(candidate, surface) >= 3) return candidate
     current = Math.min(100, Math.max(0, current + step))
   }
   return hslToHex(hue, saturation, current)
