@@ -294,8 +294,10 @@ export function formatFieldLabel(metricName: string, field: MetricField): string
 // already a real sub-label (e.g. "股價" for stock.price) for one that isn't. Moved here 2026-09-11
 // from useScreenerTabs.ts once useGuestScreener.ts needed the exact same logic for the stateless
 // anonymous run's own result columns — one shared home instead of two copies that could drift.
+// 直接查表、不經 formatPeriodLabel：「股價」這種本來就是名稱的 fieldName 不是漏了對照，不該在開發時每次都警告（新的期別代號
+// 仍會在型錄那一條路 formatFieldLabel 被警告到）
 export function columnLabelFrom(metricName: string, fieldName: string): string {
-  const periodLabel = formatPeriodLabel(fieldName)
+  const periodLabel = (TIMEFRAME_LABELS as Record<string, string | undefined>)[fieldName]
   return periodLabel ? `${metricName}（${periodLabel}）` : fieldName || metricName
 }
 
