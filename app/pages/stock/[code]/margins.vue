@@ -34,7 +34,7 @@ const code = computed(() => String(route.params.code))
 
 const TOPIC = '財報三率'
 
-// 圖（上下兩張折線、各自的區間選單）在 StockRatioLinesChart，指標速覽畫同一張
+// 圖（一張三條折線）在 StockRatioLinesChart，指標速覽畫同一張
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 const { data: filterSchema } = await useFilterSchema()

@@ -44,7 +44,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 淨值從哪來：每股淨值；股東回饋組成、營業費用組成：組成的母項
 //   - 資產負債表的四張組成：那一塊占總資產的比率（淨值組成是股東權益比率），同 StockBalanceCompositionPage 的 metricCode
 //   - 安全韌性的組成：流動比率（那一頁的主線）；現金循環的組成：現金轉換循環（時間軸最後算出來的那一段）
-//   - 財報三率的關係是三個數並列，沒有單一數值，只給連結
+//   - 財報三率是三個數並列，沒有單一數值，只給連結
 const SPECIAL_FIELDS: Record<string, string> = {
   'dividend': 'dividendYield.EOD',
   'monthly-revenue-growth': 'revenueYoy3m.M',
@@ -219,7 +219,7 @@ const cashCycleSeries = usePageData<StockSeriesResponse>('cash-cycle')
 const hasBalanceRows = (part: BalanceCompositionKind) => !!balanceComposition.value?.periods.some(period => pickBalanceComposition(part, period))
 const cashCycleEntry = computed(() => latestCashCycleEntry(cashCycleSeries.value?.groups?.TTM_CYCLE_20?.entries ?? []))
 
-// 沒有單一數值的頁（財報三率的關係）是空字串：圖卡標題後面不接東西，表格那一格自己印「－」
+// 沒有單一數值的頁（財報三率）是空字串：圖卡標題後面不接東西，表格那一格自己印「－」
 function valueText(field: string | null, slug?: string): string {
   if (!field) return ''
   const cell = values.value[field]
