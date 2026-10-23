@@ -35,9 +35,10 @@ const props = defineProps<{
 const KINDS = {
   pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabel: '近四季 EPS' },
   // ratioLabel 本淨比→淨值比 2026-09-16（「全站 本淨比 改為淨值比」）.
-  // baseLabel 寫出期別（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）：端點給 baseLabel 時用端點的（基準改了自己跟上），
-  // 沒給時用這裡、照端點現在的算法寫
-  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabel: '最近一季每股淨值' },
+  // baseLabel 寫出期別（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」），提示框用：端點給 baseLabel 時用端點的（基準改了自己
+  // 跟上），沒給時用這裡、照端點現在的算法寫。淨值比的基準同日改成近四季平均（analysis-ts 65c12aea，使用者：「3130 的四季淨值明顯有
+  // 季節性 所以想用四季加總平均的方式平滑化來畫河流圖」）
+  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabel: '近四季平均每股淨值' },
   // 股價營收比河流圖 2026-09-21（「PSR 是不是也用河流圖比較適合?」）. The same shape as the other two
   // once the identity is checked rather than assumed: psr's own formula is 市值 ÷ 營收, which is
   // 股價 ÷ 每股營收, so 每股營收（revenuePerShare, Q+TTM in the catalog）is a real per-share base to
@@ -318,10 +319,6 @@ const chartOption = computed(() => ({
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <!-- 河道用哪一種每股基準，跟其他圖的期別切換放在同一列（2026-10-23） -->
-    <template #controls>
-      <span class="valuation-river__basis">河道＝{{ baseLabel }} × 倍數</span>
-    </template>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. 載入中與讀取失敗都先保留圖的位置，不出文字。
          (No comment between the v-if branches: in dev the client compiles a commented branch into a fragment and SSR doesn't —
@@ -343,11 +340,4 @@ const chartOption = computed(() => ({
 
 .valuation-river__empty {
   margin: 0;
-}
-
-/* 控制列在寬卡片上靠右；說明靠左，選單留在右邊 */
-.valuation-river__basis {
-  margin-right: auto;
-  color: var(--el-text-color-regular);
-}
-</style>
+}</style>
