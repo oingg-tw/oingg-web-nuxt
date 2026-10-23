@@ -2,12 +2,19 @@
 // (formulaReferences in app/utils/holdings-formula.ts). Pure, no network, no browser.
 //
 // Run: node scripts/check-sheet-grid.mjs
-import { estimateTextWidth, maskedText, moveCell, rangeOf, SHEET_REFERENCE_COLORS, toCsv, toHtmlTable, toTsv } from '../app/utils/sheet-grid.ts'
+import { estimateTextWidth, maskedText, moveCell, rangeOf, SHEET_REFERENCE_COLORS, sortRowsBy, toCsv, toHtmlTable, toTsv } from '../app/utils/sheet-grid.ts'
 import { formulaReferences } from '../app/utils/holdings-formula.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+console.log('依一欄排序')
+const sample = [{ id: 'a', v: 3 }, { id: 'b', v: null }, { id: 'c', v: 1 }, { id: 'd', v: 3 }, { id: 'e', v: 2 }]
+assert(same(sortRowsBy(sample, row => row.v, 'descending').map(row => row.id), ['a', 'd', 'e', 'c', 'b']), '由大到小、同值照原順序、沒有值排最後')
+assert(same(sortRowsBy(sample, row => row.v, 'ascending').map(row => row.id), ['c', 'e', 'a', 'd', 'b']), '由小到大、沒有值照樣排最後')
+assert(same(sortRowsBy([{ s: '2330' }, { s: '0056' }, { s: '1216' }], row => row.s, 'ascending').map(row => row.s), ['0056', '1216', '2330']), '代號照字串排')
+assert(sample.map(row => row.id).join('') === 'abcde', '不動原陣列')
 
 console.log('框選範圍')
 assert(same(rangeOf({ r: 3, c: 1 }, { r: 0, c: 4 }), { top: 0, left: 1, bottom: 3, right: 4 }), '兩端反向也是同一個矩形')

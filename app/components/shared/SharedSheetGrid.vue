@@ -69,6 +69,9 @@ const props = withDefaults(defineProps<{
   // 欄寬照內容（2026-10-23，使用者：「holdings/columns 手動調整 欄位寬度的功能沒有意義 請fit data width就好」）：表格交給瀏覽器的
   // 自動版面，每一欄就是表頭與資料最寬的那一格。沒有拖曳把手、沒有 +／−／0、不存寬度，也不會有 ###（永遠放得下）
   fit?: boolean
+  // 排序交給頁面的工具列（2026-10-23，/holdings/columns，使用者選的方案 A「一條工具列」）：頁面用 v-model:sort 下排序、從 activeColumn
+  // 知道選到哪一欄；點表頭照舊送 headerActivate（改公式），表頭只在正在排序的那一欄畫方向
+  toolbarSort?: boolean
 }>(), {
   storageKey: undefined,
   enterAction: 'move',
@@ -77,7 +80,8 @@ const props = withDefaults(defineProps<{
   highlights: () => ({}),
   hint: undefined,
   columnMenu: false,
-  fit: false
+  fit: false,
+  toolbarSort: false
 })
 
 const emit = defineEmits<{
@@ -85,6 +89,8 @@ const emit = defineEmits<{
   edit: [row: R, column: SheetColumn<R>]
   pick: [column: SheetColumn<R>]
   headerActivate: [column: SheetColumn<R>]
+  // 作用中的格子在哪一欄（toolbarSort 的頁面拿來決定排序哪一欄）
+  activeColumn: [key: string | null]
   reorder: [keys: string[]]
   removeColumn: [key: string]
 }>()
@@ -100,20 +106,12 @@ const scroller = ref<HTMLElement>()
 const hintId = useId()
 
 // ---- 排序 ----
-const sort = ref<{ key: string; order: 'ascending' | 'descending' } | null>(null)
+// 外面沒綁 v-model:sort 就是這張表自己的狀態（觀察清單）；toolbarSort 的頁面由工具列設
+const sort = defineModel<{ key: string; order: 'ascending' | 'descending' } | null>('sort', { default: null })
 const viewRows = computed(() => {
   const current = sort.value
   const column = current && props.columns.find(item => item.key === current.key)
-  if (!current || !column?.sortValue) return props.rows
-  const direction = current.order === 'ascending' ? 1 : -1
-  return props.rows
-    .map((row, index) => ({ row, index, value: column.sortValue!(row) }))
-    .sort((a, b) => {
-      if (a.value === null || b.value === null) return a.value === b.value ? a.index - b.index : a.value === null ? 1 : -1
-      const diff = typeof a.value === 'number' && typeof b.value === 'number' ? a.value - b.value : String(a.value).localeCompare(String(b.value), 'zh-Hant')
-      return diff === 0 ? a.index - b.index : diff * direction
-    })
-    .map(item => item.row)
+  return current && column?.sortValue ? sortRowsBy(props.rows, column.sortValue, current.order) : props.rows
 })
 const firstOrder = (column: SheetColumn<R>) => column.sortFirst ?? (column.numeric ? 'descending' : 'ascending')
 function toggleSort(column: SheetColumn<R>) {
@@ -123,7 +121,7 @@ function toggleSort(column: SheetColumn<R>) {
   copied.value = null
   announce(sort.value ? `依${column.label}${sort.value.order === 'ascending' ? '由小到大' : '由大到小'}排序` : `取消${column.label}的排序`)
 }
-const ariaSort = (column: SheetColumn<R>) => (sort.value?.key === column.key ? sort.value.order : column.sortValue ? 'none' : undefined)
+const ariaSort = (column: SheetColumn<R>) => (sort.value?.key === column.key ? sort.value.order : column.sortValue && !props.toolbarSort ? 'none' : undefined)
 
 // ---- 欄寬 ----
 // 預設照內容估（伺服器與瀏覽器算出同一個數）；拖過或自動貼合過的存在這個瀏覽器
@@ -257,6 +255,7 @@ const displayText = (row: R, column: SheetColumn<R>, r: number, c: number) => ma
 
 // ---- 選取：active 是作用中的格子，anchor 與 extent 是範圍的兩角（Shift 只動 extent）；r = -1 是表頭 ----
 const active = ref<SheetCell>({ r: 0, c: 0 })
+watch(() => props.columns[active.value.c]?.key ?? null, key => emit('activeColumn', key), { immediate: true })
 const anchor = ref<SheetCell>({ r: 0, c: 0 })
 const extent = ref<SheetCell>({ r: 0, c: 0 })
 const range = computed(() => rangeOf(anchor.value, extent.value))
@@ -550,7 +549,7 @@ onUnmounted(() => {
 
 function headerAction(column: SheetColumn<R>) {
   if (props.columnMenu && column.copyable !== false) return openMenu(column)
-  if (column.sortValue) toggleSort(column)
+  if (column.sortValue && !props.toolbarSort) toggleSort(column)
   else emit('headerActivate', column)
 }
 
@@ -707,12 +706,12 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
                 :data-r="-1"
                 :data-c="c"
                 class="sheet__cell sheet__header-cell"
-                :class="[cellClasses(-1, c, column), dragClass(c), { 'is-sortable': !!column.sortValue }]"
+                :class="[cellClasses(-1, c, column), dragClass(c), { 'is-sortable': !!column.sortValue && !toolbarSort }]"
                 :style="cellStyle(c, column)"
               >
                 <span class="sheet__head">
                   <slot name="header" :column="column" :index="c">{{ column.label }}</slot>
-                  <SharedSortIcon v-if="column.sortValue" :state="sort?.key === column.key ? sort.order : null" />
+                  <SharedSortIcon v-if="column.sortValue && (!toolbarSort || sort?.key === column.key)" :state="sort?.key === column.key ? sort.order : null" />
                 </span>
                 <!-- 滑鼠用的把手；鍵盤在表頭上按 +／−／0（見 onHeaderKey），所以把手本身不給輔助科技 -->
                 <span

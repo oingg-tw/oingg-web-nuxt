@@ -297,7 +297,7 @@ const skeletonSheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
   ...Array.from({ length: columnCountHint.value }, (_, index): SheetColumn<ColumnRow> => ({ key: `skeleton-${index}`, label: columnLetter(index), numeric: true, text: () => '' }))
 ])
 const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
-  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, text: row => `${row.symbol} ${row.name}` },
+  { key: STOCK_KEY, label: '股票', frozen: true, rowHeader: true, text: row => `${row.symbol} ${row.name}`, sortValue: row => row.symbol },
   ...columns.value.map((column, index): SheetColumn<ColumnRow> => {
     const letter = letters.value[index]!
     return {
@@ -307,10 +307,40 @@ const sheetColumns = computed<SheetColumn<ColumnRow>[]>(() => [
       text: row => formatValue(row.values[letter], shownColumn(column)),
       value: row => copyValue(row.values[letter]),
       excelFormat: excelFormatOf(shownColumn(column)),
+      // 只有數字能比大小；錯誤值（#DIV/0!）、空的、TRUE／FALSE 當成沒有值，排最後
+      sortValue: (row) => {
+        const value = row.values[letter]
+        return typeof value === 'number' && Number.isFinite(value) ? value : null
+      },
       sensitive: sizeLetters.value.has(letter)
     }
   })
 ])
+// ---- 排序工具列（2026-10-23，使用者：「holdings/columns 要有排序功能，希望能設計出來 類似 Excel 那樣的Toolbar」，方案頁選 A「一條工具列」）----
+// 跟 Excel 一樣排「選取的格子所在的那一欄」：試算表回報作用中的欄（activeColumn），工具列用 v-model:sort 下排序（toolbar-sort：點表頭
+// 照舊是改公式）。只改畫面上的順序；複製與下載照排序後的順序（sortRowsBy 同一個函式）。同一顆再按一次，或按「取消排序」，回到原本的順序
+type SheetSort = { key: string; order: 'ascending' | 'descending' }
+const ORDER_TEXT = { ascending: '由小到大', descending: '由大到小' } as const
+const sheetSort = ref<SheetSort | null>(null)
+const selectedKey = ref<string | null>(null)
+const columnOf = (key: string | null | undefined) => sheetColumns.value.find(column => column.key === key) ?? null
+const selectedLabel = computed(() => columnOf(selectedKey.value)?.label ?? null)
+const sortedLabel = computed(() => columnOf(sheetSort.value?.key)?.label ?? null)
+const isSortedBy = (order: SheetSort['order']) => !!sheetSort.value && sheetSort.value.key === selectedKey.value && sheetSort.value.order === order
+function sortSelected(order: SheetSort['order']) {
+  if (!selectedKey.value || !selectedLabel.value) return
+  sheetSort.value = isSortedBy(order) ? null : { key: selectedKey.value, order }
+  statusText.value = sheetSort.value ? `依${selectedLabel.value}${ORDER_TEXT[order]}排序` : '取消排序'
+}
+function clearSort() {
+  sheetSort.value = null
+  statusText.value = '取消排序'
+}
+const downloadRows = computed(() => {
+  const column = columnOf(sheetSort.value?.key)
+  return sheetSort.value && column?.sortValue ? sortRowsBy(rows.value, column.sortValue, sheetSort.value.order) : rows.value
+})
+
 // ---- 指標的值（METRIC）----
 // 代碼從所有欄的公式收集（含正在編輯的草稿，打字時整欄就能預覽）。目錄還沒到時先全部當作認得（不會閃 #NAME?），到了只留目錄裡
 // 有的——一個不認得的欄位會讓整批 /screener/values 400。百分比換成比例（跟 RETURN() 一樣），每檔存成一個 Map。
@@ -432,58 +462,69 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 
       <template v-else>
 
-        <h2 class="visually-hidden">公式列</h2>
-        <div class="formula-bar" role="group" aria-label="公式列">
-          <template v-if="editingId">
-            <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
-            <el-input v-model="draft.label" class="formula-bar__label" maxlength="20" aria-label="欄位名稱" placeholder="欄位名稱" />
-            <span class="formula-bar__fx" aria-hidden="true">fx</span>
-            <div class="formula-bar__formula formula-input">
-              <div ref="formulaMirror" class="formula-input__mirror" aria-hidden="true"><span v-for="(part, index) in formulaParts" :key="index" :style="part.color ? { color: part.color } : undefined">{{ part.text }}</span></div>
-              <input
-                ref="formulaInput"
-                v-model="draft.formula"
-                class="formula-input__field"
-                maxlength="200"
-                aria-label="公式"
-                aria-describedby="formula-help"
-                placeholder="=A*C"
-                spellcheck="false"
-                autocomplete="off"
-                @keydown="onFormulaKey"
-                @scroll="syncMirror"
-                @input="syncMirror"
-                @keyup="syncMirror"
-              >
-            </div>
-            <el-select v-model="draft.format" class="formula-bar__format" aria-label="顯示格式">
-              <el-option value="number" label="數字" />
-              <el-option value="percent" label="百分比" />
-              <el-option value="money" label="金額（元）" />
-            </el-select>
-            <el-input-number v-model="draft.decimals" class="formula-bar__decimals" :min="0" :max="4" :precision="0" :controls="false" aria-label="小數位數" />
-            <div class="formula-bar__actions">
-              <el-button type="primary" :loading="saving" :disabled="!!parseError || !!labelError" @click="applyDraft">套用</el-button>
-              <el-button @click="cancelEditing">取消</el-button>
-              <el-button :icon="Delete" :aria-label="`刪除欄位 ${editingLetter} ${draft.label}`" @click="deleteColumn">刪除欄位</el-button>
-            </div>
-            <!-- 說明文字本身不是 live region：原本整段掛 role="status"，每打一個字就重念一次。錯誤另外念（見下方） -->
-            <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }">
-              {{ labelError || parseError || '點任一欄的表頭或格子可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
-            </p>
-          </template>
-          <template v-else>
-            <!-- 存檔還沒回來就不能再加：第一次失敗回滾時，第二次的欄位會跟著不見或留下半份 -->
-            <div class="formula-bar__actions">
-              <!-- 讀的時候照畫、先不能按：欄位還沒讀到就加，存檔會蓋掉帳號裡的欄位 -->
-              <el-button type="primary" :icon="Plus" :disabled="loading || atQuota || saving" @click="pickerOpen = true">新增指標</el-button>
-              <el-button ref="addButton" :icon="Plus" :disabled="loading || atQuota || saving" @click="addColumn">新增公式</el-button>
-            </div>
-            <p v-if="atQuota" class="formula-bar__help" role="status">
-              你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
-            </p>
-            <p class="formula-bar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除。</p>
-          </template>
+        <!-- 工具列（2026-10-23，方案頁選 A「一條工具列」）：新增、排序（選取的格子所在的那一欄）、下載一條排開，手機上自己換行 -->
+        <h2 class="visually-hidden">工具列</h2>
+        <div class="columns-toolbar" role="group" aria-label="工具列">
+          <!-- 讀的時候照畫、先不能按：欄位還沒讀到就加，存檔會蓋掉帳號裡的欄位。存檔還沒回來、或正在改某一欄的公式時也不能加 -->
+          <el-button type="primary" :icon="Plus" :disabled="loading || atQuota || saving || !!editingId" @click="pickerOpen = true">新增指標</el-button>
+          <el-button ref="addButton" :icon="Plus" :disabled="loading || atQuota || saving || !!editingId" @click="addColumn">新增公式</el-button>
+          <span class="columns-toolbar__sep" aria-hidden="true" />
+          <div class="columns-toolbar__sort" role="group" :aria-label="`排序：${selectedLabel ?? '選取的那一欄'}`">
+            <span class="columns-toolbar__label">排序<b v-if="selectedLabel" class="columns-toolbar__target">{{ selectedLabel }}</b></span>
+            <el-button :class="{ 'is-on': isSortedBy('ascending') }" :aria-pressed="isSortedBy('ascending')" :disabled="loading || !selectedLabel" @click="sortSelected('ascending')">
+              <SharedSortIcon state="ascending" />由小到大
+            </el-button>
+            <el-button :class="{ 'is-on': isSortedBy('descending') }" :aria-pressed="isSortedBy('descending')" :disabled="loading || !selectedLabel" @click="sortSelected('descending')">
+              <SharedSortIcon state="descending" />由大到小
+            </el-button>
+            <el-button :disabled="!sheetSort" @click="clearSort">取消排序</el-button>
+            <span v-if="sheetSort && sortedLabel && sheetSort.key !== selectedKey" class="columns-toolbar__status">目前依{{ sortedLabel }}{{ ORDER_TEXT[sheetSort.order] }}</span>
+          </div>
+          <SharedDownloadButton class="columns-toolbar__download" :rows="loading ? [] : downloadRows" :columns="sheetColumns" filename="持股自訂欄位" />
+        </div>
+        <p v-if="atQuota && !editingId" class="columns-toolbar__help" role="status">
+          你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
+        </p>
+        <p v-if="!editingId" class="columns-toolbar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除；要排序就點那一欄的任一格，再按「由小到大」或「由大到小」。</p>
+
+        <h2 v-if="editingId" class="visually-hidden">公式列</h2>
+        <div v-if="editingId" class="formula-bar" role="group" aria-label="公式列">
+          <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
+          <el-input v-model="draft.label" class="formula-bar__label" maxlength="20" aria-label="欄位名稱" placeholder="欄位名稱" />
+          <span class="formula-bar__fx" aria-hidden="true">fx</span>
+          <div class="formula-bar__formula formula-input">
+            <div ref="formulaMirror" class="formula-input__mirror" aria-hidden="true"><span v-for="(part, index) in formulaParts" :key="index" :style="part.color ? { color: part.color } : undefined">{{ part.text }}</span></div>
+            <input
+              ref="formulaInput"
+              v-model="draft.formula"
+              class="formula-input__field"
+              maxlength="200"
+              aria-label="公式"
+              aria-describedby="formula-help"
+              placeholder="=A*C"
+              spellcheck="false"
+              autocomplete="off"
+              @keydown="onFormulaKey"
+              @scroll="syncMirror"
+              @input="syncMirror"
+              @keyup="syncMirror"
+            >
+          </div>
+          <el-select v-model="draft.format" class="formula-bar__format" aria-label="顯示格式">
+            <el-option value="number" label="數字" />
+            <el-option value="percent" label="百分比" />
+            <el-option value="money" label="金額（元）" />
+          </el-select>
+          <el-input-number v-model="draft.decimals" class="formula-bar__decimals" :min="0" :max="4" :precision="0" :controls="false" aria-label="小數位數" />
+          <div class="formula-bar__actions">
+            <el-button type="primary" :loading="saving" :disabled="!!parseError || !!labelError" @click="applyDraft">套用</el-button>
+            <el-button @click="cancelEditing">取消</el-button>
+            <el-button :icon="Delete" :aria-label="`刪除欄位 ${editingLetter} ${draft.label}`" @click="deleteColumn">刪除欄位</el-button>
+          </div>
+          <!-- 說明文字本身不是 live region：原本整段掛 role="status"，每打一個字就重念一次。錯誤另外念（見下方） -->
+          <p id="formula-help" class="formula-bar__help" :class="{ 'is-error': parseError || labelError }">
+            {{ labelError || parseError || '點任一欄的表頭或格子可以把它的字母插進公式。可用 + − × ÷ ^ %、ROUND、ABS、MIN、MAX、SUM、AVERAGE、IF、IFERROR；整欄寫成 D:D，例如市值占比 =D/SUM(D:D)；持股資料用 SHARES()、PRICE() 等函數（見表格下方）。' }}
+          </p>
         </div>
 
         <SharedMetricColumnPicker v-model="pickerOpen" title="新增指標" @select="addMetricColumn" />
@@ -492,17 +533,17 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 
         <!-- 試算表本來就是橫向看的：手機上維持左右捲動，股票欄固定在左邊（使用者 2026-10-07 選定） -->
         <h2 class="visually-hidden">持股表</h2>
-        <div class="holdings-columns__toolbar">
-          <SharedDownloadButton :rows="loading ? [] : rows" :columns="sheetColumns" filename="持股自訂欄位" />
-        </div>
         <!-- 表頭與格子都可以點：沒在編輯時是修改那一欄（表頭點一下、格子按 F2 或雙擊）；編輯中是把那一欄的字母插進公式 -->
         <SharedSheetGrid
           :rows="loading ? skeletonRows : rows"
           :columns="loading ? skeletonSheetColumns : sheetColumns"
           :aria-busy="loading"
+          v-model:sort="sheetSort"
           :row-key="row => row.symbol"
           label="持股表"
           fit
+          toolbar-sort
+          @active-column="key => selectedKey = key"
           :pointing="!!editingId"
           :highlights="highlights"
           hint="方向鍵移動、Shift＋方向鍵框選、Ctrl+C 複製；表頭上按 Enter、格子上按 F2 修改那一欄的公式；股票格上按 Enter 進到連結、再按一次開啟個股頁。"
@@ -704,9 +745,72 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 }
 
 /* 下載鈕靠右，放在表格正上方 */
-.holdings-columns__toolbar {
+/* 工具列（方案 A）：一條排開、放不下就換行；按鈕 44px（觸控下限，同公式列）。下載靠右 */
+.columns-toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.columns-toolbar :deep(.el-button) {
+  min-height: 44px;
+  margin: 0;
+}
+
+.columns-toolbar__sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 6px 4px;
+  background: var(--app-divider);
+}
+
+.columns-toolbar__sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.columns-toolbar__label {
+  color: var(--el-text-color-regular);
+}
+
+.columns-toolbar__target {
+  margin-left: 6px;
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+
+/* 正在用的方向：主色最淡那一階的底、主色的框與字，同外觀設定的選中樣子 */
+.columns-toolbar__sort :deep(.el-button.is-on) {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary-dark-2);
+  font-weight: 600;
+}
+
+.columns-toolbar__sort :deep(.sort-icon) {
+  margin-right: 4px;
+}
+
+.columns-toolbar__status {
+  color: var(--el-text-color-regular);
+}
+
+.columns-toolbar__download {
+  margin-left: auto;
+}
+
+.columns-toolbar__help {
+  margin: 0;
+  color: var(--el-text-color-regular);
+}
+
+/* 手機：分隔線不畫（換行之後它會落在行首） */
+@media (max-width: 767px) {
+  .columns-toolbar__sep {
+    display: none;
+  }
 }
 </style>

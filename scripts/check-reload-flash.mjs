@@ -19,7 +19,8 @@ const isDev = (await (await fetch(base)).text()).includes('/@vite/client')
 const ROUTES = {
   '/holdings': { first: ['#holdings-summary-title', '#holdings-list-title'], marker: '.holdings-page__overview' },
   '/holdings/analysis': { first: ['#analysis-sector-title', '.holdings-traits__title'], marker: '.holdings-traits__panel' },
-  '/holdings/columns': { first: ['.formula-bar', '.sheet'], marker: '.sheet' },
+  // 公式列只在改某一欄時出現（2026-10-23 工具列方案 A），平常的結構是工具列
+  '/holdings/columns': { first: ['.columns-toolbar', '.sheet'], marker: '.sheet' },
   // 測試帳號沒有配息：上次 0 筆時讀的時候不畫月曆與表格
   '/holdings/dividends': { first: ['#dividends-title'], marker: '.dividends-page__footnote' },
   '/holdings/risk': { first: ['#risk-metrics-title'], marker: '.risk-page__body' },

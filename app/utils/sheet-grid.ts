@@ -104,3 +104,17 @@ export function estimateTextWidth(text: string): number {
   for (const ch of text) width += ch.charCodeAt(0) >= 0x2e80 ? 16 : 10
   return width
 }
+
+// 依一欄排序：試算表的表頭排序與 /holdings/columns 的排序工具列共用（下載跟畫面才是同一個順序）。沒有值（null）一律排最後、
+// 同值照原本的順序；數字比大小，其他照中文排序
+export function sortRowsBy<R>(rows: readonly R[], value: (row: R) => number | string | null, order: 'ascending' | 'descending'): R[] {
+  const direction = order === 'ascending' ? 1 : -1
+  return rows
+    .map((row, index) => ({ row, index, value: value(row) }))
+    .sort((a, b) => {
+      if (a.value === null || b.value === null) return a.value === b.value ? a.index - b.index : a.value === null ? 1 : -1
+      const diff = typeof a.value === 'number' && typeof b.value === 'number' ? a.value - b.value : String(a.value).localeCompare(String(b.value), 'zh-Hant')
+      return diff === 0 ? a.index - b.index : diff * direction
+    })
+    .map(item => item.row)
+}
