@@ -32,13 +32,14 @@ const props = defineProps<{
   kind: 'pe' | 'pb' | 'ps'
 }>()
 
+// baseLabels：河道能用哪些期別、各自的基準叫什麼（第一個是預設）。只有一種的不出期別切換，同其他圖卡。提示框優先用端點回的
+// baseLabel，這裡是資料到之前的備用（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）
 const KINDS = {
-  pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabel: '近四季 EPS' },
+  pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabels: { TTM: '近四季 EPS' } },
   // ratioLabel 本淨比→淨值比 2026-09-16（「全站 本淨比 改為淨值比」）.
-  // baseLabel 寫出期別（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」），提示框用：端點給 baseLabel 時用端點的（基準改了自己
-  // 跟上），沒給時用這裡、照端點現在的算法寫。淨值比的基準同日改成近四季平均（analysis-ts 65c12aea，使用者：「3130 的四季淨值明顯有
-  // 季節性 所以想用四季加總平均的方式平滑化來畫河流圖」）
-  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabel: '近四季平均每股淨值' },
+  // 淨值比 2026-10-23 預設改成近四季平均（analysis-ts 65c12aea，使用者：「3130 的四季淨值明顯有季節性 所以想用四季加總平均的方式平滑化
+  // 來畫河流圖」），同日加回單季可選（使用者：「改成右上角 跟別的卡片一樣可以選 單季 近四季 這樣更清楚」；端點 timeframe=Q|TTM）
+  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabels: { TTM: '近四季平均每股淨值', Q: '最近一季每股淨值' } },
   // 股價營收比河流圖 2026-09-21（「PSR 是不是也用河流圖比較適合?」）. The same shape as the other two
   // once the identity is checked rather than assumed: psr's own formula is 市值 ÷ 營收, which is
   // 股價 ÷ 每股營收, so 每股營收（revenuePerShare, Q+TTM in the catalog）is a real per-share base to
@@ -46,10 +47,14 @@ const KINDS = {
   // 每股營收 171.23 = 2395.5 against a filed 股價 of 2395, and the same within rounding on 1101
   // and 2454. Without a per-share base there is no river to draw, which is why this component
   // takes a `kind` rather than any old metricCode.
-  ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabel: '近四季每股營收' }
+  ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabels: { TTM: '近四季每股營收' } }
 } as const
 
+type RiverTimeframe = 'TTM' | 'Q'
 const spec = computed(() => KINDS[props.kind])
+const riverTimeframes = computed(() => Object.keys(spec.value.baseLabels) as RiverTimeframe[])
+// 這張圖自己的期別，不跟其他卡片共用（同近N年）
+const riverTimeframe = ref<RiverTimeframe>('TTM')
 
 // 這張圖自己的近N年（2026-10-15「每個圖表的右上角狀態請分開不要共用」）。在這裡建而不是交給 useChartPeriod 預設：抓幾年要在資料
 // 回來之前決定（見下面的 fetchYears），useChartPeriod 要等資料才能呼叫
@@ -69,8 +74,9 @@ interface ValuationRiverResponse {
   bandMultiples: number[] | null
   prices: { tradeDate: string; close: number }[]
   bases: { effectiveFrom: string; base: number | null }[]
-  // 河道用的每股基準叫什麼（例如「近四季平均每股淨值」）；已請 analysis-ts 加，跟基準的算法一起改
-  baseLabel?: string
+  // 這次用的期別與河道基準的名稱（例如「近四季平均每股淨值」），analysis-ts 1cf7b237 起有
+  timeframe?: RiverTimeframe | null
+  baseLabel?: string | null
 }
 
 // 這檔總共有幾期，只拿來決定期間選單哪些選項不夠長（「不滿十年不給看」）。端點只回傳要求的那段期間，看不出全部
@@ -103,9 +109,9 @@ const fetchYears = computed(() => {
 // 原始價 ÷ 換算價：股價變回原始價，底數也換回當時的股數，倍數不變（同一個比例上下相乘）。代價是分割、配股、減資那天
 // 股價與河道會一起斷崖——跟券商一樣。
 const { data: river, status: riverStatus, error: riverError, refresh: refreshRiver } = useAsyncData(
-  () => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}`,
+  () => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}:${riverTimeframe.value}`,
   async () => {
-    const data = await apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: fetchYears.value } })
+    const data = await apiFetch<ValuationRiverResponse>(`/stocks/${props.symbol}/valuation-river`, { query: { ratio: props.kind, lookbackYears: fetchYears.value, timeframe: riverTimeframe.value } })
     const daily = await apiFetch<{ entries: { tradeDate: string; close: number | null }[] }>(`/stocks/${props.symbol}/daily-price-history`, { baseURL: BUSINESS_CACHED_BASE, query: { from: data.lookback.from } })
     // 無成交日的 close 是 null 或 0，不拿來換算
     const rawByDate = new Map(daily.entries.flatMap(entry => ((entry.close ?? 0) > 0 ? [[entry.tradeDate, entry.close!] as const] : [])))
@@ -114,10 +120,10 @@ const { data: river, status: riverStatus, error: riverError, refresh: refreshRiv
   { server: false, lazy: true }
 )
 // 讀取失敗交給全站提示（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 由 reportLoadFailure 略過
-watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}`, () => riverError.value, refreshRiver, { scope: 'section' })
+watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}:${riverTimeframe.value}`, () => riverError.value, refreshRiver, { scope: 'section' })
 
 
-const baseLabel = computed(() => river.value?.baseLabel ?? spec.value.baseLabel)
+const baseLabel = computed(() => river.value?.baseLabel ?? (spec.value.baseLabels as Partial<Record<RiverTimeframe, string>>)[riverTimeframe.value] ?? spec.value.baseLabels.TTM)
 
 interface RiverPoint {
   label: string
@@ -318,6 +324,12 @@ const chartOption = computed(() => ({
   <SharedChartCard :period="period">
     <template v-if="$slots.header" #header>
       <slot name="header" />
+    </template>
+    <!-- 期別在近N年的左邊，同 StockMetricHistoryChartInteractive；只有一種期別（本益比、股價營收比）就不出 -->
+    <template v-if="riverTimeframes.length > 1" #controls>
+      <el-radio-group v-model="riverTimeframe" aria-label="期別">
+        <el-radio-button v-for="tf in riverTimeframes" :key="tf" :value="tf">{{ TIMEFRAME_LABELS[tf] }}</el-radio-button>
+      </el-radio-group>
     </template>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. 載入中與讀取失敗都先保留圖的位置，不出文字。
