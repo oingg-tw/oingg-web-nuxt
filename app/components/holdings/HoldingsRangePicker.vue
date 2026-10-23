@@ -10,7 +10,9 @@
 // 使用者知道換了期間之後資料已經更新。
 // days：這段期間用了幾個交易日（風險頁傳；業務中台 要求跟數字一起寫出，天數少時統計誤差大），寫在起訖日期後面。
 // daysPending：會有 days、但還沒讀到（2026-10-20）——先畫同樣長的骨架，手機上這一行換行時，天數晚出現不會多長一行把下面推下去
-const props = defineProps<{ pending?: boolean; days?: number; daysPending?: boolean }>()
+// minTradingDays：這一頁的數字至少要幾個交易日（績效統計 120，2026-10-23，使用者：「如果績效統計數字需要一整年 那麼期間是否移除
+// 三個月這個選項 不然每都跟我說不足 120天」）：湊不到的快捷期間不列——近三個月一定不列，上半年的今年以來也不列
+const props = defineProps<{ pending?: boolean; days?: number; daysPending?: boolean; minTradingDays?: number }>()
 
 const range = useHoldingsRange()
 const today = holdingsTaipeiDate()
@@ -32,15 +34,16 @@ const SHORTCUTS = [
   { label: '近一年', start: () => holdingsLastYear()[0] },
   { label: '近三年', start: () => holdingsMonthsBefore(today, 36) }
 ]
+const shortcuts = computed(() => SHORTCUTS.filter(item => !props.minTradingDays || holdingsTradingDaysEstimate(item.start(), today) >= props.minTradingDays))
 const CUSTOM = 'custom'
 
-const activeShortcut = computed(() => range.value[1] === today ? SHORTCUTS.find(item => item.start() === range.value[0])?.label ?? null : null)
+const activeShortcut = computed(() => range.value[1] === today ? shortcuts.value.find(item => item.start() === range.value[0])?.label ?? null : null)
 // 選了「自訂區間…」就留在自訂（就算日期剛好又等於某個快捷期間），直到再選快捷期間
 const customChosen = ref(false)
 const selected = computed(() => (customChosen.value || !activeShortcut.value ? CUSTOM : activeShortcut.value))
 function select(value: string) {
   customChosen.value = value === CUSTOM
-  const shortcut = SHORTCUTS.find(item => item.label === value)
+  const shortcut = shortcuts.value.find(item => item.label === value)
   if (shortcut) range.value = [shortcut.start(), today]
 }
 
@@ -53,7 +56,7 @@ const status = computed(() => (props.pending ? '' : `已顯示 ${range.value[0]}
   <div class="holdings-range" role="group" :aria-labelledby="labelId">
     <span :id="labelId" class="holdings-range__label">期間</span>
     <el-select :model-value="selected" class="holdings-range__select" aria-label="期間" @update:model-value="select">
-      <el-option v-for="item in SHORTCUTS" :key="item.label" :label="item.label" :value="item.label" />
+      <el-option v-for="item in shortcuts" :key="item.label" :label="item.label" :value="item.label" />
       <el-option label="自訂區間…" :value="CUSTOM" />
     </el-select>
     <span v-if="selected === CUSTOM" class="holdings-range__dates">

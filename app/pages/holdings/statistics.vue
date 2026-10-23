@@ -14,6 +14,10 @@ const authResolved = useAuthResolved()
 const { fetchPerformance } = useHoldings()
 
 const range = useHoldingsRange()
+// 進到這一頁時期間湊不到 120 個交易日（別頁選了近三個月、上半年的今年以來）就換成近一年（2026-10-23，使用者：「如果績效統計數字
+// 需要一整年 那麼期間是否移除三個月這個選項 不然每都跟我說不足 120天」；這一頁的選單也不列那些期間）。在讀資料之前換：換在後面
+// 的話，舊期間與新期間的兩個請求誰後回來就蓋掉誰
+if (holdingsTradingDaysEstimate(range.value[0], range.value[1]) < COVARIANCE_MIN_DAYS) range.value = holdingsLastYear()
 const performance = ref<PerformanceOutcome | null>(null)
 const pending = ref(false)
 
@@ -40,8 +44,8 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 const report = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result : null))
 
 // 兩段都要 120 個交易日（業務中台 的門檻），都不夠時每一項都是 null：整頁只寫一句，不列兩張每格都是「樣本不足」的表
-// （使用者 2026-10-19：「近三個月 全部 樣本不足」）。走到這裡的不只近三個月：上半年的今年以來、自訂的短區間、紀錄還不到
-// 120 個交易日的帳戶（選近一年也一樣）。近三個月這個選項留著：期間四頁共用，它在報酬與大盤、已實現損益有用。
+// （使用者 2026-10-19：「近三個月 全部 樣本不足」）。2026-10-23 起這一頁不列湊不到 120 個交易日的快捷期間、進來時換成近一年（見上面），
+// 還會走到這裡的是自訂的短區間與紀錄還不到 120 個交易日的帳戶（選近一年也一樣）。近三個月在報酬與大盤、已實現損益照常有。
 const sampleDays = computed(() => (report.value ? Math.max(report.value.benchmarkComparison.sampleDays, report.value.riskAdjusted.sampleDays) : 0))
 
 // 讀的時候（report 還是 null）列照樣列出、數值留空：表格畫成骨架，名稱與意思先出現（2026-10-20）
@@ -84,7 +88,7 @@ const adjustedRows = computed(() => {
   <HoldingsPageShell title="績效統計" subtitle="進階的統計數字：跟大盤的連動、經風險調整的報酬。不看也不影響使用其他功能" guest-title="登入後查看你的績效統計" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !performance">
     <template #default="{ loading }">
 
-      <HoldingsRangePicker :pending="pending" />
+      <HoldingsRangePicker :pending="pending" :min-trading-days="COVARIANCE_MIN_DAYS" />
 
       <!-- 遮罩只給換期間（內容已經在畫面上）；第一次讀的時候是骨架（2026-10-20） -->
       <div v-loading="pending && !loading" class="statistics-page__body">
