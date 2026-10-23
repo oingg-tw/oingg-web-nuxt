@@ -35,8 +35,28 @@ defineProps<{
 </script>
 
 <template>
-  <div v-loading="pending" class="stock-page-shell">
-    <template v-if="pending" />
+  <div class="stock-page-shell">
+    <!-- 讀取中（換到另一檔、公司資料還沒到；伺服器端不會發生）：先畫結構——摘要卡與麵包屑同高的骨架、側欄、第一段的骨架。
+         原本整頁留白加 v-loading 轉圈（2026-10-23，手機換頁延遲；「先畫結構、資料用骨架」）。頁面自己的段落等名稱到了才畫，
+         不然問句會先出現「2317（2317）的…」再換字 -->
+    <template v-if="pending">
+      <div class="stock-page-shell__head">
+        <el-card class="stock-page-shell__card-skeleton" shadow="never" :body-style="{ padding: '12px 20px' }" aria-hidden="true">
+          <span class="app-skeleton stock-page-shell__skeleton-title" />
+          <span class="app-skeleton stock-page-shell__skeleton-price" />
+        </el-card>
+        <h1 class="visually-hidden">{{ code }} {{ topic }}</h1>
+        <slot name="nav">
+          <StockPageNav :code="code" />
+        </slot>
+        <div class="stock-page-shell__crumb-skeleton" aria-hidden="true"><span class="app-skeleton app-skeleton--text" /></div>
+      </div>
+      <div class="stock-page-shell__section-skeleton" aria-hidden="true">
+        <span class="app-skeleton stock-page-shell__skeleton-question" />
+        <span class="app-skeleton app-skeleton--text" />
+        <div class="app-skeleton app-skeleton--chart" />
+      </div>
+    </template>
     <SharedStockNotFound v-else-if="!stock" :subject="subject" />
     <template v-else>
       <div class="stock-page-shell__head">
@@ -66,5 +86,56 @@ defineProps<{
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 讀取中的骨架：摘要卡同高（多數股票實測手機 163px、601px 以上 131px；多一行面額註記的會再高一點）、麵包屑 48px */
+.stock-page-shell__card-skeleton {
+  height: 163px;
+}
+
+.stock-page-shell__card-skeleton :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.stock-page-shell__skeleton-title {
+  width: min(16em, 70%);
+  height: 1.6em;
+}
+
+.stock-page-shell__skeleton-price {
+  width: 6em;
+  height: 2em;
+}
+
+.stock-page-shell__crumb-skeleton {
+  display: flex;
+  align-items: center;
+  height: 48px;
+}
+
+.stock-page-shell__crumb-skeleton .app-skeleton {
+  width: min(20em, 80%);
+}
+
+.stock-page-shell__section-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stock-page-shell__skeleton-question {
+  width: min(22em, 85%);
+  height: 1.5em;
+}
+
+@media (min-width: 601px) {
+  .stock-page-shell__card-skeleton {
+    height: 131px;
+  }
 }
 </style>
