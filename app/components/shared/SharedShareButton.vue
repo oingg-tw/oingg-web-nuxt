@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Share } from '@element-plus/icons-vue'
 import type { ShareKind } from '~/composables/share/useShares'
 
 // 分享連結（2026-10-19，使用者：「做好以後設計分享持股或是 watchlist 的機制」，選了：有連結就能看、免登入；內容即時；
@@ -145,7 +146,8 @@ function closeLink() {
   <!-- 包一層：呼叫端的 class 才套得上；對話框本身 teleport 到 body，不佔這裡的版面 -->
   <span v-if="!shares && checking" class="app-skeleton shared-share__skeleton" aria-hidden="true" />
   <span v-else-if="shares" class="shared-share">
-    <el-button class="shared-share__button" aria-haspopup="dialog" @click="openDialog">{{ active ? '已分享' : '分享' }}</el-button>
+    <!-- 分享的 icon（2026-10-23，使用者：「holdings 分享按鈕 加上 icon」；觀察清單同一顆） -->
+    <el-button class="shared-share__button" :icon="Share" aria-haspopup="dialog" @click="openDialog">{{ active ? '已分享' : '分享' }}</el-button>
     <el-dialog v-model="open" :title="`分享「${name}」`" width="min(480px, 92vw)">
       <p class="share-dialog__note">有連結的人不用登入就能看，內容會即時更新。</p>
 
@@ -187,16 +189,16 @@ function closeLink() {
 </template>
 
 <style scoped>
-/* 跟工具列上其他按鈕同高（本站觸控下限 44px）；寬度固定：讀到「已分享」時字變長，不推動旁邊的按鈕 */
+/* 跟工具列上其他按鈕同高（本站觸控下限 44px）；寬度固定：讀到「已分享」時字變長，不推動旁邊的按鈕。6.5rem 放得下 icon＋「已分享」 */
 .shared-share__button {
   min-height: 44px;
-  min-width: 5.5rem;
+  min-width: 6.5rem;
 }
 
 /* 跟上面的按鈕一樣大 */
 .shared-share__skeleton {
   display: inline-block;
-  width: 5.5rem;
+  width: 6.5rem;
   height: 44px;
   vertical-align: middle;
 }
