@@ -17,6 +17,9 @@ const props = defineProps<{
   // 不帶（或 null）就不對帳——徽章頁在 provenanceMetricCode 跟徽章本身不同支時就是這種情況，
   // 那時兩個數字本來就不該相等。
   expectedValue?: number | null
+  // 表的最後一列「這些數字算出來的結果」：頁面上講的那個數字與它的期別（單季／近四季…），跟 expectedValue 同時給（2026-10-23，使用者：
+  //「要標清楚 到底是單季還是近四季 數字 與 稽核 要真實可靠」）。對帳不過整段不渲染，所以這一列不會跟上面的數字矛盾
+  result?: { value: string; basis: string } | null
 }>()
 
 const STATEMENT_LABELS: Record<string, string> = Object.fromEntries(
@@ -61,13 +64,14 @@ const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topi
 <template>
   <StockQuestionSection v-if="provenance?.entries.length && reconciles" id="stock-metric-provenance" :question="`${topic}是怎麼算出來的？`" :answer="priceAnswer">
     <!-- data-ssr-table="audit"：計算依據是審計（2026-10-14 使用者：「審計功能要保留」），不算在一圖一表的「表」裡 -->
-    <SharedTable :label="label" ssr="audit">
+    <!-- 數值緊跟在用途後面、用途與來源換行（2026-10-23）：原本數值是最後一欄，來源一長就被擠到卡片外，要左右捲才看得到 -->
+    <SharedTable :label="label" ssr="audit" table-class="stock-provenance__table">
       <thead>
         <tr>
           <th scope="col">用途</th>
+          <th scope="col">數值</th>
           <th scope="col">會計期別</th>
           <th scope="col">來源</th>
-          <th scope="col">數值</th>
         </tr>
       </thead>
       <tbody>
@@ -83,9 +87,15 @@ const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topi
             </button>
             <template v-else>{{ item.role }}</template>
           </td>
+          <td>{{ formatProvenanceValue(item) }}</td>
           <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
           <td>{{ provenanceSourceText(item) }}</td>
-          <td>{{ formatProvenanceValue(item) }}</td>
+        </tr>
+        <tr v-if="result" class="stock-provenance__result">
+          <td>{{ topic }}（計算結果）</td>
+          <td>{{ result.value }}</td>
+          <td>{{ provenance.fiscalYear }} Q{{ provenance.fiscalQuarter }}（{{ result.basis }}）</td>
+          <td>由以上數字計算</td>
         </tr>
       </tbody>
     </SharedTable>
@@ -98,6 +108,17 @@ const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topi
 /* 真的 <button>，不是看起來可以按的 div——它會跳到財報三表的那一列，是一個動作不是一個連結。
    樣式照搬徽章頁原本那一條（2026-10-01 抽成共用元件時一起搬過來），`font: inherit` 讓它跟同一格
    的純文字列對齊：同一欄裡有的列可跳、有的不可跳，字體一變就看起來像兩種資料。 */
+/* 儲存格是這個元件的插槽內容（帶這裡的 scope），表格本身是 SharedTable 的，所以只有最後一段要符合 scope */
+.stock-provenance__table td:first-child,
+.stock-provenance__table td:last-child {
+  min-width: 10em;
+  white-space: normal;
+}
+
+.stock-provenance__result td {
+  font-weight: 600;
+}
+
 .stock-provenance__link {
   padding: 0;
   border: none;

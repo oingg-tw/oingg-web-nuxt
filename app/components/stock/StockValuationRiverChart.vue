@@ -35,7 +35,9 @@ const props = defineProps<{
 const KINDS = {
   pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabel: '近四季 EPS' },
   // ratioLabel 本淨比→淨值比 2026-09-16（「全站 本淨比 改為淨值比」）.
-  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabel: '每股淨值' },
+  // baseLabel 寫出期別（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）：端點給 baseLabel 時用端點的（基準改了自己跟上），
+  // 沒給時用這裡、照端點現在的算法寫
+  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabel: '最近一季每股淨值' },
   // 股價營收比河流圖 2026-09-21（「PSR 是不是也用河流圖比較適合?」）. The same shape as the other two
   // once the identity is checked rather than assumed: psr's own formula is 市值 ÷ 營收, which is
   // 股價 ÷ 每股營收, so 每股營收（revenuePerShare, Q+TTM in the catalog）is a real per-share base to
@@ -43,7 +45,7 @@ const KINDS = {
   // 每股營收 171.23 = 2395.5 against a filed 股價 of 2395, and the same within rounding on 1101
   // and 2454. Without a per-share base there is no river to draw, which is why this component
   // takes a `kind` rather than any old metricCode.
-  ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabel: '每股營收' }
+  ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabel: '近四季每股營收' }
 } as const
 
 const spec = computed(() => KINDS[props.kind])
@@ -66,6 +68,8 @@ interface ValuationRiverResponse {
   bandMultiples: number[] | null
   prices: { tradeDate: string; close: number }[]
   bases: { effectiveFrom: string; base: number | null }[]
+  // 河道用的每股基準叫什麼（例如「近四季平均每股淨值」）；已請 analysis-ts 加，跟基準的算法一起改
+  baseLabel?: string
 }
 
 // 這檔總共有幾期，只拿來決定期間選單哪些選項不夠長（「不滿十年不給看」）。端點只回傳要求的那段期間，看不出全部
@@ -111,6 +115,8 @@ const { data: river, status: riverStatus, error: riverError, refresh: refreshRiv
 // 讀取失敗交給全站提示（2026-10-11）：原本失敗時圖區一片空白、沒有任何說明。4xx 由 reportLoadFailure 略過
 watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${fetchYears.value}`, () => riverError.value, refreshRiver, { scope: 'section' })
 
+
+const baseLabel = computed(() => river.value?.baseLabel ?? spec.value.baseLabel)
 
 interface RiverPoint {
   label: string
@@ -267,8 +273,8 @@ const chartOption = computed(() => ({
       return `<div style="font-size: 1rem;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
         ${point.price !== null ? row('股價', `${groupThousands(point.price.toFixed(2))} 元`) : row('股價', '尚無資料', true)}
+        ${point.base !== null ? row(baseLabel.value, `${groupThousands(point.base.toFixed(2))} 元`) : ''}
         ${point.ratio !== null ? row(spec.value.ratioLabel, formatMultiple(point.ratio)) : row(spec.value.ratioLabel, '尚無資料', true)}
-        ${point.base !== null ? row(spec.value.baseLabel, `${groupThousands(point.base.toFixed(2))} 元`) : ''}
         ${band ? row('河道位置', band, true) : ''}
       </div>`
     }
@@ -312,6 +318,10 @@ const chartOption = computed(() => ({
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
+    <!-- 河道用哪一種每股基準，跟其他圖的期別切換放在同一列（2026-10-23） -->
+    <template #controls>
+      <span class="valuation-river__basis">河道＝{{ baseLabel }} × 倍數</span>
+    </template>
     <!-- The shortfall wins over the generic empty line: it names both numbers, so the reader can
          tell「這家公司只有這麼短」from「你們沒有資料」. 載入中與讀取失敗都先保留圖的位置，不出文字。
          (No comment between the v-if branches: in dev the client compiles a commented branch into a fragment and SSR doesn't —
@@ -333,5 +343,11 @@ const chartOption = computed(() => ({
 
 .valuation-river__empty {
   margin: 0;
+}
+
+/* 控制列在寬卡片上靠右；說明靠左，選單留在右邊 */
+.valuation-river__basis {
+  margin-right: auto;
+  color: var(--el-text-color-regular);
 }
 </style>

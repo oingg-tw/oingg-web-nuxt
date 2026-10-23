@@ -142,6 +142,10 @@ const passedText = computed(() => {
 // are TTM figures pinned to a filed period — and analysis-ts confirmed the same day that this
 // app's price-based ratios divide by the close on the FILING's knowledge date, a frozen historical
 // price, so「目前的PSR」beside「資料時間 2026-08-11」was claiming something the number doesn't carry.
+// 數字後面寫期別（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）；每日收盤算的寫「目前的」就夠了
+const basisLabel = computed(() => (entry.value ? TIMEFRAME_LABELS[entry.value.timeframe as keyof typeof TIMEFRAME_LABELS] ?? entry.value.timeframe : ''))
+const basisSuffix = computed(() => (entry.value && entry.value.timeframe !== 'EOD' ? `（${basisLabel.value}）` : ''))
+
 const valueAnswer = computed(() => {
   if (!entry.value) return null
   const lead = entry.value.timeframe === 'EOD' ? `${stockShortName.value}目前的` : `${stockShortName.value}的`
@@ -151,7 +155,7 @@ const valueAnswer = computed(() => {
   const rank = entry.value.rank
   const totalCount = entry.value.totalCount
   return joinClauses([
-    `${lead}${badgePage.topic}為 ${valueText.value}`,
+    `${lead}${badgePage.topic}${basisSuffix.value}為 ${valueText.value}`,
     rank != null && totalCount != null ? `全市場第 ${rank} 名（共 ${totalCount} 檔）` : null,
     entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
     badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
@@ -184,7 +188,7 @@ const footerLinks = computed(() => [
 const description = computed(() => {
   if (!entry.value) return null
   const lead = joinClauses([
-    `${stockShortName.value}（${code.value}）${badgePage.topic}：${valueText.value}`,
+    `${stockShortName.value}（${code.value}）${badgePage.topic}${basisSuffix.value}：${valueText.value}`,
     entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
     badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
   ])
@@ -260,7 +264,14 @@ const { breadcrumbs } = useStockPageSeo({
 
     <!-- 徽章頁不放歷年表（2026-10-14，使用者：「徽章頁不用歷史」，同 2026-09-28「徽章不要歷史，有歷史的只有指標」）：
          2026-10-01 補上的歷年表與 2026-10-10 的同類股中位數同日拿掉。段落：圖 → 計算依據（審計）→ 定義 → 頁尾。 -->
-    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="badgePage.topic" :provenance="provenance" :expected-value="provenanceExpectedValue">
+    <StockMetricProvenanceSection
+      :symbol="code"
+      :short-name="stockShortName"
+      :topic="badgePage.topic"
+      :provenance="provenance"
+      :expected-value="provenanceExpectedValue"
+      :result="provenanceExpectedValue !== null && entry ? { value: valueText, basis: basisLabel } : null"
+    >
       <!-- 「優點」2026-09-30 從自己的段落搬進這裡：它講的就是上面這張計算依據表的性質（門檻是誰訂
            的、每個輸入能不能回溯），不是這個指標的優點，所以它屬於「怎麼算出來的」而不是一個獨立的
            問句段落。原本那個段落叫「用 X 判斷有什麼優點與限制？」，而它其實同時裝著三種東西：徽章

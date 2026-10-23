@@ -176,7 +176,9 @@ const latestQuarterly = computed(() => {
 // with, written once so the two can't drift apart（「文案上單季優先。而且要連動網頁title」）.
 const quarterlyLead = computed(() => {
   const q = latestQuarterly.value
-  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic}為 ${valueTextOf(q.value)}` : null
+  // 「（單季）」只在答句與 meta description，<title> 有自己的一份（字數預算）。近四季那一句本來就寫「近四季」（2026-10-23，使用者：
+  //「要標清楚 到底是單季還是近四季」）
+  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季（單季）${valueTopic}為 ${valueTextOf(q.value)}` : null
 })
 
 // The <title>'s own keyword phrase. useStockPageSeo prefixes「{短名} {代碼} 」and appends the brand
@@ -356,7 +358,7 @@ const { breadcrumbs } = useStockPageSeo({
     <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
          同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
          那些頁面的 provenance 是 null，這一段不渲染。 -->
-    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" />
+    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" :result="latest ? { value: latestValueText, basis: timeframeLabel } : null" />
 
     <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
          （是多少／組成／歷年變化／怎麼算出來的），
