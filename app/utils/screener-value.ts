@@ -20,11 +20,18 @@ export const cellPeriodText = (cell: { knowledgeDate: string | null; fiscalPerio
 // 除權息月份的選項（特別股、ETF 的值是字串 '1'～'12'；普通股的選項由型錄給，值是整數、名稱同樣是「1 月」）
 export const EX_DIVIDEND_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({ value: String(index + 1), label: `${index + 1} 月` }))
 
+// 類別選項（2026-10-23，analysis-ts 54e0699e）：最新財報季別的選項改成相對值——value 是 latest、latest-1…latest-7、older，label 照樣
+// 「26Q3」，fiscalPeriod 是實際季別（"2026Q3"，older 是 null）；每一格的值照舊是實際季別（或 "older"）。所以比對兩個都認：值等於選項的
+// value，或等於它的 fiscalPeriod。存檔與網址裡舊的實際季別也靠這個換成相對值（不換的話業務中台回 400，見 useScreenerTabs 的 buildSlots）
+export type ScreenerOption = { value: string | number; label: string; fiscalPeriod?: string | null }
+export const findScreenerOption = (options: readonly ScreenerOption[] | null | undefined, raw: string | number): ScreenerOption | null =>
+  options?.find(option => String(option.value) === String(raw) || (option.fiscalPeriod != null && option.fiscalPeriod === String(raw))) ?? null
+
 // options：類別型欄位（型錄的 kind categorical，例如河道位置）的選項。上游的值一律是十進位字串（"0"），選項的 value 是數字，
 // 所以用字串比對後顯示中文（破底…破頂）；對不到的照原值（2026-10-21）
-export function formatScreenerValue(raw: string | null | undefined, unit: string | undefined, field?: string, options?: { value: string | number; label: string }[] | null): string {
+export function formatScreenerValue(raw: string | null | undefined, unit: string | undefined, field?: string, options?: readonly ScreenerOption[] | null): string {
   if (raw === null || raw === undefined) return '—'
-  if (options?.length) return labelEachValue(raw, value => options.find(option => String(option.value) === value)?.label)
+  if (options?.length) return labelEachValue(raw, value => findScreenerOption(options, value)?.label)
   if (field === 'dividendYield.EOD' && Number(raw) === 0) return NO_DIVIDEND_TEXT
   if (unit === '%') return `${raw}%`
   const value = Number(raw)

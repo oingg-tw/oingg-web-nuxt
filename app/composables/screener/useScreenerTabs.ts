@@ -72,7 +72,17 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     return fieldId
   }
 
-  // 存過的組合、網址打開的、範本的條件都從這裡進來：被藏起來的舊指標換成留下來的那一支（replaced-metrics.ts）
+  // 類別值換成目前選項的值（2026-10-23）：最新財報季別的選項改成相對值（latest-1），存檔裡是當時的實際季別（"2026Q2"），送舊值業務中台
+  // 回 400。findScreenerOption 兩個都認；對不到選項的照原值
+  function currentValues(fieldId: string, values: readonly (string | number)[]): (string | number)[] {
+    const options = schema.value ? locateFieldInSchema(schema.value.categories, fieldId)?.metric.options : undefined
+    return values.map(value => findScreenerOption(options, value)?.value ?? value)
+  }
+  // 這一條存檔讀回來之後會被換掉（舊指標或舊的類別值）：換過的組合第一次查詢前要照新的存回去
+  const outdated = (filter: FilterCriterion) => replacedField(filter.field) !== filter.field
+    || currentValues(replacedField(filter.field), filter.values ?? []).some((value, index) => value !== filter.values![index])
+
+  // 存過的組合、網址打開的、範本的條件都從這裡進來：被藏起來的舊指標換成留下來的那一支（replaced-metrics.ts），類別值換成目前的選項值
   function buildSlots(filters: FilterCriterion[]): TabFilterSlot[] {
     return filters.map((filter, index) => ({
       id: index,
@@ -82,7 +92,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       max: filter.max,
       exclude: filter.exclude,
       // 類別型條件（河道位置，2026-10-21）：存進帳號的組合讀回來帶 values（數字型是 null）
-      values: filter.values?.length ? [...filter.values] : undefined
+      values: filter.values?.length ? currentValues(replacedField(filter.field), filter.values) : undefined
     }))
   }
 
@@ -142,8 +152,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       renaming: false,
       renameDraft: preset.name
     }
-    // 條件裡有換過的舊指標（buildSlots）就不記成伺服器的版本：第一次查詢前照新的 PATCH 回去，伺服器也照新的跑
-    if (!(preset.filters ?? []).some(filter => replacedField(filter.field) !== filter.field)) persistedFilterKeys.set(tab.id, filterKeyOf(tab))
+    // 條件裡有換過的舊指標或舊的類別值（buildSlots）就不記成伺服器的版本：第一次查詢前照新的 PATCH 回去，伺服器也照新的跑
+    if (!(preset.filters ?? []).some(outdated)) persistedFilterKeys.set(tab.id, filterKeyOf(tab))
     return tab
   }
 

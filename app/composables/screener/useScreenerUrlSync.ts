@@ -24,7 +24,7 @@ export function filtersFromUrl(filters: ScreenerUrlFilter[], categories: MetricC
     const fieldId = fieldIn(filter.field)
     const metric = locateFieldInSchema(categories, fieldId)?.metric
     if (!metric) return []
-    const values = filter.values?.map(value => metric.options?.find(option => String(option.value) === String(value))?.value ?? value)
+    const values = filter.values?.map(value => findScreenerOption(metric.options, value)?.value ?? value)
     return [{ field: fieldId, min: filter.min, max: filter.max, exclude: filter.exclude, ...(values ? { values } : {}) }]
   })
 }

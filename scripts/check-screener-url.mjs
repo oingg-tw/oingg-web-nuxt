@@ -1,6 +1,7 @@
 // 篩選狀態放進網址的編碼與解析（app/utils/screener-url.ts，2026-10-22）。網址是任何人都能改的輸入：格式不對的要略過，不能讓頁面拿去查
 import assert from 'node:assert/strict'
 import { decodeScreenerQuery, encodeScreenerQuery, sameFilters } from '../app/utils/screener-url.ts'
+import { findScreenerOption, formatScreenerValue } from '../app/utils/screener-value.ts'
 
 // 來回一趟不變
 const state = {
@@ -47,5 +48,15 @@ assert.ok(sameFilters(
   [{ field: 'm.EOD', min: null, max: null, exclude: false, values: ['6', '7'] }, { field: 'a.Q', min: 1, max: null, exclude: false }]
 ))
 assert.ok(!sameFilters([{ field: 'a.Q', min: 1, max: null, exclude: false }], [{ field: 'a.Q', min: 1, max: null, exclude: true }]))
+
+// 類別選項兩個都認（2026-10-23，最新財報季別的相對選項）：存檔與網址裡舊的實際季別換成相對值，格子的實際季別顯示選項的名稱
+const quarters = [{ value: 'latest', label: '26Q3', fiscalPeriod: '2026Q3' }, { value: 'latest-1', label: '26Q2', fiscalPeriod: '2026Q2' }, { value: 'older', label: '更早', fiscalPeriod: null }]
+assert.equal(findScreenerOption(quarters, '2026Q2')?.value, 'latest-1')
+assert.equal(findScreenerOption(quarters, 'latest-1')?.value, 'latest-1')
+assert.equal(findScreenerOption(quarters, 'older')?.label, '更早')
+assert.equal(findScreenerOption(quarters, '2024Q1'), null)
+assert.equal(formatScreenerValue('2026Q2', undefined, 'latestReportedQuarter.EOD', quarters), '26Q2')
+assert.equal(formatScreenerValue('older', undefined, 'latestReportedQuarter.EOD', quarters), '更早')
+assert.equal(findScreenerOption([{ value: 3, label: '中軌' }], '3')?.label, '中軌') // 河道位置：值是數字、上游給字串
 
 console.log('PASS: screener url')
