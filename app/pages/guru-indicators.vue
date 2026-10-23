@@ -31,11 +31,11 @@ const categoryGroups = computed<CategoryGroup[]>(() => {
 const searchQuery = ref('')
 
 function matchesQuery(text: string, query: string): boolean {
-  return text.toLowerCase().includes(query)
+  return searchKey(text).includes(query)
 }
 
 const filteredGroups = computed<CategoryGroup[]>(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = searchKey(searchQuery.value)
   if (!query) return categoryGroups.value
   return categoryGroups.value
     .map(group => ({

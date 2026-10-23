@@ -75,7 +75,8 @@ const totalLinks = computed(() => sections.value.reduce((sum, section) => sum + 
 // SSR 時 query 永遠是空字串，所以伺服器渲染出來的一定是手風琴版本、63 個 <a href> 全在原始 HTML
 // 裡。check-click-depth.mjs 用 regex 讀原始 HTML、不跑瀏覽器，這一點不能破。
 const query = ref('')
-const normalizedQuery = computed(() => query.value.trim().toLowerCase())
+// 比對鍵見 utils/search-text.ts（「周轉」也找得到「週轉」，2026-10-23）
+const normalizedQuery = computed(() => searchKey(query.value))
 
 // 比對六個欄位：label、hook、視角、母項名、母項說明句、slug。
 //
@@ -91,11 +92,11 @@ const matches = computed(() => {
   const direct: { link: StockNavNode; group: string }[] = []
   const byGroup: { link: StockNavNode; group: string }[] = []
   for (const section of sections.value) {
-    const groupHit = section.label.toLowerCase().includes(q) || (section.answer ?? '').includes(q)
+    const groupHit = searchKey(section.label).includes(q) || searchKey(section.answer ?? '').includes(q)
     for (const link of section.links) {
-      const hit = link.label.toLowerCase().includes(q)
-        || (link.hook ?? '').toLowerCase().includes(q)
-        || (link.perspective ?? '').includes(q)
+      const hit = searchKey(link.label).includes(q)
+        || searchKey(link.hook ?? '').includes(q)
+        || searchKey(link.perspective ?? '').includes(q)
         || slugOf(link).includes(q)
       if (hit) direct.push({ link, group: section.label })
       else if (groupHit) byGroup.push({ link, group: section.label })

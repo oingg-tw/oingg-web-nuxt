@@ -219,7 +219,7 @@ function browseFieldsOf(metric: Metric): IndicatorEntry[] {
 // user knows it by, without the row itself needing to display every alternate name.
 function fieldMatchesQuery(metricName: string, field: MetricField, query: string): boolean {
   const label = props.hidePeriod ? metricName : formatFieldLabel(metricName, field)
-  return label.toLowerCase().includes(query) || (field.aliases?.some(alias => alias.toLowerCase().includes(query)) ?? false)
+  return searchKey(label).includes(query) || (field.aliases?.some(alias => searchKey(alias).includes(query)) ?? false)
 }
 
 // Whether a metric (中分類) counts as matching the current search — its own name, or any
@@ -248,7 +248,7 @@ const allMetrics = computed(() => props.categories.flatMap(category => category.
 const englishNames = (metric: Metric) => [metric.nameEn, ...(metric.searchAliases ?? [])].filter((name): name is string => !!name)
 function metricNameMatches(metric: Metric, query: string): boolean {
   const own = (target: Metric) => target.key.toLowerCase() === query || englishNames(target).some(name => nameEnMatches(name, query))
-  if (metricDisplayName(metric).toLowerCase().includes(query) || own(metric)) return true
+  if (searchKey(metricDisplayName(metric)).includes(query) || own(metric)) return true
   return allMetrics.value.some(base => base.key !== metric.key && metric.key.startsWith(base.key) && /[A-Z]/.test(metric.key[base.key.length] ?? '') && own(base))
 }
 
@@ -260,7 +260,7 @@ const NAME_EN_FUNCTION_WORDS = new Set(['per', 'to', 'of', 'and', 'in', 'on', 'f
 const isAcronym = (word: string) => word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word)
 const wordsOf = (name: string) => name.split(/[^A-Za-z0-9]+/)
 const acronymOnly = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = searchKey(searchQuery.value)
   return /^[a-z0-9]+$/.test(query) && allMetrics.value.some(metric => englishNames(metric).some(name => wordsOf(name).some(word => isAcronym(word) && word.toLowerCase().startsWith(query))))
 })
 function nameEnMatches(nameEn: string, query: string): boolean {
@@ -277,22 +277,22 @@ function nameEnMatches(nameEn: string, query: string): boolean {
 // 名稱跟查詢字一樣的排第一、名稱含查詢字的其次，只靠別名或英文名對到的最後（2026-10-22）：別名是子字串比對，搜「負債比率」也會找到
 // 別名有「流動負債比率」的流動負債占總資產比，它的分類順序在前、原本排第一。sort 是穩定的，同一層照分類順序。中欄與右欄都用這個順序
 const searchOrderedMetrics = computed<Metric[]>(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = searchKey(searchQuery.value)
   const tier = (metric: Metric) => {
-    const name = metricDisplayName(metric).toLowerCase()
+    const name = searchKey(metricDisplayName(metric))
     return name === query ? 0 : name.includes(query) ? 1 : 2
   }
   return sortedCategories.value.flatMap(category => bySort(category.metrics)).sort((a, b) => tier(a) - tier(b))
 })
 
 const displayedMetrics = computed<Metric[]>(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = searchKey(searchQuery.value)
   if (!query) return activeMetrics.value
   return searchOrderedMetrics.value.filter(metric => metricMatchesQuery(metric, query))
 })
 
 const displayedIndicators = computed<IndicatorEntry[]>(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = searchKey(searchQuery.value)
   if (query) {
     // A metric-name match (e.g. "杜" matching "杜邦分析") pulls in all of that metric's
     // fields, not just the ones whose own label happens to contain the query too — search
