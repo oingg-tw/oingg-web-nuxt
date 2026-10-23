@@ -209,12 +209,15 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'TTM', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
   { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'TTM', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
   // 獲利品質 2026-09-21（跟獲利能力分開：一個是賺多少、一個是賺的有沒有現金撐）：沒徽章的三支，深度齊、有溯源。排除 beneish 三支、
-  // piotroskiFScore（有自己的頁）、abnormalCapexRatio（模型偏差不是申報比率）；fcfMargin 只有 1 期（回填後再看）。
+  // piotroskiFScore（有自己的頁）、abnormalCapexRatio（模型偏差不是申報比率）。fcfMargin 當時只有 1 期，2026-10-23 回填到 2020Q3／Q4
+  // 起（抽 7 家 23～24 季）才開頁（使用者：「要」）；它＝營業現金流利潤率 − 資本支出佔營收比（同日抽 10 家 231 季都在 0.01 內），
+  // 所以對照畫營業現金流利潤率、接著讀這兩頁。
   // 連續獲利年數 2026-09-22 下架（「資料怪怪的」）：basis=FY 同一年回好幾列而且計數會動（2330 2024=5,5,5,6；1101 2025 年中歸零；
   // 2454 與 2891 序列相同），型錄 metadata 沒錯、是序列不按年；等 analysis-ts 確認一年一列且單調再加回。
   { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'TTM', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
   { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: '自由現金流轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
   { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: '營業現金流利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
+  { slug: 'fcf-margin', metricCode: 'fcfMargin', compareMetricCode: 'ocfMargin', timeframe: 'TTM', topic: '自由現金流利潤率', titleKeywords: 'FCF 利潤率自由現金流占營收比', related: ['ocf-margin', 'capex-to-revenue'] },
 
   // ── 損益表那一條鏈（2026-09-25）── 由下而上做的分組：量哪些申報值相加會閉合，長出來的就是損益表本身——營收 −營業成本 = 毛利
   // −營業費用 = 營業利益 ＋業外 = 稅前 −稅 −少數股權 = EPS；全是恆等式不是相關性（/dividend-source 在投信投顧法下說得出口的同一個理由）。
