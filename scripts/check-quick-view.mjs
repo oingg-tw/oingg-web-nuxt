@@ -39,7 +39,9 @@ async function pinOnly(page, labels) {
 
 const cardOf = (page, label) => page.locator('.stock-quick-view-page__grid > *').filter({ has: page.locator('h3 a', { hasText: exact(label) }) })
 
+// 圖進到畫面附近才畫（SharedChart，2026-10-23）：先捲到卡片，跟讀者看到的方式一樣
 async function hasChart(card) {
+  await card.scrollIntoViewIfNeeded().catch(() => {})
   return (await card.locator('[role="img"] svg path').count()) >= 3 || (await card.locator('.cctl__seg').count()) > 0
 }
 

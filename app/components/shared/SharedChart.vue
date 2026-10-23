@@ -74,8 +74,33 @@ function hideTip() {
   chartRef.value?.dispatchAction({ type: 'hideTip' })
   chartRef.value?.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' })
 }
-onMounted(() => window.addEventListener(HIDE_CHART_TIPS, hideTip))
-onUnmounted(() => window.removeEventListener(HIDE_CHART_TIPS, hideTip))
+
+// 圖進到畫面附近（上下 300px）才把資料交給 ECharts 畫（2026-10-23，手機換頁延遲：一頁多張圖時，換頁那一刻所有圖一起算，中階手機
+// 速覽要 0.9 秒才換掉舊頁）。元素一直都在、大小由呼叫端的 class 決定，所以版面不動、伺服器輸出也不變；看得到的圖在下一個畫格就畫
+const inView = ref(false)
+let observer: IntersectionObserver | null = null
+const EMPTY_OPTION = {}
+const shownOption = computed(() => (inView.value ? scaledOption.value : EMPTY_OPTION))
+
+onMounted(() => {
+  window.addEventListener(HIDE_CHART_TIPS, hideTip)
+  const el = chartRef.value?.$el as Element | undefined
+  if (!el || typeof IntersectionObserver === 'undefined') {
+    inView.value = true
+    return
+  }
+  observer = new IntersectionObserver((entries) => {
+    if (!entries.some(entry => entry.isIntersecting)) return
+    inView.value = true
+    observer?.disconnect()
+    observer = null
+  }, { rootMargin: '300px 0px' })
+  observer.observe(el)
+})
+onUnmounted(() => {
+  window.removeEventListener(HIDE_CHART_TIPS, hideTip)
+  observer?.disconnect()
+})
 
 const label = computed(() => {
   if (typeof attrs['aria-label'] === 'string' && attrs['aria-label']) return attrs['aria-label']
@@ -88,5 +113,5 @@ const label = computed(() => {
 </script>
 
 <template>
-  <VChart ref="chartRef" v-bind="attrs" role="img" :aria-label="label" :option="scaledOption" :theme="theme" :init-options="INIT_OPTIONS" />
+  <VChart ref="chartRef" v-bind="attrs" role="img" :aria-label="label" :option="shownOption" :theme="theme" :init-options="INIT_OPTIONS" />
 </template>
