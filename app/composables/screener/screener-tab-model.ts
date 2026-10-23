@@ -179,11 +179,6 @@ interface ScreenerColumnView {
 // independent search against its own filters.
 export const SCREENER_TAB_PAGE_SIZE = 20
 
-// 免費額度是三組篩選合計（業務中台 84112d8：篩選 3 組、欄位組合 3 組，普通股＋特別股＋ETF 加起來）；提示要說清楚，
-// 不然在 ETF 這邊被擋的人會以為自己只建了一組
-export const PRESET_QUOTA_LABEL = '我的篩選（普通股、特別股、ETF 合計）'
-export const COLUMN_QUOTA_LABEL = '欄位組合（普通股、特別股、ETF 合計）'
-
 export interface ScreenerTab extends WorkspaceTab {
   // UUID (a real backend-persisted preset) — never a sequential integer.
   id: string

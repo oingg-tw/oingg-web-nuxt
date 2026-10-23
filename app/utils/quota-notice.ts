@@ -1,35 +1,11 @@
-import { h } from 'vue'
-import { ElMessage } from 'element-plus'
+// 額度用完時，全站同一個說法、同一個去處（2026-10-06「完善付費方案」）。2026-10-24 從右下角一行提示改成彈窗（AppQuotaDialog，
+// 使用者：「這個直接改成彈窗，這樣有比較多的篇幅說服用戶買單」），這裡只打開它。detail：換掉標題（整批放不下時不是「已達上限」，
+// 是「還能加 N 檔」）
+export const useQuotaNotice = () => useState<{ resource: QuotaResource; detail?: string } | null>('quota-notice', () => null)
 
-// 額度用完時的提示，全站同一句話、同一個去處（2026-10-06「完善付費方案」）。原本每個功能各說各的：持股欄位
-// 有說明但「升級方案」是純文字、觀察清單只說「已達上限」、篩選器只顯示「新增分頁失敗」。
-//
-// 措辭只陳述數量與兩條路（刪掉不需要的、或升級），不催促、不倒數。價格還沒定（使用者決定等定價研究），
-// 所以不寫金額；連結去 /profile#plan 看方案與用量。detail：整句換掉（整批放不下時不是「已達上限」，是「還能加 N 檔」）
-// 彈窗裡用不了提示（焦點鎖住時按不到）的地方照抄同一句、自己接「看方案」（欄位設定的新增欄位）
-export const quotaReachedText = (what: string) => `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`
-
-// duration：外觀設定的提示預覽傳 0（一直開著，比較設計用）
-export function showQuotaReached(what: string, detail?: string, duration = 8000) {
-  const instance = ElMessage({
-    type: 'warning',
-    duration,
-    showClose: false,
-    message: h('span', { class: 'app-toast' }, [
-      // 「看方案」接在句點後面（2026-10-22，使用者：「那個看方案 直接接在句點後面 然後顯眼點?」）：句子的一部分，不另佔一格，
-      // 手機上文字因此有整個寬度可以排。真的 <a>（右鍵、新分頁都能用），點擊時走 SPA 導覽，不整頁重載；箭頭不唸
-      h('span', { class: 'app-toast__text' }, [
-        detail ?? quotaReachedText(what),
-        h('a', {
-          href: '/profile#plan',
-          class: 'app-toast__link',
-          onClick: (event: MouseEvent) => {
-            event.preventDefault()
-            void navigateTo('/profile#plan')
-          }
-        }, ['看方案', h('span', { 'aria-hidden': 'true' }, ' →')])
-      ]),
-      toastCloseButton(() => instance.close())
-    ])
-  })
+export function showQuotaReached(resource: QuotaResource, detail?: string) {
+  useQuotaNotice().value = { resource, detail }
 }
+
+// 已經在彈窗裡的地方（不能再疊一層彈窗）照抄同一句、自己接「看方案」（欄位設定的新增欄位）
+export const quotaReachedText = (what: string) => `${what}已達目前方案的上限。可以刪掉不需要的，或之後升級專業版。`

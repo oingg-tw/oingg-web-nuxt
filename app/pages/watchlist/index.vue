@@ -87,7 +87,7 @@ onMounted(() => {
         return
       }
       columns.value = fromSaved(JSON.parse(lastSaved))
-      if (result === 'quota') showQuotaReached('觀察清單欄位')
+      if (result === 'quota') showQuotaReached('watchlistColumns')
       else showErrorMessage('欄位設定沒有存到，已回到上次存的樣子')
     }, 600)
   }, { deep: true })

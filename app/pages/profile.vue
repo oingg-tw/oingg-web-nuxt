@@ -32,28 +32,10 @@ async function handleSignOut() {
 // 使用者決定：只有免費＋專業版、價格等定價研究、這一輪不收款。所以這裡誠實地呈現「現在是什麼方案、額度
 // 多少、用了多少」，升級按鈕停用、不寫價格（原本寫死的 NT$399／3,990 拿掉了）。
 const { entitlement, entitlementFailure, isTrial, trialDaysLeft } = useEntitlement()
-const QUOTA_ROWS: { resource: QuotaResource; label: string; unit: string }[] = [
-  { resource: 'watchlistItems', label: '觀察清單', unit: '檔' },
-  { resource: 'watchlistColumns', label: '觀察清單欄位', unit: '欄' },
-  { resource: 'customHoldingColumns', label: '持股欄位', unit: '欄' },
-  { resource: 'screenerPresets', label: '篩選分頁', unit: '個' },
-  { resource: 'columnPresets', label: '儲存的欄位組合', unit: '個' }
-]
-const limitText = (value: number | null | undefined, unit: string) =>
-  value === undefined ? '－' : value === null ? '不限' : `${value} ${unit}`
 
-// 用量：entitlement 的 usage（業務中台 79b4d81）；舊版 業務中台 沒有這欄時只列上限
+// 用量：entitlement 的 usage（業務中台 79b4d81）；舊版 業務中台 沒有這欄時只列上限。額度的名稱與單位是 QUOTA_ROWS（useEntitlement.ts），
+// 免費 vs 專業版的對照表是 SharedPlanCompare（額度彈窗也用）
 const usage = computed(() => entitlement.value?.usage)
-
-// 免費 vs 專業版的對照數字來自 業務中台（GET /billing/plans，79b4d81），不在前端寫死；
-// 端點問不到的時候不顯示對照表，只顯示自己方案的額度。
-interface PlanQuotas { tier: 'FREE' | 'PRO'; quotas: Partial<Record<QuotaResource, number | null>> }
-const { data: plans } = useAsyncData('billing-plans', () =>
-  apiFetch<{ plans: PlanQuotas[] }>('/billing/plans')
-    .then(response => response.plans)
-    .catch(() => null),
-{ server: false, default: () => null })
-const planOf = (tier: PlanQuotas['tier']) => plans.value?.find(plan => plan.tier === tier)
 
 // ---- 刪除帳號（2026-10-18，治理盤點→使用者「先做功能」；個資法第 11 條的刪除權）----
 // DELETE /users/me（業務中台 ca1ab52）刪掉這個人的全部資料與 Firebase 帳號。不能復原，所以：
@@ -320,33 +302,13 @@ const planName = computed(() => {
           <tr v-for="row in QUOTA_ROWS" :key="row.resource">
             <th scope="row">{{ row.label }}</th>
             <td v-if="usage">{{ usage[row.resource] ?? 0 }} {{ row.unit }}</td>
-            <td>{{ limitText(entitlement ? entitlement.quotas[row.resource] ?? null : undefined, row.unit) }}</td>
+            <td>{{ quotaLimitText(entitlement ? entitlement.quotas[row.resource] ?? null : undefined, row.unit) }}</td>
           </tr>
         </tbody>
       </SharedTable>
       <p class="profile-page__plan-cta">專業版即將開放</p>
 
-      <SharedTable v-if="plans" label="免費版與專業版的差別" :ssr="false" table-class="profile-page__plan-table" class="profile-page__plan-compare">
-        <thead>
-          <tr>
-            <th scope="col">項目</th>
-            <th scope="col">免費版</th>
-            <th scope="col">專業版</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- 法規底線（投信投顧法）：付費只能差在能追蹤、儲存多少，分析與資料兩邊一樣——寫在最前面 -->
-          <tr>
-            <th scope="row">個股分析、篩選結果、資料來源</th>
-            <td colspan="2">兩個方案完全相同</td>
-          </tr>
-          <tr v-for="row in QUOTA_ROWS" :key="row.resource">
-            <th scope="row">{{ row.label }}</th>
-            <td>{{ limitText(planOf('FREE')?.quotas[row.resource], row.unit) }}</td>
-            <td>{{ limitText(planOf('PRO')?.quotas[row.resource], row.unit) }}</td>
-          </tr>
-        </tbody>
-      </SharedTable>
+      <SharedPlanCompare class="profile-page__plan-compare" />
       <p class="profile-page__plan-footnote">新註冊的帳號有 14 天專業版試用，不需要信用卡；到期自動轉為免費版，超過免費額度的部分可以看、可以刪，只是不能再新增。</p>
     </section>
 

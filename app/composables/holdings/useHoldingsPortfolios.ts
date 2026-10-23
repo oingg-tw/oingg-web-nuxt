@@ -88,7 +88,7 @@ export function useHoldingsPortfolios() {
   }
 
   function reportNameFailure(reason: Exclude<NameResult, { ok: true }>['reason'], name: string) {
-    if (reason === 'quota') showQuotaReached('持股帳戶')
+    if (reason === 'quota') showQuotaReached('portfolios')
     else showErrorMessage(reason === 'duplicate' ? `已經有一個帳戶叫「${name}」` : reason === 'invalid' ? '名稱要 1 到 20 個字' : '帳戶沒有存到，請稍後再試')
   }
 

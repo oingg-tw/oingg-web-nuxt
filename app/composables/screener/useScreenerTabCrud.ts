@@ -145,7 +145,7 @@ export function useScreenerTabCrud(ctx: {
     // 類股、已經持有的範圍建立時就帶：只有範圍的組合 filters 是空的，不帶的話 業務中台 會自動補「ROE > 30」（見 useScreenerPresets 的 create）
     const created = await create(ctx.filtersOf(tab), scopeFor(tab))
     if (!created) {
-      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached('screenerPresets')
       else showErrorMessage(lastErrorMessage.value ?? '儲存失敗，請稍後再試')
       return
     }
@@ -179,7 +179,7 @@ export function useScreenerTabCrud(ctx: {
     }
     const created = await create(ctx.filtersOf(tab), scopeFor(tab))
     if (!created) {
-      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached('screenerPresets')
       else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')
       return
     }
@@ -209,7 +209,7 @@ export function useScreenerTabCrud(ctx: {
     // so the desired "未命名 N" label is applied with a separate rename PATCH right after.
     const preset = await create(initialFilters)
     if (!preset) {
-      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      if (lastErrorCode.value === 'quota_exceeded') showQuotaReached('screenerPresets')
       else showErrorMessage(lastErrorMessage.value ?? '新增篩選失敗')
       return
     }
@@ -270,7 +270,7 @@ export function useScreenerTabCrud(ctx: {
     const preset = await applyTemplate(templateId)
     if (!preset) {
       // 套用範本會新增一個篩選分頁，吃的是同一個額度
-      if (templateLastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      if (templateLastErrorCode.value === 'quota_exceeded') showQuotaReached('screenerPresets')
       else showErrorMessage(templateLastErrorMessage.value ?? '套用策略失敗')
       return
     }

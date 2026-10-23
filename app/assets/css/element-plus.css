@@ -221,7 +221,7 @@ html .el-calendar__button-group .el-button-group {
    然後全站統一」，方案頁 https://claude.ai/artifact/S9N9Y2MkCpFN2Pg9Df3VuV 選 B）：一塊深色底、淺色字，沒有框也沒有色條；類型只看左邊的圖示。
    2026-10-08 那一版是浮層底＋左側 4px 類型色條，色條跟著圓角彎起來像被裁掉一角，外面又一圈灰框加陰影，資訊類是灰圖示配灰色條、看不出類型。
    頁面上都是淺色卡片，深色那一條一眼就看得出「這是剛發生的事」。深色模式反過來用淺色底。
-   動作（復原、立即重試）是淺金色的粗字、沒有框；「看方案」接在句子後面（粗體、底線、箭頭）。顏色對底色都過 AA：文字 4.5:1、圖示與焦點框 3:1。
+   動作（復原、立即重試）是淺金色的粗字、沒有框（額度用完 2026-10-24 改成彈窗 AppQuotaDialog，不在這裡）。顏色對底色都過 AA：文字 4.5:1、圖示與焦點框 3:1。
    統一寬度、從頁首下方出現（top 是 Element Plus 逐則算的 inline style，所以用 margin-top 整組下移）。
    全域因為 ElMessage teleport 到 body；html 前綴是為了贏過隨用隨載、排在本檔之後的 Element Plus 樣式。 */
 html {
@@ -355,17 +355,6 @@ html .el-message .el-message__content {
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-/* 「看方案」接在句子後面（quota-notice.ts）：句子的一部分，比文字顯眼 */
-.app-toast__link {
-  margin-left: 4px;
-  color: var(--app-toast-action);
-  font-weight: 700;
-  white-space: nowrap;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
 }
 
 /* 深色底上主色的焦點框看不清楚：提示裡的焦點框用動作的顏色 */

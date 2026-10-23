@@ -127,7 +127,7 @@ export function useStocks() {
     // 額度已知而且滿了：先說，不做樂觀加入。檔數算所有清單的總列數（同一檔在兩組算 2）
     const limit = quotaOf('watchlistItems')
     if (typeof limit === 'number' && watchlistItems.value.length >= limit) {
-      showQuotaReached('觀察清單')
+      showQuotaReached('watchlistItems')
       return
     }
     const name = nameOf(code, knownName)
@@ -148,7 +148,7 @@ export function useStocks() {
     // duplicate（409：另一台裝置加過，這台沒有 id）與 quota（403：額度 middleware 在 handler 之前，滿額時連重複的請求也回 403）
     // 都不能靠猜，重抓一次帳號裡的清單：伺服器有就留著（順便補上 id），沒有才算真的被額度擋下
     if (result.reason === 'duplicate' || result.reason === 'quota') {
-      if ((await applyServerWatchlist()) && result.reason === 'quota' && !itemIn(targetId, code)) showQuotaReached('觀察清單')
+      if ((await applyServerWatchlist()) && result.reason === 'quota' && !itemIn(targetId, code)) showQuotaReached('watchlistItems')
     }
     // offline：本地留著，帳號沒存到。不打擾使用者——下一次成功的同步會蓋回去。
   }
@@ -191,7 +191,7 @@ export function useStocks() {
       watchlists.value = [...watchlists.value, result.watchlist]
       return result.watchlist
     }
-    if (result.reason === 'quota') showQuotaReached('觀察清單組數')
+    if (result.reason === 'quota') showQuotaReached('watchlists')
     else showErrorMessage(result.reason === 'duplicate' ? `已經有一組叫「${name}」` : result.reason === 'invalid' ? '名稱要 1 到 20 個字' : '清單沒有建立，請稍後再試')
     return null
   }
@@ -214,8 +214,8 @@ export function useStocks() {
     for (let n = 2; taken.has(listName); n++) listName = `${name.slice(0, 19 - String(n).length)} ${n}`
     const result = await createWatchlistWithItems(listName, symbols, sourceShareToken)
     if (!result.ok) {
-      if (result.reason === 'items') showQuotaReached('觀察清單', `觀察清單還能再加 ${result.room} 檔，放不下這一份。可以刪掉不需要的，或之後升級專業版。`)
-      else if (result.reason === 'lists') showQuotaReached('觀察清單組數')
+      if (result.reason === 'items') showQuotaReached('watchlistItems', `觀察清單只剩 ${result.room} 檔空位，放不下這一份`)
+      else if (result.reason === 'lists') showQuotaReached('watchlists')
       else showErrorMessage(result.reason === 'duplicate' ? `已經有一組叫「${listName}」` : '清單沒有建立，請稍後再試')
       return null
     }

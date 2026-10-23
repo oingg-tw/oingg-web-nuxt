@@ -180,7 +180,7 @@ export function useScreenerTabColumnPresets(ctx: {
     const name = `欄位組合 ${columnPresetOptions.value.length + 1}`
     const created = await createColumnPreset(name, [])
     if (!created) {
-      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached(COLUMN_QUOTA_LABEL)
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('columnPresets')
       else showErrorMessage(columnLastErrorMessage.value ?? '新增欄位組合失敗')
       return
     }
@@ -247,7 +247,7 @@ export function useScreenerTabColumnPresets(ctx: {
     const tab = pendingColumnPresetTab
     const applied = await applyColumnPresetTemplateApi(key)
     if (!applied) {
-      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached(COLUMN_QUOTA_LABEL)
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('columnPresets')
       else showErrorMessage(columnLastErrorMessage.value ?? '套用欄位組合失敗')
       return
     }

@@ -224,7 +224,7 @@ async function persist(next: HoldingColumn[], previous: HoldingColumn[]): Promis
     return true
   }
   columns.value = previous
-  if (result.reason === 'quota') showQuotaReached('持股欄位')
+  if (result.reason === 'quota') showQuotaReached('customHoldingColumns')
   else showErrorMessage(`沒有存到帳號：${result.message ?? '暫時無法連線，請稍後再試'}`)
   return false
 }

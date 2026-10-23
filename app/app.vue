@@ -85,6 +85,7 @@ onMounted(() => {
       <UserLoginDialog />
       <AppPostLoginLoader />
       <AppLoadFailureDialog />
+      <AppQuotaDialog />
       <AppConsentBanner />
     </div>
   </el-config-provider>

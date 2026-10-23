@@ -319,7 +319,7 @@ export function useUniverseScreener(source: UniverseSource) {
   async function createPreset(filters: FilterCriterion[], name: string): Promise<UniverseTab | null> {
     const created = await presetsApi.create(filters)
     if (!created) {
-      if (presetsApi.lastErrorCode.value === 'quota_exceeded') showQuotaReached(PRESET_QUOTA_LABEL)
+      if (presetsApi.lastErrorCode.value === 'quota_exceeded') showQuotaReached('screenerPresets')
       else showErrorMessage(presetsApi.lastErrorMessage.value ?? '新增篩選失敗，請稍後再試')
       return null
     }
@@ -479,7 +479,7 @@ export function useUniverseScreener(source: UniverseSource) {
   async function createColumnSet(name: string, fieldIds: string[]): Promise<ColumnSet | null> {
     const created = await columnsApi.create(name, fieldIds.map(snapshotField))
     if (!created) {
-      if (columnsApi.lastErrorCode.value === 'quota_exceeded') showQuotaReached(COLUMN_QUOTA_LABEL)
+      if (columnsApi.lastErrorCode.value === 'quota_exceeded') showQuotaReached('columnPresets')
       else showErrorMessage(columnsApi.lastErrorMessage.value ?? '新增欄位組合失敗，請稍後再試')
       return null
     }
