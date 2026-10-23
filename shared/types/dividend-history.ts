@@ -8,9 +8,12 @@
 //   year's LAST one of each; per-event dates are in `events`.
 // - payoutRatio = 該年度現金股利 ÷ 該年度 EPS（eps.Q 四季加總）×100; null when the four quarters
 //   aren't all available or EPS ≤ 0 — so 2330 has it from 2021 on, null for 2018–2020.
-// - yieldAtExDate = the sum over that year's events of 現金股利 ÷ 除息日當天收盤價（已除息）; null
-//   for the whole year when any event's price is missing. Most companies only have prices from
-//   2026-06 on (twse-ts's range), so historical rows are mostly null — not missing data.
+// - yieldOnPreviousClose = the sum over that year's events of 現金股利 ÷ previousClose（除息前最後一個有成交日的收盤價，
+//   previousTradeDate 那一天）; null for the whole year when any event's price is missing. Most companies only have prices
+//   from 2026-06 on (twse-ts's range), so historical rows are mostly null — not missing data. 2026-10-23 analysis-ts
+//   302cc8fc 取代 closeAtExDate／yieldAtExDate（除息當天、已除息的收盤價，殖利率偏高；使用者：「改成除以除息前一天的收盤價」），
+//   名字沿用 GET /stocks/prices 的 previousClose。業務中台還沒對應新欄位時是 undefined
+
 // - knowledgeDate = the year's last resolution's announcement date.
 // - Depth: 民國 107 年 (2018) onward today; mops-ts backfills earlier years from 2026-09-24.
 
@@ -25,8 +28,9 @@ export interface DividendHistoryEvent {
   paymentDate: string | null
   stockDividendDistributionDate?: string | null
   announcementDate: string | null
-  closeAtExDate: number | null
-  yieldAtExDate: number | null
+  previousClose?: number | null
+  previousTradeDate?: string | null
+  yieldOnPreviousClose?: number | null
 }
 
 export interface DividendHistoryEntry {
@@ -54,7 +58,7 @@ export interface DividendHistoryEntry {
   // 法定盈餘公積「加」資本公積，合在一欄拆不開。所以這一塊不能整體說成「退還股本」：資本公積才是
   // 退還股東繳進來的錢，法定盈餘公積是以前年度盈餘提存的，那是保留獲利。文案只能說「來自公積」。
   cashDividendFromLegalReserveAndCapitalSurplus: number | null
-  yieldAtExDate: number | null
+  yieldOnPreviousClose?: number | null
   knowledgeDate: string | null
   events: DividendHistoryEvent[]
 }
@@ -72,9 +76,8 @@ export interface DividendHistoryResponse {
 // 「唯有後續…推動股價回升至除權息前價位（完成「填息」），投資人方能實現真實經濟增量收益。這是理解
 // 「高殖利率不等於高報酬」的數學基礎」. The yield number on this page means nothing without it.
 //
-// WHAT IS COMPARED: the close on the last trading day BEFORE the ex-date. Not `closeAtExDate` —
-// that is the close ON the ex-date, already ex-dividend, so comparing against it would report a
-// fill that never happened.
+// WHAT IS COMPARED: the close on the last trading day BEFORE the ex-date（同 dividend-history 的 previousClose）. Not the
+// close ON the ex-date — that is already ex-dividend, so comparing against it would report a fill that never happened.
 export interface DividendFillEvent {
   exDividendDate: string
   cashDividend: number
