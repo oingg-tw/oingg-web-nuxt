@@ -75,6 +75,9 @@ onMounted(() => {
 <template>
   <el-config-provider :size="elSize" :locale="elLocale" :dialog="elDialog">
     <div>
+      <!-- 換頁進度條（2026-10-23，使用者：「手機…點按頁面以後，仍是呈現上一個頁面，經過一段時間以後才切換」）：Nuxt 等新頁面的資料與畫面
+           都好了才換掉舊頁，中階手機要 0.6～1.6 秒，期間畫面完全沒動、像沒點到。超過 200ms 才出現；主色純色（背景不用漸層的規則） -->
+      <NuxtLoadingIndicator color="var(--el-color-primary)" :height="3" />
       <NuxtRouteAnnouncer />
       <NuxtLayout :name="layoutName">
         <NuxtPage />
