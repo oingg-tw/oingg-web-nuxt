@@ -379,28 +379,46 @@ function reset() {
 }
 
 .range-editor__options {
+  container-type: inline-size;
   margin: 0;
   padding: 0;
   border: 0;
   min-width: 0;
 }
 
-/* 照字的長度自然換行（2026-10-23，使用者：「類股 選擇項目的 彈窗，希望可以display flex 然後自然換行」）：原本是至少 180px 的固定欄，
-   「水泥工業」跟「其他電子業」佔一樣寬，一排只放得下兩三個 */
+/* 對齊的欄（2026-10-23，使用者先要 flex 自然換行，看過兩版對照後選 grid）：手機兩欄、內容區夠寬自動三欄以上，長名稱在自己的格子裡
+   折行。原本的 grid 每欄至少 180px，手機只排得下一欄。欄寬用 rem：el-checkbox-group 的 font-size 是 0，em 會變成 0 */
 .range-editor__option-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
   margin-top: 4px;
 }
 
+@container (min-width: 520px) {
+  .range-editor__option-list {
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  }
+}
+
 .range-editor__option {
+  align-items: flex-start;
+  height: auto;
   min-height: 44px;
   margin-right: 0;
+  padding: 10px 0;
+  white-space: normal;
+}
+
+/* 方框對齊第一行字（行高 1.4 × 16px 與 14px 方框的差一半） */
+.range-editor__option :deep(.el-checkbox__input) {
+  margin-top: 4px;
 }
 
 .range-editor__option :deep(.el-checkbox__label) {
   font-size: 1rem;
+  line-height: 1.4;
+  white-space: normal;
 }
 </style>
 
