@@ -124,6 +124,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     else if (preset.sectorCodes?.length) slots.push(sectorSlot(slots.length, preset.sectorCodes, false))
     if (preset.excludeHeldPortfolioIds?.length) slots.push(heldSlot(slots.length, preset.excludeHeldPortfolioIds, true))
     else if (preset.heldPortfolioIds?.length) slots.push(heldSlot(slots.length, preset.heldPortfolioIds, false))
+    // 上次的排序（業務中台 c9e2208）：被藏起來的舊指標換成留下來的那一支。那一欄已不在這組欄位裡的話，search 不帶排序重跑
+    const savedSort = preset.sortField && preset.order ? { field: replacedField(preset.sortField), order: preset.order } : null
     const tab: ScreenerTab = {
       id: preset.id,
       name: preset.name,
@@ -144,8 +146,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       pageSize: SCREENER_TAB_PAGE_SIZE,
       totalPages: 1,
       total: 0,
-      sortField: null,
-      sortOrder: null,
+      sortField: savedSort?.field ?? null,
+      sortOrder: savedSort?.order ?? null,
       loading: false,
       loadingMore: false,
       searched: false,
@@ -245,7 +247,14 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       () => trigger()
     )
 
-    autoSearchControllers.set(tab.id, { stopWatch, trigger })
+    // 排序記在這一組上（2026-10-23，業務中台 c9e2208；使用者：「screener 也要儲存用戶上次的排序 這樣用戶才不用每次點」）：換排序、
+    // 取消排序、換欄位組合把排序清掉都存回去。未登入、還沒存的頁籤不存（排序只在網址）。打開時照存的值開，不算改
+    const stopSortWatch = watch(() => [tab.sortField, tab.sortOrder], () => {
+      if (!currentUser.value || tab.unsaved) return
+      void update(tab.id, sortPatchOf(tab))
+    })
+
+    autoSearchControllers.set(tab.id, { stopWatch: () => { stopWatch(); stopSortWatch() }, trigger })
   }
 
 
@@ -389,12 +398,18 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           const requestedFields = tab.columns.length
             ? tab.columns.map(column => column.field)
             : (tab.columnPresetId ? columnFieldsOf(tab.columnPresetId) : null) ?? []
-          const result = await run(
-            tab.id,
-            tab.columnPresetId ?? undefined,
-            { page: targetPage, pageSize: tab.pageSize },
-            tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
-          )
+          const sort = tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
+          const pagination = { page: targetPage, pageSize: tab.pageSize }
+          let result = await run(tab.id, tab.columnPresetId ?? undefined, pagination, sort)
+          // 存下來的排序那一欄已不在這組欄位裡（同一組欄位在別的篩選拿掉了那一欄）：業務中台只收代號或這次的欄位，回 400。不帶排序
+          // 再跑一次，成功就清掉排序（排序的 watcher 存回帳號），整組照樣打得開
+          if (!result && sort && businessErrorStatus(lastError.value) === 400) {
+            result = await run(tab.id, tab.columnPresetId ?? undefined, pagination)
+            if (result) {
+              tab.sortField = null
+              tab.sortOrder = null
+            }
+          }
           // Filters just (potentially) changed, so every other cached column view for this
           // tab could now be showing the wrong stock list — drop them all and keep just
           // this fresh one; the rest will refetch naturally next time they're switched to.

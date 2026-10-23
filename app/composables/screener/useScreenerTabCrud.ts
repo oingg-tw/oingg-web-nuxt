@@ -150,7 +150,7 @@ export function useScreenerTabCrud(ctx: {
       else showErrorMessage(lastErrorMessage.value ?? '儲存失敗，請稍後再試')
       return
     }
-    const updated = await update(created.id, { name, ...scopeFor(tab) })
+    const updated = await update(created.id, { name, ...scopeFor(tab), ...sortPatchOf(tab) })
     if (!updated) showErrorMessage(lastErrorMessage.value ?? `已儲存，但名稱或範圍（類股、已經持有）沒有一起存進去`)
     const saved = ctx.presetToTab(updated ?? created)
     Object.assign(saved, {
@@ -184,7 +184,7 @@ export function useScreenerTabCrud(ctx: {
       else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')
       return
     }
-    const updated = await update(created.id, { name: `${tab.name} 的副本`.slice(0, 20), ...scopeFor(tab) })
+    const updated = await update(created.id, { name: `${tab.name} 的副本`.slice(0, 20), ...scopeFor(tab), ...sortPatchOf(tab) })
     const copy = registerTab(ctx.presetToTab(updated ?? created))
     copy.columnPresetId = tab.columnPresetId ?? copy.columnPresetId
     await ctx.runSearch(copy)

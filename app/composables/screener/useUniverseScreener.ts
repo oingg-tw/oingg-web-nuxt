@@ -186,7 +186,23 @@ export function useUniverseScreener(source: UniverseSource) {
   }
 
   function presetToTab(preset: ScreenerPreset): UniverseTab {
-    return makeTab(preset.id, preset.name, true, preset.filters ?? [])
+    const tab = makeTab(preset.id, preset.name, true, preset.filters ?? [])
+    // 上次的排序（業務中台 c9e2208，2026-10-23；使用者：「screener 也要儲存用戶上次的排序」）：那一欄要在這一組的欄位裡——上游只收
+    // 代號或 columns 裡的欄位，其他一律 400。不在就照預設順序開
+    if (preset.sortField && preset.order) {
+      const field = preset.sortField === 'symbol' ? 'symbol' : snapshotFieldId(preset.sortField)
+      if (field === 'symbol' || tab.columns.some(column => column.field === field)) {
+        tab.sortField = field
+        tab.sortOrder = preset.order
+      }
+    }
+    return tab
+  }
+
+  // 排序存回這一組（同普通股）：已存的頁籤、登入時才存；送上游的欄位寫法（snapshotField）
+  function saveSort(tab: UniverseTab) {
+    if (!tab.saved || !currentUser.value) return
+    void presetsApi.update(tab.id, tab.sortField && tab.sortOrder ? { sortField: snapshotField(tab.sortField), order: tab.sortOrder } : { sortField: null, order: null })
   }
 
   function toColumnSet(preset: ScreenerColumnPreset): ColumnSet {
@@ -314,6 +330,7 @@ export function useUniverseScreener(source: UniverseSource) {
     target.sortField = from.sortField
     target.sortOrder = from.sortOrder
     target.searched = from.searched
+    if (target.sortField) saveSort(target)
   }
 
   function requireLogin(): boolean {
@@ -418,6 +435,7 @@ export function useUniverseScreener(source: UniverseSource) {
       if (tab.sortField && tab.sortField !== 'symbol' && !fieldIds.includes(tab.sortField)) {
         tab.sortField = null
         tab.sortOrder = null
+        saveSort(tab)
         if (tab.id === activeTabId.value) activeSortCleared = true
       }
       if (tab.id !== activeTabId.value) tab.searched = false
@@ -558,6 +576,7 @@ export function useUniverseScreener(source: UniverseSource) {
     if (field === tab.sortField && order === tab.sortOrder) return
     tab.sortField = field
     tab.sortOrder = order
+    saveSort(tab)
     search(tab)
   }
 

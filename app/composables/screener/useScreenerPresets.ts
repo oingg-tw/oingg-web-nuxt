@@ -21,6 +21,10 @@ export interface ScreenerPreset {
   excludeHeldPortfolioIds?: string[]
   // run 回應裡的 preset 才有（剛建立的沒有，跑過一次才設），等於 run 回應最上層的 columnPresetId
   lastColumnPresetId?: string | null
+  // 上次的排序（業務中台 c9e2208，2026-10-23；使用者：「screener 也要儲存用戶上次的排序 這樣用戶才不用每次點」）：三組都有，兩個一起
+  // 有或一起 null，舊的組合是 null。run 不會自動套用，打開時由前端帶（useScreenerTabs／useUniverseScreener 的 presetToTab）
+  sortField?: string | null
+  order?: 'asc' | 'desc' | null
   createdAt?: string
   updatedAt?: string
 }
@@ -160,7 +164,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
 
   async function update(
     id: string,
-    patch: { name?: string; filters?: FilterCriterion[] } & PresetScope
+    patch: { name?: string; filters?: FilterCriterion[]; sortField?: string | null; order?: 'asc' | 'desc' | null } & PresetScope
   ): Promise<ScreenerPreset | null> {
     if (!currentUser.value) return null
     try {

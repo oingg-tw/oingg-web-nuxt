@@ -327,6 +327,11 @@ export function scopeFor(tab: Pick<ScreenerTab, 'slots'>) {
   return { ...sectorScopeFor(tab), ...heldScopeFor(tab.slots) }
 }
 
+// 這一組的排序寫成存回帳號的樣子（業務中台 c9e2208）：兩個一起給，都 null 是清掉
+export function sortPatchOf(tab: Pick<ScreenerTab, 'sortField' | 'sortOrder'>) {
+  return tab.sortField && tab.sortOrder ? { sortField: tab.sortField, order: tab.sortOrder } : { sortField: null, order: null }
+}
+
 // 挑選面板裡的「已經持有」：自成「我的持股」一類放最後（個人資料，不跟財報指標混在一起）。只給登入的人，帳戶讀到了卻一個都沒有就不加。
 // 選項是帳戶；條件裡有、清單裡沒有的 id 是刪掉的帳戶（業務中台 執行時當成沒持股）。欄位的值是好幾個帳戶名稱用「、」串起來（joinedOptions）。
 // fieldId 決定指標與欄位的 key：普通股 holding.portfolioNames，ETF、特別股 holding.portfolioNames.snapshot
