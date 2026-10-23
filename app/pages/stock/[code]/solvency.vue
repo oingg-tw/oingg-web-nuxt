@@ -115,21 +115,21 @@ const valueAnswer = computed(() => {
   if (!latest.value || !hasLiquidity.value) return null
   return joinClauses([
     `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的償債能力比率（單季）`,
-    `流動比率 ${rateText(currentRatio.value)}`,
-    `速動比率 ${rateText(quickRatio.value)}`,
-    `現金比率 ${rateText(cashRatio.value)}`,
+    `流動比率 ${fixedRateText(currentRatio.value)}`,
+    `速動比率 ${fixedRateText(quickRatio.value)}`,
+    `現金比率 ${fixedRateText(cashRatio.value)}`,
     latest.value.values.currentRatio?.knowledgeDate ? `資料時間 ${latest.value.values.currentRatio.knowledgeDate}` : null
   ])
 })
 
 const ladderAnswer = computed(() => {
   if (!hasLiquidity.value) return null
-  return `這三個比率的分母都是同一筆流動負債，分子一層比一層嚴格：流動比率 ${rateText(currentRatio.value)} 扣掉存貨 ${rateText(Math.abs(inventoryShare.value!))} 後為速動比率 ${rateText(quickRatio.value)}，再扣掉應收帳款等其他速動資產 ${rateText(Math.abs(receivablesShare.value!))} 後為現金比率 ${rateText(cashRatio.value)}。`
+  return `這三個比率的分母都是同一筆流動負債，分子一層比一層嚴格：流動比率 ${fixedRateText(currentRatio.value)} 扣掉存貨 ${fixedRateText(Math.abs(inventoryShare.value!))} 後為速動比率 ${fixedRateText(quickRatio.value)}，再扣掉應收帳款等其他速動資產 ${fixedRateText(Math.abs(receivablesShare.value!))} 後為現金比率 ${fixedRateText(cashRatio.value)}。`
 })
 
 const structureAnswer = computed(() => {
   if (!hasStructure.value) return null
-  return `${stockShortName.value}的總資產裡，${rateText(debtRatio.value)} 由負債支應、${rateText(equityRatio.value)} 由股東權益支應，兩者相加必然等於 100%。`
+  return `${stockShortName.value}的總資產裡，${fixedRateText(debtRatio.value)} 由負債支應、${fixedRateText(equityRatio.value)} 由股東權益支應，兩者相加必然等於 100%。`
 })
 
 const history = computed(() => {
@@ -198,7 +198,7 @@ const { breadcrumbs } = useStockPageSeo({
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
             <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
-              {{ rateText(entry.values[metricCode]?.value ?? null) }}
+              {{ fixedRateText(entry.values[metricCode]?.value ?? null) }}
             </td>
             <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
           </tr>
@@ -207,7 +207,7 @@ const { breadcrumbs } = useStockPageSeo({
     </StockQuestionSection>
 
     <StockQuestionSection v-if="ladderAnswer" id="stock-solvency-ladder" question="流動、速動、現金比率差在哪裡？" :answer="ladderAnswer">
-      <StockWaterfallChart :steps="liquiditySteps" :format="rateText" :format-signed="signedText" />
+      <StockWaterfallChart :steps="liquiditySteps" :format="fixedRateText" :format-signed="fixedSignedRateText" />
 
       <!-- Same treatment the margins page's own decomposition gets: the chart is the better read
            of a chain, but ECharts draws semantics-free SVG, so the numbers still have to exist as
@@ -224,23 +224,23 @@ const { breadcrumbs } = useStockPageSeo({
           <tbody>
             <tr>
               <th scope="row">流動比率</th>
-              <td>{{ rateText(currentRatio) }}</td>
+              <td>{{ fixedRateText(currentRatio) }}</td>
             </tr>
             <tr>
               <th scope="row">減：存貨</th>
-              <td>{{ rateText(inventoryShare === null ? null : Math.abs(inventoryShare)) }}</td>
+              <td>{{ fixedRateText(inventoryShare === null ? null : Math.abs(inventoryShare)) }}</td>
             </tr>
             <tr>
               <th scope="row">等於：速動比率</th>
-              <td>{{ rateText(quickRatio) }}</td>
+              <td>{{ fixedRateText(quickRatio) }}</td>
             </tr>
             <tr>
               <th scope="row">減：應收帳款等其他速動資產</th>
-              <td>{{ rateText(receivablesShare === null ? null : Math.abs(receivablesShare)) }}</td>
+              <td>{{ fixedRateText(receivablesShare === null ? null : Math.abs(receivablesShare)) }}</td>
             </tr>
             <tr>
               <th scope="row">等於：現金比率</th>
-              <td>{{ rateText(cashRatio) }}</td>
+              <td>{{ fixedRateText(cashRatio) }}</td>
             </tr>
           </tbody>
         </SharedTable>
@@ -259,15 +259,15 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr>
             <th scope="row">負債</th>
-            <td>{{ rateText(debtRatio) }}</td>
+            <td>{{ fixedRateText(debtRatio) }}</td>
           </tr>
           <tr>
             <th scope="row">股東權益</th>
-            <td>{{ rateText(equityRatio) }}</td>
+            <td>{{ fixedRateText(equityRatio) }}</td>
           </tr>
           <tr>
             <th scope="row">合計</th>
-            <td>{{ rateText(debtRatio !== null && equityRatio !== null ? debtRatio + equityRatio : null) }}</td>
+            <td>{{ fixedRateText(debtRatio !== null && equityRatio !== null ? debtRatio + equityRatio : null) }}</td>
           </tr>
         </tbody>
       </SharedTable>

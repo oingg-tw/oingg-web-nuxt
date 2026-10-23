@@ -74,8 +74,7 @@ interface ValuationRiverResponse {
   bandMultiples: number[] | null
   prices: { tradeDate: string; close: number }[]
   bases: { effectiveFrom: string; base: number | null }[]
-  // 這次用的期別與河道基準的名稱（例如「近四季平均每股淨值」），analysis-ts 1cf7b237 起有
-  timeframe?: RiverTimeframe | null
+  // 河道基準的名稱（例如「近四季平均每股淨值」），analysis-ts 1cf7b237 起有
   baseLabel?: string | null
 }
 

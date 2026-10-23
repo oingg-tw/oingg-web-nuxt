@@ -10,8 +10,6 @@ import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '
 // 全部走 cachedFinancialStatement，跟財報頁、淨值頁共用同一份快取；冷的時候 32 次（業務中台那層有限並行），暖的時候零次。
 const QUARTERS = 32
 
-const previousQuarter = (year: number, quarter: number): [number, number] => (quarter === 1 ? [year - 1, 4] : [year, quarter - 1])
-
 const toPeriod = (statement: FinancialStatementResponse | null): BalanceCompositionPeriod | null => {
   if (!statement?.found || statement.fiscalYear === null || statement.fiscalQuarter === null) return null
   const rows = statement.statement
@@ -36,13 +34,7 @@ export default defineEventHandler(async (event): Promise<StockBalanceComposition
   const latest = toPeriod(latestStatement)
   if (!latest) return { symbol: code, periods: [] }
 
-  const earlier: [number, number][] = []
-  let cursor: [number, number] = [latest.fiscalYear, latest.fiscalQuarter]
-  for (let i = 1; i < QUARTERS; i += 1) {
-    cursor = previousQuarter(...cursor)
-    earlier.push(cursor)
-  }
-  const statements = await Promise.all(earlier.map(([year, quarter]) => settle(cachedFinancialStatement(code, 'balanceSheet', year, quarter))))
+  const statements = await cachedEarlierStatements(code, 'balanceSheet', latest.fiscalYear, latest.fiscalQuarter, QUARTERS - 1)
   const periods = [latest, ...statements.map(toPeriod)]
     .filter((period): period is BalanceCompositionPeriod => period !== null)
     .sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)

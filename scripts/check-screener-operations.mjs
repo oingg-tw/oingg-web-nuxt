@@ -79,6 +79,8 @@ async function waitForRowsChange(page, before, timeout = 45000) {
 
 const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width, height: 1000 } })
+// 正式建置設了 GA 就會問 Cookie，橫幅會擋住彈窗底部的按鈕（同 check-reload-flash）
+await context.addCookies([{ name: 'analytics-consent', value: 'denied', url: baseUrl }])
 const page = await context.newPage()
 
 const pageErrors = []
@@ -497,6 +499,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 // ── 7. 手機 375px（2026-10-07 篩選器重新設計：卡片、排序選單、欄位設定、條件面板、分頁語意）────────
 {
   const mobile = await browser.newContext({ viewport: { width: 375, height: 800 } })
+  await mobile.addCookies([{ name: 'analytics-consent', value: 'denied', url: baseUrl }])
   const m = await mobile.newPage()
   m.on('pageerror', error => pageErrors.push(`[375] ${error.message}`))
   m.on('response', (response) => {

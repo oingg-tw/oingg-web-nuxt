@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { FilterCriterion, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
@@ -108,6 +109,13 @@ interface ColumnSet {
   name: string
   fields: string[]
   saved: boolean
+}
+
+// 篩選與欄位組合兩支 API 共同的那一半（改名、排序、錯誤訊息），renameSaved／reorderSaved 用
+interface SavedListApi {
+  update(id: string, patch: { name: string }): Promise<{ name: string } | null>
+  reorder(ids: string[]): Promise<boolean>
+  lastErrorMessage: Ref<string | null>
 }
 
 const AUTO_SEARCH_DELAY_MS = 600
@@ -380,16 +388,30 @@ export function useUniverseScreener(source: UniverseSource) {
     selectTab(created.id)
   }
 
-  async function renamePreset(id: string, name: string) {
-    const tab = tabs.value.find(item => item.id === id)
-    if (!tab?.saved) return
-    const previous = tab.name
-    tab.name = name
-    const updated = await presetsApi.update(id, { name })
-    if (updated) tab.name = updated.name
+  // 改名與排序：篩選（tabs／presetsApi）與欄位組合（columnSets／columnsApi）同一套——先改畫面，上游失敗再改回來
+  async function renameSaved<T extends { id: string; name: string; saved: boolean }>(list: Ref<T[]>, api: SavedListApi, id: string, name: string) {
+    const item = list.value.find(entry => entry.id === id)
+    if (!item?.saved) return
+    const previous = item.name
+    item.name = name
+    const updated = await api.update(id, { name })
+    if (updated) item.name = updated.name
     else {
-      tab.name = previous
-      showErrorMessage(presetsApi.lastErrorMessage.value ?? '改名失敗，請稍後再試')
+      item.name = previous
+      showErrorMessage(api.lastErrorMessage.value ?? '改名失敗，請稍後再試')
+    }
+  }
+
+  // 內建的永遠在最前面；業務中台 要這個 universe 全部已存的 id、照新順序
+  async function reorderSaved<T extends { id: string; saved: boolean }>(list: Ref<T[]>, api: SavedListApi, ids: string[]) {
+    const previous = list.value
+    const byId = new Map(previous.map(item => [item.id, item]))
+    const saved = ids.filter(id => byId.get(id)?.saved)
+    list.value = [...previous.filter(item => !item.saved), ...saved.map(id => byId.get(id)!)]
+    if (!saved.length) return
+    if (!await api.reorder(saved)) {
+      list.value = previous
+      showErrorMessage(api.lastErrorMessage.value ?? '排序失敗，請稍後再試')
     }
   }
 
@@ -406,19 +428,6 @@ export function useUniverseScreener(source: UniverseSource) {
     if (activeTabId.value === id) selectTab(BUILT_IN_ID)
   }
 
-  // 內建的永遠在最前面；業務中台 要這個 universe 全部已存的 id、照新順序
-  async function reorderTabs(ids: string[]) {
-    const previous = tabs.value
-    const byId = new Map(previous.map(tab => [tab.id, tab]))
-    const saved = ids.filter(id => byId.get(id)?.saved)
-    tabs.value = [...previous.filter(tab => !tab.saved), ...saved.map(id => byId.get(id)!)]
-    if (!saved.length) return
-    const ok = await presetsApi.reorder(saved)
-    if (!ok) {
-      tabs.value = previous
-      showErrorMessage(presetsApi.lastErrorMessage.value ?? '排序失敗，請稍後再試')
-    }
-  }
 
   // ---- 顯示欄位 ----
   function builtInColumnSet(): ColumnSet {
@@ -508,18 +517,6 @@ export function useUniverseScreener(source: UniverseSource) {
     if (created) selectColumnSet(created.id)
   }
 
-  async function renameColumnSet(id: string, name: string) {
-    const set = columnSets.value.find(item => item.id === id)
-    if (!set?.saved) return
-    const previous = set.name
-    set.name = name
-    const updated = await columnsApi.update(id, { name })
-    if (updated) set.name = updated.name
-    else {
-      set.name = previous
-      showErrorMessage(columnsApi.lastErrorMessage.value ?? '改名失敗，請稍後再試')
-    }
-  }
 
   async function removeColumnSet(id: string) {
     const ok = await columnsApi.remove(id)
@@ -531,18 +528,6 @@ export function useUniverseScreener(source: UniverseSource) {
     if (activeColumnSetId.value === id) selectColumnSet(BUILT_IN_ID)
   }
 
-  async function reorderColumnSets(ids: string[]) {
-    const previous = columnSets.value
-    const byId = new Map(previous.map(set => [set.id, set]))
-    const saved = ids.filter(id => byId.get(id)?.saved)
-    columnSets.value = [...previous.filter(set => !set.saved), ...saved.map(id => byId.get(id)!)]
-    if (!saved.length) return
-    const ok = await columnsApi.reorder(saved)
-    if (!ok) {
-      columnSets.value = previous
-      showErrorMessage(columnsApi.lastErrorMessage.value ?? '排序失敗，請稍後再試')
-    }
-  }
 
   // ---- 條件與欄位的編輯（三組共用同一套流程）----
   const editor = useScreenerConditionEditor<UniverseTab>({
@@ -676,32 +661,19 @@ export function useUniverseScreener(source: UniverseSource) {
     activeTabId,
     selectTab,
     openNewTabDialog,
-    renamePreset,
+    renamePreset: (id: string, name: string) => renameSaved(tabs, presetsApi, id, name),
     removePreset,
-    reorderTabs,
+    reorderTabs: (ids: string[]) => reorderSaved(tabs, presetsApi, ids),
     saveActiveTab,
     columnSetItems,
     activeColumnSetId,
     selectColumnSet,
     openNewColumnPresetDialog,
-    renameColumnSet,
+    renameColumnSet: (id: string, name: string) => renameSaved(columnSets, columnsApi, id, name),
     removeColumnSet,
-    reorderColumnSets,
+    reorderColumnSets: (ids: string[]) => reorderSaved(columnSets, columnsApi, ids),
     saveColumnSet,
-    pickerVisible: editor.pickerVisible,
-    pickerMode: editor.pickerMode,
-    pickerCurrentFieldId: editor.pickerCurrentFieldId,
-    rangeEditorVisible: editor.rangeEditorVisible,
-    rangeEditorSlot: editor.rangeEditorSlot,
-    addConditionAndOpenPicker: editor.addConditionAndOpenPicker,
-    openFieldPicker: editor.openFieldPicker,
-    openRangeEditor: editor.openRangeEditor,
-    openColumnPicker: editor.openColumnPicker,
-    removeSlot: editor.removeSlot,
-    handleSelect: editor.handleSelect,
-    changeRangeEditorPeriod: editor.changeRangeEditorPeriod,
-    backToPicker: editor.backToPicker,
-    closePanel: editor.closePanel,
+    ...editor,
     loadMoreResults,
     changeSort,
     handleReorderColumns,

@@ -25,17 +25,12 @@ export function guestSelectableTemplates(templates: ScreenerTemplate[]): Screene
 }
 
 export function useGuestScreener() {
-  const { list: listTemplatesApi } = useScreenerTemplates()
   const { listTemplates: listColumnTemplatesApi } = useScreenerColumnPresets()
 
-  const onboarded = useState('guest-screener-onboarded', () => false)
   const selectedTemplateId = useState<string | null>('guest-screener-template-id', () => null)
 
-  const templates = useState<ScreenerTemplate[]>('guest-screener-templates', () => [])
-  const templatesLoading = ref(false)
-  // 進行中的那一次：再被呼叫時等同一個（2026-10-16 普通股頁在 setup 就先抓，?template 的解析稍後才來問；原本是布林旗標，
-  // 進行中被呼叫會直接回傳，templateBySlug 拿到空清單、誤退回選範本）。失敗就清掉，重試才會再抓
-  let templatesPromise: Promise<void> | null = null
+  // 範本清單與它的載入器跟登入後的「新增篩選」彈窗共用（useScreenerTemplateList）
+  const { templates, templatesLoading, loadTemplatesIfNeeded } = useScreenerTemplateList()
 
   // Not user-facing — resolved purely so confirmOnboarding has 總覽's own fieldKeys ready by the
   // time the visitor actually picks a strategy and hits 確定.
@@ -47,28 +42,6 @@ export function useGuestScreener() {
       () => []
     )
     return overviewFieldKeysPromise
-  }
-
-  // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
-  const templatesFailure = shallowRef<unknown>(null)
-  watchLoadFailure('guest-screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded(), { scope: 'section' })
-
-  function loadTemplatesIfNeeded(): Promise<void> {
-    // 伺服器端已經抓好（頁面資料帶過來）就不再抓：重抓那段時間 templatesLoading 是 true，格子會換回「載入中…」再換回來
-    if (templates.value.length) return Promise.resolve()
-    templatesPromise ??= (async () => {
-      templatesLoading.value = true
-      try {
-        templates.value = await listTemplatesApi()
-        templatesFailure.value = null
-      } catch (error) {
-        templatesPromise = null
-        templatesFailure.value = error
-      } finally {
-        templatesLoading.value = false
-      }
-    })()
-    return templatesPromise
   }
 
   function loadTemplates(): Promise<void> {
@@ -90,9 +63,7 @@ export function useGuestScreener() {
   async function resolveSelection(): Promise<GuestSelection | null> {
     const template = templates.value.find(item => item.id === selectedTemplateId.value)
     if (!template) return null
-    const selection = await selectionOf(template)
-    onboarded.value = true
-    return selection
+    return selectionOf(template)
   }
 
   // 條件頁的 ?template：登入的人也用（打開一組未儲存的），所以不改訪客的狀態
@@ -117,7 +88,6 @@ export function useGuestScreener() {
   // shared/utils/hub-slugs.ts）. Null when the slug names no runnable FREE template — the caller
   // then falls back to showing the picker as on any other visit.
   return {
-    onboarded,
     selectedTemplateId,
     templates,
     templatesLoading,

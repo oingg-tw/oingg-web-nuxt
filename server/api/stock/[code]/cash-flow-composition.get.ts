@@ -4,8 +4,6 @@ import type { CashFlowCompositionPeriod, StockCashFlowCompositionResponse } from
 // cachedFinancialStatement，跟現金流量表頁共用同一份快取；上游回 found:false 的季別略過。年度由 annualCashFlow 把同一年四季加總。
 const QUARTERS = 32
 
-const previousQuarter = (year: number, quarter: number): [number, number] => (quarter === 1 ? [year - 1, 4] : [year, quarter - 1])
-
 const toPeriod = (statement: FinancialStatementResponse | null) => {
   if (!statement?.found || statement.fiscalYear === null || statement.fiscalQuarter === null) return null
   return { fiscalYear: statement.fiscalYear, fiscalQuarter: statement.fiscalQuarter, cashFlow: cashFlowCompositionOf(statement.statement) }
@@ -19,13 +17,7 @@ export default defineEventHandler(async (event): Promise<StockCashFlowCompositio
   const latest = toPeriod(latestStatement)
   if (!latest) return { symbol: code, periods: [] }
 
-  const earlier: [number, number][] = []
-  let cursor: [number, number] = [latest.fiscalYear, latest.fiscalQuarter]
-  for (let i = 1; i < QUARTERS; i += 1) {
-    cursor = previousQuarter(...cursor)
-    earlier.push(cursor)
-  }
-  const statements = await Promise.all(earlier.map(([year, quarter]) => settle(cachedFinancialStatement(code, 'cashFlowStatement', year, quarter))))
+  const statements = await cachedEarlierStatements(code, 'cashFlowStatement', latest.fiscalYear, latest.fiscalQuarter, QUARTERS - 1)
   const quarters = [latest, ...statements.map(toPeriod)]
     .filter(period => period !== null)
     .sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)

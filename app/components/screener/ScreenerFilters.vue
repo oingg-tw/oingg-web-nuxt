@@ -17,10 +17,10 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  addCondition: [triggerEl: HTMLElement]
-  changeSlotField: [slotId: number, triggerEl: HTMLElement]
-  // 膠囊的數值按鈕被點了——編輯器由 useScreenerConditionEditor 擁有（ScreenerRangeEditor 渲染），這裡只回報哪個 slot、錨在哪。
-  openValueEditor: [slotId: number, triggerEl: HTMLElement]
+  addCondition: []
+  changeSlotField: [slotId: number]
+  // 膠囊的數值按鈕被點了——編輯器由 useScreenerConditionEditor 擁有（ScreenerRangeEditor 渲染），這裡只回報哪個 slot。
+  openValueEditor: [slotId: number]
   removeSlot: [slotId: number]
 }>()
 </script>
@@ -39,11 +39,11 @@ const emit = defineEmits<{
         :exclude="slot.exclude"
         :values="slot.values"
         :categories="categories"
-        @change-field="triggerEl => emit('changeSlotField', slot.id, triggerEl)"
-        @open-value="triggerEl => emit('openValueEditor', slot.id, triggerEl)"
+        @change-field="emit('changeSlotField', slot.id)"
+        @open-value="emit('openValueEditor', slot.id)"
         @remove="emit('removeSlot', slot.id)"
       />
-      <button type="button" class="screener-filters__add-slot" @click="emit('addCondition', $event.currentTarget as HTMLElement)">
+      <button type="button" class="screener-filters__add-slot" @click="emit('addCondition')">
         <el-icon><Plus /></el-icon>
         <span>新增條件</span>
       </button>

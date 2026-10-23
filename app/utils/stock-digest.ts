@@ -279,18 +279,6 @@ function buildLead(input: StockDigestInput, facts: StockDigestFact[], percentile
   return sentences.length ? `${sentences.join('；')}。` : ''
 }
 
-function collectSources(input: StockDigestInput, facts: StockDigestFact[], usesDailyValuation: boolean): string[] {
-  const sources: string[] = []
-  const add = (metric: Metric | undefined) => {
-    for (const source of metric?.sources ?? []) {
-      if (!sources.includes(source)) sources.push(source)
-    }
-  }
-  for (const fact of facts) add(findMetricInSchema(input.categories, fact.code)?.metric)
-  if (usesDailyValuation) add(findMetricInSchema(input.categories, DAILY_VALUATION_SOURCE_METRIC)?.metric)
-  return sources
-}
-
 export function buildStockPageDigest(input: StockDigestInput): StockPageDigest | null {
   const facts = buildFacts(input)
   const percentiles = [
@@ -320,7 +308,7 @@ export function buildStockPageDigest(input: StockDigestInput): StockPageDigest |
     latestPeriod,
     latestKnowledgeDate,
     valuationTradeDate: usesDailyValuation ? (input.summary?.valuation?.tradeDate ?? null) : null,
-    sources: collectSources(input, facts, usesDailyValuation)
+    sources: collectMetricSources(input.categories, [...facts.map(fact => fact.code), ...(usesDailyValuation ? [DAILY_VALUATION_SOURCE_METRIC] : [])])
   }
 }
 

@@ -1,7 +1,6 @@
 import type { Ref } from 'vue'
 import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
 import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
-import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener-tab-model'
 // 篩選器的「頁籤增刪改」——建立（空白／範本／訪客／預設）、改名、排序、刪除。
 // 2026-10-02 從 useScreenerTabs.ts 搬出來（第三刀，前兩刀是條件編輯與欄位組合）。
@@ -54,7 +53,7 @@ export function useScreenerTabCrud(ctx: {
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
   const { create, update, remove, reorder: reorderTabsApi, lastErrorMessage, lastErrorCode } = useScreenerPresets()
-  const { list: listTemplates, apply: applyTemplate, lastErrorMessage: templateLastErrorMessage, lastErrorCode: templateLastErrorCode } = useScreenerTemplates()
+  const { apply: applyTemplate, lastErrorMessage: templateLastErrorMessage, lastErrorCode: templateLastErrorCode } = useScreenerTemplates()
 
   // Shared tail of both addTab and addTemplateTab below: turns an already-created (or
   // already-applied) ScreenerPreset into an on-screen tab. Reassigns tabs.value rather than
@@ -242,30 +241,10 @@ export function useScreenerTabCrud(ctx: {
   }
 
   // Officially-maintained strategies (GET /screener/templates) a user can copy into their
-  // own preset in one click — see useScreenerTemplates.ts. Fetched lazily, once, the first
-  // time the new-tab dialog is opened (the catalog doesn't change within a session), rather
-  // than on every page load.
-  const templates = ref<ScreenerTemplate[]>([])
-  const templatesLoading = ref(false)
-  let hasLoadedTemplates = false
-  // 失敗時重設旗標並報給全站讀取失敗彈窗（2026-10-11）；原本先設已載入，失敗之後整個 session 都是空清單
-  const templatesFailure = shallowRef<unknown>(null)
-  watchLoadFailure('screener-templates', () => templatesFailure.value, () => loadTemplatesIfNeeded(), { scope: 'section' })
-
-  async function loadTemplatesIfNeeded() {
-    if (hasLoadedTemplates) return
-    hasLoadedTemplates = true
-    templatesLoading.value = true
-    try {
-      templates.value = await listTemplates()
-      templatesFailure.value = null
-    } catch (error) {
-      hasLoadedTemplates = false
-      templatesFailure.value = error
-    } finally {
-      templatesLoading.value = false
-    }
-  }
+  // own preset in one click. Fetched lazily, the first time the new-tab dialog is opened (the
+  // catalog doesn't change within a session); the list is shared with the guest picker
+  // (useScreenerTemplateList), so a page that already has it doesn't fetch again.
+  const { templates, templatesLoading, loadTemplatesIfNeeded } = useScreenerTemplateList()
 
   // "+" now opens a dialog (see ScreenerNewPresetDialog) offering a choice between
   // this and addTemplateTab below, instead of always going straight to a blank tab.

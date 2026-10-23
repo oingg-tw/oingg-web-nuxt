@@ -25,42 +25,31 @@ export function useHoldingsReports() {
     periodCache.value = {}
   }
 
+  // 期間型的報表（報酬、風險）。超過約 8 年（個股日線深度）上游回 400，訊息寫出最早可選的日期
+  function periodReport<T>(name: 'performance' | 'risk', label: string, from: string, to: string): Promise<{ ok: true; result: T } | { ok: false; message: string; error?: unknown }> {
+    return cachedPeriod(`${name}|${from}|${to}`, async () => {
+      try {
+        return { ok: true as const, result: await request<T>(`/holdings/${name}`, { query: { from, to, ...scopeQuery.value } }) }
+      } catch (error) {
+        devWarn('holdings', `GET /holdings/${name} unavailable`, error)
+        const earliest = earliestPriceDateOf(error)
+        return earliest ? { ok: false as const, message: `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` } : { ok: false as const, message: `${label}暫時無法載入`, error }
+      }
+    }, outcome => outcome.ok)
+  }
+
   // ---- 期間報酬率（GET /holdings/performance，業務中台 0a8dcd9） ----
   //
   // 時間加權報酬、不含息。每日報酬是「流入算開盤前、流出算收盤後」：分母包含當天投入的錢，所以大筆加碼
   // 的隔天不會算出 −2041% 這種爆掉的單日報酬（業務中台 對原規格的更正）。series 的日期就是加權指數的交易日，
-  // 跟 /market/taiex-daily-price 逐日對得上。超過約 8 年（個股日線深度）回 400，訊息寫出最早可選的日期。
-  async function fetchPerformance(from: string, to: string): Promise<PerformanceOutcome> {
-    return cachedPeriod(`performance|${from}|${to}`, () => requestPerformance(from, to), outcome => outcome.ok)
-  }
-
-  async function requestPerformance(from: string, to: string): Promise<PerformanceOutcome> {
-    try {
-      return { ok: true, result: await request<PerformanceResult>('/holdings/performance', { query: { from, to, ...scopeQuery.value } }) }
-    } catch (error) {
-      devWarn('holdings', 'GET /holdings/performance unavailable', error)
-      const earliest = earliestPriceDateOf(error)
-      return earliest ? { ok: false, message: `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` } : { ok: false, message: '期間報酬率暫時無法載入', error }
-    }
-  }
+  // 跟 /market/taiex-daily-price 逐日對得上。
+  const fetchPerformance = (from: string, to: string): Promise<PerformanceOutcome> => periodReport<PerformanceResult>('performance', '期間報酬率', from, to)
 
   // ---- 風險指標（GET /holdings/risk，業務中台 23b7b09） ----
   //
   // 用「現在每一檔的市值比例」套用過去的股價回推（使用者在 業務中台 那邊選的做法）。刻意沒有報酬與夏普比率：
   // 持股是事後選的，回推的報酬會偏高。數值都是 6 位小數字串；資料不足時是 null。
-  async function fetchRisk(from: string, to: string): Promise<RiskOutcome> {
-    return cachedPeriod(`risk|${from}|${to}`, () => requestRisk(from, to), outcome => outcome.ok)
-  }
-
-  async function requestRisk(from: string, to: string): Promise<RiskOutcome> {
-    try {
-      return { ok: true, result: await request<RiskReport>('/holdings/risk', { query: { from, to, ...scopeQuery.value } }) }
-    } catch (error) {
-      devWarn('holdings', 'GET /holdings/risk unavailable', error)
-      const earliest = earliestPriceDateOf(error)
-      return earliest ? { ok: false, message: `個股的歷史價格最早到 ${earliest}，請把開始日期設在那天之後` } : { ok: false, message: '風險指標暫時無法載入', error }
-    }
-  }
+  const fetchRisk = (from: string, to: string): Promise<RiskOutcome> => periodReport<RiskReport>('risk', '風險指標', from, to)
 
   // ---- 已實現損益（GET /holdings/realized，業務中台 e516d1e） ----
   //
@@ -79,32 +68,26 @@ export function useHoldingsReports() {
     }
   }
 
-  // ---- 配息日程（GET /holdings/dividends，業務中台 97bd1e2） ----
-  // 用上游的預設期間（往前 12 個月、往後 3 個月）。帳本寫入後跟其他報表一起清快取：股數是從交易紀錄回推的。null ＝ 讀不到。
-  async function fetchDividends(): Promise<HoldingDividendsResult | null> {
-    return cachedPeriod('dividends', async () => {
+  // 不分期間的報表（配息日程、持股特色）。帳本寫入後跟其他報表一起清快取。null ＝ 讀不到
+  function scopedReport<T extends object>(name: 'dividends' | 'traits'): Promise<T | null> {
+    return cachedPeriod(name, async () => {
       try {
-        return await request<HoldingDividendsResult>('/holdings/dividends', { query: scopeQuery.value })
+        return await request<T>(`/holdings/${name}`, { query: scopeQuery.value })
       } catch (error) {
-        devWarn('holdings', 'GET /holdings/dividends unavailable', error)
+        devWarn('holdings', `GET /holdings/${name} unavailable`, error)
         return null
       }
     }, result => result !== null)
   }
 
+  // ---- 配息日程（GET /holdings/dividends，業務中台 97bd1e2） ----
+  // 用上游的預設期間（往前 12 個月、往後 3 個月）。股數是從交易紀錄回推的。
+  const fetchDividends = () => scopedReport<HoldingDividendsResult>('dividends')
+
   // ---- 持股特色（GET /holdings/traits，業務中台 bd8a4e9，2026-10-19） ----
   // 組合依市值占比加權（本益比、股價淨值比調和平均），Beta 是近一年回推、跟 /holdings/risk 同一支；market 是全市場同一套算法，
-  // analysis-ts 上線前是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。帳本寫入後跟其他報表一起清快取。null ＝ 讀不到。
-  async function fetchTraits(): Promise<HoldingsTraitsResult | null> {
-    return cachedPeriod('traits', async () => {
-      try {
-        return await request<HoldingsTraitsResult>('/holdings/traits', { query: scopeQuery.value })
-      } catch (error) {
-        devWarn('holdings', 'GET /holdings/traits unavailable', error)
-        return null
-      }
-    }, result => result !== null)
-  }
+  // analysis-ts 上線前是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。
+  const fetchTraits = () => scopedReport<HoldingsTraitsResult>('traits')
 
   return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache }
 }

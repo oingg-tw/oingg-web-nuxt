@@ -1,10 +1,7 @@
 // Dynamic sitemap source for the per-stock pages (2026-09-19) — @nuxtjs/sitemap can only
 // auto-discover static routes from app/pages/, so /stock/{code}/… has to be enumerated here.
-// Runs in Nitro (server-side, same as system-health.get.ts), paging through 業務中台's GET /stocks
-// exactly the way useCompanyIndex.ts's fetchCommonStocks() does in the browser (limit 1000, no
-// upper bound on offset; ~2,650 common-stock symbols as of this date). useCompanyIndex itself
-// can't be reused: it's a Nuxt app composable (useRuntimeConfig()/useAsyncData), not importable
-// into nuxt.config.ts or a Nitro handler.
+// Runs in Nitro and reads the cached market directory（getMarketDirectory, the same GET /stocks
+// paging /api/hub/directory and the industry pages use）.
 //
 // A plain defineEventHandler returning `{ loc }` objects: the module's own
 // defineSitemapEventHandler is literally an alias of defineEventHandler and asSitemapUrl an
@@ -22,15 +19,13 @@
 // shared/utils/f-score-pilot.ts. The module is named after /f-score, which was deleted
 // 2026-09-28 — the gate itself outlived it and still governs every badge and metric page.
 //
-// Four-digit codes only: GET /stocks also carries 31 six-digit codes（e.g. 000601 牛牛牛亞,
-// 000646 大昌證券 — public-but-unlisted companies）that have no quote at all, so their /stock/
-// page is the「找不到這檔股票」soft-404 with `noindex` (checked on the production build
-// 2026-09-19). Listing a noindex page in a sitemap is a contradiction Search Console reports.
-// Same for the four-digit codes 業務中台 files under a non-industry sector（sectorCode null —
-// 07/91/98/XX）: scripts/check-click-depth.mjs sampled 25 of them on 2026-09-19 and every one was
-// that soft-404, so only symbols with an exchange sector are listed（the /stock directory shows
-// the same population）.
-const LISTED_SYMBOL = /^\d{4}$/
+// Symbols = getMarketDirectory()'s sectors: four-digit codes with an exchange sector. GET /stocks
+// also carries 31 six-digit codes（e.g. 000601 牛牛牛亞, 000646 大昌證券 — public-but-unlisted
+// companies）that have no quote at all, so their /stock/ page is the「找不到這檔股票」soft-404 with
+// `noindex` (checked on the production build 2026-09-19). Listing a noindex page in a sitemap is a
+// contradiction Search Console reports. Same for the four-digit codes 業務中台 files under a
+// non-industry sector（sectorCode null — 07/91/98/XX）: scripts/check-click-depth.mjs sampled 25 of
+// them on 2026-09-19 and every one was that soft-404.
 // /margins（財報三率）and /solvency（安全韌性的組成）joined 2026-09-21 unconditionally rather than
 // behind the pilot gate below: each is ONE new suffix for every symbol (~2,600 URLs), the same
 // footprint the three statement pages each added on 2026-09-20, not a per-symbol × per-metric
@@ -38,12 +33,6 @@ const LISTED_SYMBOL = /^\d{4}$/
 // 流動／非流動 split on the other）and self-noindex, the same soft-404-ish condition several of
 // these suffixes already have per symbol.
 const INDEXABLE_SUFFIXES = ['', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
-const PAGE_LIMIT = 1000
-
-interface StocksCollectionResponse {
-  count: number
-  entries: { symbol: string; sectorCode?: string | null; isEmerging?: boolean | null }[]
-}
 
 // The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
 // catalog `description` is null (StockMetricDetailPage.vue's own `noindex` computed), and listing
@@ -74,30 +63,19 @@ async function indexableMetricPages(): Promise<typeof METRIC_PAGES> {
 }
 
 export default defineEventHandler(async () => {
-  const symbols: string[] = []
-  let offset = 0
-  let total = Infinity
-  while (offset < total) {
-    // 走 businessFetch（2026-10-14）：部署後業務中台有 IAM 鎖，身分只在那一個入口加
-    const response = await businessFetch<StocksCollectionResponse>('/stocks', { query: { limit: PAGE_LIMIT, offset }, timeout: 15000 })
-    total = response.count
-    if (!response.entries.length) break
-    // 興櫃排除（2026-09-26）。同一天把興櫃從 /industry 的公司表拿掉之後，check-click-depth 立刻
-    // FAIL：359 個 sitemap 裡的個股頁在三次點擊內到不了——/industry 是它們唯一的爬取路徑。sitemap 說
-    // 「請收錄這些」而站上沒有任何連結指過去，是自相矛盾，而且那正是 Search Console 會回報的那種矛盾。
-    //
-    // 兩條路只能選一條：補一個爬得到的入口，或一起下架。使用者選後者——不給讀者看、也不請 Google 收錄，
-    // 兩邊一致。路由沒有動，有連結還是進得去，只是不主動宣傳，跟指標歷史／ETF 專區走的是同一條
-    // 「可達但不宣傳」拆法。實測 directory 裡 363 家興櫃，對得上那 359。
-    //
-    // 附帶的理由：興櫃公司的財報本來就稀（8069 元太的營運周轉只有 3/10 期），搜尋者點進來也看不到多少。
-    symbols.push(...response.entries.filter(entry => !entry.isEmerging && entry.sectorCode && SECTORS[entry.sectorCode]).map(entry => entry.symbol))
-    offset += response.entries.length
-  }
+  // 興櫃排除（2026-09-26）。同一天把興櫃從 /industry 的公司表拿掉之後，check-click-depth 立刻
+  // FAIL：359 個 sitemap 裡的個股頁在三次點擊內到不了——/industry 是它們唯一的爬取路徑。sitemap 說
+  // 「請收錄這些」而站上沒有任何連結指過去，是自相矛盾，而且那正是 Search Console 會回報的那種矛盾。
+  //
+  // 兩條路只能選一條：補一個爬得到的入口，或一起下架。使用者選後者——不給讀者看、也不請 Google 收錄，
+  // 兩邊一致。路由沒有動，有連結還是進得去，只是不主動宣傳，跟指標歷史／ETF 專區走的是同一條
+  // 「可達但不宣傳」拆法。實測 directory 裡 363 家興櫃，對得上那 359。
+  //
+  // 附帶的理由：興櫃公司的財報本來就稀（8069 元太的營運周轉只有 3/10 期），搜尋者點進來也看不到多少。
+  const symbols = (await getMarketDirectory()).sectors.flatMap(sector => sector.companies).filter(company => !company.isEmerging).map(company => company.symbol)
   const metricPages = await indexableMetricPages()
   const urls: { loc: string }[] = []
   for (const symbol of symbols) {
-    if (!LISTED_SYMBOL.test(symbol)) continue
     for (const suffix of INDEXABLE_SUFFIXES) urls.push({ loc: `/stock/${symbol}${suffix}` })
     // 配息從哪來 2026-10-12 搬到新手專區
     urls.push({ loc: `/learn/dividend-source/${symbol}` })

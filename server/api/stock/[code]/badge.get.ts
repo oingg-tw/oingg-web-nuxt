@@ -1,5 +1,4 @@
 import type { StockBadgePageResponse } from '#shared/types/stock-badge-page'
-import type { StockBadgeEntry } from '#shared/types/stock-badges'
 
 // GET /api/stock/:code/badge?slug=graham-number — everything one badge page needs (2026-09-20,
 // the badge-page family). `slug` is checked against the single BADGE_PAGES registry
@@ -39,16 +38,7 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
 
   // 徽章整包讀不到＝讀取失敗，回錯誤讓頁面交給全站彈窗（2026-10-11）；原本 entry 留 null，頁面當成「不在適用範圍」
   if (!badges) throw createError({ statusCode: 502, statusMessage: 'badges unavailable' })
-  let entry: StockBadgeEntry | null = null
-  if (badges) {
-    for (const category of badges.categories) {
-      const found = category.badges.find(badge => badge.metricCode === badgePage.metricCode)
-      if (found) {
-        entry = found
-        break
-      }
-    }
-  }
+  const entry = badges.categories.flatMap(category => category.badges).find(badge => badge.metricCode === badgePage.metricCode) ?? null
 
   return { symbol: code, slug: badgePage.slug, entry, provenance, series, quarterly }
 })

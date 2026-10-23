@@ -27,19 +27,17 @@ export const cachedEtfMonthlyHistory = defineCachedFunction(
 export const cachedEtfPremiumMonths = defineCachedFunction(
   async (symbol: string): Promise<EtfPremiumMonth[]> => {
     const { entries } = await businessFetch<{ entries: { tradeDate: string; premiumDiscountPct: number | null }[] }>(`/etfs/${symbol}/daily-nav`)
-    const months = new Map<string, number[]>()
-    for (const day of entries ?? []) {
-      if (day.premiumDiscountPct === null) continue
-      const month = day.tradeDate.slice(0, 7)
-      months.set(month, [...(months.get(month) ?? []), day.premiumDiscountPct])
-    }
-    return [...months].map(([month, values]) => ({
-      month,
-      tradingDays: values.length,
-      average: Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) / 100,
-      highest: Math.max(...values),
-      lowest: Math.min(...values)
-    }))
+    const traded = (entries ?? []).flatMap(day => (day.premiumDiscountPct === null ? [] : [{ month: day.tradeDate.slice(0, 7), pct: day.premiumDiscountPct }]))
+    return [...Map.groupBy(traded, day => day.month)].map(([month, days]) => {
+      const values = days.map(day => day.pct)
+      return {
+        month,
+        tradingDays: values.length,
+        average: Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) / 100,
+        highest: Math.max(...values),
+        lowest: Math.min(...values)
+      }
+    })
   },
   { name: 'etf-premium-months', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
 )

@@ -42,17 +42,17 @@ defineProps<{
     <template v-if="pending">
       <div class="stock-page-shell__head">
         <el-card class="stock-page-shell__card-skeleton" shadow="never" :body-style="{ padding: '12px 20px' }" aria-hidden="true">
-          <span class="app-skeleton stock-page-shell__skeleton-title" />
-          <span class="app-skeleton stock-page-shell__skeleton-price" />
+          <span class="app-skeleton" style="width: min(16em, 70%); height: 1.6em" />
+          <span class="app-skeleton" style="width: 6em; height: 2em" />
         </el-card>
         <h1 class="visually-hidden">{{ code }} {{ topic }}</h1>
         <slot name="nav">
           <StockPageNav :code="code" />
         </slot>
-        <div class="stock-page-shell__crumb-skeleton" aria-hidden="true"><span class="app-skeleton app-skeleton--text" /></div>
+        <div class="stock-page-shell__crumb-skeleton" aria-hidden="true"><span class="app-skeleton app-skeleton--text" style="width: min(20em, 80%)" /></div>
       </div>
       <div class="stock-page-shell__section-skeleton" aria-hidden="true">
-        <span class="app-skeleton stock-page-shell__skeleton-question" />
+        <span class="app-skeleton" style="width: min(22em, 85%); height: 1.5em" />
         <span class="app-skeleton app-skeleton--text" />
         <div class="app-skeleton app-skeleton--chart" />
       </div>
@@ -102,35 +102,16 @@ defineProps<{
   box-sizing: border-box;
 }
 
-.stock-page-shell__skeleton-title {
-  width: min(16em, 70%);
-  height: 1.6em;
-}
-
-.stock-page-shell__skeleton-price {
-  width: 6em;
-  height: 2em;
-}
-
 .stock-page-shell__crumb-skeleton {
   display: flex;
   align-items: center;
   height: 48px;
 }
 
-.stock-page-shell__crumb-skeleton .app-skeleton {
-  width: min(20em, 80%);
-}
-
 .stock-page-shell__section-skeleton {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.stock-page-shell__skeleton-question {
-  width: min(22em, 85%);
-  height: 1.5em;
 }
 
 @media (min-width: 601px) {

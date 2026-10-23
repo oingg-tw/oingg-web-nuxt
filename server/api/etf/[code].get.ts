@@ -14,21 +14,12 @@ const asDividendHistory = (distributions: EtfDistributions | null): DividendHist
 // 每月日均成交。只算有成交的日子（cachedDailyCloses 已去掉收盤 0 的無成交日）；成交量 null 的日子不算
 // ponytail: ETF 幾乎天天有成交，無成交日不計入分母；要給冷門 ETF 看「幾天沒成交」時再把那些日子算進來
 function monthlyLiquidity(daily: { tradeDate: string; close: number; volume?: number | null }[]): EtfLiquidityMonth[] {
-  const months = new Map<string, { days: number; value: number; shares: number }>()
-  for (const day of daily) {
-    if (day.volume === null || day.volume === undefined) continue
-    const month = day.tradeDate.slice(0, 7)
-    const bucket = months.get(month) ?? { days: 0, value: 0, shares: 0 }
-    bucket.days += 1
-    bucket.value += day.close * day.volume
-    bucket.shares += day.volume
-    months.set(month, bucket)
-  }
-  return [...months].map(([month, { days, value, shares }]) => ({
+  const traded = daily.flatMap(day => (day.volume == null ? [] : [{ tradeDate: day.tradeDate, value: day.close * day.volume, shares: day.volume }]))
+  return [...Map.groupBy(traded, day => day.tradeDate.slice(0, 7))].map(([month, days]) => ({
     month,
-    tradingDays: days,
-    averageDailyValue: Math.round(value / days),
-    averageDailyLots: Math.round(shares / days / 1000)
+    tradingDays: days.length,
+    averageDailyValue: Math.round(days.reduce((sum, day) => sum + day.value, 0) / days.length),
+    averageDailyLots: Math.round(days.reduce((sum, day) => sum + day.shares, 0) / days.length / 1000)
   }))
 }
 

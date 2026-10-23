@@ -32,16 +32,8 @@ function priceFrom(): string {
 // Taiwan used to hold, so nothing here assumes how many trading days a month has or which weekday
 // it ends on.
 function toMonthlyPrices(entries: { tradeDate: string; close: number }[]): MonthlyPrice[] {
-  const byMonth = new Map<string, { sum: number; count: number }>()
-  for (const entry of entries) {
-    const key = entry.tradeDate.slice(0, 7)
-    const bucket = byMonth.get(key) ?? { sum: 0, count: 0 }
-    bucket.sum += entry.close
-    bucket.count += 1
-    byMonth.set(key, bucket)
-  }
-  return [...byMonth.entries()]
-    .map(([yearMonth, { sum, count }]) => ({ yearMonth, avgClose: sum / count }))
+  return [...Map.groupBy(entries, entry => entry.tradeDate.slice(0, 7))]
+    .map(([yearMonth, days]) => ({ yearMonth, avgClose: days.reduce((sum, day) => sum + day.close, 0) / days.length }))
     .sort((a, b) => a.yearMonth.localeCompare(b.yearMonth))
 }
 

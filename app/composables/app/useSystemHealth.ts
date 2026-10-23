@@ -19,8 +19,8 @@ export function useSystemHealth() {
   }
 
   // 2026-09-14（「我剛searchbar沒反應，就以為是網站掛掉，實際上是連線問題... 用戶不會知道區別」）：只靠 30 秒輪詢，故障開始後
-  // 最長 30 秒橫幅都不會出現，而各 composable 的請求失敗只會靜默回 null。system-health-monitor.client.ts 在任何請求於網路層失敗
-  // 時呼叫這裡，立刻重查一次；check() 走同一條 /api/system-health，誤報會在同一輪自我修正。
+  // 最長 30 秒橫幅都不會出現，而各 composable 的請求失敗只會靜默回 null。apiFetch（打業務中台的唯一入口）在請求失敗時呼叫這裡，
+  // 立刻重查一次；check() 走同一條 /api/system-health，誤報會在同一輪自我修正。
   function reportFailure() {
     healthy.value = false
     check(true)
@@ -28,16 +28,14 @@ export function useSystemHealth() {
 
   // Real bug found live 2026-09-16 (reported: "app 層級的既有問題" — a `[Vue warn]: onMounted is
   // called when there is no active component instance` firing on every single page load).
-  // Root-caused via a captured stack trace: system-health-monitor.client.ts (a Nuxt PLUGIN, not a
-  // component) calls this composable just to grab `reportFailure` — plugins run outside any Vue
-  // component instance, so Vue has nowhere to attach the onMounted callback below and warns
+  // Root-caused via a captured stack trace: a Nuxt PLUGIN (system-health-monitor, folded into
+  // apiFetch's request hooks 2026-10-23 — still outside any component) called this composable just
+  // to grab `reportFailure`, so Vue had nowhere to attach the onMounted callback below and warned
   // instead of silently no-opping. `reportFailure` itself doesn't depend on onMounted (it just
-  // flips `healthy` and calls `check()` directly), so the plugin's own usage was never actually
-  // broken by this — but the lifecycle-registration attempt itself was pure noise from a call
-  // site that can never legally use it. getCurrentInstance() lets this composable stay callable
-  // from both places: AppSystemHealthBanner.vue's own real component call still registers the
-  // polling interval exactly as before (see this function's own body for why only the FIRST
-  // mount matters), the plugin's call now skips registration entirely instead of warning.
+  // flips `healthy` and calls `check()` directly). getCurrentInstance() lets this composable stay
+  // callable from both places: AppSystemHealthBanner.vue's own real component call still registers
+  // the polling interval exactly as before (see this function's own body for why only the FIRST
+  // mount matters), and a call from outside a component skips registration entirely.
   if (getCurrentInstance()) onMounted(() => {
     // Starts on the FIRST component to mount this composable, not every one — otherwise
     // the login dialog, banner, or any future consumer would each spin up their own

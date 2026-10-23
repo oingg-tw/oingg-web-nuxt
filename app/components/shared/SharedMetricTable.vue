@@ -5,13 +5,11 @@ import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { ColumnDraft } from './SharedColumnSettings.vue'
 import type { ColumnMenuAction } from './SharedColumnMenu.vue'
-// 篩選器結果表，2026-10-06 搬到 shared 讓觀察清單共用（「這個 table 請抽成共用元件」，使用者選「跟篩選器
-// 共用一個表格」）。下面標「共用時加的」那幾個 prop 的預設值都是篩選器原本的行為，篩選器不用改任何呼叫。
+// 篩選器結果表（普通股、特別股、ETF 三組共用）。2026-10-06 搬到 shared 讓觀察清單共用，觀察清單後來改用 SharedSheetGrid，
+// 當時為它加的 prop 與 slot 2026-10-23 拿掉。
 export interface ScreenerResultTableColumn {
   field: string
   label: string
-  // 共用時加的：內容比表頭長的欄位（觀察清單的「漲跌」「下次除權息」）自己指定最小寬度
-  minWidth?: number
   // ---- 2026-10-15 三組篩選（普通股、特別股、ETF）共用這張表 ----
   // 這一欄自己的格式；不給就照型錄的單位（formatScreenerValue）。ETF 的規模、特別股的發行價這類要自己決定
   format?: (raw: string | null | undefined) => string
@@ -45,30 +43,12 @@ const props = withDefaults(defineProps<{
   // can show a % suffix. column.field already matches the schema's own
   // "<metricKey>.<fieldKey>" id format (see locateFieldInSchema).
   categories: MetricCategory[]
-  // True for useGuestScreener.ts's own read-only result view (see screener.vue) — a signed-out
-  // visitor has no owned column-preset to edit, so the "+" add-column control, each column's
-  // remove icon, and drag-reorder are all hidden/disabled rather than wired to handlers that
-  // would silently no-op. Defaults to false (every signed-in tab keeps full editing).
-  readonly?: boolean
-  // ---- 共用時加的（2026-10-06，觀察清單）----
-  // server：點表頭只回報給父層去打後端（篩選器）；client：el-table 自己排已經在手上的列（觀察清單）
+  // server：點表頭只回報給父層去打後端（普通股、ETF）；client：el-table 自己排已經在手上的列（特別股）
   sortMode?: 'server' | 'client'
-  // 無限捲動的哨兵列與「已顯示全部」那一句
-  paginated?: boolean
   // 不傳就跟篩選器的「顯示期間」開關走；傳了就固定
   showPeriod?: boolean
-  // 每格下面要不要印資料日期（篩選器跟著 showPeriod；觀察清單只要表頭的期間、不要每格日期）
+  // 每格下面要不要印資料日期（不傳就跟著 showPeriod）
   cellDates?: boolean
-  actionsLabel?: string
-  // 欄位順序以父層為準（父層主動換順序時表格跟著換）。見下面 orderedColumns 的 watcher 為什麼篩選器不開。
-  followColumnOrder?: boolean
-  // ---- 2026-10-07 篩選器重新設計（mobile first、a11y）----
-  // 窄的時候改成一檔一張卡片（表格在手機上只看得到一個指標欄）。觀察清單有自己的卡片，傳 false。
-  cards?: boolean
-  // 表格上方的「排序」選單與「欄位設定」。欄位設定是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7），各寬度都在。排序選單只在
-  // 卡片模式出現（cards 且容器 <720px）：卡片沒有表頭；表格模式的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個
-  // 選單只是重複（2026-10-08 使用者同意拿掉，原本的註解說箭頭不能聚焦是錯的）。
-  toolbar?: boolean
   // ---- 2026-10-15 三組篩選共用 ----
   // 代號／名稱連去哪裡：普通股 /stock/{代號}、特別股與 ETF 是各自的個別頁
   rowLink?: (symbol: string) => string
@@ -84,15 +64,9 @@ const props = withDefaults(defineProps<{
   loadingMore: false,
   sortField: null,
   sortOrder: null,
-  readonly: false,
   sortMode: 'server',
-  paginated: true,
   showPeriod: undefined,
   cellDates: undefined,
-  actionsLabel: '操作',
-  followColumnOrder: false,
-  cards: true,
-  toolbar: true,
   rowLink: (symbol: string) => securityPath(symbol),
   total: undefined,
   sticky: false,
@@ -173,7 +147,7 @@ function directionClassOf(column: ScreenerResultTableColumn, raw: string | null 
 const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
-  addColumnClick: [triggerEl: HTMLElement]
+  addColumnClick: []
   // 欄位設定彈窗按「儲存」（saveFromSettings）：done(false)＝父層不套用這份欄位（例如這一組要刪掉），只關彈窗
   saveColumns: [columns: ColumnDraft[], done: (apply?: boolean) => void]
   rowClick: [symbol: string]
@@ -214,16 +188,13 @@ watch(
   () => props.columns,
   next => {
     const nextByField = new Map(next.map(column => [column.field, column]))
-    // followColumnOrder（觀察清單）：父層的順序就是答案，父層主動換順序（「重設預設欄位」）時表格要跟著換。
-    // 篩選器不能這樣做：每次搜尋都用伺服器回傳的欄位重設 tab.columns，順序可能跟使用者拖過的不同——2026-10-06
-    // 試過一律跟父層，結果每次搜尋都重掛表格，股價的前端排序被清掉、無限捲動也斷了（check-screener-operations
-    // 兩項失敗）。所以篩選器維持原本的做法：保留自己的拖曳順序，只把新欄位接在最後。
-    const ordered = props.followColumnOrder
-      ? [...next]
-      : [
-          ...orderedColumns.value.filter(column => nextByField.has(column.field)).map(column => nextByField.get(column.field)!),
-          ...next.filter(column => !orderedColumns.value.some(existing => existing.field === column.field))
-        ]
+    // 保留自己的拖曳順序，只把新欄位接在最後。不能一律照父層：每次搜尋都用伺服器回傳的欄位重設 tab.columns，順序可能跟使用者
+    // 拖過的不同——2026-10-06 試過一律跟父層，結果每次搜尋都重掛表格，股價的前端排序被清掉、無限捲動也斷了
+    // （check-screener-operations 兩項失敗）
+    const ordered = [
+      ...orderedColumns.value.filter(column => nextByField.has(column.field)).map(column => nextByField.get(column.field)!),
+      ...next.filter(column => !orderedColumns.value.some(existing => existing.field === column.field))
+    ]
     // 相對順序真的變了才重掛：el-table 的內部欄位表不會跟著 keyed v-for 換順序（見下面 tableKey 的註解）。
     // 拖曳放開時那邊已經自己重掛過，父層回傳的順序跟現在一樣，不會再掛一次。
     const before = orderedColumns.value.map(column => column.field).filter(field => nextByField.has(field))
@@ -322,11 +293,10 @@ function sortableFor(field: string): boolean | 'custom' {
 // 欄寬照「值」估、表頭在欄寬裡折行（2026-10-22，使用者在方案頁選 1B：「希望 screener 表頭寬度 受限於 值寬度去折行 這樣才能在單位寬度內
 // 看到更多數值」——推翻 2026-10-06 的「我不希望看到有欄位的文字 UI 換行」，值本身照舊不折行）。照欄位型別估、不量載入的列：載入更多、
 // 換排序時欄寬才不會跳。數字（百分比、千分位、負號，例如 -123.45%）104px，表頭一行約三個字；類別照最長的選項，河道位置多一條七格軌道；
-//「顯示資料時間」開著時至少放得下日期（10 碼）。內容比這些長的欄位自己帶 minWidth
+//「顯示資料時間」開著時至少放得下日期（10 碼）
 const NUMBER_COLUMN_WIDTH = 104
 const RIVER_TRACK_WIDTH = 60
 function minWidthFor(column: ScreenerResultTableColumn): number {
-  if (column.minWidth) return column.minWidth
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   const labels = (metric?.options ?? []).map(option => option.label)
   // 一格可能列好幾個選項（已經持有的帳戶名稱）：照全部串起來估，最多 20 個字
@@ -353,7 +323,7 @@ const { headerClassFor } = useColumnDrag({
     return Array.from(headerWrapper?.querySelectorAll<HTMLElement>('thead tr th.screener-result-table__draggable-header') ?? [])
   },
   columns: orderedColumns,
-  readonly: () => props.readonly,
+  readonly: () => false,
   headerClass: 'screener-result-table__draggable-header',
   onReorder: updated => {
     orderedColumns.value = updated
@@ -501,7 +471,7 @@ const menuSort = computed(() => {
   return sortable ? (activeSort.value.field === menu.field ? activeSort.value.order : null) : undefined
 })
 const menuMoves = computed(() => {
-  if (!menuColumn.value || props.readonly) return undefined
+  if (!menuColumn.value) return undefined
   const index = orderedColumns.value.indexOf(menuColumn.value)
   return { left: index > 0, right: index < orderedColumns.value.length - 1 }
 })
@@ -598,16 +568,18 @@ watch(() => props.loading, (loading, wasLoading) => {
   <!-- Single root (rather than el-table/el-pagination as two siblings) so the class the
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
-  <div class="screener-result-table-wrap" :class="{ 'screener-result-table-wrap--cards': cards }">
-    <!-- 卡片版面時兩列（2026-10-22 使用者選操作區方案 A）：顯示欄位＋欄位設定一列，排序＋方向一列；表格版面只有第一列 -->
-    <div v-if="toolbar" class="smt-toolbar">
+  <div class="screener-result-table-wrap screener-result-table-wrap--cards">
+    <!-- 卡片版面時兩列（2026-10-22 使用者選操作區方案 A）：顯示欄位＋欄位設定一列，排序＋方向一列；表格版面只有第一列。
+         欄位設定是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7），各寬度都在。排序選單只在卡片版面（容器 <720px）出現：卡片沒有表頭；
+         表格的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個選單只是重複（2026-10-08 使用者同意） -->
+    <div class="smt-toolbar">
       <div class="smt-toolbar__row">
         <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
         <slot name="toolbar" />
         <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
-        <el-button v-if="!readonly" class="smt-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
+        <el-button class="smt-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
       </div>
-      <div v-if="cards" class="smt-toolbar__row smt-toolbar__sort">
+      <div class="smt-toolbar__row smt-toolbar__sort">
         <!-- 標籤疊在選單框裡（不攔點擊），名稱照樣是「排序」 -->
         <label class="smt-sort">
           <span class="smt-sort__label">排序</span>
@@ -624,7 +596,6 @@ watch(() => props.loading, (loading, wasLoading) => {
       </div>
     </div>
     <SharedColumnSettings
-      v-if="toolbar && !readonly"
       v-model:open="columnSettingsOpen"
       :columns="orderedColumns"
       :label-of="displayLabel"
@@ -634,8 +605,8 @@ watch(() => props.loading, (loading, wasLoading) => {
       <template v-if="$slots['column-settings-head']" #head><slot name="column-settings-head" /></template>
     </SharedColumnSettings>
 
-    <!-- 窄的時候是卡片（cards），寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
-         渲染時用寬度選標記）。卡片沿用同一組 #name／#cell／#actions slot。 -->
+    <!-- 窄的時候是卡片，寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
+         渲染時用寬度選標記）。 -->
     <!-- click.capture：表頭點擊在 el-table 自己排序之前攔下來，改成打開欄位選單（onTableClickCapture） -->
     <div v-loading="loading" class="smt-table-view" @click.capture="onTableClickCapture">
     <el-table
@@ -675,10 +646,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           </button>
         </template>
         <template #default="{ row }">
-          <!-- 共用時加的 #name：觀察清單要放 ETF／特別股標籤與備註、連結也依種類不同 -->
-          <slot name="name" :row="row">
-            <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
-          </slot>
+          <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
         </template>
       </el-table-column>
       <!-- Real bug fixed 2026-09-11 (reported live: "點選市值排序無反應") — this column never
@@ -710,8 +678,6 @@ watch(() => props.loading, (loading, wasLoading) => {
           </button>
         </template>
         <template #default="{ row }">
-          <!-- 共用時加的 #cell：觀察清單的「漲跌」「下次除權息」是自己算的欄位，要自己畫 -->
-          <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
           <div class="screener-result-table__cell">
             <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
               <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
@@ -725,25 +691,18 @@ watch(() => props.loading, (loading, wasLoading) => {
               {{ cellPeriodText(row.values[column.field]!) }}
             </span>
           </div>
-          </slot>
         </template>
       </el-table-column>
-      <el-table-column v-if="!readonly" width="48" align="center">
+      <el-table-column width="48" align="center">
         <template #header>
-          <el-button :icon="Plus" circle text size="small" title="新增欄位" aria-label="新增欄位" @click.stop="emit('addColumnClick', $event.currentTarget as HTMLElement)" />
-        </template>
-      </el-table-column>
-      <!-- 共用時加的 #actions：觀察清單每列的備註／移除（或調整順序時的上移／下移） -->
-      <el-table-column v-if="$slots.actions" :label="actionsLabel" min-width="120" fixed="right">
-        <template #default="{ row }">
-          <slot name="actions" :row="row" />
+          <el-button :icon="Plus" circle text size="small" title="新增欄位" aria-label="新增欄位" @click.stop="emit('addColumnClick')" />
         </template>
       </el-table-column>
 
       <!-- Renders INSIDE el-table's body, after the last data row — reads as the table's own
            last row. observeSentinel (script) watches it against the viewport. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
-      <template v-if="paginated && rows.length > 0" #append>
+      <template v-if="rows.length > 0" #append>
         <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more" role="status">
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
@@ -759,40 +718,35 @@ watch(() => props.loading, (loading, wasLoading) => {
       :label="menuLabel"
       :sort="menuSort"
       :moves="menuMoves"
-      :removable="!!menuColumn && !readonly && toolbar"
+      :removable="!!menuColumn"
       @action="onColumnMenu"
     />
     <p class="visually-hidden" role="status">{{ menuStatus }}</p>
     </div>
 
-    <div v-if="cards" v-loading="loading" class="smt-cards-view">
+    <div v-loading="loading" class="smt-cards-view">
       <p v-if="!rows.length" class="smt-cards__empty">目前沒有資料</p>
       <ul v-else class="smt-cards" :aria-label="`共 ${rows.length} 檔已載入`">
         <li v-for="row in cardRows" :key="row.symbol" class="smt-card">
           <div class="smt-card__head">
-            <slot name="name" :row="row">
-              <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
-            </slot>
+            <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
             <span class="smt-card__code">{{ row.symbol }}</span>
           </div>
           <dl v-if="orderedColumns.length" class="smt-card__values">
             <div v-for="column in orderedColumns" :key="column.field" class="smt-card__value">
               <dt>{{ displayLabel(column) }}</dt>
               <dd>
-                <slot name="cell" :row="row" :column="column" :text="formatValue(column, row.values[column.field]?.value)">
-                  <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
-                    <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
-                  </span>
-                  <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
-                  <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ cellPeriodText(row.values[column.field]!) }}</span>
-                </slot>
+                <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
+                  <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
+                </span>
+                <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
+                <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ cellPeriodText(row.values[column.field]!) }}</span>
               </dd>
             </div>
           </dl>
-          <div v-if="$slots.actions" class="smt-card__actions"><slot name="actions" :row="row" /></div>
         </li>
       </ul>
-      <template v-if="paginated && rows.length > 0">
+      <template v-if="rows.length > 0">
         <div v-if="hasMore" ref="cardSentinelRef" class="screener-result-table__load-more">
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
@@ -935,10 +889,6 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin: 0;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-.smt-card__actions {
-  margin-top: 8px;
 }
 
 .smt-cards__empty {

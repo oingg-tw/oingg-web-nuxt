@@ -10,61 +10,29 @@ import type { Ref } from 'vue'
 //   2. 圖表裡每一步只露出一到兩個連結（而且一次只看得到一步）。整張索引在這裡，SSR 一次全給。
 //   3. 上週新增的 16 個損益表 metric 頁目前完全不在側邊欄裡，這一段是它們的第一個入口與爬取路徑。
 // 分組跟著圖上的五刀走，順序也一樣，所以讀者在圖上停在哪一步，就在這裡找得到同一個標題。
-export const DIVIDEND_CHAIN_INDEX: { stage: string; links: { label: string; slug: string; hook: string }[] }[] = [
-  {
-    stage: '① 公司這一年賣了多少',
-    links: [
-      { label: '每股營收', slug: 'revenue-per-share', hook: '這一年每一股對應到多少營業額' },
-      { label: '月營收', slug: 'monthly-revenue', hook: '每個月 10 號公布，是最快知道公司近況的數字，其他都要等一季' }
-    ]
-  },
-  {
-    stage: '② 先切掉做出產品本身的成本',
-    links: [
-      { label: '每股營業成本', slug: 'cost-of-goods-sold', hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
-      { label: '每股毛利', slug: 'gross-profit', hook: '賣掉之後扣掉成本，還剩下多少' },
-      { label: '毛利率', slug: 'gross-margin', hook: '同樣賣一百元留下幾元。想比較兩家公司，看比率不是金額' }
-    ]
-  },
-  {
-    stage: '③ 再切掉賣東西和管理公司的開銷',
-    links: [
-      { label: '每股營業費用', slug: 'operating-expense', hook: '賣東西和管理公司花的錢，跟做出產品本身無關' },
-      { label: '每股推銷費用', slug: 'selling-expense', hook: '廣告、通路、業務團隊的錢' },
-      { label: '每股管理費用', slug: 'administrative-expense', hook: '總部、人事、法務這些後勤的錢' },
-      { label: '每股研發費用', slug: 'rd-expense', hook: '投入新產品的錢。想知道公司為以後準備了多少，看這個' },
-      { label: '研發費用率', slug: 'rd-intensity', hook: '研發佔營業額的比率。要跨公司比較投入程度，用比率' },
-      { label: '每股營業利益', slug: 'operating-income', hook: '本業做完一輪之後真正賺到的' },
-      { label: '營業利益率', slug: 'operating-margin', hook: '本業每一百元營業額，最後留下幾元' }
-    ]
-  },
-  {
-    stage: '④ 再切掉本業以外的收支和要繳的稅',
-    links: [
-      { label: '每股業外損益', slug: 'non-operating-income', hook: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這個' },
-      { label: '每股利息收入', slug: 'interest-income', hook: '帳上現金存著、借出去，收到的利息' },
-      { label: '每股財務成本', slug: 'finance-cost', hook: '借錢要付的利息。想知道負債壓力多大，從這裡看' },
-      { label: '每股其他收入', slug: 'other-income', hook: '零星的其他進帳' },
-      { label: '每股其他利益及損失', slug: 'other-gains-losses', hook: '匯兌、資產評價、處分這些一次性的損益' },
-      { label: '每股權益法投資損益', slug: 'equity-method-income', hook: '轉投資的公司分回來的損益' },
-      { label: '每股稅前淨利', slug: 'pretax-income', hook: '繳稅之前的獲利' },
-      { label: '每股所得稅費用', slug: 'income-tax-expense', hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' },
-      { label: '稅後淨利率', slug: 'net-profit-margin', hook: '營業額最後有幾成變成獲利' },
-      { label: '每股盈餘', slug: 'eps', hook: '每一股賺多少，新聞上最常講的那個數字' }
-    ]
-  },
-  {
-    stage: '⑤ 最後一刀：公司決定發多少給你',
-    links: [
-      { label: '盈餘發放率', slug: 'dividend-payout-ratio', hook: '這一年賺的錢，發了幾成出去' },
-      { label: '現金流量股利保障倍數', slug: 'dividend-coverage-ratio', hook: '賺到的現金夠不夠支撐這次配息' },
-      { label: '股東總回饋率', slug: 'shareholder-yield', hook: '除了現金股利，公司買回自己的股票也算還錢給股東' },
-      { label: '殖利率', slug: 'dividend', hook: '用今天的股價買進，一年可以領回幾 %' },
-      { label: '填權填息', slug: 'dividend-fill', hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
-      { label: '資本支出佔營收比', slug: 'capex-to-revenue', hook: '公司把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
-    ]
-  }
+// 名稱與一句話說明跟個股指標目錄（STOCK_METRIC_INDEX）同一份，用 slug 查（2026-10-23，28 組裡 24 組本來就一字不差）；
+// 只有這四句在這條鏈上要多講一點（月營收跟季報比快、毛利率跟每股毛利並排所以提比率、營業費用跟營業成本分開），寫在這裡
+const HOOK_IN_CHAIN: Record<string, string> = {
+  'monthly-revenue': '每個月 10 號公布，是最快知道公司近況的數字，其他都要等一季',
+  'gross-margin': '同樣賣一百元留下幾元。想比較兩家公司，看比率不是金額',
+  'operating-expense': '賣東西和管理公司花的錢，跟做出產品本身無關',
+  'capex-to-revenue': '公司把多少錢拿去買設備蓋廠房。那些錢就不會變成股利'
+}
+const CHAIN_STAGES = [
+  { stage: '① 公司這一年賣了多少', slugs: ['revenue-per-share', 'monthly-revenue'] },
+  { stage: '② 先切掉做出產品本身的成本', slugs: ['cost-of-goods-sold', 'gross-profit', 'gross-margin'] },
+  { stage: '③ 再切掉賣東西和管理公司的開銷', slugs: ['operating-expense', 'selling-expense', 'administrative-expense', 'rd-expense', 'rd-intensity', 'operating-income', 'operating-margin'] },
+  { stage: '④ 再切掉本業以外的收支和要繳的稅', slugs: ['non-operating-income', 'interest-income', 'finance-cost', 'other-income', 'other-gains-losses', 'equity-method-income', 'pretax-income', 'income-tax-expense', 'net-profit-margin', 'eps'] },
+  { stage: '⑤ 最後一刀：公司決定發多少給你', slugs: ['dividend-payout-ratio', 'dividend-coverage-ratio', 'shareholder-yield', 'dividend', 'dividend-fill', 'capex-to-revenue'] }
 ]
+// 目錄裡拿掉的頁就從鏈上消失，不留死連結
+export const DIVIDEND_CHAIN_INDEX: { stage: string; links: { label: string; slug: string; hook: string }[] }[] = CHAIN_STAGES.map(({ stage, slugs }) => ({
+  stage,
+  links: slugs.flatMap((slug) => {
+    const node = METRIC_INDEX_BY_SLUG.get(slug)
+    return node ? [{ label: node.label, slug, hook: HOOK_IN_CHAIN[slug] ?? node.hook ?? '' }] : []
+  })
+}))
 
 interface ChainStep {
   // 運算子自己一欄，不併進 label（2026-09-25）。先前寫成「減：營業成本」「＝ 毛利」，對人類讀者是好的

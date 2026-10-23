@@ -24,8 +24,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  changeField: [triggerEl: HTMLElement]
-  openValue: [triggerEl: HTMLElement]
+  changeField: []
+  openValue: []
   remove: []
 }>()
 
@@ -81,7 +81,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
       type="button"
       class="condition-pill__field"
       :title="fieldLabel ? `${fieldLabel}：變更篩選項目` : '選擇篩選項目'"
-      @click="emit('changeField', $event.currentTarget as HTMLElement)"
+      @click="emit('changeField')"
     >{{ fieldLabel ?? '請選擇篩選項目' }}</button>
 
     <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
@@ -91,7 +91,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
       class="condition-pill__value"
       :title="valueText"
       :aria-label="`${fieldLabel}：${valueText}`"
-      @click="emit('openValue', $event.currentTarget as HTMLElement)"
+      @click="emit('openValue')"
     ><el-icon class="condition-pill__value-icon" aria-hidden="true"><EditPen /></el-icon>{{ valueText }}</button>
 
     <!-- A real sibling button, not part of either half above — removing a condition doesn't

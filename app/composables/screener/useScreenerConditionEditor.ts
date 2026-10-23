@@ -26,43 +26,32 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   // slot's field or adds a results column, both always on `pickerTargetTab` (distinct from
   // the page-level `activeTab` computed above: this tracks which tab the dialog itself is
   // currently pointed at, not which tab is on screen). In 'condition' mode, `pickerTargetSlotId`
-  // is null while adding a brand-new condition (see addConditionAndOpenPicker below — there's
-  // no slot yet to point at) and a real id while reassigning an already-filled pill's field;
-  // both go through the same dialog, never two different flows.
+  // is null while adding a brand-new condition (there's no slot yet to point at) and a real id
+  // while reassigning an already-filled pill's field; both go through the same dialog, never two
+  // different flows.
   const pickerVisible = ref(false)
   const pickerMode = ref<'condition' | 'column'>('condition')
   // shallowRef：T 是泛型，ref 會把它包成 UnwrapRef<T> 而對不上型別；頁籤本身已經是父層的響應式物件，改它的欄位照樣會更新
   const pickerTargetTab = shallowRef<T | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
-  // The button that opened the picker. It used to anchor a desktop dropdown picker (the old
-  // ScreenerIndicatorPicker, deleted 2026-10-20; the screener has used ScreenerConditionPanel
-  // since 2026-10-07) and is still handed on as rangeEditorTriggerEl below.
-  const pickerTriggerEl = ref<HTMLElement | null>(null)
 
   function nextSlotId(tab: T): number {
     return tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
   }
 
-  function openFieldPicker(tab: T, slotId: number | null, triggerEl: HTMLElement) {
+  // slotId null＝「新增條件」— per explicit feedback, pressing it must NOT add anything to tab.slots
+  // yet (an earlier version appended a blank placeholder immediately, which the user pointed out
+  // reads as "a new filter already exists" even before a field or value is chosen). handleSelect
+  // below only actually creates a slot once a value has been set too (see closeRangeEditor).
+  function openFieldPicker(tab: T, slotId: number | null) {
     pickerTargetTab.value = tab
     pickerTargetSlotId.value = slotId
-    pickerTriggerEl.value = triggerEl
     pickerMode.value = 'condition'
     pickerVisible.value = true
   }
 
-  // "新增條件" — per explicit feedback, pressing this must NOT add anything to tab.slots yet
-  // (an earlier version appended a blank placeholder immediately, which the user pointed out
-  // reads as "a new filter already exists" even before a field or value is chosen). This just
-  // opens the field picker with no target slot (null); handleSelect below only actually
-  // creates a slot once a value has been set too (see closeRangeEditor).
-  function addConditionAndOpenPicker(tab: T, triggerEl: HTMLElement) {
-    openFieldPicker(tab, null, triggerEl)
-  }
-
-  function openColumnPicker(tab: T, triggerEl: HTMLElement) {
+  function openColumnPicker(tab: T) {
     pickerTargetTab.value = tab
-    pickerTriggerEl.value = triggerEl
     pickerMode.value = 'column'
     pickerVisible.value = true
   }
@@ -82,7 +71,6 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   // 下面的 rangeEditorSlot 是兩種情況共同綁定的來源，min／max／exclude 的 v-model 接法一致。
   const rangeEditorVisible = ref(false)
   const rangeEditorTab = shallowRef<T | null>(null)
-  const rangeEditorTriggerEl = ref<HTMLElement | null>(null)
   const rangeEditorSlotId = ref<number | null>(null)
   const rangeEditorDraftSlot = ref<TabFilterSlot | null>(null)
 
@@ -92,29 +80,8 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     return rangeEditorTab.value.slots.find((slot: TabFilterSlot) => slot.id === rangeEditorSlotId.value) ?? null
   })
 
-  // Real bug fixed 2026-09-09 (reported live: "點選選項後無反應 也沒送出API請求" — traced to
-  // TWO separate causes, this is the second; see ScreenerIndicatorPickerBody.vue's own
-  // expandFields/collapseFields comments for the first, a wrong field label). handleSelect
-  // below (both branches that come from the field-picker chain, not openRangeEditor's own
-  // direct-from-a-pill path) sets rangeEditorTriggerEl to pickerTriggerEl — the SAME "新增條件"
-  // button the old picker popover (ScreenerIndicatorPicker, since deleted) was JUST anchored to via virtual-triggering,
-  // which closes (`pickerVisible = false`) in the very same click handler that opens this one.
-  // Two el-popover instances racing to attach/detach virtual-triggering on the identical
-  // trigger element within one synchronous tick left the second one's popper root stuck at
-  // `display: none` despite its content rendering correctly and its fade transition reporting
-  // "entered" (confirmed live via computed style — a real Popper.js/Element-Plus timing issue,
-  // not a Vue reactivity bug) — openRangeEditor's own direct-from-a-pill path never hit this,
-  // since it never shares a trigger element with a just-closed popover.
-  //
-  // A bare `await nextTick()` was NOT enough — confirmed live it still left the popover stuck
-  // at display:none, meaning this is real wall-clock Popper.js/DOM teardown time, not just a
-  // Vue render-flush ordering issue. 100ms was tested live (repeated back-to-back attempts,
-  // both the brand-new-condition path and the reassign-existing-pill's-field path) and
-  // reliably resolved it every time; imperceptible to a user (well under commonly-cited
-  // "feels instant" UX thresholds) but real enough to let the just-closing popover's own
-  // teardown finish first.
-  // 2026-10-07 起選指標與設定範圍在同一個面板（ScreenerConditionPanel）：直接換到第二步，不再先關掉選指標的
-  // popover、等 100ms 再開範圍編輯的 popover。兩個旗標同一拍交換，面板不會閃一下關掉。
+  // 選指標與設定範圍在同一個面板（ScreenerConditionPanel，2026-10-07）：直接換到第二步，兩個旗標同一拍交換，面板不會閃一下關掉。
+  // 以前是兩個 popover，要先關掉選指標的、等 100ms 再開範圍編輯的（Popper.js 拆掉同一個觸發元素的時間差）
   function switchToRangeStep() {
     rangeEditorVisible.value = true
     pickerVisible.value = false
@@ -122,11 +89,10 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
 
   // Opens the value editor for an already-filled pill (its own value button, not the field
   // picker chain) — the counterpart to the draft-slot path handleSelect takes below.
-  function openRangeEditor(tab: T, slotId: number, triggerEl: HTMLElement) {
+  function openRangeEditor(tab: T, slotId: number) {
     rangeEditorTab.value = tab
     rangeEditorSlotId.value = slotId
     rangeEditorDraftSlot.value = null
-    rangeEditorTriggerEl.value = triggerEl
     rangeEditorVisible.value = true
   }
 
@@ -154,7 +120,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     if (draft && rangeEditorTab.value && (draft.min !== null || draft.max !== null || (draft.values?.length ?? 0) > 0)) {
       rangeEditorTab.value.slots.push(draft)
     }
-    // Deliberately NOT clearing rangeEditorTab/SlotId/DraftSlot/TriggerEl here — the popover
+    // Deliberately NOT clearing rangeEditorTab/SlotId/DraftSlot here — the popover
     // (desktop) stays mounted across a close the same way ScreenerConditionPill's own used to
     // (only ever v-if'd on having a field, never on being open), so its close transition can
     // actually play instead of the slot disappearing out from under it mid-fade. The next
@@ -179,20 +145,16 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
         rangeEditorTab.value = tab
         rangeEditorSlotId.value = existingSector.id
         rangeEditorDraftSlot.value = null
-        rangeEditorTriggerEl.value = pickerTriggerEl.value
         switchToRangeStep()
         return
       }
 
       if (pickerTargetSlotId.value === null) {
         // Brand-new condition — field's picked, but this isn't a real slot yet (see
-        // closeRangeEditor for when/whether it becomes one). Anchoring the value editor to
-        // pickerTriggerEl (the same "新增條件" button that opened the field picker) since
-        // there's no pill of its own yet to anchor to.
+        // closeRangeEditor for when/whether it becomes one).
         rangeEditorDraftSlot.value = { id: nextSlotId(tab), fieldId, fieldLabel, min: null, max: null, exclude: false }
         rangeEditorTab.value = tab
         rangeEditorSlotId.value = null
-        rangeEditorTriggerEl.value = pickerTriggerEl.value
         switchToRangeStep()
         return
       }
@@ -210,7 +172,6 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
       rangeEditorTab.value = tab
       rangeEditorSlotId.value = slot.id
       rangeEditorDraftSlot.value = null
-      rangeEditorTriggerEl.value = pickerTriggerEl.value
       switchToRangeStep()
       return
     }
@@ -252,15 +213,12 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     pickerVisible,
     pickerMode,
     pickerCurrentFieldId,
-    pickerTriggerEl,
     openFieldPicker,
     openColumnPicker,
-    addConditionAndOpenPicker,
     handleSelect,
     removeSlot,
     rangeEditorVisible,
     rangeEditorSlot,
-    rangeEditorTriggerEl,
     openRangeEditor,
     closeRangeEditor,
     changeRangeEditorPeriod,

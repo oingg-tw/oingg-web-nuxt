@@ -8,17 +8,7 @@ export const BUSINESS_REQUEST_TIMEOUT_MS = 15_000
 export const AUTH_TOKEN_TIMEOUT_MS = 10_000
 
 export function withTimeout<T>(promise: Promise<T>, ms: number, message = '操作逾時'): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms)
-    promise.then(
-      value => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      error => {
-        clearTimeout(timer)
-        reject(error)
-      }
-    )
-  })
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms) })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
 }

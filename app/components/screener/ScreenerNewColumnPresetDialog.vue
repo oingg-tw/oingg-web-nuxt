@@ -1,35 +1,25 @@
 <script setup lang="ts">
 import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
-const props = defineProps<{
-  modelValue: boolean
+defineProps<{
   templates: ColumnPresetTemplate[]
   templatesLoading: boolean
 }>()
+const visible = defineModel<boolean>({ required: true })
 
 const emit = defineEmits<{
-  'update:modelValue': [visible: boolean]
   custom: []
   template: [key: string]
 }>()
 
-const isDesktop = useIsDesktop()
-
 // Same choose/browse two-step pattern as ScreenerNewPresetDialog (filter presets) —
 // "choose type" then "browse official options" reads as one continuous decision, and a back
 // button beats closing one dialog and reopening another. Reset to the first step every time
-// this reopens, same reasoning as that dialog.
+// this reopens（@open）, same reasoning as that dialog.
 const step = ref<'choose' | 'browse'>('choose')
 
-watch(
-  () => props.modelValue,
-  visible => {
-    if (visible) step.value = 'choose'
-  }
-)
-
 function close() {
-  emit('update:modelValue', false)
+  visible.value = false
 }
 
 function chooseCustom() {
@@ -46,11 +36,11 @@ function chooseTemplate(template: ColumnPresetTemplate) {
 
 <template>
   <el-dialog
-    :model-value="modelValue"
+    v-model="visible"
     :title="step === 'choose' ? '新增欄位組合' : '官方精選欄位組合'"
-    :width="isDesktop ? '560px' : '92%'"
+    width="min(560px, 92%)"
     append-to-body
-    @update:model-value="emit('update:modelValue', $event)"
+    @open="step = 'choose'"
   >
     <div v-if="step === 'choose'" class="new-column-preset-dialog__choices">
       <button type="button" class="new-column-preset-dialog__choice" @click="step = 'browse'">

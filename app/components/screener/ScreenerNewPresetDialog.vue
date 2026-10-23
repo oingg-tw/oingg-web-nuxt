@@ -3,19 +3,16 @@ import { ArrowLeft, CopyDocument, Edit } from '@element-plus/icons-vue'
 import type { ScreenerTemplateOption } from '~/composables/screener/screener-tab-model'
 // 三組篩選共用（2026-10-15）：從範本開始、複製目前這組、空白開始。範本依各組不同（普通股是官方範本，特別股與 ETF 是本地的起點）
 const props = defineProps<{
-  modelValue: boolean
   templates: ScreenerTemplateOption[]
   templatesLoading: boolean
 }>()
+const visible = defineModel<boolean>({ required: true })
 
 const emit = defineEmits<{
-  'update:modelValue': [visible: boolean]
   custom: []
   copy: []
   template: [id: string]
 }>()
-
-const isDesktop = useIsDesktop()
 
 // Rebuilt 2026-09-02 per explicit user request — was a two-step "choose custom vs. 官方精選
 //策略" flow (two big cards → a step labeled "官方精選策略" listing every category's templates
@@ -23,22 +20,12 @@ const isDesktop = useIsDesktop()
 // icon-over-label tile style as AppFeatureMenu.vue's mobile nav grid) now sits where that
 // choice used to be, with 自訂篩選邏輯 as just one more tile alongside each template category —
 // picking a category tile drills into that one category's template list instead of a single
-// long list grouped under every category at once.
+// long list grouped under every category at once. Every open starts back at the grid（@open）.
 const step = ref<'grid' | 'category'>('grid')
 const selectedCategory = ref<string | null>(null)
 
-watch(
-  () => props.modelValue,
-  visible => {
-    if (visible) {
-      step.value = 'grid'
-      selectedCategory.value = null
-    }
-  }
-)
-
 function close() {
-  emit('update:modelValue', false)
+  visible.value = false
 }
 
 function chooseCustom() {
@@ -89,11 +76,11 @@ const activeTemplates = computed(() => {
 
 <template>
   <el-dialog
-    :model-value="modelValue"
+    v-model="visible"
     :title="step === 'grid' ? '新增篩選' : selectedCategory!"
-    :width="isDesktop ? '560px' : '92%'"
+    width="min(560px, 92%)"
     append-to-body
-    @update:model-value="emit('update:modelValue', $event)"
+    @open="backToGrid"
   >
     <div v-if="step === 'grid'" class="new-preset-dialog__grid">
       <button

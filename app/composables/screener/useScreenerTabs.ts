@@ -1,5 +1,5 @@
 import type { FilterCriterion } from '~/composables/screener/useFilterSearch'
-import type { ScreenerPreset } from '~/composables/screener/useScreenerPresets'
+import type { ScreenerPreset, StatelessScreenerRunResult } from '~/composables/screener/useScreenerPresets'
 import type { TabFilterSlot, ScreenerTab } from '~/composables/screener/screener-tab-model'
 import type { PresetSelectItem } from '~/components/screener/ScreenerPresetSelect.vue'
 import type { HubSector } from '#shared/types/hub'
@@ -180,6 +180,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   const tabColumnPresets = useScreenerTabColumnPresets({
     tabs,
     cacheColumnView: tab => cacheCurrentColumnView(tab),
+    applyRunResult: (tab, result, requestedFields) => applyRunResult(tab, result, requestedFields),
     syncColumnPreset: tab => syncColumnPreset(tab),
     runSearch: (tab, page) => handleSearch(tab, page)
   })
@@ -188,7 +189,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     columnFieldsOf,
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
-    handleColumnTabChange,
+    switchColumnPreset,
     newColumnPresetDialogVisible,
     openNewColumnPresetDialog,
     confirmCustomColumnPreset,
@@ -209,6 +210,17 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // correct data — the bootstrap watcher below re-registers each tab's auto-search watcher on
   // that shortcut path, closing the other half of the gap.
   const hasLoadedTabs = useState('screener-tabs-has-loaded', () => false)
+
+  // 一次查詢的結果套到頁籤上：本機與伺服器兩條搜尋路、切換欄位組合（useScreenerTabColumnPresets）共用。append＝無限捲動接在後面
+  function applyRunResult(tab: ScreenerTab, result: StatelessScreenerRunResult, requestedFields: string[], append = false) {
+    tab.results = append ? [...tab.results, ...result.results] : result.results
+    tab.resultColumns = inRequestedOrder(result.columns, requestedFields)
+    tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
+    tab.page = result.page
+    tab.pageSize = result.pageSize
+    tab.totalPages = result.totalPages
+    tab.total = result.count
+  }
 
   // Writes the tab's current on-screen columns/results back into its own cache slot —
   // call this after anything that changes what's displayed for the active column-preset,
@@ -354,13 +366,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
             })
             if (!isPageChangeOnly) tab.columnViewCache = {}
             if (result) {
-              tab.results = append ? [...tab.results, ...result.results] : result.results
-              tab.resultColumns = inRequestedOrder(result.columns, columns)
-              tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
-              tab.page = result.page
-              tab.pageSize = result.pageSize
-              tab.totalPages = result.totalPages
-              tab.total = result.count
+              applyRunResult(tab, result, columns, append)
               cacheCurrentColumnView(tab)
               if (searchFailure.value?.tab.id === tab.id) searchFailure.value = null
             } else if (!append) {
@@ -417,8 +423,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           // every other column-preset's cached view is still perfectly valid.
           if (!isPageChangeOnly) tab.columnViewCache = {}
           if (result) {
-            tab.results = append ? [...tab.results, ...result.results] : result.results
-            tab.resultColumns = inRequestedOrder(result.columns, requestedFields)
+            applyRunResult(tab, result, requestedFields, append)
             // Reconcile with whatever the server actually applied — but only when the tab
             // was already pinned to a concrete column-preset (e.g. one that's since been
             // deleted server-side and fell back to something else). When columnPresetId was
@@ -428,11 +433,6 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
             // a concrete preset on every filter edit, even though nothing about columns
             // changed and resolveDefaultColumnPresetId is what should own that decision.
             if (!hadNullColumnPresetId) tab.columnPresetId = result.columnPresetId
-            tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
-            tab.page = result.page
-            tab.pageSize = result.pageSize
-            tab.totalPages = result.totalPages
-            tab.total = result.count
             cacheCurrentColumnView(tab)
             if (searchFailure.value?.tab.id === tab.id) searchFailure.value = null
           } else if (!append) {
@@ -494,22 +494,6 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     runSearch: handleSearch,
     cacheColumnView: cacheCurrentColumnView
   })
-  const {
-    pickerVisible,
-    pickerMode,
-    pickerCurrentFieldId,
-    openFieldPicker,
-    openColumnPicker,
-    addConditionAndOpenPicker,
-    handleSelect,
-    removeSlot,
-    rangeEditorVisible,
-    rangeEditorSlot,
-    openRangeEditor,
-    changeRangeEditorPeriod,
-    backToPicker,
-    closePanel
-  } = conditionEditor
 
   // 頁籤增刪改搬到 useScreenerTabCrud，2026-10-02（第三刀）。那個檔案的開頭寫了它的風險與驗證
   // 覆蓋範圍——建立路徑都在登入閘門後面，所以只有 typecheck 在保護，改之前要手動走一遍。
@@ -677,7 +661,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     columnSetItems,
     activeColumnSetId,
     selectColumnSet: (id: string) => {
-      if (activeTab.value && currentUser.value) handleColumnTabChange(activeTab.value, id)
+      if (activeTab.value && currentUser.value) switchColumnPreset(activeTab.value, id)
     },
     openNewColumnPresetDialog,
     renameColumnSet: renameColumnPreset,
@@ -687,20 +671,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     reorderColumnSets: reorderColumnPresets,
     // 普通股的欄位組合改了就存（登入的人一定在某一組已存的上面），沒有「未儲存」的欄位組合
     saveColumnSet: () => {},
-    pickerVisible,
-    pickerMode,
-    pickerCurrentFieldId,
-    rangeEditorVisible,
-    rangeEditorSlot,
-    addConditionAndOpenPicker,
-    openFieldPicker,
-    openRangeEditor,
-    openColumnPicker,
-    removeSlot,
-    handleSelect,
-    changeRangeEditorPeriod,
-    backToPicker,
-    closePanel,
+    ...conditionEditor,
     loadMoreResults,
     changeSort,
     handleReorderColumns,

@@ -51,7 +51,7 @@ const emptyReason = computed<'financial' | 'history' | 'none'>(() => {
         <el-radio-button value="Q">單季</el-radio-button>
       </el-radio-group>
     </template>
-    <StockMultiSeriesLineChart v-if="ascending.length" :entries="shown" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="rateText" />
+    <StockMultiSeriesLineChart v-if="ascending.length" :entries="shown" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="fixedRateText" />
     <p v-else-if="emptyReason === 'financial'" class="stock-dupont-chart__line">
       銀行、保險與金控不適用：資產是放款與保單，資產週轉率沒有意義。
     </p>

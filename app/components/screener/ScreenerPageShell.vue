@@ -145,9 +145,9 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           <ScreenerFilters
             :slots="tab.slots"
             :categories="screener.categories"
-            @add-condition="triggerEl => screener.addConditionAndOpenPicker(tab!, triggerEl)"
-            @change-slot-field="(slotId, triggerEl) => screener.openFieldPicker(tab!, slotId, triggerEl)"
-            @open-value-editor="(slotId, triggerEl) => screener.openRangeEditor(tab!, slotId, triggerEl)"
+            @add-condition="screener.openFieldPicker(tab!, null)"
+            @change-slot-field="slotId => screener.openFieldPicker(tab!, slotId)"
+            @open-value-editor="slotId => screener.openRangeEditor(tab!, slotId)"
             @remove-slot="slotId => screener.removeSlot(tab!, slotId)"
           />
         </section>
@@ -187,7 +187,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             sticky
             @reorder="fields => screener.handleReorderColumns(tab!, fields)"
             @remove-column="field => screener.handleRemoveColumn(tab!, field)"
-            @add-column-click="triggerEl => screener.openColumnPicker(tab!, triggerEl)"
+            @add-column-click="screener.openColumnPicker(tab!)"
             @save-columns="saveColumnSettings"
             @row-click="openRow"
             @load-more="screener.loadMoreResults(tab!)"

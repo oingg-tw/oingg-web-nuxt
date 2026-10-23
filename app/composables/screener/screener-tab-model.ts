@@ -109,10 +109,10 @@ export interface ScreenerWorkspace {
   pickerCurrentFieldId: string | null
   rangeEditorVisible: boolean
   rangeEditorSlot: TabFilterSlot | null
-  addConditionAndOpenPicker(tab: WorkspaceTab, triggerEl: HTMLElement): void
-  openFieldPicker(tab: WorkspaceTab, slotId: number | null, triggerEl: HTMLElement): void
-  openRangeEditor(tab: WorkspaceTab, slotId: number, triggerEl: HTMLElement): void
-  openColumnPicker(tab: WorkspaceTab, triggerEl: HTMLElement): void
+  // slotId null＝新增條件
+  openFieldPicker(tab: WorkspaceTab, slotId: number | null): void
+  openRangeEditor(tab: WorkspaceTab, slotId: number): void
+  openColumnPicker(tab: WorkspaceTab): void
   removeSlot(tab: WorkspaceTab, slotId: number): void
   handleSelect(fieldId: string, fieldLabel: string): void
   changeRangeEditorPeriod(fieldId: string): void

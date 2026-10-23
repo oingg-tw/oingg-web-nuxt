@@ -23,16 +23,14 @@ export default defineNuxtConfig({
   // public/_robots.txt 是這個模組的輸入檔（它會讀進去再產生 robots.txt），裡面的 Disallow 列著個人頁；
   // 那些頁同時各自宣告 noindex、也在下面的 sitemap.exclude 裡——三層都在。
   robots: {},
-  // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself) —
-  // dynamic routes need to be listed explicitly since they can't be inferred from the
-  // filesystem. urls() is async so it can pull the real published-post list at build/request
-  // time instead of hand-maintaining a duplicate list here that would silently drift out of
-  // sync with the actual posts.
+  // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself). The
+  // blog posts come from the module's own Content integration — the `sitemap` field in
+  // content.config.ts (published only, /blog/{slug}) — and land in `pages` with the app sources.
   //
   // Split into two sitemaps under one index (2026-09-19): `pages` (the static app routes plus
-  // the blog posts below) and `stocks` (~13,000 per-stock URLs, fed at request time by the Nitro
+  // the blog posts) and `stocks` (~13,000 per-stock URLs, fed at request time by the Nitro
   // handler server/api/__sitemap__/stocks.get.ts, chunked). The stock list lives in 業務中台, so it
-  // can't be enumerated here at build time the way the blog's own markdown files can.
+  // can't be enumerated at build time the way the blog's own markdown files can.
   sitemap: {
     // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
@@ -40,33 +38,7 @@ export default defineNuxtConfig({
     exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/calendar', '/auth/**', '/share/**'],
     sitemaps: {
       pages: {
-        includeAppSources: true,
-        urls: async () => {
-          // Reads content/blog/*.md directly with a tiny hand-rolled frontmatter scan rather than
-          // calling queryCollection() — this callback runs in nuxt.config.ts's Node/Nitro
-          // build-time context, before the Content module's own runtime/composables are set up, so
-          // queryCollection() isn't reliably available here. Only top-level scalar `key: value`
-          // frontmatter lines matter for this (slug/date/status), so a full YAML parser isn't
-          // needed — none of this repo's dependencies ship one at the top level of node_modules
-          // (checked: js-yaml/yaml are only pnpm-nested transitive deps of @nuxt/content, not safe
-          // to import directly).
-          const { readdir, readFile } = await import('node:fs/promises')
-          const { fileURLToPath } = await import('node:url')
-          const blogDir = fileURLToPath(new URL('./content/blog', import.meta.url))
-          const files = await readdir(blogDir)
-          const urls: { loc: string; lastmod?: string }[] = []
-          for (const file of files) {
-            if (!file.endsWith('.md')) continue
-            const raw = await readFile(`${blogDir}/${file}`, 'utf-8')
-            const frontmatter = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
-            const field = (name: string) => frontmatter.match(new RegExp(`^${name}:\\s*['"]?([^'"\\n]+)['"]?$`, 'm'))?.[1]
-            if (field('status') !== 'published') continue
-            const slug = field('slug')
-            if (!slug) continue
-            urls.push({ loc: `/blog/${slug}`, lastmod: field('date') })
-          }
-          return urls
-        }
+        includeAppSources: true
       },
       stocks: {
         sources: ['/api/__sitemap__/stocks'],

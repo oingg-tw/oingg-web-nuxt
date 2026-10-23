@@ -257,6 +257,15 @@ export const cachedFinancialStatement = defineCachedFunction(
   }
 )
 
+// (year, quarter) 之前的 count 季財報，由新到舊；讀不到的是 null。逐季組成的兩支（資產負債、現金流量）共用
+export function cachedEarlierStatements(symbol: string, statementType: StatementType, year: number, quarter: number, count: number) {
+  const latest = year * 4 + quarter - 1
+  return Promise.all(Array.from({ length: count }, (_, i) => {
+    const index = latest - 1 - i
+    return settle(cachedFinancialStatement(symbol, statementType, Math.floor(index / 4), (index % 4) + 1))
+  }))
+}
+
 // GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（業務中台 2026-09-27 上線）。
 // 查無權益變動表回 entries: []（200，不是 404），所以呼叫端不需要處理 404。
 export const cachedBookValueBreakdown = defineCachedFunction(

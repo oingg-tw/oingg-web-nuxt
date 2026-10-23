@@ -12,12 +12,30 @@ export const BUSINESS_BASE = '/api/core'
 // 爬幾千頁只讓業務中台每小時算一次型錄
 export const BUSINESS_CACHED_BASE = '/api/cached'
 
+// 打業務中台的請求失敗時馬上通知 useSystemHealth，不等它 30 秒一次的輪詢（2026-09-14 使用者回報「searchbar 沒反應就以為網站掛了，
+// 其實是連線問題」）。原本是外掛換掉全域 $fetch 再篩回這兩個 baseURL，2026-10-23 搬進這裡：打業務中台的只有這一個入口。呼叫端換成
+// 本站自己的路由（useFilterSchema 的 /api/hub）不算。reportFailure 會再經 /api/system-health 確認，誤報會自我修正
+const isBusinessRequest = (baseURL?: string) => baseURL === BUSINESS_BASE || baseURL === BUSINESS_CACHED_BASE
+const healthHooks: Parameters<typeof $fetch>[1] = import.meta.client
+  ? {
+      // 請求根本沒到伺服器（DNS、連線被拒、逾時）——就是「連線斷了，不是網站壞了」那種情況
+      onRequestError: ({ options }) => {
+        if (isBusinessRequest(options.baseURL)) useSystemHealth().reportFailure()
+      },
+      // 有回應就只看 5xx；4xx（400／404）是全站「這個查詢沒資料」的日常慣例，不是連線問題
+      onResponseError: ({ options, response }) => {
+        if (isBusinessRequest(options.baseURL) && response.status >= 500) useSystemHealth().reportFailure()
+      }
+    }
+  : {}
+
 export function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
   return $fetch<T>(path, {
     baseURL: BUSINESS_BASE,
     timeout: BUSINESS_REQUEST_TIMEOUT_MS,
     // ofetch 預設 GET 失敗重試一次：對連不上的後端只是加倍等待（實測還讓呼叫端的 pending 卡住），一律不重試
     retry: 0,
+    ...healthHooks,
     ...options
   }) as Promise<T>
 }

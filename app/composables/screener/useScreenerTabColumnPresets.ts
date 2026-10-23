@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
+import type { StatelessScreenerRunResult } from '~/composables/screener/useScreenerPresets'
 import type { ColumnPresetOption, ScreenerTab, ResultColumnChoice } from '~/composables/screener/screener-tab-model'
 // 篩選器的「欄位組合」——哪些欄位、切換／新增／改名／排序／刪除欄位預設，以及結果表格上直接加減欄位。
 // 2026-10-02 從 useScreenerTabs.ts 搬出來（第二刀，條件編輯是第一刀）。
@@ -32,6 +33,8 @@ export function useScreenerTabColumnPresets(ctx: {
   tabs: Ref<ScreenerTab[]>
   // 欄位變動後把當前視圖寫回 tab.columnViewCache（核心擁有那個快取的寫入時機）。
   cacheColumnView: (tab: ScreenerTab) => void
+  // 一次查詢的結果套到頁籤上（核心的 applyRunResult，搜尋也走同一支）
+  applyRunResult: (tab: ScreenerTab, result: StatelessScreenerRunResult, requestedFields: string[]) => void
   // 把 tab.columns 同步到它背後的欄位預設（核心負責 lazily 建立／PATCH）。
   syncColumnPreset: (tab: ScreenerTab) => Promise<void>
   // 核心的 handleSearch：未儲存的頁籤換欄位組合時不能打 /:id/run（沒有 preset），改用無狀態查詢重查（2026-10-15）
@@ -117,13 +120,7 @@ export function useScreenerTabColumnPresets(ctx: {
         return
       }
       tab.columnPresetId = columnPresetId
-      tab.results = result.results
-      tab.resultColumns = inRequestedOrder(result.columns, (columnPresetId ? columnFieldsOf(columnPresetId) : null) ?? [])
-      tab.columns = tab.resultColumns.map(column => ({ field: column.field, label: columnLabelFrom(column.metricName, column.fieldName) }))
-      tab.page = result.page
-      tab.pageSize = result.pageSize
-      tab.totalPages = result.totalPages
-      tab.total = result.count
+      ctx.applyRunResult(tab, result, (columnPresetId ? columnFieldsOf(columnPresetId) : null) ?? [])
       tab.searched = true
       ctx.cacheColumnView(tab)
     } catch (error) {
@@ -132,10 +129,6 @@ export function useScreenerTabColumnPresets(ctx: {
     } finally {
       tab.loading = false
     }
-  }
-
-  async function handleColumnTabChange(tab: ScreenerTab, id: string) {
-    await switchColumnPreset(tab, id)
   }
 
   // useState, matching tabs above — same remount-persistence reasoning.
@@ -398,7 +391,7 @@ export function useScreenerTabColumnPresets(ctx: {
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
     // 頁面要用的。
-    handleColumnTabChange,
+    switchColumnPreset,
     addColumnPresetOption,
     newColumnPresetDialogVisible,
     openNewColumnPresetDialog,

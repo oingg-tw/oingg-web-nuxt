@@ -47,7 +47,7 @@ const { period, shown } = useChartPeriod({ all: plotted, keyOf: entry => `${entr
       <slot name="header" />
     </template>
     <template v-if="plotted.length">
-      <StockMultiSeriesLineChart v-for="(series, index) in charts" :key="index" :entries="shown" :series="series" unit="%" :format="rateText" />
+      <StockMultiSeriesLineChart v-for="(series, index) in charts" :key="index" :entries="shown" :series="series" unit="%" :format="fixedRateText" />
     </template>
     <p v-else class="stock-ratio-lines-chart__line">目前沒有這張圖的資料。</p>
   </SharedChartCard>

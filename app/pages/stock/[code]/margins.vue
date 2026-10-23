@@ -154,9 +154,9 @@ const valueAnswer = computed(() => {
   if (!latest.value || !hasRates.value) return null
   return joinClauses([
     `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的財報三率（單季）`,
-    `毛利率 ${rateText(grossMargin.value)}`,
-    `營業利益率 ${rateText(operatingMargin.value)}`,
-    `稅後淨利率 ${rateText(netProfitMargin.value)}`,
+    `毛利率 ${fixedRateText(grossMargin.value)}`,
+    `營業利益率 ${fixedRateText(operatingMargin.value)}`,
+    `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
     latest.value.values.grossMargin?.knowledgeDate ? `資料時間 ${latest.value.values.grossMargin.knowledgeDate}` : null
   ])
 })
@@ -164,9 +164,9 @@ const valueAnswer = computed(() => {
 const relationAnswer = computed(() => {
   if (!hasRates.value || expenseTotal.value === null) return null
   const middle = hasExpenseBreakdown.value
-    ? `扣掉推銷及管理費用率 ${rateText(expenseRatio.value)} 與研發費用率 ${rateText(rdIntensity.value)}`
-    : `扣掉合計 ${rateText(expenseTotal.value)} 的營業費用`
-  return `三率的分母都是同一筆營收，所以可以逐項相減：${stockShortName.value}的毛利率 ${rateText(grossMargin.value)}，${middle}後為營業利益率 ${rateText(operatingMargin.value)}；再計入業外損益與所得稅 ${signedText(nonOperatingAndTax.value)} 後為稅後淨利率 ${rateText(netProfitMargin.value)}。`
+    ? `扣掉推銷及管理費用率 ${fixedRateText(expenseRatio.value)} 與研發費用率 ${fixedRateText(rdIntensity.value)}`
+    : `扣掉合計 ${fixedRateText(expenseTotal.value)} 的營業費用`
+  return `三率的分母都是同一筆營收，所以可以逐項相減：${stockShortName.value}的毛利率 ${fixedRateText(grossMargin.value)}，${middle}後為營業利益率 ${fixedRateText(operatingMargin.value)}；再計入業外損益與所得稅 ${fixedSignedRateText(nonOperatingAndTax.value)} 後為稅後淨利率 ${fixedRateText(netProfitMargin.value)}。`
 })
 
 const history = computed(() => {
@@ -303,7 +303,7 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
-            <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode">{{ rateText(entry.values[rateCode]?.value ?? null) }}</td>
+            <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode">{{ fixedRateText(entry.values[rateCode]?.value ?? null) }}</td>
             <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
           </tr>
         </tbody>
@@ -318,7 +318,7 @@ const { breadcrumbs } = useStockPageSeo({
            floor exists for exactly that reason. <details> is how the rest of this app parks a
            secondary view（see the document-shape rule: question → answer → one chart, rest in
            closed details）, and its contents are in the SSR HTML whether or not it is open. -->
-      <StockWaterfallChart :steps="waterfallSteps" :format="rateText" :format-signed="signedText" />
+      <StockWaterfallChart :steps="waterfallSteps" :format="fixedRateText" :format-signed="fixedSignedRateText" />
 
       <!-- Label sharpened 2026-09-21 after「瀑布圖底下的 看拆解表格 這樣還有意義嗎」— a fair
            question, since the waterfall now prints a signed value beside every bar and a sighted
@@ -342,37 +342,37 @@ const { breadcrumbs } = useStockPageSeo({
           <tbody>
             <tr>
               <th scope="row">毛利率</th>
-              <td>{{ rateText(grossMargin) }}</td>
+              <td>{{ fixedRateText(grossMargin) }}</td>
             </tr>
             <template v-if="hasExpenseBreakdown">
               <tr>
                 <th scope="row">減：推銷及管理費用率</th>
-                <td>{{ rateText(expenseRatio) }}</td>
+                <td>{{ fixedRateText(expenseRatio) }}</td>
               </tr>
               <tr>
                 <th scope="row">減：研發費用率</th>
-                <td>{{ rateText(rdIntensity) }}</td>
+                <td>{{ fixedRateText(rdIntensity) }}</td>
               </tr>
               <tr>
                 <th scope="row">加減：其他營業損益與四捨五入差額</th>
-                <td>{{ signedText(otherOperating) }}</td>
+                <td>{{ fixedSignedRateText(otherOperating) }}</td>
               </tr>
             </template>
             <tr v-else>
               <th scope="row">減：營業費用合計</th>
-              <td>{{ rateText(expenseTotal) }}</td>
+              <td>{{ fixedRateText(expenseTotal) }}</td>
             </tr>
             <tr>
               <th scope="row">等於：營業利益率</th>
-              <td>{{ rateText(operatingMargin) }}</td>
+              <td>{{ fixedRateText(operatingMargin) }}</td>
             </tr>
             <tr>
               <th scope="row">加減：業外損益與所得稅</th>
-              <td>{{ signedText(nonOperatingAndTax) }}</td>
+              <td>{{ fixedSignedRateText(nonOperatingAndTax) }}</td>
             </tr>
             <tr>
               <th scope="row">等於：稅後淨利率</th>
-              <td>{{ rateText(netProfitMargin) }}</td>
+              <td>{{ fixedRateText(netProfitMargin) }}</td>
             </tr>
           </tbody>
         </SharedTable>

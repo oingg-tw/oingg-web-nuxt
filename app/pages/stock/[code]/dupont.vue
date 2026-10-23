@@ -91,8 +91,8 @@ const hasExpansion = computed(() =>
 const valueAnswer = computed(() => {
   if (!hasFactors.value) return null
   return joinClauses([
-    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的股東權益報酬率（${basisLabel.value}）為 ${rateText(roe.value)}`,
-    `稅後淨利率 ${rateText(netProfitMargin.value)}`,
+    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的股東權益報酬率（${basisLabel.value}）為 ${fixedRateText(roe.value)}`,
+    `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
     `資產週轉率 ${timesText(assetTurnover.value)}`,
     `權益乘數 ${multipleText(equityMultiplier.value)}`
   ])
@@ -101,12 +101,12 @@ const valueAnswer = computed(() => {
 const chainAnswer = computed(() => {
   if (!hasFactors.value) return null
   // 用字精簡（2026-10-07「但我希望用字精簡點。圖表優先 文字其次」）：只留算式
-  return `${rateText(netProfitMargin.value)} × ${timesText(assetTurnover.value)} × ${multipleText(equityMultiplier.value)} ≈ ${rateText(roe.value)}。`
+  return `${fixedRateText(netProfitMargin.value)} × ${timesText(assetTurnover.value)} × ${multipleText(equityMultiplier.value)} ≈ ${fixedRateText(roe.value)}。`
 })
 
 const expansionAnswer = computed(() => {
   if (!hasExpansion.value) return null
-  return `${rateText(taxBurden.value)} × ${rateText(interestBurden.value)} × ${rateText(ebitMargin.value)} ≈ ${rateText(netProfitMargin.value)}。`
+  return `${fixedRateText(taxBurden.value)} × ${fixedRateText(interestBurden.value)} × ${fixedRateText(ebitMargin.value)} ≈ ${fixedRateText(netProfitMargin.value)}。`
 })
 
 const history = computed(() => {
@@ -170,10 +170,10 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
-            <td>{{ rateText(entry.values.netProfitMargin?.value ?? null) }}</td>
+            <td>{{ fixedRateText(entry.values.netProfitMargin?.value ?? null) }}</td>
             <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
             <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
-            <td>{{ rateText(entry.values.roe?.value ?? null) }}</td>
+            <td>{{ fixedRateText(entry.values.roe?.value ?? null) }}</td>
           </tr>
         </tbody>
       </SharedTable>
@@ -191,7 +191,7 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr>
             <th scope="row">稅後淨利率</th>
-            <td>{{ rateText(netProfitMargin) }}</td>
+            <td>{{ fixedRateText(netProfitMargin) }}</td>
             <td>每 100 元營收最後留下多少</td>
           </tr>
           <tr>
@@ -206,7 +206,7 @@ const { breadcrumbs } = useStockPageSeo({
           </tr>
           <tr>
             <th scope="row">三項相乘＝ROE</th>
-            <td>{{ rateText(roe) }}</td>
+            <td>{{ fixedRateText(roe) }}</td>
             <td>股東每 1 元一年賺回多少</td>
           </tr>
         </tbody>
@@ -243,22 +243,22 @@ const { breadcrumbs } = useStockPageSeo({
           <tbody>
             <tr>
               <th scope="row">稅務負擔</th>
-              <td>{{ rateText(taxBurden) }}</td>
+              <td>{{ fixedRateText(taxBurden) }}</td>
               <td>繳稅後留下幾成</td>
             </tr>
             <tr>
               <th scope="row">利息負擔</th>
-              <td>{{ rateText(interestBurden) }}</td>
+              <td>{{ fixedRateText(interestBurden) }}</td>
               <td>付利息後留下幾成</td>
             </tr>
             <tr>
               <th scope="row">EBIT 利潤率</th>
-              <td>{{ rateText(ebitMargin) }}</td>
+              <td>{{ fixedRateText(ebitMargin) }}</td>
               <td>每 100 元營收的本業獲利</td>
             </tr>
             <tr>
               <th scope="row">三項相乘＝稅後淨利率</th>
-              <td>{{ rateText(netProfitMargin) }}</td>
+              <td>{{ fixedRateText(netProfitMargin) }}</td>
               <td>每 100 元營收最後留下多少</td>
             </tr>
           </tbody>
