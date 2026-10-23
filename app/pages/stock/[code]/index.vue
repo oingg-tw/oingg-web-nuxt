@@ -255,19 +255,19 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <!-- 每張圖自己就是圖卡（SharedChartCard，2026-10-14 起個股頁的圖一律由它包），標題從 #header 傳進去；資料還沒到的先放只有標題的空卡 -->
         <template v-for="item in charts" :key="item.slug">
         <StockDividendYieldHistoryChart v-if="item.spec.kind === 'dividend' && dividendYieldHistory?.entries?.length" :entries="dividendYieldHistory.entries" :cash-dividends="dividendYieldHistory.cashDividends">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockDividendYieldHistoryChart>
         <StockValuationRiverChart v-else-if="item.spec.kind === 'river'" :symbol="code" :kind="item.spec.river">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockValuationRiverChart>
         <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue' && monthlyRevenue?.entries?.length" measure="amount" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockMonthlyRevenueChart>
         <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue-growth' && monthlyRevenueGrowth?.entries?.length" measure="yoy" :entries="monthlyRevenueGrowth.entries" :monthly-prices="monthlyRevenueGrowth.monthlyPrices" :price-break-months="monthlyRevenueGrowth.priceBreakMonths">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockMonthlyRevenueChart>
         <StockDupontChart v-else-if="item.spec.kind === 'dupont' && dupont?.series" :data="dupont">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockDupontChart>
         <StockBalanceCompositionChart
           v-else-if="item.spec.kind === 'balance' && balanceComposition && hasBalanceRows(item.spec.part)"
@@ -278,7 +278,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :table-section-id="`quick-view-${item.slug}-table`"
           chart-only
         >
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockBalanceCompositionChart>
         <StockBalanceCompositionChart
           v-else-if="item.spec.kind === 'cash-flow' && cashFlowComposition?.periods.some(period => period.cashFlow)"
@@ -289,19 +289,19 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :table-section-id="`quick-view-${item.slug}-table`"
           chart-only
         >
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockBalanceCompositionChart>
         <StockBookValueFlowChart v-else-if="item.spec.kind === 'book-value-flow' && bookValueFlow?.entries?.length" :entries="bookValueFlow.entries">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockBookValueFlowChart>
         <StockRatioLinesChart v-else-if="item.spec.kind === 'margins' && marginsData?.series" page="margins" :entries="marginsData.series.entries">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockRatioLinesChart>
         <StockRatioLinesChart v-else-if="item.spec.kind === 'solvency' && solvencyData?.series" page="solvency" :entries="solvencyData.series.entries">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockRatioLinesChart>
         <StockCashCycleTimeline v-else-if="item.spec.kind === 'cash-cycle' && cashCycleEntry" :entry="cashCycleEntry">
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockCashCycleTimeline>
         <StockMetricHistoryChartInteractive
           v-else-if="item.spec.kind === 'metric'"
@@ -318,10 +318,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
           :right-metric="item.spec.rightMetricCode ? { code: item.spec.rightMetricCode, name: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.name ?? item.spec.rightMetricCode, unit: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.unit ?? '', timeframes: timeframesOf(item.spec.rightMetricCode) } : undefined"
         >
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockMetricHistoryChartInteractive>
         <SharedChartCard v-else>
-          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>
         </SharedChartCard>
         </template>
@@ -356,7 +356,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <template #fallback>
           <div class="stock-quick-view-page__grid">
             <SharedChartCard v-for="item in charts" :key="item.slug">
-              <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+              <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
               <div class="stock-quick-view-page__placeholder" aria-hidden="true" />
             </SharedChartCard>
             <button type="button" class="stock-quick-view-page__add">
@@ -435,11 +435,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   margin-bottom: 0;
 }
 
-.stock-quick-view-page__chart-title {
-  margin: 0;
-  font-size: 18px;
-}
-
 .stock-quick-view-page__chart-empty {
   margin: 0;
 }
@@ -454,12 +449,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   .stock-quick-view-page__placeholder {
     height: calc(32px + 8px + 320px);
   }
-}
-
-.stock-quick-view-page__chart-value {
-  margin-left: 8px;
-  font-variant-numeric: tabular-nums;
-  color: var(--el-text-color-primary);
 }
 
 /* 虛線外框＝空位，跟實心的圖表卡片一眼分得出來；同一列裡會被 grid 撐到跟旁邊的卡片一樣高 */
