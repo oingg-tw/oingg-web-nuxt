@@ -271,7 +271,7 @@ export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' | 'intangible' }
-  | { kind: 'dividend' | 'monthly-revenue' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
@@ -287,6 +287,8 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   solvency: { topic: '安全韌性的組成', chart: { kind: 'solvency' } },
   dupont: { topic: '杜邦分析', chart: { kind: 'dupont' } },
   'monthly-revenue': { topic: '月營收', chart: { kind: 'monthly-revenue' } },
+  // 2026-10-23 從月營收拆出來：同一支端點，圖是年增率（StockMonthlyRevenueChart measure yoy）
+  'monthly-revenue-growth': { topic: '月營收年增率', chart: { kind: 'monthly-revenue-growth' } },
   'dividend-fill': { topic: '填權填息' },
   'cash-cycle': { topic: '現金循環的組成', chart: { kind: 'cash-cycle' } },
   'equity-source': { topic: '淨值從哪來', chart: { kind: 'book-value-flow' } },

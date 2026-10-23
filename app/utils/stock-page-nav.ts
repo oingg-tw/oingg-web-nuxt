@@ -134,6 +134,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // 沒有 perspective：它是月頻的營收金額，不是每股／成長率／佔比任何一種。欄位是選填的，而視角
       // 2026-09-28 起也不顯示在畫面上，所以留空不會造成版面缺口。
       { label: '月營收', to: code => `/stock/${code}/monthly-revenue`, hook: '每月 10 日前公告，是一家公司當期營運最早出現的數字' },
+      // 月營收年增率（2026-10-23 從月營收拆出來，使用者：「monthly-revenue 現在比較像是 月營收年增率 而不是月營收 希望可以拆分為兩個頁面」）
+      { label: '月營收年增率', perspective: '成長率', to: code => `/stock/${code}/monthly-revenue-growth`, hook: '這個月的營收，比去年同一個月多了幾 %' },
       { label: '每股營收', perspective: '每股', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
       { label: '每股營業成本', perspective: '每股', to: code => `/stock/${code}/cost-of-goods-sold`, hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
       { label: '每股毛利', perspective: '每股', to: code => `/stock/${code}/gross-profit`, hook: '賣掉之後扣掉成本，還剩下多少' },

@@ -38,7 +38,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
 //   - 徽章頁：BADGE_PAGES 的 metricCode＋chartTimeframe（沒寫就近四季）
 //   - 配股配息：交易所公布的殖利率（那一頁回答的就是「領多少」）
-//   - 月營收：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）
+//   - 月營收年增率：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）。月營收（金額）型錄沒有，只畫圖、不給數值
 //   - 杜邦分析：近四季 ROE（三項乘出來的那個數）
 //   - 淨值從哪來：每股淨值；股東回饋組成、營業費用組成：組成的母項
 //   - 資產負債表的四張組成：那一塊占總資產的比率（淨值組成是股東權益比率），同 StockBalanceCompositionPage 的 metricCode
@@ -46,7 +46,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 財報三率的關係是三個數並列，沒有單一數值，只給連結
 const SPECIAL_FIELDS: Record<string, string> = {
   'dividend': 'dividendYield.EOD',
-  'monthly-revenue': 'revenueYoy3m.M',
+  'monthly-revenue-growth': 'revenueYoy3m.M',
   'dupont': 'roe.TTM',
   'equity-source': 'bvps.Q',
   'shareholder-yield-composition': 'shareholderYield.FY',
@@ -71,7 +71,7 @@ function fieldOf(slug: string): string | null {
 // 數值跟列名不是同一件事時，數值前面說清楚是什麼（「月營收 139.32%」會被讀成營收本身）
 // 依頁面（slug）而不是欄位：杜邦分析與 ROE 頁是同一個欄位 roe.TTM，只有杜邦那一列要說明它是 ROE
 const VALUE_PREFIX: Record<string, string> = {
-  'monthly-revenue': '近三個月年增率 ',
+  'monthly-revenue-growth': '近三個月年增率 ',
   'dupont': 'ROE ',
   'equity-source': '每股淨值 ',
   'shareholder-yield-composition': '股東總回饋率 ',
@@ -172,6 +172,7 @@ const pickerGroups = STOCK_METRIC_INDEX
 const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric'>, string> = {
   'dividend': 'dividend-yield-history',
   'monthly-revenue': 'monthly-revenue',
+  'monthly-revenue-growth': 'monthly-revenue',
   'dupont': 'dupont',
   'balance': 'balance-composition',
   'cash-flow': 'cash-flow-composition',
@@ -202,6 +203,7 @@ function usePageData<T>(kind: keyof typeof PAGE_DATA) {
 const loadedEmpty = (kind: QuickViewChart['kind']) => pageData.get(kind)?.value != null
 const dividendYieldHistory = usePageData<StockDividendYieldHistoryResponse>('dividend')
 const monthlyRevenue = usePageData<StockMonthlyRevenuePageResponse>('monthly-revenue')
+const monthlyRevenueGrowth = usePageData<StockMonthlyRevenuePageResponse>('monthly-revenue-growth')
 const dupont = usePageData<StockDupontPageResponse>('dupont')
 const balanceComposition = usePageData<StockBalanceCompositionResponse>('balance')
 const cashFlowComposition = usePageData<StockCashFlowCompositionResponse>('cash-flow')
@@ -258,7 +260,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockValuationRiverChart v-else-if="item.spec.kind === 'river'" :symbol="code" :kind="item.spec.river">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockValuationRiverChart>
-        <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue' && monthlyRevenue?.entries?.length" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
+        <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue' && monthlyRevenue?.entries?.length" measure="amount" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
+          <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
+        </StockMonthlyRevenueChart>
+        <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue-growth' && monthlyRevenueGrowth?.entries?.length" measure="yoy" :entries="monthlyRevenueGrowth.entries" :monthly-prices="monthlyRevenueGrowth.monthlyPrices" :price-break-months="monthlyRevenueGrowth.priceBreakMonths">
           <template #header><h3 class="stock-quick-view-page__chart-title"><NuxtLink :to="item.to" class="hub-inline-link">{{ item.label }}</NuxtLink> <span class="stock-quick-view-page__chart-value">{{ valueText(item.field, item.slug) }}</span></h3></template>
         </StockMonthlyRevenueChart>
         <StockDupontChart v-else-if="item.spec.kind === 'dupont' && dupont?.series" :data="dupont">
