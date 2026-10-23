@@ -7,8 +7,10 @@
 //
 // GET 回 null＝這個帳號從沒存過：保留本地預設，而且**不主動 PUT**——維持 null 代表「還在用預設」，之後改了預設他們會拿到新的。
 // 登出時換回預設，同一個分頁換人登入才不會先看到上一個人的釘選。
+// 載下來與存成功的那一份記在 cookie（remember，2026-10-23）：重新整理時伺服器直接畫它，側邊欄不會從預設的 5 列跳成 12 列。
+// 沒登入、但清單是 cookie 來的（登入過期）也換回預設並清掉
 export function useStockPinnedMetricsSync() {
-  const { pinnedSlugs } = useStockPinnedMetrics()
+  const { pinnedSlugs, remember, hasRemembered } = useStockPinnedMetrics()
   const authedFetch = useAuthedFetch()
   const currentUser = useCurrentUser()
   const authResolved = useAuthResolved()
@@ -28,10 +30,11 @@ export function useStockPinnedMetricsSync() {
       async ([resolved, user]) => {
         if (!resolved) return
         if (!user) {
-          if (synced.value) {
+          if (synced.value || hasRemembered()) {
             synced.value = false
             pinnedSlugs.value = [...DEFAULT_PINNED_METRIC_SLUGS]
             lastSaved = JSON.stringify(pinnedSlugs.value)
+            remember(null)
           }
           return
         }
@@ -43,7 +46,13 @@ export function useStockPinnedMetricsSync() {
           if (slugs !== null) {
             pinnedSlugs.value = slugs
             lastSaved = JSON.stringify(slugs)
+          } else if (hasRemembered()) {
+            // 帳號還在用預設，畫面卻是 cookie 留下的舊清單：換回預設
+            pinnedSlugs.value = [...DEFAULT_PINNED_METRIC_SLUGS]
+            lastSaved = JSON.stringify(pinnedSlugs.value)
           }
+          // null＝這個帳號還在用預設：cookie 也清掉，下次伺服器照預設畫
+          remember(slugs)
         } catch (error) {
           devWarn('pinned-metrics', 'GET /users/me/pinned-metrics failed', error)
         }
@@ -59,6 +68,7 @@ export function useStockPinnedMetricsSync() {
       try {
         await authedFetch('/users/me/pinned-metrics', { method: 'PUT', body: { slugs } })
         lastSaved = serialized
+        remember(slugs)
       } catch (error) {
         devWarn('pinned-metrics', 'PUT /users/me/pinned-metrics failed', error)
       }

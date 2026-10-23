@@ -69,9 +69,18 @@ export const DEFAULT_PINNED_METRIC_SLUGS = [
   'debt-ratio'
 ] as const
 
+// 上次登入時帳號裡的那一份記在 cookie（2026-10-23，使用者：「stock/1795 重新整理的時候 sidebar 會彈跳展開 因為我塞了不少選項」）：
+// 釘選存在帳號裡，要等 Firebase 在瀏覽器恢復登入、GET 回來才知道——伺服器先畫預設的 5 列，載下來變 12 列，置中的側邊欄整條往上跳、
+// 指標速覽的圖卡也從 5 張變 12 張。伺服器照 cookie 畫，載下來的通常一模一樣就不會動。只記登入的人的（同步那支在 GET、PUT 成功時寫），
+// 登出時清掉、換回預設。cookie 是使用者改得到的值：只收字串、最多 PINNED_METRIC_LIMIT 個；不認得的 slug 由 useStockPinnedMetricNodes 濾掉
+const REMEMBERED_KEY = 'stock-pinned-metrics'
+const rememberedPins = (value: unknown): string[] | null =>
+  Array.isArray(value) && value.length ? value.filter((slug): slug is string => typeof slug === 'string').slice(0, PINNED_METRIC_LIMIT) : null
+
 export function useStockPinnedMetrics() {
+  const remembered = useCookie<string[] | null>(REMEMBERED_KEY, { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', default: () => null })
   // 展開成新陣列：useState 的初始值會被 toggle 直接 mutate，共用同一個參考會把常數本身改掉。
-  const pinnedSlugs = useState<string[]>(STORAGE_KEY, () => [...DEFAULT_PINNED_METRIC_SLUGS])
+  const pinnedSlugs = useState<string[]>(STORAGE_KEY, () => rememberedPins(remembered.value) ?? [...DEFAULT_PINNED_METRIC_SLUGS])
 
   const isPinned = (slug: string) => pinnedSlugs.value.includes(slug)
   const isFull = computed(() => pinnedSlugs.value.length >= PINNED_METRIC_LIMIT)
@@ -96,5 +105,9 @@ export function useStockPinnedMetrics() {
     pinnedSlugs.value = next
   }
 
-  return { pinnedSlugs, isPinned, isFull, toggle, move }
+  // 同步那支用：記住帳號裡的這一份（null＝清掉，下次伺服器畫預設）、現在的清單是不是從 cookie 來的
+  const remember = (slugs: string[] | null) => { remembered.value = slugs?.length ? [...slugs] : null }
+  const hasRemembered = () => rememberedPins(remembered.value) !== null
+
+  return { pinnedSlugs, isPinned, isFull, toggle, move, remember, hasRemembered }
 }
