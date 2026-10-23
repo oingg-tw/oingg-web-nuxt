@@ -2,7 +2,7 @@ import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthl
 
 // 月營收（/monthly-revenue）與月營收年增率（/monthly-revenue-growth）兩頁共用（2026-10-23，使用者：「monthly-revenue 現在比較像是
 // 月營收年增率 而不是月營收 希望可以拆分為兩個頁面」）：同一支端點（Nitro 快取同一份）、同一串月份、同一組格式。各頁只畫自己的圖與表。
-// 資料是公司每月申報（MOPS t187ap05_L），每月 10 日前公告；季報的營收成長年增率是另一頁（/revenue-growth）
+// 資料是公司每月申報（MOPS t187ap05_L），每月 10 日前公告，遇休市順延；保險業與有保險子公司的公司 2026-01 營收起是 15 日（業務中台 2026-10-24）；季報的營收成長年增率是另一頁（/revenue-growth）
 //
 // 所有 composable、computed、watch 都在 await 之前建好，最後才一起等：composable 裡一 await，Nuxt 與元件的實例就斷了（只有
 // <script setup> 會自動接回），之後再呼叫 useFilterSchema 會 500（2026-10-23 量到）

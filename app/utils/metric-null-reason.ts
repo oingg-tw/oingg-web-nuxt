@@ -13,6 +13,9 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 沒採用時 0.1 元以上退回淨利反推（有值）。這個原因只在 |EPS| 不到 0.1 元又沒採用時出現：前一年底到本年四個季底有缺期（多半是只交
   // 半年報的興櫃、年中掛牌），或推回的 EPS 對不上年報（analysis-ts 同日回覆，2020～2025 年 70 個：61 個缺期、9 個對不上）。資料是有的，不是尚無資料
   eps_too_small_to_derive_shares: 'EPS 絕對值不到 0.1 元，用淨利反推股數誤差太大；改用股本推算時，前一年底到本年四個季底的財報有缺期，或推回的 EPS 跟年報對不上，所以不提供年度每股拆解',
+  // 用到資本支出的 13 支現金流指標（analysis-ts 30819c0e，業務中台 2026-10-24 轉來）：mops 把這一期的資本支出標成疑似列錯（購置與處分
+  // 的科目疑似放錯）。資料是有的，不是尚無資料（業務中台：「文案請不要寫成資料不足」）；哪幾期、隔年更正後會不會恢復寫在溯源的 methodologyNote
+  suspected_mislabel: '財報的資本支出疑似列錯科目（購置與處分疑似放錯），這一期不計算',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
