@@ -19,6 +19,14 @@ export function groupThousands(value: number | string): string {
   return fraction ? `${grouped}.${fraction}` : grouped
 }
 
+// 對數軸的刻度標籤（河流圖的股價軸、/macro/[slug]；2026-10-24 從 app/utils/log-axis-tick.ts 搬來，check-number-format 測得到）。ECharts 的
+// log 軸把刻度放在 LOG 空間的整齊位置上，標籤會長成 398.1…、5011.87… 這種像雜訊的數字；取兩位有效數字（400、5,000），位移遠小於 1%。
+// 用 toPrecision，不用「÷ 單位、四捨五入、× 單位」：十元以下單位是 0.1，73 × 0.1 是 7.300000000000001（使用者：「stock/2543 股價淨值比
+// 圖表 出現了 7.30000000000001 這種數字」）。不用 formatSignificantDigits：1e4 以上會換成萬／億，加權指數 20,000 會變「2萬」；千分位要
+export function formatLogAxisTick(value: number): string {
+  return value > 0 ? groupThousands(Number(value.toPrecision(2))) : ''
+}
+
 // 有效位數四捨五入＋萬／億／兆縮寫（2026-09-11 抽出，徽章 chip 與篩選器市值欄共用）。toPrecision 不是 toFixed——葛拉漢數 693.89
 // 取 3 位是 "694"，不是再多兩位小數。超過門檻用台灣財報真的在用的縮寫，遞迴對縮小後的數再做同樣的有效位數四捨五入。
 // 「萬」這一級 2026-10-12 補上：原本 1e4～1e8 之間印原始整數，篩選器同一欄會出現「56,780,000」跟「5.678億」並排。

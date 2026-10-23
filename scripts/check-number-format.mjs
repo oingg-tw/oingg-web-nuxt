@@ -1,11 +1,17 @@
 // 數字格式化的自我檢查（shared/utils/number-format.ts，2026-10-12）。例子取自使用者回報的 7711 與台積電的真實量級。
 //   node scripts/check-number-format.mjs
 import assert from 'node:assert/strict'
-import { formatMoney, formatSignificantDigits, groupThousands } from '../shared/utils/number-format.ts'
+import { formatLogAxisTick, formatMoney, formatSignificantDigits, groupThousands } from '../shared/utils/number-format.ts'
 import { cellPeriodText } from '../app/utils/screener-value.ts'
 
 assert.equal(groupThousands(2446), '2,446')
 assert.equal(groupThousands('-1234567.89'), '-1,234,567.89')
+// 對數軸刻度：兩位有效數字、千分位；十元以下不能有浮點殘差（2543 股價淨值比河流圖的軸底 7.300000000000001）
+assert.equal(formatLogAxisTick(7.29), '7.3')
+assert.equal(formatLogAxisTick(0.0456), '0.046')
+assert.equal(formatLogAxisTick(398.1), '400')
+assert.equal(formatLogAxisTick(5011.87), '5,000')
+assert.equal(formatLogAxisTick(0), '')
 // 金額：自動萬／億／兆＋4 位有效數字
 assert.equal(formatMoney(3_205_190), '320.5萬元') // 7711 不動產廠房及設備（約 0.2% 的 16 億）
 assert.equal(formatMoney(576_300_000), '5.763億元')
