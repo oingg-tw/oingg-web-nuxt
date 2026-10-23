@@ -39,7 +39,8 @@ async function loadRisk() {
   pending.value = false
 }
 
-// 實際經歷的跌幅：每天真的持股（買進、賣出都算進去）。期間內沒有持股時（twr 是 null）不列；第一次讀的時候列名與意思照畫、數值是骨架
+// 實際經歷的跌幅：每天真的持股（買進、賣出都算進去）。期間內沒有持股時（twr 是 null）不列；第一次讀的時候列名與意思照畫、數值是骨架。
+// 骨架只在上次有這段時畫（useLayoutHint，同下面的波動占比）：上次沒有還照畫，資料一到整段拿掉、下面全部往上跳（2026-10-24 量到 1440 寬 0.11、手機 0.27）
 const ledgerDrawdown = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result.drawdown : null))
 const drawdownRows = computed(() => {
   const d = ledgerDrawdown.value
@@ -50,6 +51,10 @@ const drawdownRows = computed(() => {
     { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
     { name: '目前距前高', value: !d ? '' : Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
   ]
+})
+const drawdownRowsHint = useLayoutHint('holdings-risk-drawdown', 4)
+watch(drawdownRows, (rows) => {
+  if (performance.value) drawdownRowsHint.value = rows.length
 })
 
 const report = computed(() => (outcome.value?.ok ? outcome.value.result : null))
@@ -205,7 +210,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
         <template v-else-if="loading || report">
 
-          <section v-if="drawdownRows.length" aria-labelledby="risk-actual-title">
+          <section v-if="loading ? drawdownRowsHint : drawdownRows.length" aria-labelledby="risk-actual-title">
             <h2 id="risk-actual-title" class="risk-page__section-title">你實際經歷過多大的跌幅？</h2>
             <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" :loading="loading" />
           </section>

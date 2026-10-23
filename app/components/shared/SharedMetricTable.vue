@@ -613,7 +613,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
-      :class="{ 'screener-result-table--sticky': sticky }"
+      :class="{ 'screener-result-table--sticky': sticky, 'screener-result-table--first-load': loading && !rows.length }"
       :data="rows"
       row-key="symbol"
       scrollbar-always-on
@@ -1008,6 +1008,13 @@ watch(() => props.loading, (loading, wasLoading) => {
 .screener-result-table--sticky :deep(.el-table__body-wrapper),
 .screener-result-table--sticky :deep(.el-table__body-wrapper > .el-scrollbar) {
   overflow: clip;
+}
+
+/* 第一次讀、還沒有任何一列時表格先不畫（位置照留，遮罩照轉）：名稱欄跟著資料寬（nameWidth），列到了才知道多寬。原本先畫表頭，
+   列一到名稱欄變寬、右邊的欄被擠窄、欄名多折一行，表頭長高、整個表身往下推（2026-10-24 正式建置 ETF 1440 寬量到 0.026：名稱欄
+   78→152px、表頭 63→86px）。遮罩本來就是九成白，表頭讀的時候也幾乎看不到。換條件重查時舊的列留著，不會走到這裡 */
+.screener-result-table--first-load {
+  visibility: hidden;
 }
 
 /* 排序後捲回表格頂端時（script 的 loading watcher）停在頁首下面 */

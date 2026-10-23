@@ -14,8 +14,8 @@ import { chromium } from 'playwright'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
 const isDev = (await (await fetch(base)).text()).includes('/@vite/client')
-// 頁面 → 第一個畫面要有的結構（問句或主要區塊；骨架另外驗）、內容出來的記號。績效那幾頁的端點沒有假資料，測試帳號是空的：
-// 驗的是「第一個畫面有結構、沒有遮罩、骨架最後都換掉」，空帳號的內容本來就比骨架短
+// 頁面 → 第一個畫面要有的結構（問句或主要區塊；骨架另外驗）、內容出來的記號。績效那幾頁的端點沒有假資料（風險指標除外，見 RISK），
+// 測試帳號是空的：驗的是「第一個畫面有結構、沒有遮罩、骨架最後都換掉」，空帳號的內容本來就比骨架短
 const ROUTES = {
   '/holdings': { first: ['#holdings-summary-title', '#holdings-list-title'], marker: '.holdings-page__overview' },
   '/holdings/analysis': { first: ['#analysis-sector-title', '.holdings-traits__title'], marker: '.holdings-traits__panel' },
@@ -37,11 +37,25 @@ const trait = value => ({ value, coverage: '1.000000' })
 const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait('14.2'), dividendYield: trait('5.1'), roe: trait('12.3'), beta: trait('0.7'), top3HoldingsPct: trait('60.00') }, market: null }
 const SYMBOLS = ['2330', '2317', '2412', '2884', '1216', '0056']
 const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50', totalCost: '50000', realizedProfitLoss: '0' }))
+// 風險指標要是上面那六檔的（2026-10-24）：真的端點讀空帳號回 0 個交易日，VaR 寫「樣本不足」折成兩行、「交易日少於 60 天」那句晚出現，
+// 量到的是有持股卻沒有股價歷史這種不會發生的組合。實際跌幅（/holdings/performance）照讀空帳號，驗「期間內沒有持股就不列」
+const drawdown = { depth: '-0.182300', peakDate: '2026-01-15', troughDate: '2026-04-09', recoveryDate: '2026-07-20' }
+const RISK = {
+  from: '2025-10-24', to: '2026-10-23', tradingDays: 245, weightsAsOf: '2026-10-23', marketValue: '3120000',
+  portfolio: { annualizedVolatility: '0.185', beta: '0.92', correlation: '0.88', maxDrawdown: drawdown, valueAtRisk95Amount: '-73320', expectedShortfall95Amount: '-98280', downsideDeviation: '0.132', ulcerIndex: '0.061', valueAtRisk95: '-0.0235', expectedShortfall95: '-0.0315' },
+  benchmark: { annualizedVolatility: '0.172', maxDrawdown: drawdown, downsideDeviation: '0.121', ulcerIndex: '0.055', valueAtRisk95: '-0.0218', expectedShortfall95: '-0.0297' },
+  concentration: null,
+  diversificationRatio: '1.31',
+  holdings: SYMBOLS.map((symbol, index) => ({ symbol, weight: ['0.40', '0.20', '0.15', '0.10', '0.10', '0.05'][index], coverage: 'full', firstPriceDate: null, riskContribution: ['0.48', '0.19', '0.10', '0.09', '0.08', '0.06'][index] })),
+  sectors: null,
+  fundamentals: null
+}
 const STUBS = {
   // 兩個帳戶、兩組清單：側欄最下面的切換才會出現（它晚出現的話垂直置中的側欄會整個跳，2026-10-20）
   '/api/core/portfolios': { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }, { id: 'p-b', name: '國泰', brokerCode: null, position: 1, createdAt: '2026-10-02T00:00:00Z' }] },
   '/api/core/holdings': { holdings: HOLDINGS },
   '/api/core/holdings/traits': TRAITS,
+  '/api/core/holdings/risk': RISK,
   '/api/core/watchlists': { watchlists: [{ id: 'w-a', name: '存股名單', sourceShareToken: null }, { id: 'w-b', name: '成長股', sourceShareToken: null }] },
   '/api/core/watchlist': { items: SYMBOLS.map((symbol, index) => ({ id: `i${index}`, watchlistId: 'w-a', symbol, note: null })) }
 }
