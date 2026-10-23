@@ -15,9 +15,12 @@ withDefaults(
     // 規則。沒傳就什麼都不渲染，其他頁面不受影響。
     icon?: Component
     answer?: string | null
+    // 答句還在讀取時放的骨架（2026-10-23，換頁不等資料）：給一句跟真的答句差不多長的範例字，字透明、每行畫底色，換行跟真的一樣，
+    // 答句到了不會把下面推動。沒有答句也不在讀取中就什麼都不畫（同 answer 的規則）
+    answerSkeleton?: string | null
     level?: 'h2' | 'h3'
   }>(),
-  { answer: null, level: 'h2', icon: undefined }
+  { answer: null, answerSkeleton: null, level: 'h2', icon: undefined }
 )
 </script>
 
@@ -27,6 +30,7 @@ withDefaults(
       <el-icon v-if="icon" class="stock-question-section__icon" aria-hidden="true"><component :is="icon" /></el-icon>{{ question }}
     </component>
     <p v-if="answer" class="stock-answer">{{ answer }}</p>
+    <p v-else-if="answerSkeleton" class="stock-answer" aria-hidden="true"><span class="app-skeleton app-skeleton--flow">{{ answerSkeleton }}</span></p>
     <slot />
   </section>
 </template>

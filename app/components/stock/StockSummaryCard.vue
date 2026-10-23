@@ -32,10 +32,11 @@ const props = defineProps<{
 //
 // 特別股與 ETF 的個別頁也用這張卡（2026-10-15）：特別股畫發行公司的 logo（2881A → 2881），ETF（0 開頭，沒有公司）不打這支。
 const logoSymbol = computed(() => /^[1-9]\d{3}/.exec(props.stock.code)?.[0] ?? null)
+// logo 不會變（2026-10-23）：換頁時沿用已經抓過的那一份，不重抓；第一次抓也不擋換頁（lazy，伺服器照樣等）。原本每次換頁都重抓並等它
 const { data: logoData } = await useAsyncData(
   () => `stock-logo-${logoSymbol.value ?? 'none'}`,
   () => (logoSymbol.value ? $fetch(`/api/stock/${logoSymbol.value}/logo`) : Promise.resolve(null)),
-  { watch: [logoSymbol], default: () => null }
+  { watch: [logoSymbol], default: () => null, lazy: true, getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
 )
 const logo = computed(() => logoData.value?.logo ?? null)
 

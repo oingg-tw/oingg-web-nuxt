@@ -26,9 +26,10 @@ const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 // 型錄跟摘要同時抓（序列資料不依賴型錄）；型錄只在這裡 await 一次（shared-key race）
+// 摘要只拿來寫 meta description：瀏覽器裡換頁不等它（lazy，2026-10-23 換頁延遲）
 const [, { description }] = await Promise.all([
   useFilterSchema(),
-  useStockPageDigest(code, 'index', { shortName: stockShortName })
+  useStockPageDigest(code, 'index', { shortName: stockShortName, lazy: true })
 ])
 const { data: schema } = useNuxtData<{ categories: Parameters<typeof locateFieldInSchema>[0] }>('filter-schema')
 

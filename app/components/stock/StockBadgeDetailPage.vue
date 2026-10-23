@@ -40,8 +40,10 @@ const { data: badgeData, error: badgeError, status: badgeStatus, refresh: refres
   async () => {
     return readOrNull($fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-badge')
   },
-  { watch: [code, slug], default: () => null }
+  // lazy：瀏覽器裡換頁不等這一頁的資料（2026-10-23，見 StockMetricDetailPage 同一處的註解）
+  { watch: [code, slug], default: () => null, lazy: true }
 )
+const badgePending = computed(() => badgeStatus.value === 'pending' || badgeStatus.value === 'idle')
 
 // The badge's own catalog definition (name/author/summary/threshold/source link) — same
 // buildGuruBadges() every badge UI reads, so this page and the dialog never disagree.
@@ -146,6 +148,9 @@ const passedText = computed(() => {
 const basisLabel = computed(() => (entry.value ? TIMEFRAME_LABELS[entry.value.timeframe as keyof typeof TIMEFRAME_LABELS] ?? entry.value.timeframe : ''))
 const basisSuffix = computed(() => (entry.value && entry.value.timeframe !== 'EOD' ? `（${basisLabel.value}）` : ''))
 
+// 讀取中的答句骨架（同 StockMetricDetailPage）：值、資料時間、徽章門檻那一句差不多長
+const answerSkeleton = computed(() => (badgePending.value ? `${stockShortName.value}的${badgePage.topic}（近四季）為 00.00、資料時間 2026-08-11、徽章門檻「≥ 00%」本期符合。` : null))
+
 const valueAnswer = computed(() => {
   if (!entry.value) return null
   const lead = entry.value.timeframe === 'EOD' ? `${stockShortName.value}目前的` : `${stockShortName.value}的`
@@ -228,14 +233,14 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks, disclaimer: GURU_BADGE_DISCLAIMER }"
   >
-    <StockQuestionSection id="stock-badge-value" :question="`${stockShortName}（${code}）的${badgePage.topic}是多少？`" :answer="valueAnswer">
+    <StockQuestionSection id="stock-badge-value" :question="`${stockShortName}（${code}）的${badgePage.topic}是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
       <!-- 資料時間/徽章門檻 lines removed 2026-09-21（直接要求「stock-page-section
            stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
            (valueAnswer below) already states the value, knowledge date and threshold/pass-fail
            in one sentence directly above this card; these were the same facts restated as
            separate lines right under it. The big number stays — a different visual role (large,
            scannable at a glance), not a duplicate in the way plain repeated text is. -->
-      <template v-if="entry">
+      <template v-if="entry || badgePending">
         <!-- No big value number here either — removed with the metric page's on 2026-09-21
              for the same reason: this section's answer sentence already states the value, its
              knowledge date AND the threshold verdict, so a figure above it repeated the first

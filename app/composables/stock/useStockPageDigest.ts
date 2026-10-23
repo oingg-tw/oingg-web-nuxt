@@ -36,6 +36,9 @@ export interface UseStockPageDigestOptions {
   // The dividend page's already-SSR'd ex-dividend notices（useExDividendNotices）, so its lead
   // sentence can quote the next ex-date without a second fetch.
   exDividendNotices?: Ref<Record<string, ExDividendNotice[]> | null | undefined>
+  // 瀏覽器裡換頁不等這一份（2026-10-23，換頁延遲）：只拿 description 寫 meta 的頁（指標速覽）可以開；拿 series 畫內容的頁要先有讀取中的
+  // 樣子才能開。伺服器照樣等（Nuxt 的 lazy 只影響瀏覽器）
+  lazy?: boolean
 }
 
 // The first group on the page that carries `code` at `timeframe` with at least `minPeriods`
@@ -70,7 +73,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
       if (!symbol) return null
       return readOrNull($fetch<StockSeriesResponse>(`/api/stock/${symbol}/series`, { query: { page }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-digest')
     },
-    { watch: [code], default: () => null }
+    { watch: [code], default: () => null, lazy: options.lazy ?? false }
   )
 
   // Cache pre-warm — runs from the same payload on the server (before the cards' setup) and on

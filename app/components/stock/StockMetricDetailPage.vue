@@ -24,7 +24,9 @@ const metricPage = findMetricPage(slug.value)
 if (!metricPage) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page', fatal: true })
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-// 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁
+// 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁。
+// lazy（2026-10-23，使用者：「手機…點按頁面以後，仍是呈現上一個頁面，經過一段時間以後才切換」）：瀏覽器裡換頁不等這一頁的資料，
+// 先換上結構與骨架；伺服器照樣等資料再輸出（Nuxt 的 lazy 只影響瀏覽器，asyncData.js 的 onServerPrefetch）
 const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, refresh: refreshMetricData }] = await Promise.all([
   useFilterSchema(),
   useAsyncData<StockMetricPageResponse | null>(
@@ -32,9 +34,10 @@ const [{ data: filterSchema }, { data: metricData, error: metricError, status: m
     async () => {
       return readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric')
     },
-    { watch: [code, slug], default: () => null }
+    { watch: [code, slug], default: () => null, lazy: true }
   )
 ])
+const metricPending = computed(() => metricStatus.value === 'pending' || metricStatus.value === 'idle')
 
 // The metric's own catalog entry — unit, formula, sources and (when analysis-ts has written them)
 // the description/limitations/misreadings prose. Never a frontend copy of any of it: this app
@@ -227,6 +230,9 @@ const titleKeywords = computed(() => {
   return prefix + cjkLength(full) + TITLE_BRAND_COST <= TITLE_BUDGET ? full : quarterly
 })
 
+// 讀取中的答句骨架：跟真的答句差不多長（單季、近四季、資料時間），字是透明的，只用來佔同樣的行數
+const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic}為 00.00、近四季${valueTopic}為 00.00、資料時間 2026-08-11。` : null))
+
 const valueAnswer = computed(() => {
   if (!latest.value) return null
   // 財報狗's own shape when a real 單季 figure exists: 單季值 → 年增（財報狗原句是季增，這個目錄
@@ -306,14 +312,14 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: metricEntry?.sources ?? [], links: footerLinks }"
   >
-    <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${valueTopic}是多少？`" :answer="valueAnswer">
+    <StockQuestionSection id="stock-metric-value" :question="`${stockShortName}（${code}）的${valueTopic}是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
       <!-- 期別/資料期間/資料時間 lines removed 2026-09-21（直接要求「stock-page-section
            stock-question-section 移除重複資訊」）— StockQuestionSection's own :answer prop
            (valueAnswer below) already states all three in one sentence directly above this
            card; these were the exact same three facts restated as separate lines right under
            it. The big number stays — it's a different visual role (large, scannable at a
            glance), not a duplicate of the sentence in the way plain repeated text is. -->
-      <template v-if="latest">
+      <template v-if="latest || metricPending">
         <!-- No big value number here. There WAS one（a bare 2rem figure until 2026-09-21,
              then briefly a labelled stat block）, removed by direct decision after「看久了很
              突兀，有其他方式可以優化UIUX嗎?」and a look at the labelled version. The reason it
