@@ -9,6 +9,9 @@ export interface Holding {
   averageCost: string | null
   totalCost: string
   realizedProfitLoss: string
+  // 這批持股領過的現金股利（元，4 位小數字串；業務中台 1074647，2026-10-23）：除息日計入、股數用除息前一天收盤的持股（ETF 每單位配息），
+  // 各帳戶各自算，部位歸零後重新買進從 0 算；沒扣匯費與二代健保補充保費。沒領過是 "0.0000"，只有匯入預覽是 null
+  dividendsReceived?: string | null
 }
 
 export interface Transaction {

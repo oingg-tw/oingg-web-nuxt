@@ -5,6 +5,7 @@ import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 import type { Holding, OpeningPosition, Transaction } from '~/composables/holdings/holdings-model'
 import type { ImportedTrade } from '~/utils/broker-trade-csv'
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
+import type { HoldingRowFigures } from '~/utils/holdings-summary'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（業務中台 4467c44，使用者決定）：這一頁能做的
 // 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與成本（先進先出）由
@@ -73,7 +74,7 @@ watch(() => holdings.value.length, (count) => {
 const baseRows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const entry = companyByCode.value.get(holding.symbol)
-  const input = { quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare }
+  const input = { quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare, dividendsReceived: holding.dividendsReceived }
   return {
     holding,
     symbol: holding.symbol,
@@ -162,9 +163,18 @@ function plainNumber(value: string | number): string {
   return groupThousands(String(Number(value)))
 }
 
+// 報酬含息（2026-10-23，使用者 2026-10-05：「總覽要可以切換 含息 不含息 報酬率」；業務中台 1074647 每一列帶 dividendsReceived）：
+// 打開時總覽與明細的損益、報酬率加上這批持股領過的現金股利，欄名改成「含息損益」「含息報酬率」；關著是只看股價的未實現損益（跟券商
+// 對帳單一樣，預設）。這個瀏覽器記住選了哪一個（cookie：伺服器第一個畫面的欄名就是對的，不會先寫「未實現損益」再換字）
+const withDividends = useCookie<boolean>('holdings-with-dividends', { default: () => false, maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+const pnlOf = (figures: HoldingRowFigures) => (withDividends.value ? figures.pnlWithDividends : figures.pnl)
+const pnlPctOf = (figures: HoldingRowFigures) => (withDividends.value ? figures.pnlWithDividendsPct : figures.pnlPct)
+const pnlLabel = computed(() => (withDividends.value ? '含息損益' : '未實現損益'))
+const pnlPctLabel = computed(() => (withDividends.value ? '含息報酬率' : '報酬率'))
+
 // 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。
 // 下載（2026-10-18）：value 是下載的值（百分比給比例，同複製到 Excel）；sensitive 是會透露部位大小的欄（股數、金額），下載時預設不勾
-const columns: HoldingsSymbolColumn<HoldingRow>[] = [
+const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
   { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', sortLabel: '股數（多到少）', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity, value: row => row.holding.quantity, sensitive: true },
   { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue, value: row => row.figures.marketValue, sensitive: true },
   // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
@@ -183,23 +193,32 @@ const columns: HoldingsSymbolColumn<HoldingRow>[] = [
     }
   },
   {
-    key: 'pnl', label: '未實現損益', minWidth: 140, card: 'summary',
-    text: row => signedMoney(row.figures.pnl),
-    cardText: row => `${signedMoney(row.figures.pnl)} ${signedPct(row.figures.pnlPct)}`,
-    sortValue: row => row.figures.pnl,
-    value: row => row.figures.pnl,
+    key: 'pnl', label: pnlLabel.value, minWidth: 140, card: 'summary',
+    text: row => signedMoney(pnlOf(row.figures)),
+    cardText: row => `${signedMoney(pnlOf(row.figures))} ${signedPct(pnlPctOf(row.figures))}`,
+    sortValue: row => pnlOf(row.figures),
+    value: row => pnlOf(row.figures),
     sensitive: true,
-    tone: row => row.figures.pnl === null ? null : Math.round(row.figures.pnl)
+    tone: (row) => {
+      const pnl = pnlOf(row.figures)
+      return pnl === null ? null : Math.round(pnl)
+    }
   },
   {
-    key: 'pnlPct', label: '報酬率', minWidth: 110, sortLabel: '報酬率（高到低）',
-    text: row => signedPct(row.figures.pnlPct) || '－',
-    sortValue: row => row.figures.pnlPct,
-    value: row => (row.figures.pnlPct === null ? null : row.figures.pnlPct / 100),
-    tone: row => row.figures.pnlPct === null ? null : Number(row.figures.pnlPct.toFixed(2))
+    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 120, sortLabel: `${pnlPctLabel.value}（高到低）`,
+    text: row => signedPct(pnlPctOf(row.figures)) || '－',
+    sortValue: row => pnlPctOf(row.figures),
+    value: (row) => {
+      const pct = pnlPctOf(row.figures)
+      return pct === null ? null : pct / 100
+    },
+    tone: (row) => {
+      const pct = pnlPctOf(row.figures)
+      return pct === null ? null : Number(pct.toFixed(2))
+    }
   },
   { key: 'annualDividend', label: '預估年股利', minWidth: 120, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend, value: row => row.figures.annualDividend, sensitive: true }
-]
+])
 
 // 平均成本只算成本已知的股數；有成本不明的股數時照實寫出來，不讓人以為均價涵蓋全部股數
 function averageCostText(holding: Holding): string {
@@ -400,7 +419,14 @@ async function submit() {
 
       <template v-else>
         <section class="holdings-page__overview" aria-labelledby="holdings-summary-title">
-          <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
+          <!-- 報酬含息的開關跟總覽標題同一行：它同時切換總覽與明細的損益、報酬率（見 withDividends） -->
+          <div class="holdings-page__overview-head">
+            <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
+            <label class="holdings-page__basis">
+              <el-switch v-model="withDividends" />
+              <span>報酬含息</span>
+            </label>
+          </div>
           <!-- 總覽（2026-10-16 重新設計，使用者：「今日漲跌可以與未實現損益合併，預估年度股利可以與殖利率合併，請重新設計總覽」；
                先試的三格卡片版「合併以後看起來髒髒的」——各格內容長短不一、同一格紅綠兩色、括號太多）。改成一塊、不分格：總市值是唯一的
                大數字，下面三列對齊成「名稱｜金額｜比率」，損益兩列在上、股利一列在下。每列只有一種顏色；日期只在總市值寫一次 -->
@@ -411,7 +437,7 @@ async function submit() {
               <dd><span class="app-skeleton app-skeleton--flow">1,234,567 元</span></dd>
             </div>
             <div class="holdings-overview__row">
-              <dt>未實現損益</dt>
+              <dt>{{ pnlLabel }}</dt>
               <dd><span class="app-skeleton app-skeleton--flow">▲ +123,456 元</span></dd>
               <dd><span class="app-skeleton app-skeleton--flow">+12.34%</span></dd>
             </div>
@@ -432,9 +458,9 @@ async function submit() {
               <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
             </div>
             <div class="holdings-overview__row">
-              <dt>未實現損益</dt>
-              <dd :class="toneOf(totals.pnl)">{{ signedMoney(totals.pnl) }}</dd>
-              <dd :class="toneOf(totals.pnl)">{{ signedPct(totals.pnlPct) }}</dd>
+              <dt>{{ pnlLabel }}</dt>
+              <dd :class="toneOf(withDividends ? totals.pnlWithDividends : totals.pnl)">{{ signedMoney(withDividends ? totals.pnlWithDividends : totals.pnl) }}</dd>
+              <dd :class="toneOf(withDividends ? totals.pnlWithDividends : totals.pnl)">{{ signedPct(withDividends ? totals.pnlWithDividendsPct : totals.pnlPct) }}</dd>
             </div>
             <div class="holdings-overview__row">
               <!-- 跟總市值不是同一天時才寫日期（收盤還停在前一個交易日的情況，見 dayDate） -->
@@ -499,6 +525,7 @@ async function submit() {
             <summary>計算方式</summary>
             <ul>
               <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
+              <li>「報酬含息」關著時，未實現損益與報酬率只看股價，不含已經領到的股利（跟券商對帳單相同）。打開時是含息損益＝未實現損益＋這批持股領過的現金股利：除息日計入，股數用除息前一天收盤時的持股（ETF 用每單位配息），各帳戶分開算，部位歸零後重新買進從 0 算，沒扣匯費與二代健保補充保費；含息報酬率＝含息損益 ÷ 成本。有成本不明的股數時，股利照股數比例只算成本已知的那一份。</li>
               <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
               <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上櫃股票的收盤價當天傍晚就更新，上市股票目前要到隔天早上；還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
               <li>預估年度股利＝持有股數 × 每股現金股利：普通股與 ETF 都採近 12 個月已除息的現金股利（普通股已換算配股後的股數<template v-if="etfWindow">；ETF 的區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>）；特別股採發行條件所訂年股息。只反映過去實際配發，不代表未來配息金額。</li>
@@ -597,6 +624,29 @@ async function submit() {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 12px;
+}
+
+/* 總覽標題與「報酬含息」開關同一行，開關靠右；標題的下邊距改由這一行給 */
+.holdings-page__overview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.holdings-page__overview-head .holdings-page__section-title {
+  margin: 0;
+}
+
+.holdings-page__basis {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
 }
 
 /* 總覽：一塊、不分格，三列用 subgrid 對齊，金額靠右（位數一眼比得出大小）。依這一段的寬度排三種（mobile first）：

@@ -18,6 +18,9 @@ export interface HoldingFigures {
   averageCost: string | number | null
   price: string | number | null | undefined
   dividendPerShare: string | number | null | undefined
+  // 這批持股領過的現金股利（業務中台 1074647，2026-10-23）：除息日計入、股數用除息前一天的持股，部位歸零後重新買進從 0 算。
+  // 沒有（舊版或匯入預覽）當 0
+  dividendsReceived?: string | number | null
 }
 
 export interface HoldingRowFigures {
@@ -25,6 +28,9 @@ export interface HoldingRowFigures {
   marketValue: number | null
   pnl: number | null
   pnlPct: number | null
+  // 含息（2026-10-23，使用者 2026-10-05：「總覽要可以切換 含息 不含息 報酬率」）：未實現損益加上領過的現金股利
+  pnlWithDividends: number | null
+  pnlWithDividendsPct: number | null
   annualDividend: number | null
 }
 
@@ -32,6 +38,8 @@ export interface HoldingsTotals {
   marketValue: number | null
   pnl: number | null
   pnlPct: number | null
+  pnlWithDividends: number | null
+  pnlWithDividendsPct: number | null
   annualDividend: number | null
   // 沒有報價、因此沒有算進總市值與損益的檔數
   unpricedCount: number
@@ -61,13 +69,20 @@ export function holdingRowFigures(h: HoldingFigures): HoldingRowFigures {
   // 成本 0（配股或贈與取得，使用者可以填 0）時報酬率沒有定義，不是無限大
   const pnlPct = pnl === null || cost === null || cost === 0 ? null : (pnl / cost) * 100
   const annualDividend = dividendPerShare === null ? null : h.quantity * dividendPerShare
+  // 含息只算成本已知的股數領到的那一份（照股數比例分），同未實現損益：成本不明的股數不進成本，它們的股利也不能拿來墊高報酬率
+  // ponytail: 照現在的股數比例分攤，成本不明的那幾批如果是後來才取得，會略高估它們分到的股利；要精確得業務中台分批回報
+  const dividends = toAmount(h.dividendsReceived) ?? 0
+  const knownDividends = h.quantity > 0 ? dividends * Math.max(knownQuantity, 0) / h.quantity : 0
+  const pnlWithDividends = pnl === null ? null : pnl + knownDividends
+  const pnlWithDividendsPct = pnlWithDividends === null || cost === null || cost === 0 ? null : (pnlWithDividends / cost) * 100
 
-  return { cost, marketValue, pnl, pnlPct, annualDividend }
+  return { cost, marketValue, pnl, pnlPct, pnlWithDividends, pnlWithDividendsPct, annualDividend }
 }
 
 export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
   let marketValue = 0
   let pnl = 0
+  let pnlWithDividends = 0
   let pricedCost = 0
   let annualDividend = 0
   let pricedCount = 0
@@ -88,6 +103,7 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
       // 全部成本不明的列：市值照算，損益沒有可算的部分
       if (figures.pnl !== null && figures.cost !== null) {
         pnl += figures.pnl
+        pnlWithDividends += figures.pnlWithDividends ?? figures.pnl
         pricedCost += figures.cost
         pricedCount += 1
       }
@@ -106,6 +122,8 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
     pnl: pricedCount ? pnl : null,
     // 分母只用「有報價的那些列」的成本。用全部成本當分母，會讓沒報價的部位默默把報酬率壓低。
     pnlPct: pricedCount && pricedCost !== 0 ? (pnl / pricedCost) * 100 : null,
+    pnlWithDividends: pricedCount ? pnlWithDividends : null,
+    pnlWithDividendsPct: pricedCount && pricedCost !== 0 ? (pnlWithDividends / pricedCost) * 100 : null,
     annualDividend: dividendCount ? annualDividend : null,
     unpricedCount,
     dividendMissingCount,

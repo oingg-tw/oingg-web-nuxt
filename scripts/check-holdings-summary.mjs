@@ -76,6 +76,23 @@ console.log('\n成本不明的股數')
   assert(t.costUnknownCount === 1 && t.unpricedCount === 0, '它被計成「有成本不明股數」，不是「沒報價」')
 }
 
+console.log('\n含息損益（領過的現金股利，2026-10-23）')
+{
+  const f = holdingRowFigures({ ...row(1000, '500', '600'), dividendsReceived: '20000.0000' })
+  assert(close(f.pnlWithDividends, 120000) && close(f.pnlWithDividendsPct, 24), '損益 100,000 加股利 20,000 → 含息 120,000、+24%')
+  assert(close(f.pnl, 100000) && close(f.pnlPct, 20), '不含息的數字不變')
+}
+{
+  const f = holdingRowFigures({ quantity: 1000, costUnknownQuantity: 250, averageCost: '500', price: '600', dividendPerShare: null, dividendsReceived: '20000' })
+  assert(close(f.pnlWithDividends, 75000 + 15000), '成本不明 250 股：只算成本已知那 750 股分到的股利（15,000）')
+}
+{
+  const f = holdingRowFigures(row(1000, '500', '600'))
+  assert(close(f.pnlWithDividends, f.pnl), '沒有 dividendsReceived（舊版、匯入預覽）當 0')
+  const t = summarizeHoldings([{ ...row(1000, '500', '600'), dividendsReceived: '20000' }, { ...row(1000, '100', '0'), dividendsReceived: '5000' }])
+  assert(close(t.pnlWithDividends, 120000) && close(t.pnlWithDividendsPct, 24), '加總只算有報價的列，分母同不含息')
+}
+
 console.log('\n組合殖利率（市值加權）')
 {
   const y = weightedDividendYield([
