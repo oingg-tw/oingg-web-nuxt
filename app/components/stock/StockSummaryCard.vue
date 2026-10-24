@@ -213,15 +213,17 @@ const qrDialogVisible = ref(false)
            原因只在 `isEmerging === true` 時才寫得出來（同日下午上游補了那個欄位）。`null` 不寫、
            `false` 不寫——前者是上游還沒送，後者的沒有行情可能是長期停止買賣或當天 ingest 缺漏，
            而那兩種我現在分不出來。寧可不解釋，也不要給一個可能錯的解釋：讀者會相信它。 -->
-      <p v-if="stock.price === null && isEmerging === true" class="summary-card__no-quote">
-        興櫃股票以議價方式交易，本站目前沒有這類公司的成交價。
-      </p>
       <div v-if="stock.price !== null" class="summary-card__price">
         <span class="summary-card__price-value">{{ formatStockValue(stock, 'price') }}</span>
         <span class="summary-card__price-change" :class="priceDirectionClass(stock.change)">
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>
       </div>
+      <!-- 興櫃 2026-10-24 接上櫃買中心的興櫃行情（analysis-ts c7b786f7）：收盤是最後一筆成交價，沒成交的日子沿用前一次，所以有股價時
+           也說它是什麼；還沒成交過的才沒有股價。原本寫「本站目前沒有這類公司的成交價」，接上之後就不對了 -->
+      <p v-if="isEmerging === true" class="summary-card__status">
+        {{ stock.price === null ? '興櫃股票以議價方式交易，這一檔目前還沒有成交價。' : '興櫃股票以議價方式交易，這是最後一筆成交價，可能是幾天前成交的。' }}
+      </p>
       <!-- 停止買賣、下市（2026-10-22，使用者：「做吧」「好」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。同興櫃那句的灰字 -->
       <p v-if="haltText" class="summary-card__status">{{ haltText }}</p>
       <p v-if="delistText" class="summary-card__status">{{ delistText }}</p>
@@ -477,7 +479,6 @@ html.dark .summary-card__favorite-btn.is-plain {
 
 /* Desktop-only (see the min-width rule below) — at phone width the short name is the whole
    point of the 2026-09-15 "名稱可以用短名嗎" request, so the full legal name stays out of the way. */
-.summary-card__no-quote,
 .summary-card__status {
   grid-column: 1 / -1;
   margin: 0;
@@ -609,7 +610,6 @@ html.dark .summary-card__favorite-btn.is-plain {
   }
 
   .summary-card__par-value,
-  .summary-card__no-quote,
   .summary-card__status {
     grid-column: 2;
   }

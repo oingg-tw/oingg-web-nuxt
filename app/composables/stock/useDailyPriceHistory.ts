@@ -1,6 +1,7 @@
 export interface DailyPriceHistoryEntry {
   tradeDate: string
-  open: number
+  // 興櫃沒有開盤價（議價交易，業務中台 2026-10-24）
+  open: number | null
   high: number
   low: number
   close: number
