@@ -145,12 +145,17 @@ function sectorStat(values: (number | null)[]): SectorStat {
 }
 
 function sectorStats(rows: SectorCompanyRow[]): SectorStats {
+  // 殖利率只算 14 天內有成交的公司（2026-10-25，跟 analysis-ts 的 sector-dividend-summary 同一條規則，總覽頁與類股頁才是同一個數字）：
+  // 停牌、很久沒成交的公司，最後一筆殖利率不是現況（觀光的 4804 最後成交 4/13、5703 10/7）。截止日＝這個類股最新的資料日往前 14 天
+  const latest = maxIsoDate(rows.map(row => row.dividendYieldDate))
+  const cutoff = latest ? new Date(Date.parse(latest) - 14 * 86_400_000).toISOString().slice(0, 10) : null
+  const currentYields = rows.filter(row => cutoff !== null && row.dividendYieldDate !== null && row.dividendYieldDate >= cutoff)
   return {
     peRatio: sectorStat(rows.map(row => row.peRatio)),
     pbRatio: sectorStat(rows.map(row => row.pbRatio)),
     // 近 12 個月沒有配息紀錄的公司自算是空值（分不出不配息還是還沒公告），類股的分布把它們算成 0%：沒配息的公司是類股樣貌的一部分，
     // 排除的話配息公司少的類股會被灌高（觀光 1.83% → 4.57%）。指數與類股殖利率的慣例同樣算 0（2026-10-24，使用者選「沒配息算 0%」）
-    dividendYield: sectorStat(rows.map(row => row.dividendYield ?? 0)),
+    dividendYield: sectorStat(currentYields.map(row => row.dividendYield ?? 0)),
     roe: sectorStat(rows.map(row => row.roe))
   }
 }
@@ -188,6 +193,7 @@ export const getSectorCompanies = defineCachedFunction(
           peRatio: number('exchangePeRatio.EOD'),
           pbRatio: number('exchangePbRatio.EOD'),
           dividendYield: number('liveCashDividendYield.EOD'),
+          dividendYieldDate: cell('liveCashDividendYield.EOD')?.knowledgeDate || null,
           roe: number('roe.TTM'),
           debtRatio: number('debtRatio.Q'),
           dividendGrowthRate3y: number('dividendGrowthRate3y.FY'),

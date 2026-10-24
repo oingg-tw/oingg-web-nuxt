@@ -37,7 +37,9 @@ export interface SectorCompanyRow {
   price: number | null
   peRatio: number | null
   pbRatio: number | null
+  // 自算的近 12 個月現金股利殖利率（2026-10-24 起）；dividendYieldDate 是那一筆的資料日（最後成交日），類股統計用它判斷是不是現況
   dividendYield: number | null
+  dividendYieldDate: string | null
   roe: number | null
   debtRatio: number | null
   // 股利 3 年成長率（2026-10-01）。加這一欄是為了讓產業頁畫得出公司版的散佈圖——軸跟
@@ -403,13 +405,15 @@ export interface SectorDividendSummary {
   sectorCode: string
   sectorName: string
   companyCount: number
-  dividendYield: SectorStatPair
+  // 殖利率讀自算的那一軸（2026-10-25，analysis-ts 3abf17c0 新增；使用者選「全站改自算、沒配息算 0%」）：近 12 個月沒有配息紀錄的算 0，
+  // 14 天內沒成交的不算。同一支端點還有交易所值的 dividendYield（詞彙表裡 dividendYield 專指交易所），這裡不讀
+  liveCashDividendYield: SectorStatPair
   dividendGrowthRate3y: SectorStatPair
 }
 
 export interface SectorDividendSummaryPageData {
   // 殖利率取自哪一天的收盤價——殖利率是 EOD 口徑，不標日期讀者無從判斷新舊。
-  dividendYieldTradeDate: string
+  liveCashDividendYieldTradeDate: string | null
   sectors: SectorDividendSummary[]
 }
 

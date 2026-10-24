@@ -56,9 +56,9 @@ const rows = computed(() => summary.value?.sectors ?? [])
 // 大幅位移，平均更敏感。門檻放前端常數，API 不加 plottable 欄位，要調就改這裡。
 const plotted = computed(() =>
   rows.value.filter(row =>
-    row.dividendYield.count >= MIN_SAMPLE
+    row.liveCashDividendYield.count >= MIN_SAMPLE
     && row.dividendGrowthRate3y.count >= MIN_SAMPLE
-    && row.dividendYield.median !== null
+    && row.liveCashDividendYield.median !== null
     && row.dividendGrowthRate3y.median !== null)
 )
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
@@ -66,12 +66,12 @@ const excluded = computed(() => rows.value.filter(row => !plotted.value.includes
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下圖每一個點是一個類股：縱軸是該類股殖利率的中位數（${summary.value?.dividendYieldTradeDate ?? ''} 收盤價計算，沒有配息的公司以 0% 計入），橫軸是股利 3 年成長率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下圖每一個點是一個類股：縱軸是該類股殖利率的中位數（近 12 個月已除息的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入），橫軸是股利 3 年成長率的中位數。`
 })
 
 const chartAnswer = computed(() => {
   if (!rows.value.length) return null
-  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.dividendYield.count} 家、成長率 ${row.dividendGrowthRate3y.count} 家）`)
+  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、成長率 ${row.dividendGrowthRate3y.count} 家）`)
   const base = `點的大小代表該類股殖利率有值的公司數。兩個軸的家數不一樣，因為它們各自算各自有值的公司——殖利率通常整個類股都有值，成長率則要有連續三年的股利紀錄才算得出來。`
   return names.length
     ? `${base}任一軸少於 ${MIN_SAMPLE} 家的類股沒有畫進圖裡，共 ${names.length} 個：${names.join('、')}。它們的數字仍然在下面的表格裡。`
@@ -94,7 +94,7 @@ interface ScatterParam { data?: { value: [number, number]; row: (typeof rows)['v
 
 const chartOption = computed(() => {
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  const maxCount = Math.max(1, ...plotted.value.map(row => row.dividendYield.count))
+  const maxCount = Math.max(1, ...plotted.value.map(row => row.liveCashDividendYield.count))
   return {
     grid: { left: 8, right: 16, top: 24, bottom: 28, containLabel: true },
     tooltip: {
@@ -103,7 +103,7 @@ const chartOption = computed(() => {
         const row = param.data?.row
         if (!row) return ''
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.sectorName}</div>`
-          + `<div>殖利率中位數 ${yieldText(row.dividendYield.median)}（${row.dividendYield.count} 家）</div>`
+          + `<div>殖利率中位數 ${yieldText(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
           + `<div>股利 3 年成長率中位數 ${growthText(row.dividendGrowthRate3y.median)}（${row.dividendGrowthRate3y.count} 家）</div>`
           + `<div style="color:${CHART_TOOLTIP_INK.secondary}">類股共 ${row.companyCount} 家</div></div>`
       }
@@ -129,7 +129,7 @@ const chartOption = computed(() => {
         // 點大小＝殖利率那一軸的家數，開根號後映射，讓 161 家不會大到蓋掉旁邊的點。最小 10px
         // 仍然高於高齡友善規格對標記的 8px 下限。
         symbolSize: (_: unknown, param: ScatterParam) => {
-          const count = param.data?.row.dividendYield.count ?? 0
+          const count = param.data?.row.liveCashDividendYield.count ?? 0
           return 10 + 22 * Math.sqrt(count / maxCount)
         },
         itemStyle: { color: accent, opacity: 0.75 },
@@ -143,7 +143,7 @@ const chartOption = computed(() => {
         // 34 個標籤一定會互相壓到：先上下推開，推不開才藏；完整數字在 tooltip 與產業索引的表格裡。
         labelLayout: { moveOverlap: 'shiftY', hideOverlap: true },
         data: plotted.value.map(row => ({
-          value: [row.dividendGrowthRate3y.median as number, row.dividendYield.median as number],
+          value: [row.dividendGrowthRate3y.median as number, row.liveCashDividendYield.median as number],
           row
         }))
       }
@@ -172,7 +172,7 @@ const chartOption = computed(() => {
       <p class="hub-answer">每個類股的逐項數字、公司家數與各自的公司一覽表，在<NuxtLink to="/industries" class="hub-inline-link">產業索引</NuxtLink>那一頁。</p>
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」） -->
-        <li>沒有配息的公司，殖利率以 0% 計入。中位數是 0，代表這個類股有一半以上的公司沒有配息。</li>
+        <li>殖利率是近 12 個月已除息的現金股利除以收盤價，不含股票股利。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司近 12 個月沒有配息。</li>
         <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。股利 3 年成長率要有連續三年的股利紀錄，全市場不到六成的公司算得出來。</li>
         <li>兩個數字都用中位數，少數公司的極端數字不會把整個類股拉偏。</li>
       </ul>
