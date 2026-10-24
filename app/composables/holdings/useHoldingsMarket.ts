@@ -91,6 +91,7 @@ export function useHoldingsMarket() {
         // 一年」，一年配一次、今年除息比去年晚一點的公司兩次除息都落在窗口外，變成 0（2026-10-05 實測 2364、3231，
         // 總覽因此默默少算）。新欄位是「最新交易日往前 12 個月內已除息」的現金股利、已換算配股後股數，所以
         // 「目前股數 × 值」就是預估股利。實測 3231 5.5、2364 1.82、2330 24（舊欄位 0、0、22）。
+        // 2026-10-25 起年配的公司只取最近一次（analysis-ts 44e86da0），頁面上的說法見 ANNUAL_CASH_DIVIDEND_BASIS。
         // dividendYield.EOD：跟大盤殖利率同一個來源（交易所公布），才能放在一起比
         // stock.price／stock.previousClose：今日漲跌（2026-10-15），跟觀察清單同一組
         fetchScreenerValues<ScreenerValue>(missing.slice(0, SCREENER_VALUES_MAX), ['stock.latestClose', 'stock.price', 'stock.previousClose', 'liveDividendPerShare.EOD', 'dividendYield.EOD']),

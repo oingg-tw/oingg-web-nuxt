@@ -81,7 +81,7 @@ const description = computed(() => {
       <p class="hub-answer">
         <NuxtLink :to="commonScreenerPath({ sector: code })" class="hub-inline-link">到普通股篩選，把類股限定為{{ sectorName }}</NuxtLink>，再加上 ROE、負債比率、殖利率等指標條件，結果可依任一欄位排序。
       </p>
-      <p class="hub-answer">股價、本益比、股價淨值比是交易所每日公布的數字；殖利率是近 12 個月已除息的現金股利除以最新收盤價，近 12 個月沒有配息紀錄的以「－」表示；ROE 與負債比率整理自公開資訊觀測站的財務報表。本益比在虧損時無值，以「－」表示。</p>
+      <p class="hub-answer">股價、本益比、股價淨值比是交易所每日公布的數字；殖利率是一年份的現金股利除以最新收盤價（{{ ANNUAL_CASH_DIVIDEND_BASIS }}），近 12 個月沒有配息紀錄的以「－」表示；ROE 與負債比率整理自公開資訊觀測站的財務報表。本益比在虧損時無值，以「－」表示。</p>
     </StockQuestionSection>
   </IndustryPage>
 </template>

@@ -51,7 +51,7 @@ const rows = computed(() => summary.value?.sectors ?? [])
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：殖利率的中位數（近 12 個月已除息的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
 })
 
 const pathFor = (code: string) => sectorPath(code) ?? '/industries'
@@ -90,7 +90,7 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
         :columns="COLUMNS"
         :row-key="row => row.sectorCode"
         label="各證交所類股的公司家數、殖利率與成長率中位數"
-        :caption="`證交所類股的中位數（殖利率為近 12 個月現金股利除以 ${summary?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月未配息以 0% 計入）`"
+        :caption="`證交所類股的中位數（殖利率為一年份的現金股利除以 ${summary?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月未配息以 0% 計入）`"
       >
         <template #row="{ row }">
           <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
@@ -108,7 +108,7 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」）。拿掉的：證交所
              2026-08-28 起把沒配息改成空白、我們一律當 0（上市上櫃算法一致）；中位數的分母與反推總額；34 個類股裡 8 個平均與中位數正負號相反 -->
-        <li>殖利率是近 12 個月已除息的現金股利除以收盤價，不含股票股利。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司近 12 個月沒有配息。</li>
+        <li>殖利率是一年份的現金股利除以收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司近 12 個月沒有配息。</li>
         <li>每一欄只算有這個數字的公司，所以算進去的家數不一定等於類股家數。例如股利 3 年成長率要有連續三年的股利紀錄，全市場不到六成的公司算得出來。</li>
         <li>每一欄都用中位數（公司依數字排好、排在正中間那一家的數字），不用平均：少數公司的極端數字會把平均拉偏，中位數比較接近一般公司的情況。</li>
       </ul>
