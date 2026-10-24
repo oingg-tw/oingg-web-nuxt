@@ -162,57 +162,57 @@ function attributionOf(entry: ManifestEntry): { license: string; licensePage: st
   return { license, licensePage: page }
 }
 
-export const getCompanyLogo = defineCachedFunction(
-  async (symbol: string): Promise<CompanyLogo | null> => {
-    const manifest = await getLogoManifest()
-    const entry = manifest?.logos?.[symbol]
-    if (!manifest || !entry?.origin) return null
+// 每次都從快取的 manifest 現查，不另外按代號再快取一層（2026-10-24 拿掉）：兩層各自「過期先回舊值、背景更新」疊起來，代號那層
+// 到期重算時拿到的常是還沒更新的 manifest，於是舊答案又存一小時——mops 換了圖要兩小時才出現（9911 櫻花換成方形版，DEV 80 分鐘
+// 後還是舊的）。查一筆只是在 manifest 的物件裡找一個鍵
+export async function getCompanyLogo(symbol: string): Promise<CompanyLogo | null> {
+  const manifest = await getLogoManifest()
+  const entry = manifest?.logos?.[symbol]
+  if (!manifest || !entry?.origin) return null
 
-    // Prefer the WebP, except never over an SVG original — a raster copy of vector art is a
-    // downgrade whatever its dimensions say. The `webp ?? origin` half is the fallback rule mops
-    // asked for:「照 manifest 的 webp 是不是 null 決定要不要回退到 /logoOrigins/，不要自己拼檔名」.
-    //
-    // THE SVG CLAUSE CURRENTLY NEVER FIRES, and that is worth stating rather than leaving the next
-    // reader to wonder. It was added 2026-09-23 against a real regression: 210 companies had an SVG
-    // original, 208 of those had also been converted to WebP, so a blanket preference downgraded
-    // vector art to a raster copy — and then measured that copy against a sharpness gate the vector
-    // itself could never fail, dropping 17 companies on that basis alone（2332's SVG had become a
-    // 32×32 WebP）. mops then removed the cause at the source the same day: SVG originals no longer
-    // get a WebP at all（verified — 210 SVG entries, 0 with a `webp`）, so the general rule is
-    // correct on its own now.
-    //
-    // Kept anyway, because it is not a workaround for that bug — it is a true statement about which
-    // file is better, and it happens to cost one ternary. If the upstream pipeline ever produces
-    // those copies again, nothing here changes.
-    const image = entry.origin.ext === 'svg' ? entry.origin : (entry.webp ?? entry.origin)
-    // Shape first: an SVG skips the sharpness gate by definition, but a vector wordmark is still
-    // a wordmark — 2330's is 500×126.
-    if (!isSquareEnough(image) || !isSharpEnough(image)) return null
+  // Prefer the WebP, except never over an SVG original — a raster copy of vector art is a
+  // downgrade whatever its dimensions say. The `webp ?? origin` half is the fallback rule mops
+  // asked for:「照 manifest 的 webp 是不是 null 決定要不要回退到 /logoOrigins/，不要自己拼檔名」.
+  //
+  // THE SVG CLAUSE CURRENTLY NEVER FIRES, and that is worth stating rather than leaving the next
+  // reader to wonder. It was added 2026-09-23 against a real regression: 210 companies had an SVG
+  // original, 208 of those had also been converted to WebP, so a blanket preference downgraded
+  // vector art to a raster copy — and then measured that copy against a sharpness gate the vector
+  // itself could never fail, dropping 17 companies on that basis alone（2332's SVG had become a
+  // 32×32 WebP）. mops then removed the cause at the source the same day: SVG originals no longer
+  // get a WebP at all（verified — 210 SVG entries, 0 with a `webp`）, so the general rule is
+  // correct on its own now.
+  //
+  // Kept anyway, because it is not a workaround for that bug — it is a true statement about which
+  // file is better, and it happens to cost one ternary. If the upstream pipeline ever produces
+  // those copies again, nothing here changes.
+  const image = entry.origin.ext === 'svg' ? entry.origin : (entry.webp ?? entry.origin)
+  // Shape first: an SVG skips the sharpness gate by definition, but a vector wordmark is still
+  // a wordmark — 2330's is 500×126.
+  if (!isSquareEnough(image) || !isSharpEnough(image)) return null
 
-    const base = image === entry.webp ? manifest.webpBasePath : manifest.basePath
-    // Content-addressed cache buster（2026-09-24）. The bucket serves logo files with
-    // `max-age=3600` and mops REUSES the filename when a company's mark changes — so when 台積電's
-    // 500×126 wordmark was replaced by a 100×79 square one, Google's edge kept serving the old
-    // bytes under the same URL for an hour. Proved it rather than guessing: the plain URL returned
-    // `width="500"` while the same URL with a throwaway query returned `viewBox="0 0 100 78.737"`.
-    // The consequence was not a stale picture but a broken LAYOUT — the card sizes its grid column
-    // from the rendered image, so it reserved 159px for a mark that is 51px wide.
-    // sha256 is what mops told us to key off（「以 manifest 的 contentHash / 各項 sha256 為準重抓」）,
-    // and it makes the long cache safe rather than dangerous: same bytes, same URL, still cached.
-    // The filename comes from the manifest, never assembled from the symbol: extensions vary, and
-    // a guessed one is a broken image rather than a missing one.
-    const measured = entry.origin
-    return {
-      url: `${BUCKET}/${base}${image.name}${image.sha256 ? `?v=${image.sha256.slice(0, 12)}` : ''}`,
-      width: image.width ?? null,
-      height: image.height ?? null,
-      needsDarkBackdrop:
-        measured.meanLuminance != null &&
-        measured.opaqueRatio != null &&
-        measured.meanLuminance > 240 &&
-        measured.opaqueRatio < 0.9,
-      attribution: attributionOf(entry)
-    }
-  },
-  { name: 'company-logo', getKey: symbol => symbol, maxAge: TTL_LOGO_MANIFEST, staleMaxAge: TTL_LOGO_STALE, swr: true }
-)
+  const base = image === entry.webp ? manifest.webpBasePath : manifest.basePath
+  // Content-addressed cache buster（2026-09-24）. The bucket serves logo files with
+  // `max-age=3600` and mops REUSES the filename when a company's mark changes — so when 台積電's
+  // 500×126 wordmark was replaced by a 100×79 square one, Google's edge kept serving the old
+  // bytes under the same URL for an hour. Proved it rather than guessing: the plain URL returned
+  // `width="500"` while the same URL with a throwaway query returned `viewBox="0 0 100 78.737"`.
+  // The consequence was not a stale picture but a broken LAYOUT — the card sizes its grid column
+  // from the rendered image, so it reserved 159px for a mark that is 51px wide.
+  // sha256 is what mops told us to key off（「以 manifest 的 contentHash / 各項 sha256 為準重抓」）,
+  // and it makes the long cache safe rather than dangerous: same bytes, same URL, still cached.
+  // The filename comes from the manifest, never assembled from the symbol: extensions vary, and
+  // a guessed one is a broken image rather than a missing one.
+  const measured = entry.origin
+  return {
+    url: `${BUCKET}/${base}${image.name}${image.sha256 ? `?v=${image.sha256.slice(0, 12)}` : ''}`,
+    width: image.width ?? null,
+    height: image.height ?? null,
+    needsDarkBackdrop:
+      measured.meanLuminance != null &&
+      measured.opaqueRatio != null &&
+      measured.meanLuminance > 240 &&
+      measured.opaqueRatio < 0.9,
+    attribution: attributionOf(entry)
+  }
+}

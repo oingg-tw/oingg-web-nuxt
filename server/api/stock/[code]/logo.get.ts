@@ -7,10 +7,9 @@ import { getCompanyLogo } from '~~/server/utils/company-logo'
 // ("this is not an open proxy") — it forwards 業務中台 responses and composes nothing. Mixing a
 // second, locally-sourced upstream into one of its paths would quietly make it something else.
 //
-// The cost of keeping them apart is one more same-origin call per stock page. It is served from
-// Nitro's cache after the first hit of the day（the manifest behind it is cached 24h and the
-// per-symbol lookup is in-memory）, so it reaches mops's bucket at most once a day, not once a
-// visitor.
+// The cost of keeping them apart is one more same-origin call per stock page. The manifest behind
+// it is cached for an hour（revalidated in the background）and each symbol is looked up in it on
+// every call, so it reaches mops's bucket about once an hour, not once a visitor.
 
 export default defineEventHandler(async (event) => {
   const code = requireListedSymbol(event)
