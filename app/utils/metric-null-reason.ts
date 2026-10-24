@@ -16,6 +16,10 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 用到資本支出的 13 支現金流指標（analysis-ts 30819c0e，業務中台 2026-10-24 轉來）：mops 把這一期的資本支出標成疑似列錯（購置與處分
   // 的科目疑似放錯）。資料是有的，不是尚無資料（業務中台：「文案請不要寫成資料不足」）；哪幾期、隔年更正後會不會恢復寫在溯源的 methodologyNote
   suspected_mislabel: '財報的資本支出疑似列錯科目（購置與處分疑似放錯），這一期不計算',
+  // 興櫃（analysis-ts 2026-10-24 定案）：交易所不替興櫃公布殖利率、本益比、股價淨值比；興櫃第一、三季不申報，單季指標算不出來。
+  // 兩個都是結構性的、不會恢復，儲存格跟 not_applicable_industry 一樣寫「不適用」（NOT_APPLICABLE_REASONS）
+  not_published_by_exchange: '證交所、櫃買中心不公布興櫃股票的這項數字',
+  semiannual_only: '興櫃公司只申報半年報，沒有第一、三季的單季財報',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
@@ -43,18 +47,9 @@ export function nullReasonTitle(point: NullablePoint): string | undefined {
 // 儲存格裡的短措辭（title 放上面的長說明）。三種結果、中間那種才是重點（2026-09-22）：不適用（模型不適用於這家公司）、無法計算
 //（資料在，這個指標算不出來——本身就是關於公司的事實）、尚無資料（我們沒有這家公司這一期的紀錄）。原本全部塌成不適用或尚無資料，
 // 10 檔樣本 108 個 null 徽章有 96 個被說成「我們沒有數字」，含 35 個 insufficient_history。業務中台 之後把同一個區分寫進契約（3a59133）。
+// 不適用＝結構性、不會恢復：模型不適用於這個產業，或興櫃本來就沒有這項數字（交易所不公布、只申報半年報）
+const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_published_by_exchange', 'semiannual_only'])
 export function nullReasonShortText(nullReason: string | null | undefined): string {
-  if (nullReason === 'not_applicable_industry') return '不適用'
+  if (nullReason && NOT_APPLICABLE_REASONS.has(nullReason)) return '不適用'
   return nullReason ? '無法計算' : '尚無資料'
-}
-
-// Integers stay integers（7、8）, everything else gets `decimals` places — deterministic on both
-// renders（toFixed only, never toLocaleString）.
-export function formatSeriesNumber(value: number, decimals = 2): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(decimals)
-}
-
-export function formatNullablePoint(point: NullablePoint | null | undefined, decimals = 2): string {
-  if (!point || point.value === null) return point?.nullReason === 'not_applicable_industry' ? '不適用' : '－'
-  return formatSeriesNumber(point.value, decimals)
 }
