@@ -62,8 +62,9 @@ const description = computed(() => {
           <td class="seo-table__num">{{ industryNum(row.price) }}</td>
           <td class="seo-table__num">{{ industryNum(row.peRatio) }}</td>
           <td class="seo-table__num">{{ industryNum(row.pbRatio) }}</td>
-          <!-- 個股的 0 寫成「不配息」；類股中位數維持數字（中位數 0 不代表整個類股不配息） -->
-          <td class="seo-table__num">{{ row.dividendYield === 0 ? NO_DIVIDEND_TEXT : industryNum(row.dividendYield) }}</td>
+          <!-- 殖利率是自算的近 12 個月現金股利殖利率（2026-10-24）：0 只代表近 12 個月沒有除息（可能已宣告、還沒除息），不寫「不配息」；
+               近 12 個月沒有配息紀錄的是空值「－」 -->
+          <td class="seo-table__num">{{ industryNum(row.dividendYield) }}</td>
           <td class="seo-table__num">{{ industryNum(row.roe) }}</td>
           <td class="seo-table__num">{{ industryNum(row.debtRatio) }}</td>
         </template>
@@ -80,7 +81,7 @@ const description = computed(() => {
       <p class="hub-answer">
         <NuxtLink :to="commonScreenerPath({ sector: code })" class="hub-inline-link">到普通股篩選，把類股限定為{{ sectorName }}</NuxtLink>，再加上 ROE、負債比率、殖利率等指標條件，結果可依任一欄位排序。
       </p>
-      <p class="hub-answer">股價、本益比、股價淨值比與殖利率是交易所每日公布的數字；ROE 與負債比率整理自公開資訊觀測站的財務報表。本益比在虧損時無值，以「－」表示。</p>
+      <p class="hub-answer">股價、本益比、股價淨值比是交易所每日公布的數字；殖利率是近 12 個月已除息的現金股利除以最新收盤價，近 12 個月沒有配息紀錄的以「－」表示；ROE 與負債比率整理自公開資訊觀測站的財務報表。本益比在虧損時無值，以「－」表示。</p>
     </StockQuestionSection>
   </IndustryPage>
 </template>

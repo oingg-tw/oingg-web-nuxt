@@ -46,6 +46,8 @@ const answer = computed(() => {
         </tbody>
       </SharedTable>
       <p v-else class="hub-answer">有值的公司少於 5 家，不畫分布。</p>
+      <!-- 殖利率的口徑（2026-10-24 改讀自算、沒配息算 0%，見 server/utils/hub-data.ts 的 sectorStats） -->
+      <p v-if="distribution.some(item => item.label === '殖利率')" class="hub-answer">殖利率是近 12 個月已除息的現金股利除以最新收盤價；近 12 個月沒有配息紀錄的公司以 0% 計，所以殖利率的家數是全部公司。</p>
     </StockQuestionSection>
   </IndustryPage>
 </template>

@@ -89,7 +89,8 @@ const scatterOption = computed(() => ({
       const row = param.data?.row
       if (!row) return ''
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
-        + `<div>${row.dividendYield === 0 ? NO_DIVIDEND_TEXT : `殖利率 ${row.dividendYield?.toFixed(2)}%`}</div>`
+        // 自算的近 12 個月現金股利殖利率：0 只代表近 12 個月沒有除息，不寫「不配息」（2026-10-24）
+        + `<div>殖利率 ${row.dividendYield?.toFixed(2)}%</div>`
         + `<div>股利 3 年成長率 ${row.dividendGrowthRate3y?.toFixed(1)}%</div></div>`
     }
   },

@@ -125,7 +125,8 @@ interface ScreenerRunResponse {
 // 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by 業務中台,
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'dividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
+// 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者「現在就換」，同篩選與排行，理由見 app/utils/replaced-metrics.ts）
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -147,7 +148,9 @@ function sectorStats(rows: SectorCompanyRow[]): SectorStats {
   return {
     peRatio: sectorStat(rows.map(row => row.peRatio)),
     pbRatio: sectorStat(rows.map(row => row.pbRatio)),
-    dividendYield: sectorStat(rows.map(row => row.dividendYield)),
+    // 近 12 個月沒有配息紀錄的公司自算是空值（分不出不配息還是還沒公告），類股的分布把它們算成 0%：沒配息的公司是類股樣貌的一部分，
+    // 排除的話配息公司少的類股會被灌高（觀光 1.83% → 4.57%）。指數與類股殖利率的慣例同樣算 0（2026-10-24，使用者選「沒配息算 0%」）
+    dividendYield: sectorStat(rows.map(row => row.dividendYield ?? 0)),
     roe: sectorStat(rows.map(row => row.roe))
   }
 }
@@ -176,7 +179,7 @@ export const getSectorCompanies = defineCachedFunction(
       for (const result of response.results) {
         const cell = (field: string) => result.values[field] ?? null
         const number = (field: string) => parseDecimal(cell(field)?.value)
-        quoteDates.push(cell('stock.price')?.knowledgeDate, cell('exchangePeRatio.EOD')?.knowledgeDate, cell('dividendYield.EOD')?.knowledgeDate)
+        quoteDates.push(cell('stock.price')?.knowledgeDate, cell('exchangePeRatio.EOD')?.knowledgeDate, cell('liveCashDividendYield.EOD')?.knowledgeDate)
         fundamentalsDates.push(cell('roe.TTM')?.knowledgeDate, cell('debtRatio.Q')?.knowledgeDate)
         rows.push({
           symbol: result.symbol,
@@ -184,7 +187,7 @@ export const getSectorCompanies = defineCachedFunction(
           price: number('stock.price'),
           peRatio: number('exchangePeRatio.EOD'),
           pbRatio: number('exchangePbRatio.EOD'),
-          dividendYield: number('dividendYield.EOD'),
+          dividendYield: number('liveCashDividendYield.EOD'),
           roe: number('roe.TTM'),
           debtRatio: number('debtRatio.Q'),
           dividendGrowthRate3y: number('dividendGrowthRate3y.FY'),
