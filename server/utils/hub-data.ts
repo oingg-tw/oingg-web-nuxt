@@ -1,4 +1,4 @@
-import type { BusinessCycleIndicatorPoint, BusinessCyclePeriod, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, ExDividendKind, ExDividendMonthCell, ExDividendRow, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { BusinessCycleIndicatorPoint, BusinessCycleSensitivity, BusinessCyclePeriod, BusinessCycleReferenceCycle, DirectoryCompany, DirectorySector, ExDividendKind, ExDividendMonthCell, ExDividendRow, HubSector, MarketDirectory, RankingPageData, RankingRow, ScreenerTemplateSummary, ScreenerTemplateWithSlug, SectorCompanies, SectorCompanyRow, SectorCycleRow, SectorCycleSummary, SectorGrowthSummary, SectorMetricHistory, SectorMonthlyRevenue, SectorStat, SectorStats, SectorDividendSummaryPageData } from '#shared/types/hub'
 import katex from 'katex'
 
 // Market-wide datasets behind the hub pages（/stock 個股總表, /industry/…, /rank/…, /screener/…,
@@ -223,6 +223,12 @@ export async function getListedSectorCompanies(code: string) {
     members: allMembers.filter(company => !company.isEmerging)
   }
 }
+
+// /industries/sensitivity：各類股的景氣敏感度（2026-10-24）。上游在國發會每月公布新數字後自己重算、排好名次，這裡原樣轉
+export const getBusinessCycleSensitivity = defineCachedFunction(
+  () => businessFetch<BusinessCycleSensitivity>('/industries/business-cycle-sensitivity'),
+  { name: 'hub-business-cycle-sensitivity', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)
 
 // /industries/growth：各類股的營收、淨利近四季年增率中位數（2026-10-10 起讀上游 GET /industries/sector-summary，取代原本
 // 34 次 getSectorCompanies；上游同樣是每家各自最新一筆的混期快照、排除興櫃）。沒有 p10／p90，那兩格是 null。

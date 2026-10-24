@@ -4,7 +4,8 @@ import { HeatmapChart } from 'echarts/charts'
 import { VisualMapContinuousComponent } from 'echarts/components'
 import type { SectorCycleRow, SectorCycleSummary } from '#shared/types/hub'
 import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
-// 類股景氣敏感度（2026-10-10，「請設計圖表，讓用戶可以看出來那些公司或是產業屬於景氣循環股」）：兩個數字，近三個月累計營收年增率
+// 類股營收與景氣（2026-10-10，「請設計圖表，讓用戶可以看出來那些公司或是產業屬於景氣循環股」；2026-10-24 從「景氣敏感度」改名，那個詞
+// 現在是股價版 /industries/sensitivity 的正式名稱）：兩個數字，近三個月累計營收年增率
 // 的起伏幅度（標準差）與它跟景氣同時指標（去趨勢）的相關係數——但頁面**不替任何一個類股下結論、不貼標籤、不排序**（conductor
 // 篩選功能.md §5.7、非景氣循環產業護城河分類學 L51–52）：只畫數字，表格依類股代號排。
 //
@@ -19,7 +20,7 @@ use([HeatmapChart, VisualMapContinuousComponent])
 
 const requestUrl = useRequestURL()
 useSeoMeta({
-  title: '台股類股景氣敏感度：營收起伏與景氣同步程度',
+  title: '台股類股營收與景氣：營收起伏與景氣同步程度',
   description: '證交所各類股每個月的營收年增率畫成熱度圖，跟景氣同時指標與國發會認定的景氣收縮期對照；附逐類股的起伏幅度、與景氣的相關係數、最低與最高年增率。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/cycle` }] })
@@ -29,7 +30,7 @@ const { data: summary, error: summaryError } = await useFetch<SectorCycleSummary
   default: () => null
 })
 // 讀不到回 503（2026-10-11，照其他 hub 頁的規則）：搜尋引擎要拿到暫時錯誤，不是一頁空白的 200
-if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類股景氣敏感度資料暫時無法取得', fatal: true })
+if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類股營收與景氣資料暫時無法取得', fatal: true })
 
 // 答句分布的分界：相關係數 0.5 是常用的「中度以上相關」門檻，只拿來數家數，不替類股命名
 const STRONG = 0.5
@@ -202,7 +203,7 @@ const heatOption = computed(() => {
 
 <template>
   <div class="app-page app-page--compact industries-page">
-    <h1 class="app-page__title industries-page__title">台股類股景氣敏感度</h1>
+    <h1 class="app-page__title industries-page__title">台股類股營收與景氣</h1>
     <IndustryNav />
 
     <section class="stock-page-section" aria-labelledby="industries-cycle-heading">

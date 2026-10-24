@@ -49,7 +49,7 @@ const answer = computed(() => {
       </SharedTable>
       <!-- 最後一句同 /industries/cycle 的說明（2026-10-23，mops 重新提醒 v_market_monthly_revenues 的倖存者偏差；同一份資料這頁原本沒寫） -->
       <p class="hub-answer">近三個月累計年增率是這三個月的營收加總比去年同三個月，農曆年落在一月或二月造成的單月起落會被攤平；單月年增率是當月比去年同月。類股用的是今天的公司名單，已經下市的公司不在裡面，所以越早的年份算進去的公司越少，早年的數字只反映留到今天的公司。</p>
-      <p v-if="hasCycle" class="hub-answer">灰底是國家發展委員會認定的景氣收縮期（高峰到谷底）；景氣同時指標是國發會公布的去趨勢值，100 代表長期趨勢。各類股的對照在<NuxtLink to="/industries/cycle" class="hub-inline-link">景氣敏感度</NuxtLink>。</p>
+      <p v-if="hasCycle" class="hub-answer">灰底是國家發展委員會認定的景氣收縮期（高峰到谷底）；景氣同時指標是國發會公布的去趨勢值，100 代表長期趨勢。各類股的對照在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</p>
     </StockQuestionSection>
   </IndustryPage>
 </template>

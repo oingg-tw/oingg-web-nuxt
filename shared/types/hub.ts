@@ -160,6 +160,20 @@ export interface SectorCycleSummary {
   contractions: BusinessCyclePeriod[]
 }
 
+// /industries/sensitivity（2026-10-24，analysis-ts 806cd493、業務中台 413cf22 轉發）：景氣敏感度（詞彙表 businessCycleSensitivity，不叫 beta）
+// ＝類股內各公司股價 12 個月報酬，對國發會景氣同時指標年增率（股價錯開 leadMonths 個月）做迴歸的斜率，每家至少 minMonths 個月；只給類股的
+// 中位數與四分位（個股的解釋力太低）。sectors 依 rank 排好；從未算過時 computedAt 是 null、sectors 是空的；代碼不在代碼表上時 sectorName 是 null
+export interface BusinessCycleSensitivity {
+  computedAt: string | null
+  coincidentIndexMonth: string | null
+  window: { from: string; to: string } | null
+  leadMonths: number
+  minMonths: number
+  taiex: number | null
+  companyCount: number
+  sectors: { sectorCode: string; sectorName: string | null; rank: number; count: number; median: number; q1: number; q3: number }[]
+}
+
 // 類股層的時間序列（2026-10-10，analysis-ts ae14be5e／業務中台 0e9a28a）。每一期只用那一期的值、排除興櫃；count 0 時 median
 // 為 null 並帶 nullReason。類股成員是「今天的分類」，早期各期是現存公司的歷史。
 export interface SectorMetricHistoryEntry {

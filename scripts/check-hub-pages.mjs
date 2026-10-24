@@ -64,8 +64,10 @@ const ROUTES = [
   // 也是刻意的：它的工作是那張圖，逐類股的數字在 /industries，硬塞一張重複的表只是為了過檢查。
   { path: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/industries/growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
-  // 景氣敏感度（2026-10-10）：圖後有一張依類股代號排的表，每列連到類股頁
+  // 營收與景氣（2026-10-10；10-24 從「景氣敏感度」改名）：圖後有一張依類股代號排的表，每列連到類股頁
   { path: '/industries/cycle', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1, noDescriptionWindow: true, noBreadcrumb: true },
+  // 景氣敏感度（2026-10-24，股價對景氣同時指標的斜率）：圖後一張依名次排的表，每列連到類股頁
+  { path: '/industries/sensitivity', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 1, noDescriptionWindow: true, noBreadcrumb: true },
   // 總經特區的頁面不連到任何公司或類股，兩個連結下限是刻意的 0。2026-10-11 精簡後只剩四頁（見 macro-pages.ts）。
   { path: '/macro', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   { path: '/macro/equity-risk-premium', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
