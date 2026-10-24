@@ -5,6 +5,7 @@
 //   - Tab 不會跑出彈窗；axe 0
 //   - 取消什麼都不送；再打開是原本的清單
 //   - 儲存照「改名 → 刪除 → 排序」一項做完才送下一項（假的排序跟 業務中台 一樣要全部已存的 id，刪除還沒做完就排會 400）
+//   - 名稱框按 Enter 就是儲存（2026-10-24，使用者：「管理我的篩選 連續按下enter 要視同儲存」）
 //   - 訪客那一組（未儲存）在彈窗裡只寫一句、不能改
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-screener-manage.mjs（要 A11Y_TEST_EMAIL／PASSWORD；DIR＝截圖目錄，可省略）
 import AxeBuilder from '@axe-core/playwright'
@@ -132,8 +133,9 @@ await dialog.getByRole('button', { name: '刪除「高股息」' }).click()
 await dialog.getByLabel('「成長」的名稱').fill('')
 await dialog.getByRole('button', { name: '儲存' }).click()
 check(await dialog.isVisible() && await focused() === 'INPUT' && (await dialog.textContent()).includes('名稱要 1 到 20 個字'), '空名稱擋下、焦點在那一格')
+// 這次用名稱框的 Enter 存（上面那次點「儲存」）
 await dialog.getByLabel('「成長」的名稱').fill('成長')
-await dialog.getByRole('button', { name: '儲存' }).click()
+await dialog.getByLabel('「成長」的名稱').press('Enter')
 await dialog.waitFor({ state: 'hidden' })
 for (const start = Date.now(); Date.now() - start < 15000 && !calls.some(call => call.startsWith('REORDER')); await page.waitForTimeout(200));
 await page.waitForTimeout(800)

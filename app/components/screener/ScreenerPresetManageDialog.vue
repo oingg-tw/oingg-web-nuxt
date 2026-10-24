@@ -8,6 +8,8 @@ import type { PresetSelectItem } from './ScreenerPresetSelect.vue'
 //   - 名稱直接在列上改，不另開改名對話框（不疊彈窗）
 //   - 上移、下移是真按鈕（WCAG 2.5.7），移動後焦點跟著那一列
 //   - 內建、未儲存的那幾組固定在最前面、不能改；最後一組不能刪
+//   - 名稱框按 Enter 就是「儲存」（2026-10-24，使用者：「管理我的篩選 連續按下enter 要視同儲存」）：清單是一個表單，「儲存」是它的送出鈕，
+//     交給瀏覽器的隱式送出——注音、倉頡選字確認的那一下 Enter 瀏覽器不會拿來送出，選完再按一次才存
 // 套用順序（改名 → 刪除 → 排序）由 ScreenerPageShell 負責
 interface Row extends PresetDraftRow {
   unsaved: boolean
@@ -89,6 +91,7 @@ function save() {
 
 <template>
   <el-dialog v-if="everOpened" v-model="open" :title="`管理${label}`" width="min(560px, 92vw)" class="preset-manage">
+    <form :id="`${uid}-form`" @submit.prevent="save">
     <ul ref="listRef" class="preset-manage__list">
       <li v-for="(row, index) in rows" :key="row.id" :data-id="row.id" class="preset-manage__row">
         <template v-if="row.removed">
@@ -119,12 +122,13 @@ function save() {
         </span>
       </li>
     </ul>
+    </form>
     <p class="visually-hidden" role="status">{{ status }}</p>
     <!-- 一組都不能改（訪客、只有內建那一組）就沒有東西可存 -->
     <template #footer>
       <template v-if="rows.some(row => row.editable)">
         <el-button @click="open = false">取消</el-button>
-        <el-button type="primary" @click="save">儲存</el-button>
+        <el-button type="primary" native-type="submit" :form="`${uid}-form`">儲存</el-button>
       </template>
       <el-button v-else @click="open = false">關閉</el-button>
     </template>
