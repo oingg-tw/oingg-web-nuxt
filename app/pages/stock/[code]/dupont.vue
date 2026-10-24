@@ -170,10 +170,10 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
-            <td>{{ fixedRateText(entry.values.netProfitMargin?.value ?? null) }}</td>
-            <td>{{ timesText(entry.values.assetTurnover?.value ?? null) }}</td>
-            <td>{{ multipleText(entry.values.equityMultiplier?.value ?? null) }}</td>
-            <td>{{ fixedRateText(entry.values.roe?.value ?? null) }}</td>
+            <td :title="nullReasonTitle(entry.values.netProfitMargin)">{{ reasonedCellText(entry.values.netProfitMargin, fixedRateText) }}</td>
+            <td :title="nullReasonTitle(entry.values.assetTurnover)">{{ reasonedCellText(entry.values.assetTurnover, timesText) }}</td>
+            <td :title="nullReasonTitle(entry.values.equityMultiplier)">{{ reasonedCellText(entry.values.equityMultiplier, multipleText) }}</td>
+            <td :title="nullReasonTitle(entry.values.roe)">{{ reasonedCellText(entry.values.roe, fixedRateText) }}</td>
           </tr>
         </tbody>
       </SharedTable>

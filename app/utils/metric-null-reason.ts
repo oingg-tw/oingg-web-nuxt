@@ -39,9 +39,15 @@ export interface NullablePoint {
   nullReason: string | null
 }
 
-export function nullReasonTitle(point: NullablePoint): string | undefined {
-  if (point.value !== null || !point.nullReason) return undefined
+export function nullReasonTitle(point: NullablePoint | null | undefined): string | undefined {
+  if (!point || point.value !== null || !point.nullReason) return undefined
   return NULL_REASON_LABELS[point.nullReason] ?? '這一期沒有數值'
+}
+
+// 多欄的歷史表（杜邦、財報三率、安全韌性）的一格：有值用那一頁自己的格式，空值照原因寫，同 StockMetricHistorySection。原本空值一律
+// 印「尚無資料」——6498 久禾光電 2024Q1 的近四季其實是興櫃時只交半年報、推不出來（2026-10-24，使用者：「stock/6498 杜邦分析 2024Q1」）
+export function reasonedCellText(point: NullablePoint | null | undefined, format: (value: number) => string): string {
+  return point && point.value !== null ? format(point.value) : nullReasonShortText(point?.nullReason)
 }
 
 // 儲存格裡的短措辭（title 放上面的長說明）。三種結果、中間那種才是重點（2026-09-22）：不適用（模型不適用於這家公司）、無法計算

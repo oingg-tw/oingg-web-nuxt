@@ -197,8 +197,8 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
-            <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode">
-              {{ fixedRateText(entry.values[metricCode]?.value ?? null) }}
+            <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode" :title="nullReasonTitle(entry.values[metricCode])">
+              {{ reasonedCellText(entry.values[metricCode], fixedRateText) }}
             </td>
             <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
           </tr>
