@@ -130,13 +130,14 @@ const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.E
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
+// 跟 analysis-ts 同一個算法（statistics.ts 的 percentile＋round2）：下界加上權重乘差距，再四捨五入到兩位。原本是兩數加權相加後 toFixed(2)，
+// 兩數平均剛好落在 .005 時浮點誤差偏向另一邊，類股頁跟總覽頁差 0.01（2026-10-25 量到 4 個類股，例如紡織 2.60 對 2.61；換寫法後 34/34 一致）
 function quantile(sorted: number[], q: number): number | null {
   if (!sorted.length) return null
   const position = (sorted.length - 1) * q
   const lower = Math.floor(position)
-  const upper = Math.ceil(position)
-  const weight = position - lower
-  return Number((sorted[lower]! * (1 - weight) + sorted[upper]! * weight).toFixed(2))
+  const value = sorted[lower]! + (position - lower) * (sorted[Math.min(lower + 1, sorted.length - 1)]! - sorted[lower]!)
+  return Math.round(value * 100) / 100
 }
 
 function sectorStat(values: (number | null)[]): SectorStat {
