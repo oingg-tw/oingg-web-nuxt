@@ -38,7 +38,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 // 釘選的是「頁面」（slug），不是指標欄位。對應成 /screener/values 的欄位：
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
 //   - 徽章頁：BADGE_PAGES 的 metricCode＋chartTimeframe（沒寫就近四季）
-//   - 配股配息：交易所公布的殖利率（那一頁回答的就是「領多少」）
+//   - 配股配息：自算的現金殖利率（那一頁回答的就是「領多少」；2026-10-25 從交易所公布值換過來，同篩選與排行）
 //   - 月營收年增率：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）。月營收（金額）型錄沒有，只畫圖、不給數值
 //   - 杜邦分析：近四季 ROE（三項乘出來的那個數）
 //   - 淨值從哪來：每股淨值；股東回饋組成、營業費用組成：組成的母項
@@ -46,7 +46,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 //   - 安全韌性的組成：流動比率（那一頁的主線）；現金循環的組成：現金轉換循環（時間軸最後算出來的那一段）
 //   - 財報三率是三個數並列，沒有單一數值，只給連結
 const SPECIAL_FIELDS: Record<string, string> = {
-  'dividend': 'dividendYield.EOD',
+  'dividend': 'liveCashDividendYield.EOD',
   'monthly-revenue-growth': 'revenueYoy3m.M',
   'dupont': 'roe.TTM',
   'equity-source': 'bvps.Q',

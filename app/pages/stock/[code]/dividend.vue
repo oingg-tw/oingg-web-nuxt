@@ -5,7 +5,7 @@ import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-divi
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
 // /api/stock/:code/series?page=dividend（useStockPageDigest）。
 // 2026-10-15 第一段改成先跟自己比（使用者：「重新設計 dividend 該指標都先跟自己比，就像其他多數指標一樣」）：殖利率歷年走勢＋答句
-// 寫這檔自己近幾年的區間。殖利率歷史是業務中台 4dcd116 的 GET /stocks/:symbol/dividend-yield-history（月底取樣，口徑同摘要卡）。
+// 寫這檔自己近幾年的區間。殖利率歷史是業務中台 4dcd116 的 GET /stocks/:symbol/dividend-yield-history（月底取樣；2026-10-25 起自算的現金殖利率，同摘要卡的 liveCashDividendYield）。
 // 原本第一段的全市場百分位與分布圖（StockDividendYieldPercentileCard）同日先拿掉（使用者：「跟其他配息公司比，殖利率在哪裡 這個
 // 先刪掉。我另外想想怎麼辦」）；元件、分布圖的資料與 series 的 payerPercentile 2026-10-23 一起刪了（git 找得回來）。
 // 2026-09-24 移出兩段：填息搬到 /stock/:code/dividend-fill（同一份 payload，填息仍在這裡的伺服器端算，只有渲染搬走）；
@@ -23,7 +23,7 @@ const { data: exDividendNotices } = useExDividendNotices(computed(() => [code.va
 // Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
 await useFilterSchema()
 const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
-const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'dividendYield')?.metric.description))
+const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'liveCashDividendYield')?.metric.description))
 
 // lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要與殖利率歷史，第一段讀取中放骨架；伺服器照樣等
 const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices, lazy: true })

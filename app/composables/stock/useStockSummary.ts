@@ -35,7 +35,8 @@ export interface StockSummary {
 interface RawStockQuote {
   symbol: string
   price: { tradeDate: string; close: string | null } | null
-  valuation: { tradeDate: string; peRatio: string | null; pbRatio: string | null; dividendYield: string | null } | null
+  // liveCashDividendYield：analysis-ts 的 quote 加、業務中台照轉（2026-10-25 提出）
+  valuation: { tradeDate: string; peRatio: string | null; pbRatio: string | null; liveCashDividendYield?: string | null } | null
   tradingHalt?: TradingHalt | null
   delisting?: Delisting | null
 }
@@ -72,7 +73,9 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
                 tradeDate: raw.valuation.tradeDate,
                 peRatio: toNumber(raw.valuation.peRatio),
                 pbRatio: toNumber(raw.valuation.pbRatio),
-                dividendYield: toNumber(raw.valuation.dividendYield)
+                // 自算的現金殖利率（2026-10-25，同篩選、排行與配股配息頁的圖）。交易所的 dividendYield 不讀：股票股利按面額算進去，
+                // 3040 會寫 11.78%、圖上卻是 0。上游還沒帶這一欄時是 null，殖利率那半句就不出現，不拿交易所值補
+                dividendYield: toNumber(raw.valuation.liveCashDividendYield)
               }
             : null,
           tradingHalt: raw.tradingHalt ?? null,
