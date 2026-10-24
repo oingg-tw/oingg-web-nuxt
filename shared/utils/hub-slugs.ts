@@ -140,7 +140,8 @@ export interface RankPageDefinition {
 }
 
 export const RANK_PAGES: RankPageDefinition[] = [
-  { slug: 'dividend-yield', field: 'dividendYield.EOD', direction: 'desc', label: '殖利率', metricCode: 'dividendYield' },
+  // 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者選「全站改自算」，理由見 app/utils/replaced-metrics.ts）
+  { slug: 'dividend-yield', field: 'liveCashDividendYield.EOD', direction: 'desc', label: '殖利率', metricCode: 'liveCashDividendYield' },
   { slug: 'pe-ratio-low', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
   { slug: 'pb-ratio-low', field: 'exchangePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'exchangePbRatio' },
   { slug: 'roe', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },

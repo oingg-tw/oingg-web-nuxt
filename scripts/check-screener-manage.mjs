@@ -17,7 +17,8 @@ let failures = 0
 const check = (cond, label, detail = '') => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}${detail ? `（${detail}）` : ''}`); if (!cond) failures++ }
 
 const START = [
-  { id: 'p-a', name: '高股息', filters: [{ field: 'dividendYield.EOD', min: 5, max: null, exclude: false }] },
+  // 殖利率用留下來的那一支（replaced-metrics.ts）：用被藏起來的舊指標，篩選一打開就會換掉並存回，「取消什麼都不送」就不成立
+  { id: 'p-a', name: '高股息', filters: [{ field: 'liveCashDividendYield.EOD', min: 5, max: null, exclude: false }] },
   { id: 'p-b', name: '低本益比', filters: [{ field: 'exchangePeRatio.EOD', min: null, max: 12, exclude: false }] },
   { id: 'p-c', name: '成長', filters: [{ field: 'revenueYoy.M', min: 20, max: null, exclude: false }] }
 ]

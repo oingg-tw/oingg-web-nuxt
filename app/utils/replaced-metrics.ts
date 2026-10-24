@@ -11,6 +11,10 @@
 //     單季版是季底那天的收盤；即時版是最近一筆有成交的收盤（不還原，同 livePeRatio 的來源）。總覽欄位的「股價」（stock.price）是業務中台
 //     補的、不能當條件，最新交易日沒成交時是空的
 //   - 盈餘收益率兩支都留：一般版是 EPS ÷ 股價，Greenblatt 版是 EBIT ÷ 企業價值，公式不同
+//   - 殖利率留「近12個月 現金股利殖利率」（2026-10-24，使用者選「全站改自算」）：交易所公布的殖利率照轉交易所的錯（5314 股數變 4.16 倍後
+//     每股股利沒調，125.97% 排在殖利率排行第一）、把股票股利按面額算進去（3040 11.78%，只算現金 1.35%），興櫃也沒有；自算的只算近 12 個月
+//     已除息的現金股利，興櫃 273／366 有值。代價：新年度股利要等除息才算進來，沒有股利紀錄的是空值不是 0。持股頁與大盤比、配息頁與
+//     指標速覽配股配息卡的殖利率（同一張逐月歷史圖）仍是交易所的（大盤只有交易所公布值；自算的還沒有逐月歷史，已請上游）
 // 存過的篩選條件與欄位組合裡還有左邊的，打開篩選時換成右邊並存回帳號（2026-10-22，使用者：「換成留下來的那一支」。起因是條件選了
 // 「即時 本益成長比 < 1」、欄位卻是舊的「本益成長比」：朋億 0.85 通過，欄位寫 1.04）。每一對的單位相同（倍／元），條件的數字照搬。
 // 零 import：scripts/check-replaced-metrics.mjs 直接讀
@@ -25,6 +29,7 @@ export const REPLACED_METRICS: Record<string, string> = {
   dividendPerShare: 'liveDividendPerShare.EOD',
   cashDividendYield: 'liveCashDividendYield.EOD',
   shareholderYield: 'liveShareholderYield.EOD',
+  dividendYield: 'liveCashDividendYield.EOD',
   stockPrice: 'liveStockPrice.EOD'
 }
 

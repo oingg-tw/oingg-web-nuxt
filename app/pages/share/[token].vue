@@ -37,7 +37,8 @@ const watchlist = computed(() => (share.value.kind === 'watchlist' ? share.value
 const holdings = computed(() => (share.value.kind === 'holdings' ? share.value : null))
 
 // ---- 觀察清單 ----
-const columns = computed(() => (watchlist.value?.columns ?? []).filter(column => column.key !== 'note').map(column => ({ field: column.key, label: column.label })))
+// 分享時存的欄位也換成留下來的那一支（replaced-metrics.ts，例如殖利率 2026-10-24 改讀自算），同觀察清單
+const columns = computed(() => (watchlist.value?.columns ?? []).filter(column => column.key !== 'note').map(column => ({ field: replacedField(column.key), label: column.label })))
 const notes = computed(() => Object.fromEntries((watchlist.value?.items ?? []).flatMap(item => (item.note ? [[item.symbol, item.note]] : []))))
 const codes = computed(() => (watchlist.value?.items ?? []).map(item => item.symbol))
 const { data: schema } = await useFilterSchema()

@@ -32,14 +32,15 @@ watch(() => activeWatchlist.value?.id, (id) => {
 // 跟篩選器同一個模型：一份有順序的 {field, label} 清單，全部可以拖、可以移除。field 是型錄 id
 // （metricCode.basis）；「漲跌」「下次除權息」是這一頁自己算的假欄位（見 useWatchlistStocks）。
 // 預設就是 2026-09 以來那幾欄，加上下次除權息；漲跌金額與幅度合一欄，讓預設維持 7 欄（1920 寬放大 200%
-// 還放得下）。殖利率是內建但預設不開的那一欄，用 ＋ 從型錄加回來（dividendYield.EOD）。
+// 還放得下）。殖利率是內建但預設不開的那一欄，用 ＋ 從型錄加回來（近 12 個月現金股利殖利率，2026-10-24 從交易所公布值換過來，
+// 見 app/utils/replaced-metrics.ts；存過的欄位讀回來時一起換成留下來的那一支，跟篩選器一樣）。
 const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
   { field: 'stock.price', label: '收盤價' },
   { field: WATCHLIST_CHANGE, label: '漲跌' },
   { field: 'exchangePeRatio.EOD', label: '本益比' },
   { field: 'exchangePbRatio.EOD', label: '股價淨值比' },
   { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放' },
-  { field: 'dividendYield.EOD', label: '殖利率' }
+  { field: 'liveCashDividendYield.EOD', label: '殖利率' }
 ]
 const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
 const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field))
@@ -53,7 +54,7 @@ const currentUser = useCurrentUser()
 const serializeColumns = (list: ScreenerResultTableColumn[]) => JSON.stringify(list.map(({ field, label }) => ({ field, label })))
 // 內建欄位用程式裡的定義（標籤之後改了也跟得上），自訂欄位照存的
 const fromSaved = (saved: { field: string; label: string }[]) =>
-  saved.map(item => BUILTIN_COLUMNS.find(column => column.field === item.field) ?? { field: item.field, label: item.label })
+  saved.map(item => BUILTIN_COLUMNS.find(column => column.field === replacedField(item.field)) ?? { field: replacedField(item.field), label: item.label })
 // 欄位的副本放在 cookie（2026-10-20，使用者：「然後不要閃動」）：帳號裡那份要等登入還原才讀得到，原本重新整理先畫預設的欄位、讀到才換成
 // 自己的；有副本時伺服器的第一個畫面就是自己的欄位。只在這台瀏覽器登入過（auth-hint）時用；讀到帳號裡的那份照樣以它為準
 const columnsHint = useCookie<{ field: string; label: string }[] | null>('watchlist-columns-hint', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
