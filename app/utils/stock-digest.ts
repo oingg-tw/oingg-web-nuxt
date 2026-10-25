@@ -227,7 +227,7 @@ function valuationClause(summary: StockSummary | null, percentiles: StockDigestP
   if (valuation.pbRatio !== null) parts.push(`淨值比 ${valuation.pbRatio.toFixed(2)} 倍${pb ? `（${pb.windowLabel}第${pb.percentile}百分位）` : ''}`)
   if (valuation.dividendYield !== null) {
     const dated = valuation.dividendYieldDate === valuation.tradeDate ? '' : `（${valuation.dividendYieldDate}）`
-    parts.push(`${valuation.dividendYield === 0 ? NO_EX_DIVIDEND_TEXT : `殖利率 ${valuation.dividendYield.toFixed(2)}%`}${dated}`)
+    parts.push(`${valuation.dividendYield === 0 ? ZERO_YIELD_TEXT : `殖利率 ${valuation.dividendYield.toFixed(2)}%`}${dated}`)
   }
   if (!parts.length) return null
   return `${parts.join('、')}（${valuation.tradeDate}）`
@@ -236,8 +236,8 @@ function valuationClause(summary: StockSummary | null, percentiles: StockDigestP
 function yieldClause(summary: StockSummary | null): string | null {
   const valuation = summary?.valuation
   if (!valuation || valuation.dividendYield === null) return null
-  // 0 不寫成「殖利率 0.00%」，也不寫「不配息」（見 dividend-event.ts 的 NO_EX_DIVIDEND_TEXT）
-  if (valuation.dividendYield === 0) return `${NO_EX_DIVIDEND_TEXT}（${valuation.dividendYieldDate}）`
+  // 0 不寫成「殖利率 0.00%」，也不寫「不配息」（見 dividend-event.ts 的 ZERO_YIELD_TEXT）
+  if (valuation.dividendYield === 0) return `${ZERO_YIELD_TEXT}（${valuation.dividendYieldDate}）`
   return `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.dividendYieldDate}）`
 }
 

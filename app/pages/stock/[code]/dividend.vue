@@ -56,7 +56,7 @@ const history = computed(() => series.value?.dividendHistory?.entries ?? [])
 // already removed from the badge/metric 目前值 cards.
 const todayYieldText = computed(() => {
   const valuation = summary.value?.valuation
-  if (valuation?.dividendYield === 0) return `${NO_EX_DIVIDEND_TEXT}（${valuation.dividendYieldDate}）。`
+  if (valuation?.dividendYield === 0) return `${ZERO_YIELD_TEXT}（${valuation.dividendYieldDate}）。`
   return valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
     ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.dividendYieldDate}）。`
     : null
@@ -68,7 +68,7 @@ const ownRangeText = computed(() => {
   const sorted = [...values].sort((a, b) => a - b)
   const median = sorted[Math.floor(sorted.length / 2)]!
   const from = yieldEntries.value[0]!.tradeDate.slice(0, 7)
-  if (sorted.at(-1) === 0) return `${from} 以來每個月月底往前看，都是${NO_EX_DIVIDEND_TEXT}。`
+  if (sorted.at(-1) === 0) return `${from} 以來每個月月底的殖利率都是 0（${ZERO_YIELD_TEXT}）。`
   return `${from} 以來每月月底的殖利率介於 ${sorted[0]!.toFixed(2)}% 到 ${sorted.at(-1)!.toFixed(2)}%，中位數 ${median.toFixed(2)}%。`
 })
 const overviewAnswer = computed(() => joinSentences([todayYieldText.value, ownRangeText.value]))

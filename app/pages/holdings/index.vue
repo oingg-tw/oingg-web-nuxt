@@ -516,7 +516,7 @@ async function submit() {
               <li>「報酬含息」關著時，未實現損益與報酬率只看股價，不含已經領到的股利（跟券商對帳單相同）。打開時是含息損益＝未實現損益＋這批持股領過的現金股利：除息日計入，股數用除息前一天收盤時的持股（ETF 用每單位配息），各帳戶分開算，部位歸零後重新買進從 0 算，沒扣匯費與二代健保補充保費；含息報酬率＝含息損益 ÷ 成本。有成本不明的股數時，股利照股數比例只算成本已知的那一份。</li>
               <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
               <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上櫃股票的收盤價當天傍晚就更新，上市股票目前要到隔天早上；還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
-              <li>預估年度股利＝持有股數 × 每股現金股利。普通股是一年份的現金股利（已換算配股後的股數）：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。ETF 採近 12 個月已除息的配息<template v-if="etfWindow">，區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>。特別股採發行條件所訂年股息。只反映已除息或已公告的股利，不代表未來配息金額。</li>
+              <li>預估年度股利＝持有股數 × 每股現金股利。普通股是一年份的現金股利（已換算配股後的股數）：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。ETF 採近 12 個月已除息的配息<template v-if="etfWindow">，區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>。特別股採發行條件所訂年股息。只反映已除息、董事會已決議或已公告的股利，不代表未來配息金額。</li>
               <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
             </ul>
           </details>

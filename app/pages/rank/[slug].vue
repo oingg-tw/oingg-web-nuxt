@@ -63,10 +63,8 @@ const hasRowDates = computed(() => rows.value.some(row => row.knowledgeDate))
 
 // Facts a reader should hold next to this particular field — descriptive, never evaluative.
 const FIELD_NOTES: Record<string, string> = {
-  // 「尚未公布股利的公司不在列」2026-09-30 拿掉：證交所從 2026-08-28 起把不配息的公司從 0.00 改成
-  // 空白，上游把空白讀成 0，所以那些公司現在有值（實測全市場 516 家殖利率恰為 0）。這是由高到低的
-  // 排行，它們落在最後面、不會出現在榜上，但「不在列」這句話已經不成立。
-  'dividend-yield': `殖利率是一年份的現金股利除以最新收盤價，不含股票股利：${ANNUAL_CASH_DIVIDEND_BASIS}。`,
+  // dividend-yield 沒有這一句（2026-10-25 拿掉）：「怎麼算」那段已經是型錄 liveCashDividendYield 的 description，規則一天改了三次，
+  // 自己再寫一句只會跟它對不上
   'pe-ratio-low': '本益比低於 1 倍的公司，其近四季每股盈餘多含一次性損益（處分資產、業外收入）；虧損公司無本益比，不在列。',
   'pb-ratio-low': '股價淨值比以最近一期每股淨值計算；淨值中含大量無形資產或金融資產的公司，帳面淨值與市價的關係與製造業不同。',
   roe: '近四季 ROE 以最近四季稅後淨利除以股東權益；股本較小或負債較高的公司，同樣的獲利會得到較高的數值。',
@@ -156,7 +154,7 @@ const { breadcrumbs } = useHubPageSeo({
       </template>
       <template v-else>
         <p class="hub-answer">名次只反映資料日期當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
-        <p class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
+        <p v-if="FIELD_NOTES[slug]" class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
       </template>
       <!-- 型錄自己的 limitations／misreadings（2026-09-28）。這一段本來只有上面兩句前端文案，而上游
            2026-09-28 補的敘述裡有一件我們自己寫不出來的事：同一個「本益比」有三支指標（交易所公布值／

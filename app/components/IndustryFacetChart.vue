@@ -89,7 +89,7 @@ const scatterOption = computed(() => ({
       const row = param.data?.row
       if (!row) return ''
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
-        // 自算的近 12 個月現金股利殖利率：0 只代表近 12 個月沒有除息，不寫「不配息」（2026-10-24）
+        // 自算的現金殖利率：0 不寫「不配息」（2026-10-24，理由見 dividend-event.ts 的 ZERO_YIELD_TEXT）
         + `<div>殖利率 ${row.dividendYield?.toFixed(2)}%</div>`
         + `<div>股利 3 年成長率 ${row.dividendGrowthRate3y?.toFixed(1)}%</div></div>`
     }
