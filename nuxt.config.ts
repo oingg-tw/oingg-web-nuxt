@@ -85,7 +85,11 @@ export default defineNuxtConfig({
   // 靜態檔由 Nitro 自己送）。2026-10-16 量到 DEV 全部原樣傳：最大一塊 JS 588,384 bytes 就是原始大小
   // asyncContext（2026-10-26）：businessFetch 在快取函式裡也要知道是哪個請求在等，冷啟動的量測才記得到使用者那個請求上
   //（server/utils/business.ts 的 noteBusinessColdStart 用 useEvent()）
-  nitro: { compressPublicAssets: true, experimental: { asyncContext: true } },
+  // externals.inline（2026-10-26，冷啟動）：這幾個套件打包進伺服器 chunk，讓 Rollup 剔掉用不到的部分。留在 node_modules 的話，伺服器端
+  // 從彙總入口載入，第一次渲染就把整套讀進來（本機量：echarts 494＋zrender 95＋lodash-es 640 個模組；lodash-es 是 Element Plus
+  // 帶進來的）。第一次渲染要載入的模組 1,578 → 352，收到請求到發出第一支業務中台呼叫 2.9～3.3 → 0.8～0.9 秒（各 3 次）。
+  // 全部打包（noExternals）會讓個股頁渲染失敗（Class extends value [object Module]），所以只列這幾個
+  nitro: { compressPublicAssets: true, experimental: { asyncContext: true }, externals: { inline: ['echarts', 'zrender', 'vue-echarts', 'lodash-es'] } },
   // 篩選區首頁拿掉（2026-10-16 使用者：「screener 這一個畫面是多的，我希望預設就是跑到 screener/common 就好」）。站內連結都直接指向
   // /screener/common，這條只接住書籤、外部連結與搜尋引擎（301 讓它把 /screener 換成新網址）
   routeRules: {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { sendEmailVerification, signOut } from 'firebase/auth'
-
+// firebase/auth 在按下按鈕時才載入（2026-10-26）：這個元件包住每一頁，頂層 import 會讓伺服器每次冷啟動的第一次渲染都載入
+// Firebase Auth 的 Node 版（連帶 undici 約 95 個模組），而這兩個動作只會在瀏覽器裡發生
 // Wraps every app-shell page's <slot/> (layouts/default.vue — not landing.vue, which
 // stays open to signed-out visitors entirely). Blocks only the specific gap this closes:
 // an email/password sign-up that never clicked its verification link (see
@@ -44,6 +44,7 @@ async function resendEmail() {
     // exists only on the compat User, and useCurrentUser() hands back the modular one. This line was
     // a real TypeError waiting behind the !import.meta.dev guard below, which means the 重寄驗證信
     // button had never been exercised in dev（typecheck flagged it; fixed 2026-09-22）.
+    const { sendEmailVerification } = await import('firebase/auth')
     await sendEmailVerification(currentUser.value)
     ElMessage.success('驗證信已寄出，請查收')
     startCooldown()
@@ -77,6 +78,7 @@ async function checkVerified() {
 }
 
 async function handleSignOut() {
+  const { signOut } = await import('firebase/auth')
   await signOut(auth)
 }
 
