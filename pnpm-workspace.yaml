@@ -9,11 +9,21 @@ allowBuilds:
 
 # 安全性修補（2026-10-13，Dependabot 警示；使用者核准用 overrides）。上層套件把版本鎖住、Dependabot 自己升不動的才放這裡：
 # - undici／@grpc/grpc-js：firebase 10 帶進來（undici 鎖 6.19.7）。firebaseui 6 只支援 firebase 9／10，所以不升 firebase 大版本，
-#   改鎖修補版。上層升到不再需要時刪掉。
+#   改鎖修補版。上層升到不再需要時刪掉。2026-10-27 undici 再拉到 6.29.1（兩筆 DoS 警示）
 # - source-map-js：建置工具群鎖在 1.2.1。
 # simple-git 不能這樣鎖：試過鎖 4.x，Nuxt devtools 用 3.x 的 default export，連 nuxt prepare 都失敗（2026-10-13）。
 # 沒有修補版的（node-forge、braces）不在這裡，等上游。
+# pnpm audit 先接受的兩筆（2026-10-27，使用者核准 Dependabot 檢查的修正）：每週的 .github/workflows/audit.yml 只對新的 high 失敗。
+# 兩筆都不在伺服器打包裡（.output/server 搜不到），網站執行時碰不到：
+# - node-forge GHSA-86w9-cpqp-85rv：listhen（nitropack 開發伺服器的 HTTPS 憑證）帶進來，沒有修補版
+# - zod GHSA-mrhx-c7xc-m3w5：@nuxt/content、@nuxtjs/robots、@nuxtjs/sitemap 帶進來，建置時驗設定用；修補版在 4.x，3.x 沒有，硬升會壞
+# 上游有修補版就刪掉
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv
+    - GHSA-mrhx-c7xc-m3w5
+
 overrides:
-  'undici@>=6 <6.28.1': ^6.28.1
+  'undici@>=6 <6.29.1': ^6.29.1
   '@grpc/grpc-js@<1.13.6': ^1.13.6
   'source-map-js@<1.2.2': ^1.2.2
