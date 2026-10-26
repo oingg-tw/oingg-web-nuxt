@@ -4,7 +4,7 @@
 //
 // 伺服器渲染時頁面打自己的 /api（$fetch 或 event.$fetch）是內部請求，Nitro 會替它開新的 async context，裡面的 useEvent() 只看得到
 // 內部那個請求。所以在 Nitro 的處理函式外面再包一層：內部請求進來那一刻還在外層的 context 裡，先記下外層（coldStartParent），
-// noteBusinessColdStart 一路往上記到使用者那個請求，beforeResponse 再寫進它的回應。
+// noteBusinessCall 一路往上記到使用者那個請求，beforeResponse 再寫進它的回應。
 // performance.now() 在 Node 是行程啟動後的毫秒數，請求開始時讀一次，就同時是「行程啟動多久」與整趟計時的起點
 import type { H3Event } from 'h3'
 
@@ -26,10 +26,10 @@ export default defineNitroPlugin((nitroApp) => {
     event.context.coldStartClock = { startedAt: performance.now(), first: served++ === 0 }
   })
   nitroApp.hooks.hook('beforeResponse', (event) => {
-    const cold = event.context.coldStart
+    const colds = event.context.coldStarts
     const clock = event.context.coldStartClock
-    if (!cold || !clock || event.node.res.headersSent) return
-    setResponseHeader(event, 'server-timing', coldStartServerTiming(cold.id, cold.waitMs, performance.now() - clock.startedAt, clock.startedAt, clock.first))
+    if (!colds?.length || !clock || event.node.res.headersSent) return
+    setResponseHeader(event, 'server-timing', coldStartServerTiming(colds, unionMs(event.context.businessWaits ?? []), performance.now() - clock.startedAt, clock.startedAt, clock.first))
     // 一個 id 只能有一份報告（業務中台同一個 id 再送會覆蓋）：/api/core 會照轉業務中台的 max-age，這個回應被快取的話，之後讀快取
     // 又會看到同一個 id、送一份幾乎是 0 的報告蓋掉真的。每次冷啟動只有這一個回應，不快取它沒有代價
     setResponseHeader(event, 'cache-control', 'no-store')

@@ -6,10 +6,12 @@ export default defineNuxtPlugin(() => {
   // 一個 id 只送一次（業務中台同一個 id 再送會覆蓋前一次）；伺服器那邊也讓帶 id 的回應不被快取
   const sent = new Set<string>()
   const send = (entry: PerformanceResourceTiming, kind: 'document' | 'api') => {
-    const report = coldStartReportOf(entry, kind, performance.timeOrigin)
-    if (!report || sent.has(report.id)) return
-    sent.add(report.id)
-    navigator.sendBeacon('/api/cold-start-timing', JSON.stringify(report))
+    // 一頁可能叫醒好幾個容器，每個 id 一份
+    for (const report of coldStartReportsOf(entry, kind, performance.timeOrigin)) {
+      if (sent.has(report.id)) continue
+      sent.add(report.id)
+      navigator.sendBeacon('/api/cold-start-timing', JSON.stringify(report))
+    }
   }
   onNuxtReady(() => {
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined

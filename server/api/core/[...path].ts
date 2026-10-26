@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
       responseType: 'text'
     })
     setResponseStatus(event, response.status, response.statusText)
-    noteBusinessColdStart(event, response.headers.get('server-timing'), performance.now() - startedAt)
+    noteBusinessCall(event, response.headers.get('server-timing'), startedAt, performance.now())
     // 上游的 5xx 原樣轉回；原因給 server/plugins/http-errors.ts 記
     if (response.status >= 500) event.context.httpErrorReason = response.status === 504 ? 'upstream_timeout' : 'upstream_error'
     for (const name of PASSED_BACK) {

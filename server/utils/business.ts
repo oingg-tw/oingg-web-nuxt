@@ -13,11 +13,14 @@
 // 業務中台 only through /api/core and /api/cached.
 
 import type { H3Event } from 'h3'
+import type { ColdStartWait } from '#shared/utils/cold-start-timing'
 
 declare module 'h3' {
   interface H3EventContext {
-    // 這個請求叫醒了業務中台的冷啟動（見 noteBusinessColdStart）
-    coldStart?: { id: string; waitMs: number }
+    // 這個請求叫醒的業務中台冷啟動（見 noteBusinessCall）；同時打好幾支時 Cloud Run 會一次開好幾個容器，每個一筆
+    coldStarts?: ColdStartWait[]
+    // 這個請求等過的每一支業務中台呼叫（開始、結束，performance.now()），冷啟動那一筆的 webWaitAllMs 取它們的聯集
+    businessWaits?: [number, number][]
   }
 }
 
@@ -90,17 +93,20 @@ export async function businessAuthHeaders(): Promise<Record<string, string>> {
   return { ...headers, 'x-serverless-authorization': `Bearer ${identity.token}` }
 }
 
-// 冷啟動等待（2026-10-26，見 shared/utils/cold-start-timing.ts）：業務中台的回應帶 cold 標記，就把 id 與這一趟等了多久記在
-// 使用者在等的那個請求上，server/plugins/cold-start-timing.ts 寫進它的 Server-Timing。伺服器渲染時呼叫自己的 /api 是內部請求，
-// 一路往上記到外層請求（coldStartParent，由那個外掛記）。快取在背景重算時碰到的，回應多半已經送出、寫不進去，就不算
-//（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webWaitMs 短就知道是背景的。
+// 冷啟動等待（2026-10-26，見 shared/utils/cold-start-timing.ts）：每一支業務中台呼叫都記下起訖，回應帶 cold 標記的再記 id 與等了多久，
+// 都記在使用者在等的那個請求上，server/plugins/cold-start-timing.ts 寫進它的 Server-Timing（只有叫醒冷啟動的請求才寫）。
+// 伺服器渲染時呼叫自己的 /api 是內部請求，一路往上記到外層請求（coldStartParent，由那個外掛記）。快取在背景重算時碰到的，
+// 回應多半已經送出、寫不進去，就不算（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webWaitMs 短就知道是背景的。
 // ponytail: 背景重算剛好在回應送出前跑完會被當成使用者在等，要精確得把 swr 的背景執行另外標記
-export function noteBusinessColdStart(event: H3Event | null, serverTiming: string | null, waitMs: number): void {
-  const id = coldStartIdOf(serverTiming)
-  if (!id || !event) return
+export function noteBusinessCall(event: H3Event | null, serverTiming: string | null, startedAt: number, endedAt: number): void {
+  if (!event) return
   let target = event
   while (target.context.coldStartParent) target = target.context.coldStartParent
-  target.context.coldStart ??= { id, waitMs }
+  ;(target.context.businessWaits ??= []).push([startedAt, endedAt])
+  const id = coldStartIdOf(serverTiming)
+  if (!id) return
+  const colds = (target.context.coldStarts ??= [])
+  if (!colds.some(cold => cold.id === id)) colds.push({ id, waitMs: endedAt - startedAt })
 }
 
 function currentEvent(): H3Event | null {
@@ -119,16 +125,24 @@ export async function businessFetch<T>(path: string, options: BusinessFetchOptio
     // 從送出才開始算（不含排隊與要 IAM 身分）。管理站的網路時間＝webWaitMs −（業務中台的 firstRequestAt − processStartedAt
     // ＋ firstRequestMs），剩下的是台灣到新加坡的網路＋Cloud Run 在行程啟動前開容器，兩者分不開
     const startedAt = performance.now()
-    return await $fetch<T>(path, {
-      baseURL: config.businessBase,
-      method: options.method ?? 'GET',
-      query: options.query,
-      body: options.body,
-      headers,
-      retry: 0,
-      timeout: options.timeout ?? DEFAULT_TIMEOUT_MS,
-      onResponse: ({ response }) => noteBusinessColdStart(currentEvent(), response.headers.get('server-timing'), performance.now() - startedAt)
-    })
+    let serverTiming: string | null = null
+    try {
+      return await $fetch<T>(path, {
+        baseURL: config.businessBase,
+        method: options.method ?? 'GET',
+        query: options.query,
+        body: options.body,
+        headers,
+        retry: 0,
+        timeout: options.timeout ?? DEFAULT_TIMEOUT_MS,
+        onResponse: ({ response }) => {
+          serverTiming = response.headers.get('server-timing')
+        }
+      })
+    } finally {
+      // 失敗、逾時也是在等
+      noteBusinessCall(currentEvent(), serverTiming, startedAt, performance.now())
+    }
   } finally {
     releaseSlot()
   }

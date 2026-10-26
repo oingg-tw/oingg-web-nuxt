@@ -1,7 +1,7 @@
 // 冷啟動等待的量測：讀業務中台的 cold 標記、瀏覽器組回報、伺服器檢查回報（shared/utils/cold-start-timing.ts）。
 // Run: node scripts/check-cold-start-timing.mjs（selfcheck 也會跑）
 import assert from 'node:assert/strict'
-import { coldStartIdOf, coldStartServerTiming, coldStartReportOf, cleanColdStartReport } from '../shared/utils/cold-start-timing.ts'
+import { coldStartIdOf, coldStartServerTiming, coldStartReportsOf, cleanColdStartReport, unionMs } from '../shared/utils/cold-start-timing.ts'
 
 const ID = '0b6f3c1e-8d2a-4f5b-9c7e-1a2b3c4d5e6f'
 
@@ -12,9 +12,17 @@ assert.equal(coldStartIdOf('app;dur=12, upstream;dur=3'), null)
 assert.equal(coldStartIdOf('cold;desc="not-a-uuid"'), null)
 assert.equal(coldStartIdOf(null), null)
 
-// web-nuxt 寫給瀏覽器的：只有 web-nuxt 自己的數字
-assert.equal(coldStartServerTiming(ID, 5612.4, 5700.2, 812.6, true), `cold;desc="${ID}", wait;dur=5612, web;dur=5700, webup;dur=813, webcold`)
-assert.equal(coldStartServerTiming(ID, 10, 20, 30, false).includes('webcold'), false)
+// web-nuxt 寫給瀏覽器的：只有 web-nuxt 自己的數字；一頁叫醒幾個容器就有幾項 cold，dur 是等那一支多久
+const ID2 = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 5612.4 }], 5650, 5700.2, 812.6, true), `cold;dur=5612;desc="${ID}", waitall;dur=5650, web;dur=5700, webup;dur=813, webcold`)
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 7045 }], 9000, 16141, 1185, false), `cold;dur=452;desc="${ID}", cold;dur=7045;desc="${ID2}", waitall;dur=9000, web;dur=16141, webup;dur=1185`)
+
+// 等所有業務中台呼叫的時間：重疊的只算一次，包在裡面的不加，隔開的相加
+assert.equal(unionMs([]), 0)
+assert.equal(unionMs([[0, 100], [50, 150]]), 150)
+assert.equal(unionMs([[0, 100], [20, 30]]), 100)
+assert.equal(unionMs([[200, 300], [0, 100]]), 200)
+assert.equal(unionMs([[0, 100], [100, 200], [150, 160]]), 200)
 
 // 瀏覽器：document 從 0 算；連線重用（secureConnectionStart 0）的 TLS 是 null；沒有 cold 就不回報
 const navigation = {
@@ -28,20 +36,23 @@ const navigation = {
   responseStart: 5900,
   responseEnd: 6100,
   serverTiming: [
-    { name: 'cold', duration: 0, description: ID },
-    { name: 'wait', duration: 5612, description: '' },
+    { name: 'cold', duration: 5612, description: ID },
+    { name: 'waitall', duration: 5650, description: '' },
     { name: 'web', duration: 5700, description: '' },
     { name: 'webup', duration: 813, description: '' },
-    { name: 'webcold', duration: 0, description: '' }
+    { name: 'webcold', duration: 0, description: '' },
+    { name: 'l2gfet4t7', duration: 5800, description: '' }
   ]
 }
-const report = coldStartReportOf(navigation, 'document', Date.parse('2026-10-26T01:00:00.000Z'))
+const [report, ...rest] = coldStartReportsOf(navigation, 'document', Date.parse('2026-10-26T01:00:00.000Z'))
+assert.equal(rest.length, 0)
 assert.deepEqual(report, {
   id: ID,
   route: '/stock/2330/dividend',
   kind: 'document',
   at: '2026-10-26T01:00:00.000Z',
   webWaitMs: 5612,
+  webWaitAllMs: 5650,
   webServerMs: 5700,
   webCold: true,
   webUptimeMs: 813,
@@ -51,12 +62,16 @@ assert.deepEqual(report, {
   connectMs: 55,
   tlsMs: 40
 })
-const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 4) }
-const apiReport = coldStartReportOf(api, 'api', 0)
+const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 3) }
+const [apiReport] = coldStartReportsOf(api, 'api', 0)
 assert.equal(apiReport.ttfbMs, 300)
 assert.equal(apiReport.tlsMs, null)
 assert.equal(apiReport.webCold, false)
-assert.equal(coldStartReportOf({ ...navigation, serverTiming: [] }, 'document', 0), null)
+assert.deepEqual(coldStartReportsOf({ ...navigation, serverTiming: [] }, 'document', 0), [])
+// 一頁叫醒兩個容器：兩份，各自的等待時間，其餘相同
+const both = coldStartReportsOf({ ...navigation, serverTiming: [{ name: 'cold', duration: 452, description: ID }, { name: 'cold', duration: 7045, description: ID2 }, ...navigation.serverTiming.slice(1)] }, 'document', 0)
+assert.deepEqual(both.map(item => [item.id, item.webWaitMs]), [[ID, 452], [ID2, 7045]])
+assert.equal(both[1].ttfbMs, both[0].ttfbMs)
 
 // 伺服器：定好的欄位才收；其他欄位、壞的 id／路徑／kind／時間、超出範圍的數字整筆不收；沒給的數字是 null
 assert.deepEqual(cleanColdStartReport(report), report)
