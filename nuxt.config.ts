@@ -83,7 +83,9 @@ export default defineNuxtConfig({
   },
   // 建置時替 JS／CSS 等先做好 .br／.gz，Nitro 依 Accept-Encoding 送壓縮版（App Hosting 的 preset 是 node-server＋serveStatic，
   // 靜態檔由 Nitro 自己送）。2026-10-16 量到 DEV 全部原樣傳：最大一塊 JS 588,384 bytes 就是原始大小
-  nitro: { compressPublicAssets: true },
+  // asyncContext（2026-10-26）：businessFetch 在快取函式裡也要知道是哪個請求在等，冷啟動的量測才記得到使用者那個請求上
+  //（server/utils/business.ts 的 noteBusinessColdStart 用 useEvent()）
+  nitro: { compressPublicAssets: true, experimental: { asyncContext: true } },
   // 篩選區首頁拿掉（2026-10-16 使用者：「screener 這一個畫面是多的，我希望預設就是跑到 screener/common 就好」）。站內連結都直接指向
   // /screener/common，這條只接住書籤、外部連結與搜尋引擎（301 讓它把 /screener 換成新網址）
   routeRules: {

@@ -12,6 +12,15 @@
 // `$fetch` and `useRuntimeConfig` are Nitro auto-imports. businessBase is server-only (2026-10-08): browsers reach
 // 業務中台 only through /api/core and /api/cached.
 
+import type { H3Event } from 'h3'
+
+declare module 'h3' {
+  interface H3EventContext {
+    // 這個請求叫醒了業務中台的冷啟動（見 noteBusinessColdStart）
+    coldStart?: { id: string; waitMs: number }
+  }
+}
+
 type QueryValue = string | number | boolean | undefined
 
 interface BusinessFetchOptions {
@@ -81,18 +90,43 @@ export async function businessAuthHeaders(): Promise<Record<string, string>> {
   return { ...headers, 'x-serverless-authorization': `Bearer ${identity.token}` }
 }
 
+// 冷啟動等待（2026-10-26，見 shared/utils/cold-start-timing.ts）：業務中台的回應帶 cold 標記，就把 id 與這一趟等了多久記在
+// 使用者在等的那個請求上，server/plugins/cold-start-timing.ts 寫進它的 Server-Timing。伺服器渲染時呼叫自己的 /api 是內部請求，
+// 一路往上記到外層請求（coldStartParent，由那個外掛記）。快取在背景重算時碰到的，回應多半已經送出、寫不進去，就不算
+//（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webWaitMs 短就知道是背景的。
+// ponytail: 背景重算剛好在回應送出前跑完會被當成使用者在等，要精確得把 swr 的背景執行另外標記
+export function noteBusinessColdStart(event: H3Event | null, serverTiming: string | null, waitMs: number): void {
+  const id = coldStartIdOf(serverTiming)
+  if (!id || !event) return
+  let target = event
+  while (target.context.coldStartParent) target = target.context.coldStartParent
+  target.context.coldStart ??= { id, waitMs }
+}
+
+function currentEvent(): H3Event | null {
+  try {
+    return useEvent()
+  } catch {
+    return null
+  }
+}
+
 export async function businessFetch<T>(path: string, options: BusinessFetchOptions = {}): Promise<T> {
   const config = useRuntimeConfig()
   await acquireSlot()
   try {
+    const headers = await businessAuthHeaders()
+    // 從送出才開始算（不含排隊與要 IAM 身分），減掉業務中台的處理時間就是網路
+    const startedAt = performance.now()
     return await $fetch<T>(path, {
       baseURL: config.businessBase,
       method: options.method ?? 'GET',
       query: options.query,
       body: options.body,
-      headers: await businessAuthHeaders(),
+      headers,
       retry: 0,
-      timeout: options.timeout ?? DEFAULT_TIMEOUT_MS
+      timeout: options.timeout ?? DEFAULT_TIMEOUT_MS,
+      onResponse: ({ response }) => noteBusinessColdStart(currentEvent(), response.headers.get('server-timing'), performance.now() - startedAt)
     })
   } finally {
     releaseSlot()

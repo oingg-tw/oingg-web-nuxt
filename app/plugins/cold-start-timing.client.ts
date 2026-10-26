@@ -1,0 +1,19 @@
+// 冷啟動等待（2026-10-26，見 shared/utils/cold-start-timing.ts）：回應的 Server-Timing 帶 cold 的，就是叫醒業務中台冷啟動的那個請求，
+// 把瀏覽器量到的時間送回 /api/cold-start-timing。其他請求什麼都不送。打開頁面那一下（document）等頁面接手完再讀，那時早就收完了；
+// 之後的 /api 請求（換頁、按鈕）用 PerformanceObserver 看。sendBeacon 自己的請求不看，免得回報又被當成回報
+export default defineNuxtPlugin(() => {
+  if (typeof PerformanceObserver === 'undefined' || !navigator.sendBeacon) return
+  const send = (entry: PerformanceResourceTiming, kind: 'document' | 'api') => {
+    const report = coldStartReportOf(entry, kind, performance.timeOrigin)
+    if (report) navigator.sendBeacon('/api/cold-start-timing', JSON.stringify(report))
+  }
+  onNuxtReady(() => {
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    if (navigation) send(navigation, 'document')
+  })
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries() as PerformanceResourceTiming[]) {
+      if ((entry.initiatorType === 'fetch' || entry.initiatorType === 'xmlhttprequest') && new URL(entry.name).pathname.startsWith('/api/')) send(entry, 'api')
+    }
+  }).observe({ type: 'resource', buffered: true })
+})
