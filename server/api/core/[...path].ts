@@ -52,13 +52,15 @@ export default defineEventHandler(async (event) => {
   Object.assign(headers, await businessAuthHeaders())
 
   try {
+    const body = method === 'GET' ? undefined : await readRawBody(event, false)
+    // 冷啟動等待從真正送出才開始算（同 businessFetch），不含讀瀏覽器送來的內容
     const startedAt = performance.now()
     const response = await $fetch.raw<string>(`/${path}`, {
       baseURL: useRuntimeConfig(event).businessBase,
       method: method as 'GET',
       query: getQuery(event),
       headers,
-      body: method === 'GET' ? undefined : await readRawBody(event, false),
+      body,
       timeout: 12_000,
       retry: 0,
       ignoreResponseError: true,

@@ -116,7 +116,8 @@ export async function businessFetch<T>(path: string, options: BusinessFetchOptio
   await acquireSlot()
   try {
     const headers = await businessAuthHeaders()
-    // 從送出才開始算（不含排隊與要 IAM 身分），減掉業務中台的處理時間就是網路
+    // 從送出才開始算（不含排隊與要 IAM 身分）。管理站的網路時間＝webWaitMs −（業務中台的 firstRequestAt − processStartedAt
+    // ＋ firstRequestMs），剩下的是台灣到新加坡的網路＋Cloud Run 在行程啟動前開容器，兩者分不開
     const startedAt = performance.now()
     return await $fetch<T>(path, {
       baseURL: config.businessBase,
