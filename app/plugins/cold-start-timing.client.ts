@@ -3,9 +3,13 @@
 // 之後的 /api 請求（換頁、按鈕）用 PerformanceObserver 看。sendBeacon 自己的請求不看，免得回報又被當成回報
 export default defineNuxtPlugin(() => {
   if (typeof PerformanceObserver === 'undefined' || !navigator.sendBeacon) return
+  // 一個 id 只送一次（業務中台同一個 id 再送會覆蓋前一次）；伺服器那邊也讓帶 id 的回應不被快取
+  const sent = new Set<string>()
   const send = (entry: PerformanceResourceTiming, kind: 'document' | 'api') => {
     const report = coldStartReportOf(entry, kind, performance.timeOrigin)
-    if (report) navigator.sendBeacon('/api/cold-start-timing', JSON.stringify(report))
+    if (!report || sent.has(report.id)) return
+    sent.add(report.id)
+    navigator.sendBeacon('/api/cold-start-timing', JSON.stringify(report))
   }
   onNuxtReady(() => {
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined

@@ -30,6 +30,9 @@ export default defineNitroPlugin((nitroApp) => {
     const clock = event.context.coldStartClock
     if (!cold || !clock || event.node.res.headersSent) return
     setResponseHeader(event, 'server-timing', coldStartServerTiming(cold.id, cold.waitMs, performance.now() - clock.startedAt, clock.startedAt, clock.first))
+    // 一個 id 只能有一份報告（業務中台同一個 id 再送會覆蓋）：/api/core 會照轉業務中台的 max-age，這個回應被快取的話，之後讀快取
+    // 又會看到同一個 id、送一份幾乎是 0 的報告蓋掉真的。每次冷啟動只有這一個回應，不快取它沒有代價
+    setResponseHeader(event, 'cache-control', 'no-store')
   })
 })
 
