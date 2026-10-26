@@ -59,7 +59,8 @@ function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
 }
 
 export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPage, options: UseStockPageDigestOptions) {
-  // Already awaited by the page before this runs (the shared-key rule) — a cache hit here.
+  // The page awaits the catalog at top level together with this composable (Promise.all, 2026-10-26) — same key, so this
+  // call joins that request instead of starting another, and it has resolved before any card mounts (the shared-key rule).
   const { data: schema } = useFilterSchema()
   // Same key as useStockDetailSummary's own call → deduped, not a second request.
   const { data: summary } = useStockSummary(code)

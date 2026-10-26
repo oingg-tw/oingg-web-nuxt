@@ -38,15 +38,17 @@ const pick = (period: BalanceCompositionPeriod | CashFlowCompositionPeriod) => {
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-const { data: filterSchema } = await useFilterSchema()
-
-// await 在頂層：同 key 的 useAsyncData 沒 await 會被多個同時掛載的元件卡在初始值（2026-09-09 根因過一次）
-// lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放答句與圖的骨架、不落到「沒有申報」（伺服器照樣等）
-const { data, error, pending, refresh } = await useAsyncData(
-  () => `stock-${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition-${code.value}`,
-  () => $fetch<StockBalanceCompositionResponse | StockCashFlowCompositionResponse>(`/api/stock/${code.value}/${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition`),
-  { watch: [code], default: () => null, lazy: true }
-)
+// await 在頂層：同 key 的 useAsyncData 沒 await 會被多個同時掛載的元件卡在初始值（2026-09-09 根因過一次）。
+// 型錄與組成同時抓（2026-10-26，冷啟動）：互不相依，原本一個等一個是兩波上游呼叫。
+// lazy（2026-10-23）：瀏覽器裡換頁不等組成，讀取中放答句與圖的骨架、不落到「沒有申報」（伺服器照樣等）
+const [{ data: filterSchema }, { data, error, pending, refresh }] = await Promise.all([
+  useFilterSchema(),
+  useAsyncData(
+    () => `stock-${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition-${code.value}`,
+    () => $fetch<StockBalanceCompositionResponse | StockCashFlowCompositionResponse>(`/api/stock/${code.value}/${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition`),
+    { watch: [code], default: () => null, lazy: true }
+  )
+])
 watchLoadFailure(() => `stock-balance-composition:${code.value}`, () => error.value, refresh)
 
 const periods = computed<(BalanceCompositionPeriod | CashFlowCompositionPeriod)[]>(() => data.value?.periods ?? [])

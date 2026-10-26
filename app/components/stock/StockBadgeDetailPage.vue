@@ -33,16 +33,18 @@ const badgePage = findBadgePage(slug.value)
 if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page' })
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-const { data: filterSchema } = await useFilterSchema()
-
-const { data: badgeData, error: badgeError, status: badgeStatus, pending: badgePending, refresh: refreshBadgeData } = await useAsyncData<StockBadgePageResponse | null>(
-  () => `stock-badge-${code.value}-${slug.value}`,
-  async () => {
-    return readOrNull($fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-badge')
-  },
-  // lazy：瀏覽器裡換頁不等這一頁的資料（2026-10-23，見 StockMetricDetailPage 同一處的註解）
-  { watch: [code, slug], default: () => null, lazy: true }
-)
+// 型錄與這一頁的資料同時抓（2026-10-26，冷啟動，同 StockMetricDetailPage）：互不相依，原本一個等一個是兩波上游呼叫
+const [{ data: filterSchema }, { data: badgeData, error: badgeError, status: badgeStatus, pending: badgePending, refresh: refreshBadgeData }] = await Promise.all([
+  useFilterSchema(),
+  useAsyncData<StockBadgePageResponse | null>(
+    () => `stock-badge-${code.value}-${slug.value}`,
+    async () => {
+      return readOrNull($fetch<StockBadgePageResponse>(`/api/stock/${code.value}/badge`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-badge')
+    },
+    // lazy：瀏覽器裡換頁不等這一頁的資料（2026-10-23，見 StockMetricDetailPage 同一處的註解）
+    { watch: [code, slug], default: () => null, lazy: true }
+  )
+])
 
 // The badge's own catalog definition (name/author/summary/threshold/source link) — same
 // buildGuruBadges() every badge UI reads, so this page and the dialog never disagree.

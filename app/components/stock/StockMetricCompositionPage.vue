@@ -19,15 +19,17 @@ const partCodes = metricPage.partMetricCodes
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-const { data: filterSchema } = await useFilterSchema()
-
+// 型錄與母指標的資料同時抓（2026-10-26，冷啟動，同 StockMetricDetailPage）：互不相依，原本一個等一個是兩波上游呼叫。
 // 跟指標頁同一個 key：從指標頁點過來不用重抓
 // lazy（2026-10-23）：瀏覽器裡換頁不等這份，讀取中放同一段的問句、答句與圖的骨架（伺服器照樣等）
-const { data: metricData, error, pending, refresh } = await useAsyncData<StockMetricPageResponse | null>(
-  () => `stock-metric-${code.value}-${props.parentSlug}`,
-  () => readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: props.parentSlug }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric'),
-  { watch: [code], default: () => null, lazy: true }
-)
+const [{ data: filterSchema }, { data: metricData, error, pending, refresh }] = await Promise.all([
+  useFilterSchema(),
+  useAsyncData<StockMetricPageResponse | null>(
+    () => `stock-metric-${code.value}-${props.parentSlug}`,
+    () => readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: props.parentSlug }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric'),
+    { watch: [code], default: () => null, lazy: true }
+  )
+])
 watchLoadFailure(() => `stock-metric-composition:${props.parentSlug}:${code.value}`, () => error.value ?? (metricData.value?.series === null ? true : null), refresh)
 
 const categories = computed(() => filterSchema.value?.categories ?? [])

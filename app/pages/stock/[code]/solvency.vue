@@ -30,16 +30,18 @@ const code = computed(() => String(route.params.code))
 const TOPIC = '安全韌性的組成'
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-const { data: filterSchema } = await useFilterSchema()
-
+// 型錄與這一頁的資料同時抓（2026-10-26，冷啟動，同 StockMetricDetailPage）：互不相依，原本一個等一個是兩波上游呼叫。
 // 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中（pending）放答句與圖的骨架，不落到「目前沒有資料」
-const { data: solvencyData, error: solvencyError, status: solvencyDataStatus, pending: solvencyPending, refresh: refreshSolvencyData } = await useAsyncData<StockSolvencyPageResponse | null>(
-  () => `stock-solvency-${code.value}`,
-  async () => {
-    return readOrNull($fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-solvency')
-  },
-  { watch: [code], default: () => null, lazy: true }
-)
+const [{ data: filterSchema }, { data: solvencyData, error: solvencyError, status: solvencyDataStatus, pending: solvencyPending, refresh: refreshSolvencyData }] = await Promise.all([
+  useFilterSchema(),
+  useAsyncData<StockSolvencyPageResponse | null>(
+    () => `stock-solvency-${code.value}`,
+    async () => {
+      return readOrNull($fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-solvency')
+    },
+    { watch: [code], default: () => null, lazy: true }
+  )
+])
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (!!solvencyError.value || solvencyData.value?.series === null))

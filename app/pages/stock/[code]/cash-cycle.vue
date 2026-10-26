@@ -30,9 +30,12 @@ const TOPIC = '現金循環的組成'
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
-// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等這份，時間軸讀取中放骨架、不落到「沒有這組數字」；伺服器照樣等
-const { series, readFailed: seriesReadFailed, refresh: refreshSeries, pending: seriesPending } = await useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName, lazy: true })
-const { data: filterSchema } = await useFilterSchema()
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等這份，時間軸讀取中放骨架、不落到「沒有這組數字」；伺服器照樣等。
+// 型錄跟這份同時抓（2026-10-26，冷啟動）：互不相依，原本一個等一個是兩波上游呼叫
+const [{ series, readFailed: seriesReadFailed, refresh: refreshSeries, pending: seriesPending }, { data: filterSchema }] = await Promise.all([
+  useStockPageDigest(code, 'cash-cycle', { shortName: stockShortName, lazy: true }),
+  useFilterSchema()
+])
 // 頁尾的資料來源（2026-10-11 補上，原本這頁沒寫）：這一頁畫的那組指標各自的來源，從型錄來
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], series.value?.groups?.TTM_CYCLE_20?.codes ?? []))
 // 這一頁直接讀 TTM_CYCLE_20 那一組：整包讀不到、或伺服器那一組讀不到（null，不是空陣列）都是讀取失敗，不是「沒有這組數字」

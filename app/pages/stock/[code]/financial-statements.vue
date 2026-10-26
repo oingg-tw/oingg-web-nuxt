@@ -16,11 +16,14 @@ const code = computed(() => String(route.params.code))
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 
-// Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
-await useFilterSchema()
-
-// `.latest` seeds StockPeriodSelector below and the first answer's default period.
-const { latest } = await useStockStatements(code, stockShortName)
+// 型錄、最新一期報表、摘要同時抓（2026-10-26，冷啟動）：互不相依，原本一個等一個是三波上游呼叫。型錄仍在頂層、卡片掛上之前
+// await 完（feedback_useasyncdata_shared_key_race memory）。`.latest` seeds StockPeriodSelector below and the first answer's
+// default period; the digest puts real numbers into the SSR HTML + the meta description (see useStockPageDigest.ts).
+const [, { latest }, { digest, description }] = await Promise.all([
+  useFilterSchema(),
+  useStockStatements(code, stockShortName),
+  useStockPageDigest(code, 'financial-statements', { shortName: stockShortName })
+])
 const browseAnswer = computed(() => `${latest.value ? `預設是 ${latest.value.year} 年第 ${latest.value.season} 季；` : ''}用年度與季別選擇器切換，資產負債表、損益表與現金流量表同時更新，每一期都與去年同期並列，方便逐行核對。`)
 // 頁尾（2026-10-14）：最新一期三張報表各自的頁原本是第一段的小表，現在放這裡
 const footerLinks = computed(() => [
@@ -28,9 +31,6 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}/income-statement`, label: `${stockShortName.value} ${code.value} 最新一期的損益表` },
   { to: `/stock/${code.value}/cash-flow-statement`, label: `${stockShortName.value} ${code.value} 最新一期的現金流量表` }
 ])
-
-// Real numbers into the SSR HTML + the meta description (see useStockPageDigest.ts).
-const { digest, description } = await useStockPageDigest(code, 'financial-statements', { shortName: stockShortName })
 
 // title/description/og/robots/canonical/BreadcrumbList (2026-09-19) — see useStockPageSeo.ts.
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)

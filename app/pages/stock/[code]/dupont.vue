@@ -17,16 +17,18 @@ const timesText = dupontTimesText
 const multipleText = dupontMultipleText
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-const { data: filterSchema } = await useFilterSchema()
-
+// 型錄與這一頁的資料同時抓（2026-10-26，冷啟動，同 StockMetricDetailPage）：互不相依，原本一個等一個是兩波上游呼叫。
 // 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中（pending）放答句與圖的骨架
-const { data: dupontData, error: dupontError, status: dupontDataStatus, pending: dupontPending, refresh: refreshDupontData } = await useAsyncData<StockDupontPageResponse | null>(
-  () => `stock-dupont-${code.value}`,
-  async () => {
-    return readOrNull($fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-dupont')
-  },
-  { watch: [code], default: () => null, lazy: true }
-)
+const [{ data: filterSchema }, { data: dupontData, error: dupontError, status: dupontDataStatus, pending: dupontPending, refresh: refreshDupontData }] = await Promise.all([
+  useFilterSchema(),
+  useAsyncData<StockDupontPageResponse | null>(
+    () => `stock-dupont-${code.value}`,
+    async () => {
+      return readOrNull($fetch<StockDupontPageResponse>(`/api/stock/${code.value}/dupont`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-dupont')
+    },
+    { watch: [code], default: () => null, lazy: true }
+  )
+])
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => dupontDataStatus.value !== 'pending' && (!!dupontError.value || dupontData.value?.series === null))

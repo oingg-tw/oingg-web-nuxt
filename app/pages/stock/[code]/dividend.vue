@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
 // 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
@@ -20,20 +19,20 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 // ex-date clause appeared only after hydration (found 2026-09-19).
 const { data: exDividendNotices } = useExDividendNotices(computed(() => [code.value]))
 
-// Catalog awaited once before any card mounts (feedback_useasyncdata_shared_key_race memory).
-await useFilterSchema()
-const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
+// 型錄、摘要、殖利率歷史同時抓（2026-10-26，冷啟動）：三支互不相依，原本一個等一個，業務中台冷的時候是三波一波等一波。
+// 型錄仍在頁面頂層、卡片掛上之前 await 完（feedback_useasyncdata_shared_key_race memory），只是跟另外兩支一起等。
+// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要與殖利率歷史，第一段讀取中放骨架；伺服器照樣等。
+// 殖利率歷史是次要資料，讀不到不擋整頁（scope section），只少第一段的圖與「自己的區間」那半句
+const [{ data: filterSchema }, { digest, description, series }, { data: yieldHistory, pending: yieldPending, refresh: refreshYieldHistory }] = await Promise.all([
+  useFilterSchema(),
+  useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices, lazy: true }),
+  useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
+    key: () => `stock-dividend-yield-history-${code.value}`,
+    watch: [code],
+    lazy: true
+  })
+])
 const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'liveCashDividendYield')?.metric.description))
-
-// lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要與殖利率歷史，第一段讀取中放骨架；伺服器照樣等
-const { digest, description, series } = await useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices, lazy: true })
-
-// 殖利率歷史：次要資料，讀不到不擋整頁（scope section），只少第一段的圖與「自己的區間」那半句
-const { data: yieldHistory, pending: yieldPending, refresh: refreshYieldHistory } = await useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
-  key: () => `stock-dividend-yield-history-${code.value}`,
-  watch: [code],
-  lazy: true
-})
 watchLoadFailure(() => `stock-dividend-yield-history:${code.value}`, () => yieldHistory.value?.entries === null, refreshYieldHistory, { scope: 'section' })
 const yieldEntries = computed(() => yieldHistory.value?.entries ?? [])
 

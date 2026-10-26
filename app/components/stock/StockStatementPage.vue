@@ -19,9 +19,11 @@ const route = useRoute()
 const code = computed(() => String(route.params.code))
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
-await useFilterSchema()
-
-const { latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed, pending } = await useStockStatements(code, stockShortName, { lazy: true })
+// 型錄與報表同時抓（2026-10-26，冷啟動）：互不相依，原本一個等一個是兩波上游呼叫；型錄仍在頂層 await 完（shared-key race）
+const [, { latest, statementOf, labelsOf, statementQuestions, statementAnswers, readFailed, pending }] = await Promise.all([
+  useFilterSchema(),
+  useStockStatements(code, stockShortName, { lazy: true })
+])
 const definition = STATEMENT_DEFINITIONS.find(item => item.key === props.statement)!
 
 // 問句已經帶公司名與期別，接上答句才穩定超過 50 個字的描述下限（只申報一兩個科目的公司，單靠名稱＋答句量過會不足）
