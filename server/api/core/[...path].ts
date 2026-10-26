@@ -7,7 +7,7 @@
 //   - 不記錄：不 log 任何標頭與 body（錯誤也只回狀態，不印請求內容）
 //   - 不留狀態：模組頂層沒有任何變數，每個請求自己的東西都在函式裡
 //
-// 刻意不套 server/utils/business.ts 的「最多 6 個並行」：那是為了 SSR 爬蟲一次展開很多請求設計的，套在使用者請求上會
+// 刻意不套 server/utils/business.ts 的「最多 12 個並行」：那是為了 SSR 爬蟲一次展開很多請求設計的，套在使用者請求上會
 // 讓全站排同一條隊。公開、可快取的少數 GET 仍走 /api/cached（有白名單與快取），兩者用途不同。
 //
 // 回應原樣轉回（狀態碼、problem+json 內容不改），前端 classifyApiError／businessErrorCode 照舊能讀；

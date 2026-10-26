@@ -3,11 +3,15 @@
 // - it fails fast and loudly（retry 0, 12s timeout, the error propagates）— the cached functions
 //   in stock-data.ts/hub-data.ts must never cache a failure, and defineCachedFunction only skips
 //   the write when the function throws;
-// - at most MAX_CONCURRENT_UPSTREAM requests are in flight at once. 業務中台 rate-limits at
-//   300 requests per 60 seconds per IP (its own ratelimit-policy header); the cache keeps the
-//   steady state far below that, but a cold cache under a crawler burst（every stock page fanning
-//   out 5–14 calls at once）would otherwise spike through it. A small semaphore turns that spike
-//   into a queue instead of a run of 429s that would get cached as thin pages.
+// - at most MAX_CONCURRENT_UPSTREAM requests are in flight at once. A cold cache under a crawler
+//   burst（every stock page fanning out 5–14 calls at once）would otherwise spike through 業務中台;
+//   the semaphore turns that spike into a queue instead of a run of failures that would get cached
+//   as thin pages. 6 → 12 on 2026-10-26: a stock page makes about 10 calls and now sends them
+//   together (9b347da4), so at 6 the last four queued behind the first ones — on a cold start, behind
+//   containers that were still booting. 業務中台 checked it: these calls carry the Nitro key and no
+//   user IP or Bearer, so they skip its 300-per-60-seconds per-user/IP quota and only count against
+//   its 6,000-a-minute per-container cap; it runs up to 4 containers × 20 concurrent, and 2 web-nuxt
+//   instances × 12 fits. The cap still stops a crawler from opening the floodgates.
 //
 // `$fetch` and `useRuntimeConfig` are Nitro auto-imports. businessBase is server-only (2026-10-08): browsers reach
 // 業務中台 only through /api/core and /api/cached.
@@ -33,7 +37,7 @@ interface BusinessFetchOptions {
   timeout?: number
 }
 
-const MAX_CONCURRENT_UPSTREAM = 6
+const MAX_CONCURRENT_UPSTREAM = 12
 // 逾時一層比一層短（2026-10-08，使用者選了 業務中台 提的 15＞12＞10）：瀏覽器 15 秒（BUSINESS_REQUEST_TIMEOUT_MS）＞
 // 這裡 12 秒＞業務中台 等上游 10 秒。原本這裡也是 10 秒、跟 業務中台 同時放棄，於是永遠收不到 業務中台 那個帶 UPSTREAM_TIMEOUT
 // 代碼的 504，只看到自己逾時。改這個數字前先確認 業務中台 那一層還是比它短。
