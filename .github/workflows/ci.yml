@@ -10,7 +10,9 @@
 # ## Dependabot 自動合併（第二個 job）
 # `needs: checks`：同一次執行裡 checks 通過才會跑，`--match-head-commit` 只合併剛驗證過的那個 commit。
 # 只合 semver-patch。dependabot.yml 把 patch 與 minor 分成兩個群組，patch 群組 PR 的等級才會是 patch（群組回報的是組內最大的等級）。
-# 預設分支是 development（同日改），所以 Dependabot 的 PR——包括安全性更新——都開到 development；development 不部署，合到 main 一律由人做。
+# 預設分支是 development（同日改），所以 Dependabot 的 PR——包括安全性更新——都開到 development。push 到 development 會自動部署到
+# App Hosting DEV（2026-10-14 起），合併的 patch 會上 DEV（使用者 2026-10-27 接受）；PRD 還沒設，合到 main 一律由人做。
+# development 有 ruleset（2026-10-27）：checks (node 24)、checks (node 26) 通過才能合併，repo 管理員可以略過。
 # 安全要點：用 pull_request（不是 pull_request_target）、作者看 pull_request.user.login（不是 github.actor）、寫入權限只給合併 job、
 # 合併 job 不 checkout 也不執行 PR 的程式碼。
 name: CI
@@ -72,9 +74,10 @@ jobs:
               grep -q '<h1' page.html || { echo "::error::/accessibility 回 200 但沒有 h1"; exit 1; }
               # 起得來之後再打一輪主要頁面（2026-10-14）：/screener 在正式建置下 500（Pragmatic DnD 的 CJS 被打進伺服器 bundle，
               # 見 useElTableColumnDrag.ts），只打 /accessibility 抓不到；App Hosting DEV 上線才發現。這些頁在業務中台連不到時仍應回 200
-              #（本機實測；/industries、/learn/{指標} 拿不到型錄時回 503 是設計，不列）。
+              #（本機實測；/industries、/learn/{指標} 拿不到型錄時回 503 是設計，不列）。2026-10-27 拿掉兩頁（CI 從那之後一直失敗）：
+              # /screener 10-16 起 301 到 /screener/common（當初的 500 在那一頁照樣測得到）、/macro 10-21 起是景氣時鐘，讀不到資料回 503 是設計
               failed=0
-              for path in / /screener /screener/common /watchlist /stock/2330 /stock/2330/roe /screener/etf /screener/preferred /preferred/2881a/dividends /etf/0050 /rank /macro /learn /calendar /holdings /guru-indicators; do
+              for path in / /screener/common /watchlist /stock/2330 /stock/2330/roe /screener/etf /screener/preferred /preferred/2881a/dividends /etf/0050 /rank /learn /calendar /holdings /guru-indicators; do
                 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "http://127.0.0.1:3000$path")
                 echo "$code $path"
                 [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }
