@@ -2,7 +2,9 @@
 // web-nuxt 自己冷啟動加第一次渲染要好幾秒才發出第一支呼叫（03:30Z 那次：行程起來後約 5 秒），這段時間業務中台本來可以先開始冷啟動。
 // GET / 是業務中台指定的：只回狀態，不碰資料庫、不打數據中台，也不會拿走冷啟動 id（業務中台 3d0ef02），id 留給下一個真正的請求；
 // 業務中台一啟動會再叫醒數據中台，所以三層一起提早。不等結果、失敗吞掉；順便先拿好 IAM 身分（businessAuthHeaders 會快取）。
-// web-nuxt 是熱的、只有業務中台冷的時候沒有幫助——那時候不會有這一次啟動
+// web-nuxt 是熱的、只有業務中台冷的時候沒有幫助——那時候不會有這一次啟動。
+// Cloudflare Workers 上不叫（2026-10-27）：外掛在模組頂層執行，那裡不准發請求；Workers 也沒有「行程開機」這回事
 export default defineNitroPlugin(() => {
+  if (onWorkers) return
   void businessFetch('/', { timeout: 15_000 }).catch(() => undefined)
 })

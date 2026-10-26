@@ -1,0 +1,21 @@
+diff --git a/dist/runtime/internal/cache.mjs b/dist/runtime/internal/cache.mjs
+index ecbf53cfa514c2fbd3f7dc88f0de97990f7deb12..e08e8d29667d6a1ba86b4f1fd02f891e4632fc7c 100644
+--- a/dist/runtime/internal/cache.mjs
++++ b/dist/runtime/internal/cache.mjs
+@@ -9,6 +9,7 @@ import {
+ import { parseURL } from "ufo";
+ import { useNitroApp } from "./app.mjs";
+ import { useStorage } from "./storage.mjs";
++import { nitroAsyncContext } from "./context.mjs";
+ import { hash } from "./hash.mjs";
+ function defaultCacheOptions() {
+   return {
+@@ -106,7 +107,7 @@ export function defineCachedFunction(fn, opts = {}) {
+       key,
+       () => fn(...args),
+       shouldInvalidateCache,
+-      args[0] && isEvent(args[0]) ? args[0] : void 0
++      args[0] && isEvent(args[0]) ? args[0] : nitroAsyncContext.tryUse()?.event
+     );
+     let value = entry.value;
+     if (opts.transform) {

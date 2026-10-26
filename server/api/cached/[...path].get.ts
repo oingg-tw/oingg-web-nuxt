@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 // GET /api/cached/<path>?<query> — a cached, allow-listed passthrough for the handful of 業務中台 GET
 // endpoints every /stock/:code render (and the dashboard) reads at page level: the daily summary,
 // the company profile, the two-day price history, the ex-dividend notices and the metric catalog
@@ -62,7 +64,9 @@ function keyOf(path: string, query: QueryRecord): string {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${key}=${value}`)
   const base = path.replace(/\//g, ':')
-  return pairs.length ? `${base}:${pairs.join('&')}` : base
+  const key = pairs.length ? `${base}:${pairs.join('&')}` : base
+  // Cloudflare KV 的鍵最長 512 bytes（2026-10-27）：查詢字串是使用者送來的，太長的換成雜湊（Nitro 會再加 nitro:functions:<名稱>: 與 .json）
+  return Buffer.byteLength(key) <= 300 ? key : createHash('sha1').update(key).digest('hex')
 }
 
 // One cached function per TTL class — defineCachedFunction's maxAge is fixed per function.

@@ -19,3 +19,31 @@ export function jwtExpiry(token: string): number | null {
 export function idTokenNeedsRefresh(exp: number | null, nowSeconds: number): boolean {
   return exp === null || nowSeconds >= exp - 300
 }
+
+// 沒有 metadata server 的平台（Cloudflare Workers，2026-10-27 使用者選「服務帳戶金鑰」）：用服務帳戶金鑰自己簽一張 JWT，POST 到
+// GOOGLE_TOKEN_URL 換 token。claims 帶 target_audience 換 ID token（業務中台的 IAM 鎖），帶 scope 換 access token。
+// RS256 用 Web Crypto（Node 與 Workers 都有）
+export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+
+export interface ServiceAccountKey {
+  client_email: string
+  private_key: string
+  private_key_id?: string
+}
+
+export async function serviceAccountAssertion(key: ServiceAccountKey, claims: Record<string, string>, nowSeconds: number): Promise<string> {
+  const iat = Math.floor(nowSeconds)
+  const encode = (value: object) => base64url(new TextEncoder().encode(JSON.stringify(value)))
+  const header = { alg: 'RS256', typ: 'JWT', ...(key.private_key_id ? { kid: key.private_key_id } : {}) }
+  const unsigned = `${encode(header)}.${encode({ iss: key.client_email, sub: key.client_email, aud: GOOGLE_TOKEN_URL, iat, exp: iat + 3600, ...claims })}`
+  const der = Uint8Array.from(atob(key.private_key.replace(/-----[A-Z ]+-----|\s/g, '')), char => char.charCodeAt(0))
+  const signingKey = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', signingKey, new TextEncoder().encode(unsigned))
+  return `${unsigned}.${base64url(new Uint8Array(signature))}`
+}
+
+function base64url(bytes: Uint8Array): string {
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}

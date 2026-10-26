@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+const onCloudflare = process.env.NITRO_PRESET === 'cloudflare_module'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   // @nuxt/content installed 2026-09-06, wired to blog/index.vue and blog/[slug].vue 2026-09-07
@@ -89,7 +91,15 @@ export default defineNuxtConfig({
   // 從彙總入口載入，第一次渲染就把整套讀進來（本機量：echarts 494＋zrender 95＋lodash-es 640 個模組；lodash-es 是 Element Plus
   // 帶進來的）。第一次渲染要載入的模組 1,578 → 352，收到請求到發出第一支業務中台呼叫 2.9～3.3 → 0.8～0.9 秒（各 3 次）。
   // 全部打包（noExternals）會讓個股頁渲染失敗（Class extends value [object Module]），所以只列這幾個
-  nitro: { compressPublicAssets: true, experimental: { asyncContext: true }, externals: { inline: ['echarts', 'zrender', 'vue-echarts', 'lodash-es'] } },
+  // Cloudflare Workers 版（2026-10-27，建置時 NITRO_PRESET=cloudflare_module，見 docs/cloudflare-migration-plan.md）：靜態檔由 Cloudflare 送、
+  // 邊緣自己壓，不先壓；快取放 KV（binding CACHE）——isolate 很短命，記憶體裡的快取幾乎命中不了。專案根目錄的 wrangler.jsonc 由 Nitro
+  // 併進 .output/server/wrangler.json。全部打包（Workers 一定要）在 Workers 上沒有出現上面那個個股頁錯誤
+  nitro: {
+    compressPublicAssets: !onCloudflare,
+    experimental: { asyncContext: true },
+    externals: { inline: ['echarts', 'zrender', 'vue-echarts', 'lodash-es'] },
+    ...(onCloudflare && { storage: { cache: { driver: 'cloudflare-kv-binding', binding: 'CACHE' } }, cloudflare: { deployConfig: true } })
+  },
   // 篩選區首頁拿掉（2026-10-16 使用者：「screener 這一個畫面是多的，我希望預設就是跑到 screener/common 就好」）。站內連結都直接指向
   // /screener/common，這條只接住書籤、外部連結與搜尋引擎（301 讓它把 /screener 換成新網址）
   routeRules: {
@@ -157,6 +167,9 @@ export default defineNuxtConfig({
     // 證明請求來自 Nitro 的共用金鑰（業務中台 7f0d8b6）：業務中台只在金鑰相符時採用 X-Oingg-Client-Ip，未登入的請求才能
     // 依使用者 IP 分別限流，而不是全站共用 Nitro 一個 IP 的額度。環境變數 NUXT_BUSINESS_NITRO_KEY，伺服器專用。
     businessNitroKey: '',
+    // web-nuxt 在 Cloudflare Workers 上的 Google 身分（2026-10-27）：服務帳戶金鑰的 JSON 整份（NUXT_GOOGLE_SERVICE_ACCOUNT_KEY，Cloudflare 的機密）。
+    // App Hosting 與本機留空：App Hosting 向 metadata server 要身分。見 server/utils/business.ts 的 businessAuthHeaders
+    googleServiceAccountKey: '',
     public: {
       firebase: {
         apiKey: '',

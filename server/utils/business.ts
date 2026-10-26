@@ -69,29 +69,37 @@ function releaseSlot(): void {
 //（App Hosting 的 firebase-app-hosting-compute 服務帳戶）向 metadata server 要一張 ID token，放在 X-Serverless-Authorization——
 // Authorization 已經被使用者的 Firebase token 佔用（/api/core 照轉），Cloud Run 會先看 X-Serverless-Authorization。
 // businessAudience 空字串＝本機與 CI：不帶任何身分，行為跟以前一樣（本機的業務中台沒有 IAM 鎖）。
-// token 快取到到期前 5 分鐘；同時多個請求要新 token 時共用同一次 metadata 請求。拿不到就丟錯——跟上游失敗一樣不會被快取。
+// Cloudflare Workers 上沒有 metadata server（2026-10-27）：設了 googleServiceAccountKey 就用金鑰自己換（shared/utils/id-token.ts）。
+// token 快取到到期前 5 分鐘。拿不到就丟錯——跟上游失敗一樣不會被快取。只快取值、不共用進行中的請求：Workers 上一個請求等另一個請求
+// 的 promise，發起的那個先被取消就會卡住；冷的時候同時要的幾個請求各換一次
 const METADATA_IDENTITY_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity'
 let identity: { token: string; exp: number | null } | null = null
-let identityRequest: Promise<string> | null = null
+
+async function fetchIdToken(audience: string, serviceAccountKey: string): Promise<string> {
+  if (!serviceAccountKey) {
+    return $fetch<string>(METADATA_IDENTITY_URL, { query: { audience }, headers: { 'Metadata-Flavor': 'Google' }, responseType: 'text', timeout: 5000, retry: 1 })
+  }
+  // Nitro 讀環境變數時會把 JSON 字串先解析成物件（2026-10-27 Workers 上實測），兩種都收
+  const key = (typeof serviceAccountKey === 'string' ? JSON.parse(serviceAccountKey) : serviceAccountKey) as ServiceAccountKey
+  const assertion = await serviceAccountAssertion(key, { target_audience: audience }, Date.now() / 1000)
+  const { id_token: token } = await $fetch<{ id_token: string }>(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
+    timeout: 5000,
+    retry: 1
+  })
+  return token
+}
 
 // 共享金鑰也在這裡加（2026-10-14，業務中台查 log：伺服器端渲染與 system-health 的呼叫都沒帶 x-oingg-nitro-key——原本只有
 // /api/core 代理會加）。所有呼叫業務中台的路徑都經過這一支，所以一處加、處處有。代理另外加 x-oingg-client-ip；伺服器端渲染的快取
 // 是全站共用的，沒有「某一位使用者」，只帶金鑰。
 export async function businessAuthHeaders(): Promise<Record<string, string>> {
-  const { businessAudience: audience, businessNitroKey: nitroKey } = useRuntimeConfig()
+  const { businessAudience: audience, businessNitroKey: nitroKey, googleServiceAccountKey } = useRuntimeConfig()
   const headers: Record<string, string> = nitroKey ? { 'x-oingg-nitro-key': nitroKey } : {}
   if (!audience) return headers
   if (!identity || idTokenNeedsRefresh(identity.exp, Date.now() / 1000)) {
-    identityRequest ??= $fetch<string>(METADATA_IDENTITY_URL, {
-      query: { audience },
-      headers: { 'Metadata-Flavor': 'Google' },
-      responseType: 'text',
-      timeout: 5000,
-      retry: 1
-    }).finally(() => {
-      identityRequest = null
-    })
-    const token = await identityRequest
+    const token = await fetchIdToken(audience, googleServiceAccountKey)
     identity = { token, exp: jwtExpiry(token) }
   }
   return { ...headers, 'x-serverless-authorization': `Bearer ${identity.token}` }

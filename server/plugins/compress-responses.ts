@@ -13,6 +13,9 @@ const COMPRESSIBLE = /^(text\/|application\/(json|problem\+json|javascript|xml))
 const MIN_BYTES = 1024
 
 export default defineNitroPlugin((nitroApp) => {
+  // Cloudflare Workers 不壓（2026-10-27）：邊緣會依 Accept-Encoding 自己壓；回應帶著 Content-Encoding 的話，Workers 會把 body
+  // 當成未壓縮的再壓一次
+  if (onWorkers) return
   nitroApp.hooks.hook('beforeResponse', async (event, response) => {
     if (event.method === 'HEAD' || getResponseHeader(event, 'content-encoding')) return
     // 錯誤頁不壓（2026-10-19 量到每一個 SSR 的 404 頁瀏覽器都卡住）：Nuxt 的錯誤處理（@nuxt/nitro-server handlers/error）在伺服器

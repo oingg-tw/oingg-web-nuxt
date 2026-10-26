@@ -5,6 +5,9 @@
 .nitro
 .cache
 dist
+# wrangler 的本機狀態與暫存（Cloudflare Workers 版，2026-10-27）；.dev.vars 是本機的機密
+.wrangler
+.dev.vars*
 
 # Node dependencies
 node_modules

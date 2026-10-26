@@ -1,0 +1,29 @@
+// Cloudflare Workers 版的 DEV（2026-10-27，搬遷見 docs/cloudflare-migration-plan.md；App Hosting 版照舊並行，冷啟動比完再決定換不換）。
+// 建置：NITRO_PRESET=cloudflare_module NUXT_SITE_ENV=preview pnpm build，Nitro 把這份併進 .output/server/wrangler.json（main、assets、
+// 相容性設定它補）；部署：pnpm dlx wrangler@4 deploy（讀 Nitro 寫的 .wrangler/deploy/config.json）。
+// 這裡的 vars 跟 apphosting.dev.yaml 同一組值；機密不在這裡：NUXT_BUSINESS_NITRO_KEY、NUXT_GOOGLE_SERVICE_ACCOUNT_KEY 用 wrangler secret put
+{
+  "name": "oingg-web-nuxt-dev",
+  "compatibility_date": "2025-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  // 網址先用 workers.dev（使用者 2026-10-27 選）；DEV 全站 noindex（NUXT_SITE_ENV=preview）
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // Nitro 的快取（nuxt.config 的 nitro.storage.cache）；沒寫 id，第一次部署時 wrangler 自己建
+  "kv_namespaces": [{ "binding": "CACHE" }],
+  // Nuxt Content（部落格）在 Workers 上用 D1，binding 名稱是 @nuxt/content 的預設 DB
+  "d1_databases": [{ "binding": "DB", "database_name": "oingg-web-nuxt-dev-content", "database_id": "24d880a4-304b-48e1-aa0f-2593c08bfa1c" }],
+  "vars": {
+    "NUXT_BUSINESS_BASE": "https://oingg-business-ts-dev-xradmqyx5q-as.a.run.app",
+    "NUXT_BUSINESS_AUDIENCE": "https://oingg-business-ts-dev-xradmqyx5q-as.a.run.app",
+    "NUXT_SITE_ENV": "preview",
+    "NUXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyD_fVz_HBT2USKSLCrJ17tBcAEE5DgrPUo",
+    "NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "oingg-web-dev.firebaseapp.com",
+    "NUXT_PUBLIC_FIREBASE_PROJECT_ID": "oingg-web-dev",
+    "NUXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "oingg-web-dev.firebasestorage.app",
+    "NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "358046545416",
+    "NUXT_PUBLIC_FIREBASE_APP_ID": "1:358046545416:web:875cc4888a65d9c7a9c3bd",
+    "NUXT_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-FC52QRB5NP"
+  }
+}

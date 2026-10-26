@@ -27,3 +27,9 @@ overrides:
   'undici@>=6 <6.29.1': ^6.29.1
   '@grpc/grpc-js@<1.13.6': ^1.13.6
   'source-map-js@<1.2.2': ^1.2.2
+
+# Nitro 的 defineCachedFunction 只在第一個參數是 event 時才用 event.waitUntil（2026-10-27，搬 Cloudflare Workers）：我們的快取函式都不傳 event，
+# 過期後的背景重算與寫回 KV 在回應送出後會被 Workers 砍掉。補丁改成沒傳就用 async context 裡的請求（asyncContext 已開）。
+# 升 nitropack 時要重做或確認上游已修
+patchedDependencies:
+  nitropack@2.13.4: patches/nitropack@2.13.4.patch

@@ -4,9 +4,9 @@ import type { H3Event, H3EventContext } from 'h3'
 // 頁依 status／route／reason 分組。原因代碼與路徑樣板在 server/utils/http-error.ts。
 //
 // 一個使用者看到的錯誤只記一筆：
-//   - 伺服器渲染頁面時呼叫自己的 /api 是內部請求，不記：請求物件是 node-mock-http 的模擬物件（有 __unenv__ 欄位，真的連線沒有）。
-//     走 useFetch（event.$fetch）的，__unenv__ 就是外層請求的 context（同一個物件，nitropack fetchWithEvent），原因交給外層——
-//     分享頁的 503 才知道是業務中台逾時。直接用 $fetch 的沒有外層 context，只是不記（外層自己有 5xx 會自己記）
+//   - 伺服器渲染頁面時呼叫自己的 /api 是內部請求，不記，原因交給外層請求（coldStartParent，server/plugins/cold-start-timing.ts 記的）——
+//     分享頁的 503 才知道是業務中台逾時。原本看請求物件有沒有 node-mock-http 的 __unenv__ 欄位，但 Cloudflare Workers 上每個請求
+//     都是模擬物件（2026-10-27 改）
 //   - 錯誤頁（/__nuxt_error）是 Nuxt 錯誤處理在伺服器內部再打一次，不記
 //   - 丟出來的錯誤走 error hook（Nuxt 的錯誤頁送出後不一定再跑 afterResponse）；直接回 5xx 的（/api/core 轉回上游的 5xx）走
 //     afterResponse。兩邊都可能看到同一個請求，記過就不再記
@@ -17,9 +17,9 @@ function report(event: H3Event, status: number, reason: HttpErrorReason) {
   const context = event.context as Context
   if (context.httpErrorLogged || event.path.startsWith('/__nuxt_error')) return
   context.httpErrorLogged = true
-  const req = event.node.req as { __unenv__?: Context }
-  if ('__unenv__' in req) {
-    if (req.__unenv__) req.__unenv__.httpErrorReason ??= reason
+  const parent = context.coldStartParent
+  if (parent) {
+    (parent.context as Context).httpErrorReason ??= reason
     return
   }
   const route = routeTemplate(event.path)

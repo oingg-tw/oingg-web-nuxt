@@ -41,8 +41,9 @@ export default defineEventHandler(async (event) => {
   // 66.249.82.x（Google 前端，每次不同）」；故意送 X-Forwarded-For: 1.2.3.4 時它被接在最左邊。所以從右邊數第 3 段才是使用者，
   // 而且偽造不到——最左邊那段可以被使用者自己填，不能用。本機沒有代理、沒有這個標頭，用連線的 IP。
   // ponytail: 層數寫死 2（CDN＋Google 前端）；換部署平台或前面多一層代理就要重量一次，改成 runtimeConfig。
+  // Cloudflare Workers 上（2026-10-27）讀 cf-connecting-ip：Cloudflare 邊緣填的，使用者送來的同名標頭會被蓋掉。App Hosting 上不能讀它（使用者自己就能填）
   const forwarded = getRequestHeader(event, 'x-forwarded-for')
-  const clientIp = forwarded?.split(',').map(part => part.trim()).at(-3) ?? getRequestIP(event)
+  const clientIp = onWorkers ? getRequestHeader(event, 'cf-connecting-ip') : forwarded?.split(',').map(part => part.trim()).at(-3) ?? getRequestIP(event)
 
   const headers: Record<string, string> = {}
   if (authorization) headers.authorization = authorization
