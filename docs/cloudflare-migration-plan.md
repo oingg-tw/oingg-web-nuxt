@@ -36,9 +36,9 @@
 - **使用者決定拿掉 App Hosting**（10/27，管理站轉達「App Hosting拿掉吧」，本 session 確認「先補齊再刪」）：管理站 DEV 最近 5 次使用者等待平均 App Hosting 12.9 s、Workers 9.8 s。10/28 02:40 的 App Hosting 測試取消。要先補齊才刪 backend：
   - 登入：workers.dev 已加進 Firebase Auth 授權網域與 Browser key 的網站限制（10/27 20:5x）。LINE Developers 的 callback 還要使用者加；業務中台沒有 redirectUri 白名單（原樣交給 LINE 核對，`lineSignIn`），只有 LINE 後台這一處。
   - 程式：`cloudflare-workers` 已推上 development（9f8e4058，10/27 20:57），App Hosting 跑同一份（web-nuxt-dev-build-2026-10-27-003，CI 通過、主要頁面 200）。
-  - 自動部署：Workers Builds（使用者選），要使用者在 Cloudflare 主控台連 GitHub。
+  - 自動部署：Workers Builds（使用者選），10/28 04:29 連上：只建 `development`、沒有預覽建置；建置變數 `NITRO_PRESET=cloudflare_module`、`NUXT_SITE_ENV=preview`、`PNPM_VERSION=11.24.0`（Node 用它預設的 24.22.1）。第一次建置 04:37～04:40（ab48b75a，版本 a97da365）：KV 沿用（inherited），主要頁面 200。查狀態用 `cf builds list --external-script-id 3added6f2dc84cdab650a6704725f7f2`。
   - A3 後半（5xx 紀錄）：使用者選「改抓 Cloudflare log」——不寫進 GCP、不加 logWriter；`http-errors.ts` 那一行在 Workers Logs 已經是拆好欄位的結構化紀錄（過去一週 10 筆，error hook 與 afterResponse 兩條路都有），管理站用 Cloudflare 的 telemetry query API 讀（最多留 7 天；管理站「排程與服務」只看最近 24 小時，不用另外存）。總數讀 GraphQL `workersInvocationsAdaptive`。管理站 DEV 已上線（10/27，revision 00117）：篩選鍵是 `event`（`source.event` 查不到）加 `$metadata.service`，權杖只有讀取權限，Observability Read 就夠。
-- **還沒做：** A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI 的 Workers 冒煙測試、Workers Builds；刪 App Hosting 之後清掉只給它用的程式（`business-wake.ts`、metadata server 身分、`compress-responses.ts`、webup、`apphosting*.yaml`、腳本裡寫死的 hosted.app 網址）。
+- **還沒做：** A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI 的 Workers 冒煙測試；刪 App Hosting 之後清掉只給它用的程式（`business-wake.ts`、metadata server 身分、`compress-responses.ts`、webup、`apphosting*.yaml`、腳本裡寫死的 hosted.app 網址）。
 
 ## 盤點結果：哪些東西要改
 
