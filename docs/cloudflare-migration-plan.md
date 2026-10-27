@@ -38,6 +38,9 @@
   - 程式：`cloudflare-workers` 已推上 development（9f8e4058，10/27 20:57），App Hosting 跑同一份（web-nuxt-dev-build-2026-10-27-003，CI 通過、主要頁面 200）。
   - 自動部署：Workers Builds（使用者選），10/28 04:29 連上：只建 `development`、沒有預覽建置；建置變數 `NITRO_PRESET=cloudflare_module`、`NUXT_SITE_ENV=preview`、`PNPM_VERSION=11.24.0`（Node 用它預設的 24.22.1）。第一次建置 04:37～04:40（ab48b75a，版本 a97da365）：KV 沿用（inherited），主要頁面 200。查狀態用 `cf builds list --external-script-id 3added6f2dc84cdab650a6704725f7f2`。
   - A3 後半（5xx 紀錄）：使用者選「改抓 Cloudflare log」——不寫進 GCP、不加 logWriter；`http-errors.ts` 那一行在 Workers Logs 已經是拆好欄位的結構化紀錄（過去一週 10 筆，error hook 與 afterResponse 兩條路都有），管理站用 Cloudflare 的 telemetry query API 讀（最多留 7 天；管理站「排程與服務」只看最近 24 小時，不用另外存）。總數讀 GraphQL `workersInvocationsAdaptive`。管理站 DEV 已上線（10/27，revision 00117）：篩選鍵是 `event`（`source.event` 查不到）加 `$metadata.service`，權杖只有讀取權限，Observability Read 就夠。
+  - 完整回歸（10/28 06:xx，對 workers.dev 部署 9b9ddf89）：hydration 83 頁、無障礙 100 組、會員頁閃動、`login:check` 全過；會員頁、分享頁、`/api/core` 沒被 Cloudflare 快取。兩個失敗都跟 Workers 無關：
+    - 版面位移：4 個指標頁（/stock/2330/roe、pe-ratio、eps、/stock/7711/shareholder-yield）1440 寬約 2 秒時上移 16px（0.012）；App Hosting 一模一樣，是既有的頁面問題。
+    - hub 頁：/industry/30 類股家數 45 對股利統計 46。KV 三筆都是 04:41 寫的、在期限內；`hub-sectors` 快取 24 小時，KV 跨部署留著，App Hosting 的記憶體快取每次部署就清掉才看不出來。
 - **還沒做：** A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI 的 Workers 冒煙測試；刪 App Hosting 之後清掉只給它用的程式（`business-wake.ts`、metadata server 身分、`compress-responses.ts`、webup、`apphosting*.yaml`、腳本裡寫死的 hosted.app 網址）。
 
 ## 盤點結果：哪些東西要改
