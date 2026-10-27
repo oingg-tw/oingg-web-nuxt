@@ -10,6 +10,9 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
+  // 程式在業務中台旁邊跑（2026-10-27 使用者核可）：中華電信固網進 SJC，從那裡每支呼叫都要跨太平洋到新加坡，冷啟動多等約 1 秒；
+  // 入口機房不能指定，執行的機房可以。行動網路本來就進 SIN，不受影響。業務中台換區要跟著改
+  "placement": { "region": "gcp:asia-southeast1" },
   // Nitro 的快取（nuxt.config 的 nitro.storage.cache）；沒寫 id，第一次部署時 wrangler 自己建
   "kv_namespaces": [{ "binding": "CACHE" }],
   // Nuxt Content（部落格）在 Workers 上用 D1，binding 名稱是 @nuxt/content 的預設 DB

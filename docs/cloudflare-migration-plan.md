@@ -24,7 +24,8 @@
   - 建置與部署：`NITRO_PRESET=cloudflare_module NUXT_SITE_ENV=preview pnpm build`，再 `pnpm dlx wrangler@4 deploy`。Nitro 對這個 preset 預設用 `nodejs_compat`＋`no_nodejs_compat_v2`（它的 polyfill 配 v1），照它的。
   - Nitro 讀環境變數會把 JSON 字串解析成物件，服務帳戶金鑰兩種都要收。
 - **2026-10-27 冷啟動比較（第一輪）：** 測試機的 Chromium 每次送出請求前約有 3 秒自己的開銷（App Hosting 的 l2gfet4t7 比 ttfb 少 2.8～2.9 秒；Workers 那次 requestStart 3,164 ms），所以比「送出請求到第一個位元組」：App Hosting 8.2／8.4／10.8 秒（三層全冷），Workers KV 命中 1 秒內／1.17 秒。KV 沒有那頁的情況沒量準（業務中台被一個開著的 Workers 分頁先叫醒，那次也沒記 requestStart），10/28 凌晨重測。
-  - 中華電信（HiNet）的流量進 Cloudflare 聖荷西（colo SJC，RTT 約 126 ms），不是台灣節點；Worker 從 SJC 打新加坡的業務中台。
+  - 中華電信（HiNet）的流量進 Cloudflare 聖荷西（colo SJC，RTT 約 126 ms），不是台灣節點；Worker 從 SJC 打新加坡的業務中台。使用者手機的行動網路進新加坡（colo SIN，10/27 使用者回報），跟業務中台同區。入口機房不能指定；程式執行的機房可以（`placement.region`，見下一條）。
+  - **10/27 09:41（台灣時間）Workers 最壞情況：** `/stock/1104/dividend`，KV 沒有、Worker 冷、業務中台冷（閒置 75 分鐘，叫醒 4 個容器），從 HiNet 測（SJC）。送出請求到第一個位元組 6.6 秒；Worker 內 5.96 秒，其中等業務中台 5.47 秒，Worker 自己約 0.5 秒，網路約 0.6 秒；CPU 403 ms。對照 App Hosting 三次（l2gfet4t7 減 waitall）：web-nuxt 自己加容器啟動 3.8～6.5 秒，Workers 1.1 秒。但 Workers 等業務中台多約 1 秒（4.2～4.5 → 5.5 秒），是 SJC 和新加坡之間的來回。可以試 `"placement": { "region": "gcp:asia-southeast1" }`：連線照樣進 SJC，程式改在新加坡跑（回應的 `cf-placement` 標頭會寫在哪）。
   - 修了一個 bug：頁面用全域 `$fetch` 打自己的 `/api` 時，Nitro 不把外層的 waitUntil 交給內部請求，背景重算在回應送出後被砍掉（業務中台照樣被叫醒、KV 沒更新）。`server/plugins/cold-start-timing.ts` 讓內部請求沿用外層的 waitUntil。
   - 每個回應都帶 Server-Timing（development 3fcd3c9b）；冷啟動報告的 requestStartMs 在分支 `cold-start-request-start`，等業務中台先收這個欄位。
 - **還沒做：** A3 後半（5xx 紀錄寫進 Cloud Logging，要同一個服務帳戶加 logWriter，並請管理站確認 `http_errors` 指標的條件）、A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI、Workers Builds。
