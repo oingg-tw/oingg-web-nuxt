@@ -32,7 +32,12 @@
   - **使用者決定拿掉 Placement**（10/27 13:33 重新部署，版本 5d5b513e，回應不再有 `cf-placement`）：回到入口機房執行；10/28 02:00 那次就是 SJC 執行的第二個樣本。
   - 修了一個 bug：頁面用全域 `$fetch` 打自己的 `/api` 時，Nitro 不把外層的 waitUntil 交給內部請求，背景重算在回應送出後被砍掉（業務中台照樣被叫醒、KV 沒更新）。`server/plugins/cold-start-timing.ts` 讓內部請求沿用外層的 waitUntil。
   - 每個回應都帶 Server-Timing（development 3fcd3c9b）；冷啟動報告的 requestStartMs 與 edgeColo（入口機房，Server-Timing 的 `colo`）在分支 `cold-start-request-start`；業務中台 10/27 上 DEV（09ae1a4）後併進 `cloudflare-workers`（1fdca814），16:08 部署 Workers（版本 f7847842），10/28 02:00 那次會帶這兩個欄位。使用者核准後 16:18 推上 development（f7022902），App Hosting DEV 16:21 上線（web-nuxt-dev-build-2026-10-27-002），02:40 那次也會帶。
-- **還沒做：** A3 後半（5xx 紀錄寫進 Cloud Logging，要同一個服務帳戶加 logWriter，並請管理站確認 `http_errors` 指標的條件）、A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI、Workers Builds。
+- **使用者決定拿掉 App Hosting**（10/27，管理站轉達「App Hosting拿掉吧」，本 session 確認「先補齊再刪」）：管理站 DEV 最近 5 次使用者等待平均 App Hosting 12.9 s、Workers 9.8 s。10/28 02:40 的 App Hosting 測試取消。要先補齊才刪 backend：
+  - 登入：workers.dev 已加進 Firebase Auth 授權網域與 Browser key 的網站限制（10/27 20:5x）。LINE Developers 的 callback 還要使用者加；業務中台的 redirectUri 白名單由管理站轉給業務中台。
+  - 程式：`cloudflare-workers` 已推上 development（9f8e4058，10/27 20:57），App Hosting 跑同一份（web-nuxt-dev-build-2026-10-27-003，CI 通過、主要頁面 200）。
+  - 自動部署：Workers Builds（使用者選），要使用者在 Cloudflare 主控台連 GitHub。
+  - A3 後半（5xx 紀錄）：使用者選「改抓 Cloudflare log」——不寫進 GCP、不加 logWriter；`http-errors.ts` 那一行在 Workers Logs 已經是拆好欄位的結構化紀錄（過去一週 10 筆，error hook 與 afterResponse 兩條路都有），管理站用 Cloudflare 的 telemetry query API 讀（最多留 7 天，要 14 天管理站自己存）。總數讀 GraphQL `workersInvocationsAdaptive`。
+- **還沒做：** A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI 的 Workers 冒煙測試、Workers Builds；刪 App Hosting 之後清掉只給它用的程式（`business-wake.ts`、metadata server 身分、`compress-responses.ts`、webup、`apphosting*.yaml`、腳本裡寫死的 hosted.app 網址）。
 
 ## 盤點結果：哪些東西要改
 

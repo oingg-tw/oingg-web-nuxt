@@ -2,6 +2,8 @@ import type { H3Event, H3EventContext } from 'h3'
 
 // 每個回給使用者的 5xx 寫一行結構化紀錄（2026-10-21）：GCP 的 log-based metric http_errors（oingg-web-dev）數這一行，管理站「排程與服務」
 // 頁依 status／route／reason 分組。原因代碼與路徑樣板在 server/utils/http-error.ts。
+// Cloudflare Workers 上同一行進 Workers Logs（欄位自動拆開、最多留 7 天），管理站用 Cloudflare 的 API 讀（2026-10-27 使用者選「改抓 Cloudflare log」，
+// 不另外寫進 GCP）
 //
 // 一個使用者看到的錯誤只記一筆：
 //   - 伺服器渲染頁面時呼叫自己的 /api 是內部請求，不記，原因交給外層請求（coldStartParent，server/plugins/cold-start-timing.ts 記的）——
