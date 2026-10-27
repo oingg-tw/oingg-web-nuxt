@@ -30,7 +30,7 @@ export default defineNitroPlugin((nitroApp) => {
     const colds = event.context.coldStarts ?? []
     const clock = event.context.coldStartClock
     if (!clock || event.node.res.headersSent) return
-    setResponseHeader(event, 'server-timing', coldStartServerTiming(colds, unionMs(event.context.businessWaits ?? []), performance.now() - clock.startedAt, clock.startedAt, clock.first))
+    setResponseHeader(event, 'server-timing', coldStartServerTiming(colds, unionMs(event.context.businessWaits ?? []), performance.now() - clock.startedAt, clock.startedAt, clock.first, event.context.cf?.colo ?? null))
     // 一個 id 只能有一份報告（業務中台同一個 id 再送會覆蓋）：/api/core 會照轉業務中台的 max-age，這個回應被快取的話，之後讀快取
     // 又會看到同一個 id、送一份幾乎是 0 的報告蓋掉真的。每次冷啟動只有這一個回應，不快取它沒有代價
     if (colds.length) setResponseHeader(event, 'cache-control', 'no-store')
@@ -42,5 +42,7 @@ declare module 'h3' {
     coldStartClock?: { startedAt: number; first: boolean }
     // 伺服器渲染時發出這個內部請求的外層請求
     coldStartParent?: H3Event
+    // Cloudflare Workers 的 request.cf（Nitro 放進 context）：colo 是使用者連進的機房，程式改在別處執行（placement）時也是入口那個；App Hosting 沒有
+    cf?: { colo?: string }
   }
 }

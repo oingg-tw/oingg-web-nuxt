@@ -14,10 +14,12 @@ assert.equal(coldStartIdOf(null), null)
 
 // web-nuxt 寫給瀏覽器的：只有 web-nuxt 自己的數字；一頁叫醒幾個容器就有幾項 cold，dur 是等那一支多久
 const ID2 = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
-assert.equal(coldStartServerTiming([{ id: ID, waitMs: 5612.4 }], 5650, 5700.2, 812.6, true), `cold;dur=5612;desc="${ID}", waitall;dur=5650, web;dur=5700, webup;dur=813, webcold`)
-assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 7045 }], 9000, 16141, 1185, false), `cold;dur=452;desc="${ID}", cold;dur=7045;desc="${ID2}", waitall;dur=9000, web;dur=16141, webup;dur=1185`)
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 5612.4 }], 5650, 5700.2, 812.6, true, null), `cold;dur=5612;desc="${ID}", waitall;dur=5650, web;dur=5700, webup;dur=813, webcold`)
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 7045 }], 9000, 16141, 1185, false, null), `cold;dur=452;desc="${ID}", cold;dur=7045;desc="${ID2}", waitall;dur=9000, web;dur=16141, webup;dur=1185`)
 // 沒有冷啟動的回應也寫，只是沒有 cold
-assert.equal(coldStartServerTiming([], 120, 340, 60_000, false), 'waitall;dur=120, web;dur=340, webup;dur=60000')
+assert.equal(coldStartServerTiming([], 120, 340, 60_000, false, null), 'waitall;dur=120, web;dur=340, webup;dur=60000')
+// Cloudflare Workers：入口機房寫在最後
+assert.equal(coldStartServerTiming([], 120, 340, 60_000, false, 'SJC'), 'waitall;dur=120, web;dur=340, webup;dur=60000, colo;desc="SJC"')
 
 // 等所有業務中台呼叫的時間：重疊的只算一次，包在裡面的不加，隔開的相加
 assert.equal(unionMs([]), 0)
@@ -44,7 +46,8 @@ const navigation = {
     { name: 'web', duration: 5700, description: '' },
     { name: 'webup', duration: 813, description: '' },
     { name: 'webcold', duration: 0, description: '' },
-    { name: 'l2gfet4t7', duration: 5800, description: '' }
+    { name: 'l2gfet4t7', duration: 5800, description: '' },
+    { name: 'colo', duration: 0, description: 'SJC' }
   ]
 }
 const [report, ...rest] = coldStartReportsOf(navigation, 'document', Date.parse('2026-10-26T01:00:00.000Z'))
@@ -64,7 +67,8 @@ assert.deepEqual(report, {
   responseEndMs: 6100,
   dnsMs: 20,
   connectMs: 55,
-  tlsMs: 40
+  tlsMs: 40,
+  edgeColo: 'SJC'
 })
 const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, requestStart: 9010, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 3) }
 const [apiReport] = coldStartReportsOf(api, 'api', 0)
@@ -72,6 +76,7 @@ assert.equal(apiReport.ttfbMs, 300)
 assert.equal(apiReport.requestStartMs, 10)
 assert.equal(apiReport.tlsMs, null)
 assert.equal(apiReport.webCold, false)
+assert.equal(apiReport.edgeColo, null)
 assert.deepEqual(coldStartReportsOf({ ...navigation, serverTiming: [] }, 'document', 0), [])
 // 一頁叫醒兩個容器：兩份，各自的等待時間，其餘相同
 const both = coldStartReportsOf({ ...navigation, serverTiming: [{ name: 'cold', duration: 452, description: ID }, { name: 'cold', duration: 7045, description: ID2 }, ...navigation.serverTiming.slice(1)] }, 'document', 0)
@@ -89,9 +94,12 @@ assert.equal(cleanColdStartReport({ ...report, at: 'yesterday' }), null)
 assert.equal(cleanColdStartReport({ ...report, ttfbMs: 600_001 }), null)
 assert.equal(cleanColdStartReport({ ...report, ttfbMs: -1 }), null)
 assert.equal(cleanColdStartReport({ ...report, webCold: 'yes' }), null)
+assert.equal(cleanColdStartReport({ ...report, edgeColo: 'sjc' }), null)
+assert.equal(cleanColdStartReport({ ...report, edgeColo: 'SJC"' }), null)
 assert.equal(cleanColdStartReport([report]), null)
 const { tlsMs: _tls, ...withoutTls } = report
 assert.equal(cleanColdStartReport({ ...withoutTls, ttfbMs: 12.6 }).tlsMs, null)
+assert.equal(cleanColdStartReport({ ...withoutTls, edgeColo: undefined }).edgeColo, null)
 assert.equal(cleanColdStartReport({ ...withoutTls, ttfbMs: 12.6 }).ttfbMs, 13)
 
 console.log('PASS: cold start timing')

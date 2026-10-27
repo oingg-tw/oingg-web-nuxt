@@ -22,9 +22,12 @@ export interface ColdStartReport {
   dnsMs: number | null
   connectMs: number | null
   tlsMs: number | null
+  // 使用者連進的 Cloudflare 機房（2026-10-27 使用者核准）：中華電信固網進 SJC、行動網路進 SIN，冷啟動要分開看。三個大寫字母；App Hosting 沒有，是 null
+  edgeColo: string | null
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const COLO = /^[A-Z]{3}$/
 const MS_FIELDS = ['webWaitMs', 'webWaitAllMs', 'webServerMs', 'webUptimeMs', 'requestStartMs', 'ttfbMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs'] as const
 
 // 業務中台回應標頭裡的冷啟動 id：`cold;desc="<uuid>"`（可能跟其他項目用逗號串在一起）
@@ -41,9 +44,9 @@ export interface ColdStartWait {
 // web-nuxt 寫給瀏覽器的 Server-Timing：只有 web-nuxt 自己量到的數字。一頁可能同時叫醒好幾個容器（2026-10-26 DEV 實測：一頁同時打
 // 約 10 支，Cloud Run 一次開了 4 個，各帶一個 id；卡最久的是 /stocks/:symbol 7 秒），每個冷啟動一項 cold，dur 是等那一支多久
 // waitall 是這一趟等所有業務中台呼叫的時間，同時進行的只算一次（管理站把「web-nuxt 自己」和「等同一頁其他請求」分開）。
-// 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項
-export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, uptimeMs: number, webCold: boolean): string {
-  return [...colds.map(cold => `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`), `waitall;dur=${Math.round(waitAllMs)}`, `web;dur=${Math.round(serverMs)}`, `webup;dur=${Math.round(uptimeMs)}`, ...(webCold ? ['webcold'] : [])].join(', ')
+// 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項；colo 是 Cloudflare 的入口機房，沒有就不寫
+export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, uptimeMs: number, webCold: boolean, colo: string | null): string {
+  return [...colds.map(cold => `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`), `waitall;dur=${Math.round(waitAllMs)}`, `web;dur=${Math.round(serverMs)}`, `webup;dur=${Math.round(uptimeMs)}`, ...(webCold ? ['webcold'] : []), ...(colo ? [`colo;desc="${colo}"`] : [])].join(', ')
 }
 
 // 一組 [開始, 結束] 的聯集長度：重疊的只算一次
@@ -94,7 +97,8 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
     responseEndMs: sinceStart(entry.responseEnd),
     dnsMs: span(entry.domainLookupStart, entry.domainLookupEnd),
     connectMs: span(entry.connectStart, entry.connectEnd),
-    tlsMs: span(entry.secureConnectionStart, entry.connectEnd)
+    tlsMs: span(entry.secureConnectionStart, entry.connectEnd),
+    edgeColo: items.find(item => item.name === 'colo' && COLO.test(item.description))?.description ?? null
   }
   return colds.map(cold => ({ id: cold.description.toLowerCase(), webWaitMs: cold.duration, ...shared }))
 }
@@ -103,14 +107,15 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
 export function cleanColdStartReport(raw: unknown): ColdStartReport | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const input = raw as Record<string, unknown>
-  const allowed = new Set<string>(['id', 'route', 'kind', 'at', 'webCold', ...MS_FIELDS])
+  const allowed = new Set<string>(['id', 'route', 'kind', 'at', 'webCold', 'edgeColo', ...MS_FIELDS])
   if (Object.keys(input).some(key => !allowed.has(key))) return null
-  const { id, route, kind, at, webCold } = input
+  const { id, route, kind, at, webCold, edgeColo } = input
   if (typeof id !== 'string' || !UUID.test(id)) return null
   if (typeof route !== 'string' || !route.startsWith('/') || route.includes('?') || route.length > 300) return null
   if (kind !== 'document' && kind !== 'api') return null
   if (typeof at !== 'string' || !/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(at) || Number.isNaN(Date.parse(at))) return null
   if (webCold !== undefined && webCold !== null && typeof webCold !== 'boolean') return null
+  if (edgeColo !== undefined && edgeColo !== null && (typeof edgeColo !== 'string' || !COLO.test(edgeColo))) return null
   const ms: Partial<Record<(typeof MS_FIELDS)[number], number | null>> = {}
   for (const field of MS_FIELDS) {
     const value = input[field]
@@ -118,5 +123,5 @@ export function cleanColdStartReport(raw: unknown): ColdStartReport | null {
     else if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 600_000) ms[field] = Math.round(value)
     else return null
   }
-  return { id: id.toLowerCase(), route, kind, at, webCold: webCold ?? null, ...ms } as ColdStartReport
+  return { id: id.toLowerCase(), route, kind, at, webCold: webCold ?? null, edgeColo: edgeColo ?? null, ...ms } as ColdStartReport
 }
