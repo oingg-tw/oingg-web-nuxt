@@ -37,13 +37,9 @@ export default defineEventHandler(async (event) => {
   const authorization = getRequestHeader(event, 'authorization')
   const contentType = getRequestHeader(event, 'content-type')
   // 使用者的 IP，給業務中台第二階段「依 IP 限流未登入請求」用——它只在確認請求來自 Nitro 之後才採用這個標頭。
-  // Firebase App Hosting 上實測（2026-10-14，對照測試機的對外 IP）：X-Forwarded-For 是「使用者, 35.219.200.76（App Hosting 的 CDN）,
-  // 66.249.82.x（Google 前端，每次不同）」；故意送 X-Forwarded-For: 1.2.3.4 時它被接在最左邊。所以從右邊數第 3 段才是使用者，
-  // 而且偽造不到——最左邊那段可以被使用者自己填，不能用。本機沒有代理、沒有這個標頭，用連線的 IP。
-  // ponytail: 層數寫死 2（CDN＋Google 前端）；換部署平台或前面多一層代理就要重量一次，改成 runtimeConfig。
-  // Cloudflare Workers 上（2026-10-27）讀 cf-connecting-ip：Cloudflare 邊緣填的，使用者送來的同名標頭會被蓋掉。App Hosting 上不能讀它（使用者自己就能填）
-  const forwarded = getRequestHeader(event, 'x-forwarded-for')
-  const clientIp = onWorkers ? getRequestHeader(event, 'cf-connecting-ip') : forwarded?.split(',').map(part => part.trim()).at(-3) ?? getRequestIP(event)
+  // Cloudflare Workers 上（2026-10-27）讀 cf-connecting-ip：Cloudflare 邊緣填的，使用者送來的同名標頭會被蓋掉。只在 Workers 上讀——
+  // 其他地方使用者自己就能填這個標頭；本機沒有代理，用連線的 IP
+  const clientIp = onWorkers ? getRequestHeader(event, 'cf-connecting-ip') : getRequestIP(event)
 
   const headers: Record<string, string> = {}
   if (authorization) headers.authorization = authorization

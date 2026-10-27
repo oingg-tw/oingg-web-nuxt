@@ -13,7 +13,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const base = process.env.LINE_REAL_BASE ?? 'https://web-nuxt-dev--oingg-web-dev.asia-east1.hosted.app'
+const base = process.env.LINE_REAL_BASE ?? 'https://oingg-web-nuxt-dev.oingg-web-nuxt.workers.dev'
 const WAIT_FOR_PERSON = 10 * 60 * 1000
 let failures = 0
 const check = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }

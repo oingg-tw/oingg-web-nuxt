@@ -14,6 +14,7 @@ export interface ColdStartReport {
   webWaitAllMs: number | null
   webServerMs: number | null
   webCold: boolean | null
+  // web-nuxt 行程啟動多久：App Hosting（Node）才有，2026-10-28 拿掉 App Hosting 後一律 null（欄位跟業務中台、管理站共用，留著）
   webUptimeMs: number | null
   // 瀏覽器真正送出請求的時間（2026-10-27，管理站提議、使用者核准）：扣掉它之前的 DNS／連線，剩下的是瀏覽器自己（測試機的 Chromium 量到約 2.8 秒）
   requestStartMs: number | null
@@ -22,7 +23,7 @@ export interface ColdStartReport {
   dnsMs: number | null
   connectMs: number | null
   tlsMs: number | null
-  // 使用者連進的 Cloudflare 機房（2026-10-27 使用者核准）：中華電信固網進 SJC、行動網路進 SIN，冷啟動要分開看。三個大寫字母；App Hosting 沒有，是 null
+  // 使用者連進的 Cloudflare 機房（2026-10-27 使用者核准）：中華電信固網進 SJC、行動網路進 SIN，冷啟動要分開看。三個大寫字母；本機沒有，是 null
   edgeColo: string | null
 }
 
@@ -44,10 +45,10 @@ export interface ColdStartWait {
 // web-nuxt 寫給瀏覽器的 Server-Timing：只有 web-nuxt 自己量到的數字。一頁可能同時叫醒好幾個容器（2026-10-26 DEV 實測：一頁同時打
 // 約 10 支，Cloud Run 一次開了 4 個，各帶一個 id；卡最久的是 /stocks/:symbol 7 秒），每個冷啟動一項 cold，dur 是等那一支多久
 // waitall 是這一趟等所有業務中台呼叫的時間，同時進行的只算一次（管理站把「web-nuxt 自己」和「等同一頁其他請求」分開）。
-// 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項；uptimeMs 是 null 就不寫 webup（瀏覽器端讀成 null）；
+// 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項；
 // colo 是 Cloudflare 的入口機房，沒有就不寫
-export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, uptimeMs: number | null, webCold: boolean, colo: string | null): string {
-  return [...colds.map(cold => `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`), `waitall;dur=${Math.round(waitAllMs)}`, `web;dur=${Math.round(serverMs)}`, ...(uptimeMs === null ? [] : [`webup;dur=${Math.round(uptimeMs)}`]), ...(webCold ? ['webcold'] : []), ...(colo ? [`colo;desc="${colo}"`] : [])].join(', ')
+export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, webCold: boolean, colo: string | null): string {
+  return [...colds.map(cold => `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`), `waitall;dur=${Math.round(waitAllMs)}`, `web;dur=${Math.round(serverMs)}`, ...(webCold ? ['webcold'] : []), ...(colo ? [`colo;desc="${colo}"`] : [])].join(', ')
 }
 
 // 一組 [開始, 結束] 的聯集長度：重疊的只算一次
@@ -92,7 +93,7 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
     webWaitAllMs: dur('waitall'),
     webServerMs: dur('web'),
     webCold: items.some(item => item.name === 'webcold'),
-    webUptimeMs: dur('webup'),
+    webUptimeMs: null,
     requestStartMs: sinceStart(entry.requestStart),
     ttfbMs: sinceStart(entry.responseStart),
     responseEndMs: sinceStart(entry.responseEnd),

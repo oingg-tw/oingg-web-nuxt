@@ -78,7 +78,7 @@ const MOCK_TREND = MOCK_CHANGES.map((_, i) => {
 // 提示訊息預覽（2026-10-23，使用者：「appearance 加上一個選項 可以把 message 打開，只在開發環境顯示，這樣我好比較設計的效果」）：
 // 全站每一種提示一起打開、一直開著，切換上面的設定時直接比較。用的是真的負責函式（show-error-message.ts、undo-toast.ts、
 // watchLoadFailure），看到的就是全站實際的樣子。額度用完 2026-10-24 改成彈窗，另有一顆按鈕打開真的那一個（quota-notice.ts）。只在正式環境以外出現：本機 dev（site env development）與
-// DEV 站（apphosting.yaml 的 NUXT_SITE_ENV=preview）；正式站沒設就是 production，不畫
+// DEV 站（wrangler.jsonc 的 NUXT_SITE_ENV=preview）；正式站沒設就是 production，不畫
 const showDevTools = useSiteConfig().env !== 'production'
 const messagesOpen = ref(false)
 // 復原那則照實倒數 10 秒，倒數完再開一次（看得到倒數的樣子）

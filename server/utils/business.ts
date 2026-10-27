@@ -65,20 +65,15 @@ function releaseSlot(): void {
   if (next) next()
 }
 
-// 業務中台在 Cloud Run 上有 IAM 鎖（2026-10-14，部署到 Firebase App Hosting）：沒帶 Google 身分會被 403。Nitro 用自己的執行身分
-//（App Hosting 的 firebase-app-hosting-compute 服務帳戶）向 metadata server 要一張 ID token，放在 X-Serverless-Authorization——
-// Authorization 已經被使用者的 Firebase token 佔用（/api/core 照轉），Cloud Run 會先看 X-Serverless-Authorization。
-// businessAudience 空字串＝本機與 CI：不帶任何身分，行為跟以前一樣（本機的業務中台沒有 IAM 鎖）。
-// Cloudflare Workers 上沒有 metadata server（2026-10-27）：設了 googleServiceAccountKey 就用金鑰自己換（shared/utils/id-token.ts）。
+// 業務中台在 Cloud Run 上有 IAM 鎖（2026-10-14）：沒帶 Google 身分會被 403。Nitro 用服務帳戶金鑰（googleServiceAccountKey，
+// Cloudflare 的機密；Workers 上沒有 GCP 的 metadata server）自己換一張 ID token（shared/utils/id-token.ts），放在
+// X-Serverless-Authorization——Authorization 已經被使用者的 Firebase token 佔用（/api/core 照轉），Cloud Run 會先看 X-Serverless-Authorization。
+// businessAudience 空字串＝本機與 CI：不帶任何身分（本機的業務中台沒有 IAM 鎖）。
 // token 快取到到期前 5 分鐘。拿不到就丟錯——跟上游失敗一樣不會被快取。只快取值、不共用進行中的請求：Workers 上一個請求等另一個請求
 // 的 promise，發起的那個先被取消就會卡住；冷的時候同時要的幾個請求各換一次
-const METADATA_IDENTITY_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity'
 let identity: { token: string; exp: number | null } | null = null
 
 async function fetchIdToken(audience: string, serviceAccountKey: string): Promise<string> {
-  if (!serviceAccountKey) {
-    return $fetch<string>(METADATA_IDENTITY_URL, { query: { audience }, headers: { 'Metadata-Flavor': 'Google' }, responseType: 'text', timeout: 5000, retry: 1 })
-  }
   // Nitro 讀環境變數時會把 JSON 字串先解析成物件（2026-10-27 Workers 上實測），兩種都收
   const key = (typeof serviceAccountKey === 'string' ? JSON.parse(serviceAccountKey) : serviceAccountKey) as ServiceAccountKey
   const assertion = await serviceAccountAssertion(key, { target_audience: audience }, Date.now() / 1000)

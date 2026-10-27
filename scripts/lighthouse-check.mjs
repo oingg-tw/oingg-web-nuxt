@@ -17,7 +17,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { ALL_ROUTES } from './site-routes.mjs'
 
 // PSI 只量得到公開網址，目前只有 DEV（target dev）。業務中台已開放 local／dev／prd（b856e55）；PRD 部署後再加它的網址與 --target=prd
-const baseUrl = 'https://web-nuxt-dev--oingg-web-dev.asia-east1.hosted.app'
+// 2026-10-28 起是 Workers DEV（App Hosting 刪掉）：之前的分數是 App Hosting 量的，跟之後的比要分開看
+const baseUrl = 'https://oingg-web-nuxt-dev.oingg-web-nuxt.workers.dev'
 const BASELINE_ROUTES = ['/', '/stock/2330', '/screener/common', '/screener/etf', '/etf/0050', '/holdings', '/learn', '/macro', '/preferred/2881a']
 const PLANS = { baseline: BASELINE_ROUTES, full: ALL_ROUTES }
 const FORM_FACTORS = ['mobile', 'desktop']

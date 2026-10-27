@@ -1,7 +1,7 @@
-// Cloudflare Workers 版的 DEV（2026-10-27，搬遷見 docs/cloudflare-migration-plan.md；App Hosting 版照舊並行，冷啟動比完再決定換不換）。
+// Cloudflare Workers 版的 DEV（2026-10-27，搬遷見 docs/cloudflare-migration-plan.md；App Hosting 2026-10-28 刪掉，DEV 只有這一個）。
 // 建置：NITRO_PRESET=cloudflare_module NUXT_SITE_ENV=preview pnpm build，Nitro 把這份併進 .output/server/wrangler.json（main、assets、
-// 相容性設定它補）；部署：pnpm dlx wrangler@4 deploy（讀 Nitro 寫的 .wrangler/deploy/config.json）。
-// 這裡的 vars 跟 apphosting.dev.yaml 同一組值；機密不在這裡：NUXT_BUSINESS_NITRO_KEY、NUXT_GOOGLE_SERVICE_ACCOUNT_KEY 用 wrangler secret put
+// 相容性設定它補）；部署：push 到 development，Workers Builds 自動建置部署（手動：pnpm dlx wrangler@4 deploy，讀 Nitro 寫的
+// .wrangler/deploy/config.json）。機密不在這裡：NUXT_BUSINESS_NITRO_KEY、NUXT_GOOGLE_SERVICE_ACCOUNT_KEY 用 wrangler secret put
 {
   "name": "oingg-web-nuxt-dev",
   "compatibility_date": "2025-07-15",

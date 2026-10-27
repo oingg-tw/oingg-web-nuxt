@@ -4,14 +4,14 @@
 # 瀏覽器檢查要 dev server＋本機業務中台（bff-ts:4000）＋資料，CI 上沒有。所以自動合併只放 patch，minor／major 留給人在本機跑
 # 瀏覽器檢查（Element Plus 升個 minor 就可能壞版面）。
 #
-# Node 24 與 26 都跑、pnpm 11 跟本機一致（本機 26；部署在 App Hosting 提供 26 之前先用 24，使用者 2026-10-14 決定）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
+# Node 24 與 26 都跑、pnpm 11 跟本機一致（本機 26；Workers Builds 預設 24）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
 # 的內容檔，不打後端。action 用 commit SHA 釘住，Dependabot 的 github-actions 生態系會更新它們。
 #
 # ## Dependabot 自動合併（第二個 job）
 # `needs: checks`：同一次執行裡 checks 通過才會跑，`--match-head-commit` 只合併剛驗證過的那個 commit。
 # 只合 semver-patch。dependabot.yml 把 patch 與 minor 分成兩個群組，patch 群組 PR 的等級才會是 patch（群組回報的是組內最大的等級）。
 # 預設分支是 development（同日改），所以 Dependabot 的 PR——包括安全性更新——都開到 development。push 到 development 會自動部署到
-# App Hosting DEV（2026-10-14 起），合併的 patch 會上 DEV（使用者 2026-10-27 接受）；PRD 還沒設，合到 main 一律由人做。
+# DEV（Cloudflare Workers Builds，2026-10-28 起），合併的 patch 會上 DEV（使用者 2026-10-27 接受）；PRD 還沒設，合到 main 一律由人做。
 # development 有 ruleset（2026-10-27）：checks (node 24)、checks (node 26) 通過才能合併，repo 管理員可以略過。
 # 安全要點：用 pull_request（不是 pull_request_target）、作者看 pull_request.user.login（不是 github.actor）、寫入權限只給合併 job、
 # 合併 job 不 checkout 也不執行 PR 的程式碼。
@@ -39,7 +39,7 @@ concurrency:
 jobs:
   checks:
     if: github.event.action != 'edited' || github.event.changes.base != null
-    # Node 24 與 26 各跑一次（2026-10-14）：本機是 26，Firebase App Hosting 在 26 進 LTS（10/28）前可能只提供 24，部署先用 24
+    # Node 24 與 26 各跑一次（2026-10-14）：本機是 26，部署（Workers Builds）預設 24
     strategy:
       matrix:
         node: [24, 26]
@@ -81,14 +81,6 @@ jobs:
                 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "http://127.0.0.1:3000$path")
                 echo "$code $path"
                 [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }
-              done
-              # 壓縮（2026-10-16 Lighthouse 量到 DEV 全部原樣傳）：動態的 HTML 走 server/plugins/compress-responses.ts，
-              # 靜態的 JS 走 nitro.compressPublicAssets，兩邊都要帶 Content-Encoding
-              js=$(grep -o '/_nuxt/[A-Za-z0-9_-]*\.js' page.html | head -1)
-              for url in /accessibility "$js"; do
-                enc=$(curl -s -o /dev/null -D - -H 'Accept-Encoding: br, gzip' "http://127.0.0.1:3000$url" | tr -d '\r' | grep -i '^content-encoding:')
-                echo "$url $enc"
-                [ -n "$enc" ] || { echo "::error::$url 沒有壓縮"; failed=1; }
               done
               [ "$failed" = 0 ] || { cat server.log; exit 1; }
               exit 0

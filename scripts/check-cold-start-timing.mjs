@@ -14,12 +14,12 @@ assert.equal(coldStartIdOf(null), null)
 
 // web-nuxt 寫給瀏覽器的：只有 web-nuxt 自己的數字；一頁叫醒幾個容器就有幾項 cold，dur 是等那一支多久
 const ID2 = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
-assert.equal(coldStartServerTiming([{ id: ID, waitMs: 5612.4 }], 5650, 5700.2, 812.6, true, null), `cold;dur=5612;desc="${ID}", waitall;dur=5650, web;dur=5700, webup;dur=813, webcold`)
-assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 7045 }], 9000, 16141, 1185, false, null), `cold;dur=452;desc="${ID}", cold;dur=7045;desc="${ID2}", waitall;dur=9000, web;dur=16141, webup;dur=1185`)
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 5612.4 }], 5650, 5700.2, true, null), `cold;dur=5612;desc="${ID}", waitall;dur=5650, web;dur=5700, webcold`)
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 7045 }], 9000, 16141, false, null), `cold;dur=452;desc="${ID}", cold;dur=7045;desc="${ID2}", waitall;dur=9000, web;dur=16141`)
 // 沒有冷啟動的回應也寫，只是沒有 cold
-assert.equal(coldStartServerTiming([], 120, 340, 60_000, false, null), 'waitall;dur=120, web;dur=340, webup;dur=60000')
-// Cloudflare Workers 沒有行程啟動時間：不寫 webup；入口機房寫在最後
-assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }], 452, 900, null, true, 'SJC'), `cold;dur=452;desc="${ID}", waitall;dur=452, web;dur=900, webcold, colo;desc="SJC"`)
+assert.equal(coldStartServerTiming([], 120, 340, false, null), 'waitall;dur=120, web;dur=340')
+// 入口機房寫在最後
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }], 452, 900, true, 'SJC'), `cold;dur=452;desc="${ID}", waitall;dur=452, web;dur=900, webcold, colo;desc="SJC"`)
 
 // 等所有業務中台呼叫的時間：重疊的只算一次，包在裡面的不加，隔開的相加
 assert.equal(unionMs([]), 0)
@@ -44,7 +44,6 @@ const navigation = {
     { name: 'cold', duration: 5612, description: ID },
     { name: 'waitall', duration: 5650, description: '' },
     { name: 'web', duration: 5700, description: '' },
-    { name: 'webup', duration: 813, description: '' },
     { name: 'webcold', duration: 0, description: '' },
     { name: 'l2gfet4t7', duration: 5800, description: '' },
     { name: 'colo', duration: 0, description: 'SJC' }
@@ -61,7 +60,7 @@ assert.deepEqual(report, {
   webWaitAllMs: 5650,
   webServerMs: 5700,
   webCold: true,
-  webUptimeMs: 813,
+  webUptimeMs: null,
   requestStartMs: 85,
   ttfbMs: 5900,
   responseEndMs: 6100,

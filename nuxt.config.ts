@@ -83,8 +83,6 @@ export default defineNuxtConfig({
       nuxtLink: { prefetchOn: { visibility: false, interaction: true } }
     }
   },
-  // 建置時替 JS／CSS 等先做好 .br／.gz，Nitro 依 Accept-Encoding 送壓縮版（App Hosting 的 preset 是 node-server＋serveStatic，
-  // 靜態檔由 Nitro 自己送）。2026-10-16 量到 DEV 全部原樣傳：最大一塊 JS 588,384 bytes 就是原始大小
   // asyncContext（2026-10-26）：businessFetch 在快取函式裡也要知道是哪個請求在等，冷啟動的量測才記得到使用者那個請求上
   //（server/utils/business.ts 的 noteBusinessColdStart 用 useEvent()）
   // externals.inline（2026-10-26，冷啟動）：這幾個套件打包進伺服器 chunk，讓 Rollup 剔掉用不到的部分。留在 node_modules 的話，伺服器端
@@ -95,7 +93,6 @@ export default defineNuxtConfig({
   // 邊緣自己壓，不先壓；快取放 KV（binding CACHE）——isolate 很短命，記憶體裡的快取幾乎命中不了。專案根目錄的 wrangler.jsonc 由 Nitro
   // 併進 .output/server/wrangler.json。全部打包（Workers 一定要）在 Workers 上沒有出現上面那個個股頁錯誤
   nitro: {
-    compressPublicAssets: !onCloudflare,
     experimental: { asyncContext: true },
     externals: { inline: ['echarts', 'zrender', 'vue-echarts', 'lodash-es'] },
     ...(onCloudflare && { storage: { cache: { driver: 'cloudflare-kv-binding', binding: 'CACHE' } }, cloudflare: { deployConfig: true } })
@@ -168,7 +165,7 @@ export default defineNuxtConfig({
     // 依使用者 IP 分別限流，而不是全站共用 Nitro 一個 IP 的額度。環境變數 NUXT_BUSINESS_NITRO_KEY，伺服器專用。
     businessNitroKey: '',
     // web-nuxt 在 Cloudflare Workers 上的 Google 身分（2026-10-27）：服務帳戶金鑰的 JSON 整份（NUXT_GOOGLE_SERVICE_ACCOUNT_KEY，Cloudflare 的機密）。
-    // App Hosting 與本機留空：App Hosting 向 metadata server 要身分。見 server/utils/business.ts 的 businessAuthHeaders
+    // 本機與 CI 留空。見 server/utils/business.ts 的 businessAuthHeaders
     googleServiceAccountKey: '',
     public: {
       firebase: {

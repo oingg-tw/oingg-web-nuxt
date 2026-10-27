@@ -1,7 +1,7 @@
 # Dependabot（2026-10-13，使用者決定；做法照 oingg-mops-ts 查證過的官方文件）。
 #
 # 預設分支同日改成 development：這份設定只從預設分支讀，安全性更新也永遠針對預設分支，所以不需要 target-branch，
-# 安全警示比對的就是實際在開發的依賴。push 到 development 會自動部署到 App Hosting DEV（2026-10-14 起），所以自動合併的 patch
+# 安全警示比對的就是實際在開發的依賴。push 到 development 會自動部署到 DEV（Cloudflare Workers Builds，2026-10-28 起），所以自動合併的 patch
 # 會上 DEV（使用者 2026-10-27 接受）；PRD 還沒設，合到 main 一律由人做。
 #
 # - patch 與 minor 分成兩個群組：CI（.github/workflows/ci.yml）只自動合併 patch，而群組 PR 的等級是組內最大的那個——

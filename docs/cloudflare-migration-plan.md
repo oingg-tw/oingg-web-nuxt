@@ -41,7 +41,8 @@
   - 完整回歸（10/28 06:xx，對 workers.dev 部署 9b9ddf89）：hydration 83 頁、無障礙 100 組、會員頁閃動、`login:check` 全過；會員頁、分享頁、`/api/core` 沒被 Cloudflare 快取。兩個失敗都跟 Workers 無關：
     - 版面位移：4 個指標頁（/stock/2330/roe、pe-ratio、eps、/stock/7711/shareholder-yield）1440 寬約 2 秒時上移 16px（0.012）；App Hosting 一模一樣，是既有的頁面問題。
     - hub 頁：/industry/30 類股家數 45 對股利統計 46。KV 三筆都是 04:41 寫的、在期限內；`hub-sectors` 快取 24 小時，KV 跨部署留著，App Hosting 的記憶體快取每次部署就清掉才看不出來。
-- **還沒做：** A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI 的 Workers 冒煙測試；刪 App Hosting 之後清掉只給它用的程式（`business-wake.ts`、metadata server 身分、`compress-responses.ts`、webup、`apphosting*.yaml`、腳本裡寫死的 hosted.app 網址）。
+- **App Hosting 已刪（10/28 06:10，使用者確認）：** backend `web-nuxt-dev` 連同 Cloud Run 服務刪掉，hosted.app 回 404；Firebase 授權網域與 Browser key 拿掉 hosted.app（之後 `login:check` 全過）。管理站拿掉那一列；業務中台收回 firebase-app-hosting-compute 的 run.invoker 與 NITRO_SHARED_SECRET_DEV 讀取權（已轉達，IAM 由他們那邊經使用者核准）。LINE Callback URL 的 hosted.app 那行要使用者刪。程式清理（分支 `remove-app-hosting`）：刪 `business-wake.ts`、`compress-responses.ts`（連同 `compressPublicAssets` 與 CI 的壓縮檢查）、`apphosting*.yaml`、metadata server 身分、X-Forwarded-For 取 IP、webup（`webUptimeMs` 欄位留著、一律 null）；腳本預設網址改 workers.dev。
+- **還沒做：** A9（大小與啟動時間都夠，先不做）、C 的主控台設定（自訂網域、GA4）、CI 的 Workers 冒煙測試。
 
 ## 盤點結果：哪些東西要改
 
