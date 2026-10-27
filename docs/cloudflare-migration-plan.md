@@ -31,7 +31,7 @@
   - 管理站用業務中台紀錄拆三次（取等最久的容器）：web-nuxt 到業務中台 1.96／1.35／1.59 秒（同一趟各容器差 0.3～0.5，新加坡執行看不出有省），業務中台啟動 2.35／2.71／2.42（幾乎都是載入模組），業務中台處理 1.10／1.37／1.13（幾乎都在等同樣冷的數據中台：容器晚 1.4～1.9 秒起來、連資料庫 0.75～1.2 秒）。等業務中台的 5.4 秒都在上游，換 web-nuxt 的主機或執行位置都動不到。業務中台再拆這 9 個容器（revision 00115，已打包）：啟動裡載入模組佔 2.1～2.6 秒（96～98%），打包前 22 筆中位數約 3.9 秒、這 9 筆約 2.3 秒；處理那段等數據中台 0.6～1.8 秒；我們等的比它從行程啟動到回應多 1.1～1.4 秒，是 Cloud Run 開容器加網路。
   - **使用者決定拿掉 Placement**（10/27 13:33 重新部署，版本 5d5b513e，回應不再有 `cf-placement`）：回到入口機房執行；10/28 02:00 那次就是 SJC 執行的第二個樣本。
   - 修了一個 bug：頁面用全域 `$fetch` 打自己的 `/api` 時，Nitro 不把外層的 waitUntil 交給內部請求，背景重算在回應送出後被砍掉（業務中台照樣被叫醒、KV 沒更新）。`server/plugins/cold-start-timing.ts` 讓內部請求沿用外層的 waitUntil。
-  - 每個回應都帶 Server-Timing（development 3fcd3c9b）；冷啟動報告的 requestStartMs 與 edgeColo（入口機房，Server-Timing 的 `colo`）在分支 `cold-start-request-start`；業務中台 10/27 上 DEV（09ae1a4）後併進 `cloudflare-workers`（1fdca814），16:08 部署 Workers（版本 f7847842），10/28 02:00 那次會帶這兩個欄位。併進 development（App Hosting）等使用者決定。
+  - 每個回應都帶 Server-Timing（development 3fcd3c9b）；冷啟動報告的 requestStartMs 與 edgeColo（入口機房，Server-Timing 的 `colo`）在分支 `cold-start-request-start`；業務中台 10/27 上 DEV（09ae1a4）後併進 `cloudflare-workers`（1fdca814），16:08 部署 Workers（版本 f7847842），10/28 02:00 那次會帶這兩個欄位。使用者核准後 16:18 推上 development（f7022902），App Hosting DEV 16:21 上線（web-nuxt-dev-build-2026-10-27-002），02:40 那次也會帶。
 - **還沒做：** A3 後半（5xx 紀錄寫進 Cloud Logging，要同一個服務帳戶加 logWriter，並請管理站確認 `http_errors` 指標的條件）、A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI、Workers Builds。
 
 ## 盤點結果：哪些東西要改
