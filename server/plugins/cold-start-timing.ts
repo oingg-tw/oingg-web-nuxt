@@ -20,7 +20,12 @@ export default defineNitroPlugin((nitroApp) => {
     } catch {
       parent = null
     }
-    if (parent && parent !== event) event.context.coldStartParent = parent
+    if (parent && parent !== event) {
+      event.context.coldStartParent = parent
+      // Cloudflare Workers（2026-10-27）：頁面用全域 $fetch 打自己的 /api 時，Nitro 不把外層的 waitUntil 交給內部請求，內部快取的背景重算
+      // 在外層回應送出後就被砍掉（業務中台照樣被叫醒，KV 卻沒更新）。沿用外層的；App Hosting 上兩邊都沒有，什麼都不變
+      event.context.waitUntil ??= parent.context.waitUntil
+    }
     return handler(event)
   }
   nitroApp.hooks.hook('request', (event) => {

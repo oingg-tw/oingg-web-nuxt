@@ -23,6 +23,10 @@
 - **DEV 已上 Workers（手動部署）：** https://oingg-web-nuxt-dev.oingg-web-nuxt.workers.dev（Worker `oingg-web-nuxt-dev`，Cloudflare 量的啟動時間 70～115 ms）。KV `oingg-web-nuxt-dev-cache`（第一次部署時 wrangler 自動建）、D1 `oingg-web-nuxt-dev-content`。GCP 服務帳戶 `web-nuxt-workers@oingg-web-dev`，只有業務中台 DEV 的 `run.invoker`；金鑰只在 Worker 機密 `NUXT_GOOGLE_SERVICE_ACCOUNT_KEY`。Nitro 金鑰複製一份到機密 `NUXT_BUSINESS_NITRO_KEY`（使用者選複製：去 Secret Manager 讀會在冷啟動多一段延遲，跟換平台的目的相反；業務中台換金鑰時這邊要跟著換）。瀏覽器開 14 頁沒有錯誤。
   - 建置與部署：`NITRO_PRESET=cloudflare_module NUXT_SITE_ENV=preview pnpm build`，再 `pnpm dlx wrangler@4 deploy`。Nitro 對這個 preset 預設用 `nodejs_compat`＋`no_nodejs_compat_v2`（它的 polyfill 配 v1），照它的。
   - Nitro 讀環境變數會把 JSON 字串解析成物件，服務帳戶金鑰兩種都要收。
+- **2026-10-27 冷啟動比較（第一輪）：** 測試機的 Chromium 每次送出請求前約有 3 秒自己的開銷（App Hosting 的 l2gfet4t7 比 ttfb 少 2.8～2.9 秒；Workers 那次 requestStart 3,164 ms），所以比「送出請求到第一個位元組」：App Hosting 8.2／8.4／10.8 秒（三層全冷），Workers KV 命中 1 秒內／1.17 秒。KV 沒有那頁的情況沒量準（業務中台被一個開著的 Workers 分頁先叫醒，那次也沒記 requestStart），10/28 凌晨重測。
+  - 中華電信（HiNet）的流量進 Cloudflare 聖荷西（colo SJC，RTT 約 126 ms），不是台灣節點；Worker 從 SJC 打新加坡的業務中台。
+  - 修了一個 bug：頁面用全域 `$fetch` 打自己的 `/api` 時，Nitro 不把外層的 waitUntil 交給內部請求，背景重算在回應送出後被砍掉（業務中台照樣被叫醒、KV 沒更新）。`server/plugins/cold-start-timing.ts` 讓內部請求沿用外層的 waitUntil。
+  - 每個回應都帶 Server-Timing（development 3fcd3c9b）；冷啟動報告的 requestStartMs 在分支 `cold-start-request-start`，等業務中台先收這個欄位。
 - **還沒做：** A3 後半（5xx 紀錄寫進 Cloud Logging，要同一個服務帳戶加 logWriter，並請管理站確認 `http_errors` 指標的條件）、A9（大小與啟動時間都夠，先不做）、C 的主控台設定、CI、Workers Builds。
 
 ## 盤點結果：哪些東西要改
