@@ -35,6 +35,7 @@ const navigation = {
   connectStart: 25,
   connectEnd: 80,
   secureConnectionStart: 40,
+  requestStart: 85,
   responseStart: 5900,
   responseEnd: 6100,
   serverTiming: [
@@ -58,15 +59,17 @@ assert.deepEqual(report, {
   webServerMs: 5700,
   webCold: true,
   webUptimeMs: 813,
+  requestStartMs: 85,
   ttfbMs: 5900,
   responseEndMs: 6100,
   dnsMs: 20,
   connectMs: 55,
   tlsMs: 40
 })
-const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 3) }
+const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, requestStart: 9010, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 3) }
 const [apiReport] = coldStartReportsOf(api, 'api', 0)
 assert.equal(apiReport.ttfbMs, 300)
+assert.equal(apiReport.requestStartMs, 10)
 assert.equal(apiReport.tlsMs, null)
 assert.equal(apiReport.webCold, false)
 assert.deepEqual(coldStartReportsOf({ ...navigation, serverTiming: [] }, 'document', 0), [])

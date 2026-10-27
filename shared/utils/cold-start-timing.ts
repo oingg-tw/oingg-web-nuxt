@@ -15,6 +15,8 @@ export interface ColdStartReport {
   webServerMs: number | null
   webCold: boolean | null
   webUptimeMs: number | null
+  // 瀏覽器真正送出請求的時間（2026-10-27，管理站提議、使用者核准）：扣掉它之前的 DNS／連線，剩下的是瀏覽器自己（測試機的 Chromium 量到約 2.8 秒）
+  requestStartMs: number | null
   ttfbMs: number | null
   responseEndMs: number | null
   dnsMs: number | null
@@ -23,7 +25,7 @@ export interface ColdStartReport {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const MS_FIELDS = ['webWaitMs', 'webWaitAllMs', 'webServerMs','webUptimeMs', 'ttfbMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs'] as const
+const MS_FIELDS = ['webWaitMs', 'webWaitAllMs', 'webServerMs', 'webUptimeMs', 'requestStartMs', 'ttfbMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs'] as const
 
 // 業務中台回應標頭裡的冷啟動 id：`cold;desc="<uuid>"`（可能跟其他項目用逗號串在一起）
 export function coldStartIdOf(serverTiming: string | null | undefined): string | null {
@@ -64,6 +66,7 @@ interface TimingEntry {
   connectStart: number
   connectEnd: number
   secureConnectionStart: number
+  requestStart: number
   responseStart: number
   responseEnd: number
   serverTiming?: readonly { name: string; duration: number; description: string }[]
@@ -86,6 +89,7 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
     webServerMs: dur('web'),
     webCold: items.some(item => item.name === 'webcold'),
     webUptimeMs: dur('webup'),
+    requestStartMs: sinceStart(entry.requestStart),
     ttfbMs: sinceStart(entry.responseStart),
     responseEndMs: sinceStart(entry.responseEnd),
     dnsMs: span(entry.domainLookupStart, entry.domainLookupEnd),
