@@ -39,7 +39,7 @@
     "@axe-core/playwright": "^4.13.0",
     "oxlint": "^1.87.0",
     "playwright": "^1.64.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vue-tsc": "^3.3.13"
   }
 }
