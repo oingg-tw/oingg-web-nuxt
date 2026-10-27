@@ -38,7 +38,8 @@ export interface ColdStartWait {
 
 // web-nuxt 寫給瀏覽器的 Server-Timing：只有 web-nuxt 自己量到的數字。一頁可能同時叫醒好幾個容器（2026-10-26 DEV 實測：一頁同時打
 // 約 10 支，Cloud Run 一次開了 4 個，各帶一個 id；卡最久的是 /stocks/:symbol 7 秒），每個冷啟動一項 cold，dur 是等那一支多久
-// waitall 是這一趟等所有業務中台呼叫的時間，同時進行的只算一次（管理站把「web-nuxt 自己」和「等同一頁其他請求」分開）
+// waitall 是這一趟等所有業務中台呼叫的時間，同時進行的只算一次（管理站把「web-nuxt 自己」和「等同一頁其他請求」分開）。
+// 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項
 export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, uptimeMs: number, webCold: boolean): string {
   return [...colds.map(cold => `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`), `waitall;dur=${Math.round(waitAllMs)}`, `web;dur=${Math.round(serverMs)}`, `webup;dur=${Math.round(uptimeMs)}`, ...(webCold ? ['webcold'] : [])].join(', ')
 }

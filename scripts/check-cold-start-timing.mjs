@@ -16,6 +16,8 @@ assert.equal(coldStartIdOf(null), null)
 const ID2 = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
 assert.equal(coldStartServerTiming([{ id: ID, waitMs: 5612.4 }], 5650, 5700.2, 812.6, true), `cold;dur=5612;desc="${ID}", waitall;dur=5650, web;dur=5700, webup;dur=813, webcold`)
 assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 7045 }], 9000, 16141, 1185, false), `cold;dur=452;desc="${ID}", cold;dur=7045;desc="${ID2}", waitall;dur=9000, web;dur=16141, webup;dur=1185`)
+// 沒有冷啟動的回應也寫，只是沒有 cold
+assert.equal(coldStartServerTiming([], 120, 340, 60_000, false), 'waitall;dur=120, web;dur=340, webup;dur=60000')
 
 // 等所有業務中台呼叫的時間：重疊的只算一次，包在裡面的不加，隔開的相加
 assert.equal(unionMs([]), 0)
