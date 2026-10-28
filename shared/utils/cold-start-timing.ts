@@ -10,15 +10,17 @@ export interface ColdStartReport {
   route: string
   kind: 'document' | 'api'
   at: string
-  webWaitMs: number | null
-  webWaitAllMs: number | null
+  // 名稱 2026-10-28 對齊詞彙表（使用者選「管理站能讀新名後就改」；舊名 webWaitMs／webWaitAllMs／webCold／ttfbMs，業務中台收到 11/11；
+  // webUptimeMs 是 App Hosting 的行程啟動時間，同日退役）。Worker 量的三段：等這個冷容器那一支業務中台呼叫、等所有業務中台呼叫
+  //（同時的只算一次）、處理整個請求（含等業務中台）
+  webColdWaitMs: number | null
+  webBusinessWaitMs: number | null
   webServerMs: number | null
-  webCold: boolean | null
-  // web-nuxt 行程啟動多久：App Hosting（Node）才有，2026-10-28 拿掉 App Hosting 後一律 null（欄位跟業務中台、管理站共用，留著）
-  webUptimeMs: number | null
-  // 瀏覽器真正送出請求的時間（2026-10-27，管理站提議、使用者核准）：扣掉它之前的 DNS／連線，剩下的是瀏覽器自己（測試機的 Chromium 量到約 2.8 秒）
+  isWebCold: boolean | null
+  // 以下三個是瀏覽器 Navigation／Resource Timing 的 requestStart／responseStart／responseEnd 減掉這個請求的 startTime（相對開始的偏移，
+  // 不是各段自己的長度）。requestStart 之前是 DNS／連線與瀏覽器自己（2026-10-27 管理站提議、使用者核准；測試機的 Chromium 約 2.8 秒）
   requestStartMs: number | null
-  ttfbMs: number | null
+  responseStartMs: number | null
   responseEndMs: number | null
   dnsMs: number | null
   connectMs: number | null
@@ -29,7 +31,7 @@ export interface ColdStartReport {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const COLO = /^[A-Z]{3}$/
-const MS_FIELDS = ['webWaitMs', 'webWaitAllMs', 'webServerMs', 'webUptimeMs', 'requestStartMs', 'ttfbMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs'] as const
+const MS_FIELDS = ['webColdWaitMs', 'webBusinessWaitMs', 'webServerMs', 'requestStartMs', 'responseStartMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs'] as const
 
 // 業務中台回應標頭裡的冷啟動 id：`cold;desc="<uuid>"`（可能跟其他項目用逗號串在一起）
 export function coldStartIdOf(serverTiming: string | null | undefined): string | null {
@@ -77,7 +79,7 @@ interface TimingEntry {
   serverTiming?: readonly { name: string; duration: number; description: string }[]
 }
 
-// 瀏覽器端：一個 Navigation／Resource Timing 項目 → 每個冷啟動一份回報（webWaitMs 各自是等那一支多久，其餘相同）；
+// 瀏覽器端：一個 Navigation／Resource Timing 項目 → 每個冷啟動一份回報（webColdWaitMs 各自是等那一支多久，其餘相同）；
 // 回應沒有 cold 就是空陣列（這次沒有叫醒業務中台）。時間都從這個請求開始算（document 的 startTime 是 0）；沒量到的段落是 0，當成 null
 export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api', timeOrigin: number): ColdStartReport[] {
   const items = entry.serverTiming ?? []
@@ -90,33 +92,32 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
     route: new URL(entry.name).pathname.slice(0, 300),
     kind,
     at: new Date(timeOrigin + entry.startTime).toISOString(),
-    webWaitAllMs: dur('waitall'),
+    webBusinessWaitMs: dur('waitall'),
     webServerMs: dur('web'),
-    webCold: items.some(item => item.name === 'webcold'),
-    webUptimeMs: null,
+    isWebCold: items.some(item => item.name === 'webcold'),
     requestStartMs: sinceStart(entry.requestStart),
-    ttfbMs: sinceStart(entry.responseStart),
+    responseStartMs: sinceStart(entry.responseStart),
     responseEndMs: sinceStart(entry.responseEnd),
     dnsMs: span(entry.domainLookupStart, entry.domainLookupEnd),
     connectMs: span(entry.connectStart, entry.connectEnd),
     tlsMs: span(entry.secureConnectionStart, entry.connectEnd),
     edgeColo: items.find(item => item.name === 'colo' && COLO.test(item.description))?.description ?? null
   }
-  return colds.map(cold => ({ id: cold.description.toLowerCase(), webWaitMs: cold.duration, ...shared }))
+  return colds.map(cold => ({ id: cold.description.toLowerCase(), webColdWaitMs: cold.duration, ...shared }))
 }
 
 // 伺服器端收到的回報（公開端點，什麼都可能送來）：只留定好的欄位，其他欄位、格式不對就整筆不收
 export function cleanColdStartReport(raw: unknown): ColdStartReport | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const input = raw as Record<string, unknown>
-  const allowed = new Set<string>(['id', 'route', 'kind', 'at', 'webCold', 'edgeColo', ...MS_FIELDS])
+  const allowed = new Set<string>(['id', 'route', 'kind', 'at', 'isWebCold', 'edgeColo', ...MS_FIELDS])
   if (Object.keys(input).some(key => !allowed.has(key))) return null
-  const { id, route, kind, at, webCold, edgeColo } = input
+  const { id, route, kind, at, isWebCold, edgeColo } = input
   if (typeof id !== 'string' || !UUID.test(id)) return null
   if (typeof route !== 'string' || !route.startsWith('/') || route.includes('?') || route.length > 300) return null
   if (kind !== 'document' && kind !== 'api') return null
   if (typeof at !== 'string' || !/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(at) || Number.isNaN(Date.parse(at))) return null
-  if (webCold !== undefined && webCold !== null && typeof webCold !== 'boolean') return null
+  if (isWebCold !== undefined && isWebCold !== null && typeof isWebCold !== 'boolean') return null
   if (edgeColo !== undefined && edgeColo !== null && (typeof edgeColo !== 'string' || !COLO.test(edgeColo))) return null
   const ms: Partial<Record<(typeof MS_FIELDS)[number], number | null>> = {}
   for (const field of MS_FIELDS) {
@@ -125,5 +126,5 @@ export function cleanColdStartReport(raw: unknown): ColdStartReport | null {
     else if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 600_000) ms[field] = Math.round(value)
     else return null
   }
-  return { id: id.toLowerCase(), route, kind, at, webCold: webCold ?? null, edgeColo: edgeColo ?? null, ...ms } as ColdStartReport
+  return { id: id.toLowerCase(), route, kind, at, isWebCold: isWebCold ?? null, edgeColo: edgeColo ?? null, ...ms } as ColdStartReport
 }

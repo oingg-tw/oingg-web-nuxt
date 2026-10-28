@@ -23,7 +23,7 @@ declare module 'h3' {
   interface H3EventContext {
     // 這個請求叫醒的業務中台冷啟動（見 noteBusinessCall）；同時打好幾支時 Cloud Run 會一次開好幾個容器，每個一筆
     coldStarts?: ColdStartWait[]
-    // 這個請求等過的每一支業務中台呼叫（開始、結束，performance.now()），冷啟動那一筆的 webWaitAllMs 取它們的聯集
+    // 這個請求等過的每一支業務中台呼叫（開始、結束，performance.now()），冷啟動那一筆的 webBusinessWaitMs 取它們的聯集
     businessWaits?: [number, number][]
   }
 }
@@ -126,7 +126,7 @@ export async function businessAuthHeaders(): Promise<Record<string, string>> {
 // 冷啟動等待（2026-10-26，見 shared/utils/cold-start-timing.ts）：每一支業務中台呼叫都記下起訖，回應帶 cold 標記的再記 id 與等了多久，
 // 都記在使用者在等的那個請求上，server/plugins/cold-start-timing.ts 寫進它的 Server-Timing（只有叫醒冷啟動的請求才寫）。
 // 伺服器渲染時呼叫自己的 /api 是內部請求，一路往上記到外層請求（coldStartParent，由那個外掛記）。快取在背景重算時碰到的，
-// 回應多半已經送出、寫不進去，就不算（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webWaitMs 短就知道是背景的。
+// 回應多半已經送出、寫不進去，就不算（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webColdWaitMs 短就知道是背景的。
 // ponytail: 背景重算剛好在回應送出前跑完會被當成使用者在等，要精確得把 swr 的背景執行另外標記
 export function noteBusinessCall(event: H3Event | null, serverTiming: string | null, startedAt: number, endedAt: number): void {
   if (!event) return
@@ -152,7 +152,7 @@ export async function businessFetch<T>(path: string, options: BusinessFetchOptio
   await acquireSlot()
   try {
     const headers = await businessAuthHeaders()
-    // 從送出才開始算（不含排隊與要 IAM 身分）。管理站的網路時間＝webWaitMs −（業務中台的 firstRequestAt − processStartedAt
+    // 從送出才開始算（不含排隊與要 IAM 身分）。管理站的網路時間＝webColdWaitMs −（業務中台的 firstRequestAt − processStartedAt
     // ＋ firstRequestMs），剩下的是台灣到新加坡的網路＋Cloud Run 在行程啟動前開容器，兩者分不開
     const startedAt = performance.now()
     let serverTiming: string | null = null

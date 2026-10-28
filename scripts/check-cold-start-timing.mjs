@@ -56,13 +56,12 @@ assert.deepEqual(report, {
   route: '/stock/2330/dividend',
   kind: 'document',
   at: '2026-10-26T01:00:00.000Z',
-  webWaitMs: 5612,
-  webWaitAllMs: 5650,
+  webColdWaitMs: 5612,
+  webBusinessWaitMs: 5650,
   webServerMs: 5700,
-  webCold: true,
-  webUptimeMs: null,
+  isWebCold: true,
   requestStartMs: 85,
-  ttfbMs: 5900,
+  responseStartMs: 5900,
   responseEndMs: 6100,
   dnsMs: 20,
   connectMs: 55,
@@ -71,34 +70,36 @@ assert.deepEqual(report, {
 })
 const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, requestStart: 9010, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 3) }
 const [apiReport] = coldStartReportsOf(api, 'api', 0)
-assert.equal(apiReport.ttfbMs, 300)
+assert.equal(apiReport.responseStartMs, 300)
 assert.equal(apiReport.requestStartMs, 10)
 assert.equal(apiReport.tlsMs, null)
-assert.equal(apiReport.webCold, false)
+assert.equal(apiReport.isWebCold, false)
 assert.equal(apiReport.edgeColo, null)
 assert.deepEqual(coldStartReportsOf({ ...navigation, serverTiming: [] }, 'document', 0), [])
 // 一頁叫醒兩個容器：兩份，各自的等待時間，其餘相同
 const both = coldStartReportsOf({ ...navigation, serverTiming: [{ name: 'cold', duration: 452, description: ID }, { name: 'cold', duration: 7045, description: ID2 }, ...navigation.serverTiming.slice(1)] }, 'document', 0)
-assert.deepEqual(both.map(item => [item.id, item.webWaitMs]), [[ID, 452], [ID2, 7045]])
-assert.equal(both[1].ttfbMs, both[0].ttfbMs)
+assert.deepEqual(both.map(item => [item.id, item.webColdWaitMs]), [[ID, 452], [ID2, 7045]])
+assert.equal(both[1].responseStartMs, both[0].responseStartMs)
 
 // 伺服器：定好的欄位才收；其他欄位、壞的 id／路徑／kind／時間、超出範圍的數字整筆不收；沒給的數字是 null
 assert.deepEqual(cleanColdStartReport(report), report)
 assert.equal(cleanColdStartReport({ ...report, email: 'a@b.c' }), null)
+// 10/28 改名前的舊名也算不認得的欄位
+assert.equal(cleanColdStartReport({ ...report, ttfbMs: 1 }), null)
 assert.equal(cleanColdStartReport({ ...report, id: 'x' }), null)
 assert.equal(cleanColdStartReport({ ...report, route: '/stock?x=1' }), null)
 assert.equal(cleanColdStartReport({ ...report, route: 'stock' }), null)
 assert.equal(cleanColdStartReport({ ...report, kind: 'img' }), null)
 assert.equal(cleanColdStartReport({ ...report, at: 'yesterday' }), null)
-assert.equal(cleanColdStartReport({ ...report, ttfbMs: 600_001 }), null)
-assert.equal(cleanColdStartReport({ ...report, ttfbMs: -1 }), null)
-assert.equal(cleanColdStartReport({ ...report, webCold: 'yes' }), null)
+assert.equal(cleanColdStartReport({ ...report, responseStartMs: 600_001 }), null)
+assert.equal(cleanColdStartReport({ ...report, responseStartMs: -1 }), null)
+assert.equal(cleanColdStartReport({ ...report, isWebCold: 'yes' }), null)
 assert.equal(cleanColdStartReport({ ...report, edgeColo: 'sjc' }), null)
 assert.equal(cleanColdStartReport({ ...report, edgeColo: 'SJC"' }), null)
 assert.equal(cleanColdStartReport([report]), null)
 const { tlsMs: _tls, ...withoutTls } = report
-assert.equal(cleanColdStartReport({ ...withoutTls, ttfbMs: 12.6 }).tlsMs, null)
+assert.equal(cleanColdStartReport({ ...withoutTls, responseStartMs: 12.6 }).tlsMs, null)
 assert.equal(cleanColdStartReport({ ...withoutTls, edgeColo: undefined }).edgeColo, null)
-assert.equal(cleanColdStartReport({ ...withoutTls, ttfbMs: 12.6 }).ttfbMs, 13)
+assert.equal(cleanColdStartReport({ ...withoutTls, responseStartMs: 12.6 }).responseStartMs, 13)
 
 console.log('PASS: cold start timing')
