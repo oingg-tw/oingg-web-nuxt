@@ -17,8 +17,8 @@
   // Nuxt Content（部落格）在 Workers 上用 D1，binding 名稱是 @nuxt/content 的預設 DB
   "d1_databases": [{ "binding": "DB", "database_name": "oingg-web-nuxt-dev-content", "database_id": "24d880a4-304b-48e1-aa0f-2593c08bfa1c" }],
   "vars": {
-    // 業務中台 Go 版（2026-10-28 使用者「要切到 Go 版業務中台」）。退回：兩個都換回 https://oingg-business-ts-dev-xradmqyx5q-as.a.run.app
-    //（同一個資料庫，使用者資料不會分岔）；新舊回應鍵 web-nuxt 都收，見 shared/utils/business-go-compat.ts
+    // 業務中台 Go 版（2026-10-28 使用者「要切到 Go 版業務中台」）。TS 版同日停掉、不會退回；新舊回應鍵 web-nuxt 都收，
+    // 見 shared/utils/business-go-compat.ts
     "NUXT_BUSINESS_BASE": "https://oingg-business-go-dev-xradmqyx5q-as.a.run.app",
     "NUXT_BUSINESS_AUDIENCE": "https://oingg-business-go-dev-xradmqyx5q-as.a.run.app",
     "NUXT_SITE_ENV": "preview",
