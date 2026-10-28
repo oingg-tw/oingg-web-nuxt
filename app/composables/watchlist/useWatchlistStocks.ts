@@ -67,6 +67,8 @@ export interface DividendEvent {
 
 function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent | null {
   return notices
+    // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
+    .map(withExType)
     .flatMap((notice): DividendEvent[] => {
       const amount = notice.distributionPerUnit ?? notice.cashDividend
       // 還沒除息看除息日；已除息看還沒到的發放日，現金與配股各自一筆（權息可能不同天）

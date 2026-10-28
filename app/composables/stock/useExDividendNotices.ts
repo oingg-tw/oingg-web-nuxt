@@ -68,7 +68,8 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
         // composable 的每一個呼叫端（股利頁的「下一次除權息」、摘要句、除權息卡、儀表板）問的都是「下一次
         // 除權息是哪天」——把已除息的當成下一次，會顯示一個已經過去的日期（業務中台 提醒）。修在這裡一次，
         // 不在四個呼叫端各濾一次。要發放日的觀察清單自己另外打這支、讀 realized 那幾筆。
-        return Object.fromEntries(Object.entries(raw.notices).map(([symbol, list]) => [symbol, list.filter(notice => notice.status !== 'realized')]).filter(([, list]) => list!.length > 0))
+        // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日，withExType 換回來
+        return Object.fromEntries(Object.entries(raw.notices).map(([symbol, list]) => [symbol, list.filter(notice => notice.status !== 'realized').map(withExType)]).filter(([, list]) => list!.length > 0))
       } catch (error) {
         devWarn('ex-dividend-notices', `GET /api/cached/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable`, error)
         throw error

@@ -10,7 +10,7 @@ const get = async url => { const res = await fetch(url); assert.ok(res.ok, `${ur
 
 const summary = await get(`${APP}/api/hub/sector-cycle-summary`)
 const indicator = await get(`${BUSINESS}/macro/business-cycle-indicator`)
-const coincident = Object.fromEntries(indicator.entries.filter(e => e.coincidentIndexDetrended !== null).map(e => [e.period, Number(e.coincidentIndexDetrended)]))
+const coincident = Object.fromEntries(indicator.entries.filter(e => e.coincidentIndexDetrended !== null).map(e => [e.yearMonth ?? e.period, Number(e.coincidentIndexDetrended)])) // Go 換版並存（contract-delta A15）
 
 for (const code of SECTORS) {
   const { entries } = await get(`${BUSINESS}/industries/${code}/monthly-revenue-history?limit=132`)

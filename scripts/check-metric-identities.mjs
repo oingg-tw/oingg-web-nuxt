@@ -218,7 +218,8 @@ async function bookValueIdentity(symbol) {
   const response = await getJson(`${API}/stocks/${symbol}/book-value-breakdown`)
   const found = []
   for (const e of response?.entries ?? []) {
-    const sum = cents(e.openingBvps) + cents(e.netIncome) + cents(e.otherComprehensiveIncome)
+    // Go 換版並存（contract-delta A8）
+    const sum = cents(e.openingBvps) + cents(e.netIncome ?? e.profitLossAttributableToOrdinaryEquityHoldersOfParentEntityPerShare) + cents(e.otherComprehensiveIncome)
       + cents(e.cashDividends) + cents(e.capitalIssued) + cents(e.shareCountEffect) + cents(e.other)
     const resid = sum - cents(e.closingBvps)
     if (resid === 0) continue

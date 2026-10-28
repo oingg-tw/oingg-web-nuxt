@@ -82,12 +82,14 @@ export function useHoldingsReports() {
 
   // ---- 配息日程（GET /holdings/dividends，業務中台 97bd1e2） ----
   // 用上游的預設期間（往前 12 個月、往後 3 個月）。股數是從交易紀錄回推的。
-  const fetchDividends = () => scopedReport<HoldingDividendsResult>('dividends')
+  // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
+  const fetchDividends = () => scopedReport<HoldingDividendsResult>('dividends').then(result => result && { ...result, dividends: result.dividends.map(withExType) })
 
   // ---- 持股特色（GET /holdings/traits，業務中台 bd8a4e9，2026-10-19） ----
   // 組合依市值占比加權（本益比、股價淨值比調和平均），Beta 是近一年回推、跟 /holdings/risk 同一支；market 是全市場同一套算法，
   // analysis-ts 上線前是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。
-  const fetchTraits = () => scopedReport<HoldingsTraitsResult>('traits')
+  // Go 換版並存（contract-delta A11）：大盤 market 改叫 benchmark
+  const fetchTraits = () => scopedReport<HoldingsTraitsResult>('traits').then(result => result && traitsFromGo(result))
 
   return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache }
 }

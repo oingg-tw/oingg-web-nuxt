@@ -108,10 +108,12 @@ export function useDividendCalendar(month: Ref<string>) {
     pending.value = true
     try {
       const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { month: key } })
-      cache.value[key] = result.entries
+      // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
+      const entries = result.entries.map(withExType)
+      cache.value[key] = entries
       if (month.value === key) failure.value = null
       // 「最新的贏」——使用者已經換月之後才回來的慢回應不能蓋掉新狀態（同 useMetricsHistory 的 load()）
-      if (month.value === key) events.value = result.entries
+      if (month.value === key) events.value = entries
     } catch (error) {
       devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
       if (classifyApiError(error).kind === 'client') cache.value[key] = null

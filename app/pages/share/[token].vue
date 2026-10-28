@@ -120,7 +120,7 @@ onMounted(() => {
     <el-empty v-if="!count" :description="`這份${subject}目前沒有股票`" :image-size="64" />
     <template v-else-if="holdings">
       <!-- 持股特色在表格上面（2026-10-19，使用者：「造訪的人就可以看出這一組持股的特色」），之後才是各檔 -->
-      <HoldingsTraits v-if="holdings.traits" class="share-page__traits" :traits="holdings.traits" heading-id="share-traits-title" />
+      <HoldingsTraits v-if="holdings.traits" class="share-page__traits" :traits="traitsFromGo(holdings.traits)" heading-id="share-traits-title" />
       <h2 v-if="holdings.traits" class="share-page__section-title">持有哪幾檔？</h2>
       <HoldingsSharedView :columns="holdings.columns" :holdings="holdings.holdings" />
     </template>

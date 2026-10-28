@@ -111,7 +111,8 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   function loadEntries(): Promise<PreferredStockEntry[]> {
     if (entries.value) return Promise.resolve(entries.value)
     inFlight ??= apiFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks', { baseURL: BUSINESS_CACHED_BASE })
-      .then(response => (entries.value = response.entries))
+      // Go 換版並存（contract-delta A12）：preferredStockFromGo 換回舊鍵
+      .then(response => (entries.value = response.entries.map(preferredStockFromGo)))
       .finally(() => { inFlight = null })
     return inFlight
   }

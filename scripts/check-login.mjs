@@ -52,7 +52,8 @@ try {
       page.locator('[data-provider-id="google.com"]').click()
     ])
     await popup?.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {})
-    const reached = popup ? new URL(popup.url()).host : ''
+    // 彈出視窗還沒跳轉時網址是空字串，new URL 會丟錯、後面的檢查就跑不到
+    const reached = popup && URL.canParse(popup.url()) ? new URL(popup.url()).host : ''
     const uiError = (await page.locator('.firebaseui-id-info-bar-message').allInnerTexts()).join(' ')
     check(reached === 'accounts.google.com', 'Google：彈出視窗到 Google 帳號選擇', reached || uiError || '沒有彈出視窗')
     await popup?.close()

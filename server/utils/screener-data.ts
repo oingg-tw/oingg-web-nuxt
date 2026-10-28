@@ -71,9 +71,9 @@ export const cachedEtfHolders = defineCachedFunction(
   { name: 'etf-holders', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
 )
 
-// 28 檔一次讀完；個別頁與 sitemap 共用
+// 28 檔一次讀完；個別頁與 sitemap 共用。Go 換版並存（contract-delta A12）：preferredStockFromGo 換回舊鍵
 export const cachedPreferredStocks = defineCachedFunction(
-  async () => (await businessFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks')).entries,
+  async () => (await businessFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks')).entries.map(preferredStockFromGo),
   { name: 'preferred-stocks', getKey: () => 'all', maxAge: HOUR, staleMaxAge: TTL_STATIC, swr: true }
 )
 

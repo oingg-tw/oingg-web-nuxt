@@ -58,7 +58,8 @@ export const getSectors = defineCachedFunction(
 
 interface StocksCollectionResponse {
   count: number
-  entries: { symbol: string; name: string | null; market?: 'TWSE' | 'TPEx' | null; isEmerging?: boolean | null; sectorCode?: string | null; sectorName?: string | null }[]
+  // Go 換版並存（contract-delta A1／A3）：name → companyName；market 從 TWSE／TPEx 改成 TYPEK（sii／otc／rotc），isEmerging 拿掉
+  entries: { symbol: string; name?: string | null; companyName?: string | null; market?: string | null; isEmerging?: boolean | null; sectorCode?: string | null; sectorName?: string | null }[]
 }
 
 const LISTED_SYMBOL = /^\d{4}$/
@@ -84,7 +85,7 @@ export const getMarketDirectory = defineCachedFunction(
         // 自己的決定，資料在這裡備好就好。興櫃股的代號同樣是四碼（6744、6748…），所以 LISTED_SYMBOL
         // 那道正規表示式擋不掉它們——這個欄位是唯一可靠的判準。
         // name 可能是 null（業務中台 f750e92）：用代號頂上，產業頁表格與搜尋都假設它是字串
-        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.name ?? entry.symbol, isEmerging: entry.isEmerging ?? false }
+        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.companyName ?? entry.name ?? entry.symbol, isEmerging: entry.isEmerging ?? entry.market === 'rotc' }
         const code = entry.sectorCode ?? null
         if (code && SECTORS[code]) {
           const list = bySector.get(code) ?? []
@@ -117,8 +118,12 @@ interface ScreenerRunResponse {
   pageSize: number
   totalPages: number
   columns: { field: string; metricName: string; fieldName: string; unit: string | null }[]
-  results: { symbol: string; name: string; values: Record<string, ScreenerFieldValue | null> }[]
+  results: ScreenerResultRow[]
 }
+
+// Go 換版並存（contract-delta A1）：公司名稱 business-ts 叫 name、Go 版叫 companyName
+interface ScreenerResultRow { symbol: string; name?: string; companyName?: string; values: Record<string, ScreenerFieldValue | null> }
+const companyNameOf = (row: ScreenerResultRow) => row.companyName ?? row.name ?? row.symbol
 
 // The screener's own "sector population": a {min:null,max:null} filter keeps only rows where
 // that field exists, and debtRatio.Q is the widest one（2,066 rows market-wide on 2026-09-19 vs
@@ -189,7 +194,7 @@ export const getSectorCompanies = defineCachedFunction(
         fundamentalsDates.push(cell('roe.TTM')?.knowledgeDate, cell('debtRatio.Q')?.knowledgeDate)
         rows.push({
           symbol: result.symbol,
-          name: result.name,
+          name: companyNameOf(result),
           price: number('stock.price'),
           peRatio: number('exchangePeRatio.EOD'),
           pbRatio: number('exchangePbRatio.EOD'),
@@ -291,9 +296,10 @@ export const getSectorMonthlyRevenue = defineCachedFunction(
 // 機械性下滑（conductor 景氣對策信號文件 §2.2）——領先指標同樣含股價指數，景氣時鐘頁的注意事項有寫。
 export const getBusinessCycleIndicators = defineCachedFunction(
   async (): Promise<BusinessCycleIndicatorPoint[]> => {
-    const response = await businessFetch<{ entries: { period: string; leadingIndexDetrended: number | string | null; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
+    // Go 換版並存（contract-delta A15）：月份 period → yearMonth（同樣是 YYYY-MM）
+    const response = await businessFetch<{ entries: { period?: string; yearMonth?: string; leadingIndexDetrended: number | string | null; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
     const num = (value: number | string | null) => (value === null ? null : Number.isFinite(Number(value)) ? Number(value) : null)
-    return response.entries.map(entry => ({ period: entry.period, leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
+    return response.entries.map(entry => ({ period: entry.yearMonth ?? entry.period ?? '', leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
   },
   { name: 'hub-business-cycle-indicators', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
@@ -412,7 +418,7 @@ interface RankingResponse {
   field: string
   order: 'asc' | 'desc'
   columns: { field: string; metricName: string; fieldName: string; unit: string | null }[]
-  results: { symbol: string; name: string; values: Record<string, ScreenerFieldValue | null> }[]
+  results: ScreenerResultRow[]
 }
 
 const RANKING_LIMIT = 50
@@ -467,7 +473,7 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
   const rows: RankingRow[] = ordered.slice(0, RANKING_LIMIT).map((entry, index) => ({
     rank: index + 1,
     symbol: entry.result.symbol,
-    name: entry.result.name,
+    name: companyNameOf(entry.result),
     value: entry.value,
     knowledgeDate: entry.result.values[valueField]?.knowledgeDate ?? null
   }))
@@ -571,7 +577,7 @@ export const getRanking = defineCachedFunction(
       : response.results
     const rows: RankingRow[] = kept.map((result, index) => {
       const cell = result.values[definition.field] ?? null
-      return { rank: index + 1, symbol: result.symbol, name: result.name, value: parseDecimal(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
+      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value: parseDecimal(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
     })
     return {
       direction: definition.direction,
@@ -584,9 +590,9 @@ export const getRanking = defineCachedFunction(
 )
 
 // GET /metrics — the whole catalog, passed through untyped: the app types it as MetricCatalog
-// (useFilterSchema.ts) and the server never reads into it.
+// (useFilterSchema.ts) and the server never reads into it. Go 換版並存（contract-delta A6）：Go 版的鍵在這裡換回舊的
 export const getMetricsCatalog = defineCachedFunction(
-  () => businessFetch<{ categories: unknown[] }>('/metrics'),
+  async () => metricsCatalogFromGo(await businessFetch<{ categories: unknown[] }>('/metrics')),
   { name: 'hub-metrics-catalog', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -711,7 +717,9 @@ const EX_DIVIDEND_KINDS: Record<string, ExDividendKind> = { COMMON: 'common', PR
 export const getExDividendMonth = defineCachedFunction(
   async (month: string): Promise<ExDividendRow[]> => {
     const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { month } })
+    // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日，withExType 換回來
     return response.entries
+      .map(withExType)
       .map(entry => ({
         exDate: entry.exDate,
         symbol: entry.symbol,

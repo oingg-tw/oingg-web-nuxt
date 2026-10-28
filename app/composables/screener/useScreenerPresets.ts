@@ -50,6 +50,10 @@ interface ScreenerPagination {
   totalPages: number
 }
 
+// Go 換版並存（contract-delta A1）：結果列的公司名稱 business-ts 叫 name、Go 版叫 companyName（preset.name 是組合名稱，沒改）
+const withName = (rows: (ScreenerResultRow & { companyName?: string })[]): ScreenerResultRow[] =>
+  rows.map(({ companyName, ...row }) => ({ ...row, name: companyName ?? row.name }))
+
 // GET /screener/presets/{id}/run 的回應包在 `screener` 底下（不是平的）；run() 攤平成 ScreenerRunResult。
 interface ScreenerRunApiResponse {
   preset: ScreenerPreset
@@ -206,7 +210,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
       return {
         count: response.count,
         columns: response.columns,
-        results: response.results,
+        results: withName(response.results),
         page: response.page,
         pageSize: response.pageSize,
         totalPages: response.totalPages
@@ -246,7 +250,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
       return {
         count: response.screener.count,
         columns: response.screener.columns,
-        results: response.screener.results,
+        results: withName(response.screener.results),
         columnPresetId: response.columnPresetId,
         preset: response.preset,
         page: response.screener.page,
