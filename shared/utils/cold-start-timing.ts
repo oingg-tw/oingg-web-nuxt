@@ -14,6 +14,8 @@ export interface ColdStartReport {
   // webUptimeMs 是 App Hosting 的行程啟動時間，同日退役）。Worker 量的三段：等這個冷容器那一支業務中台呼叫、等所有業務中台呼叫
   //（同時的只算一次）、處理整個請求（含等業務中台）
   webColdWaitMs: number | null
+  // 從 web-nuxt 收到這個請求到送出叫醒這台容器的那一支（2026-10-28，對上業務中台的到達時刻就分得出晚送還是網路）
+  webColdOffsetMs: number | null
   webBusinessWaitMs: number | null
   webServerMs: number | null
   isWebCold: boolean | null
@@ -27,11 +29,18 @@ export interface ColdStartReport {
   tlsMs: number | null
   // 使用者連進的 Cloudflare 機房（2026-10-27 使用者核准）：中華電信固網進 SJC、行動網路進 SIN，冷啟動要分開看。三個大寫字母；本機沒有，是 null
   edgeColo: string | null
+  // 瀏覽器到 Cloudflare 入口的 TCP 來回（request.cf.clientTcpRtt，2026-10-28）：第 1 段扣掉它，剩下的是 Cloudflare 那一側（含 isolate 啟動，量不到）
+  clientTcpRttMs: number | null
+  // 叫醒數據中台那次（2026-10-28）：從收到請求到送出（冷 isolate 含換 ID token）、換 token 多久、送出到回應；頁面回應前沒回來就是 null
+  webWakeOffsetMs: number | null
+  webWakeMs: number | null
+  webWakeTokenMs: number | null
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const COLO = /^[A-Z]{3}$/
-const MS_FIELDS = ['webColdWaitMs', 'webBusinessWaitMs', 'webServerMs', 'requestStartMs', 'responseStartMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs'] as const
+const MS_FIELDS = ['webColdWaitMs', 'webColdOffsetMs', 'webBusinessWaitMs', 'webServerMs', 'requestStartMs', 'responseStartMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs',
+  'clientTcpRttMs', 'webWakeOffsetMs', 'webWakeMs', 'webWakeTokenMs'] as const
 
 // 業務中台回應標頭裡的冷啟動 id：`cold;desc="<uuid>"`（可能跟其他項目用逗號串在一起）
 export function coldStartIdOf(serverTiming: string | null | undefined): string | null {
@@ -42,15 +51,34 @@ export function coldStartIdOf(serverTiming: string | null | undefined): string |
 export interface ColdStartWait {
   id: string
   waitMs: number
+  // 從 web-nuxt 收到這個請求到送出這一支（2026-10-28，管理站要分出「web-nuxt 晚送」和「網路」）
+  offsetMs?: number
+}
+
+// 叫醒數據中台的那一次 GET /（server/utils/business.ts 的 wakeAnalysis）：從收到請求到送出、換 ID token、送出到回應
+export interface AnalysisWake {
+  offsetMs: number
+  tokenMs: number
+  ms: number
 }
 
 // web-nuxt 寫給瀏覽器的 Server-Timing：只有 web-nuxt 自己量到的數字。一頁可能同時叫醒好幾個容器（2026-10-26 DEV 實測：一頁同時打
 // 約 10 支，Cloud Run 一次開了 4 個，各帶一個 id；卡最久的是 /stocks/:symbol 7 秒），每個冷啟動一項 cold，dur 是等那一支多久
 // waitall 是這一趟等所有業務中台呼叫的時間，同時進行的只算一次（管理站把「web-nuxt 自己」和「等同一頁其他請求」分開）。
 // 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項；
-// colo 是 Cloudflare 的入口機房，沒有就不寫
-export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, webCold: boolean, colo: string | null): string {
-  return [...colds.map(cold => `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`), `waitall;dur=${Math.round(waitAllMs)}`, `web;dur=${Math.round(serverMs)}`, ...(webCold ? ['webcold'] : []), ...(colo ? [`colo;desc="${colo}"`] : [])].join(', ')
+// colo 是 Cloudflare 的入口機房，沒有就不寫。
+// 2026-10-28（管理站要把「網路＋開容器」拆開）：coldsent 是送出那一支的時間點（從收到請求算）；rtt 是瀏覽器到入口的 TCP 來回；
+// wake／wakesent／waketoken 是叫醒數據中台那次，回應送出前還沒回來就不寫
+export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, webCold: boolean, colo: string | null, clientTcpRttMs: number | null = null, wake: AnalysisWake | null = null): string {
+  return [
+    ...colds.flatMap(cold => [`cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`, ...(cold.offsetMs === undefined ? [] : [`coldsent;dur=${Math.round(cold.offsetMs)};desc="${cold.id}"`])]),
+    `waitall;dur=${Math.round(waitAllMs)}`,
+    `web;dur=${Math.round(serverMs)}`,
+    ...(webCold ? ['webcold'] : []),
+    ...(clientTcpRttMs === null ? [] : [`rtt;dur=${Math.round(clientTcpRttMs)}`]),
+    ...(wake ? [`wake;dur=${Math.round(wake.ms)}`, `wakesent;dur=${Math.round(wake.offsetMs)}`, `waketoken;dur=${Math.round(wake.tokenMs)}`] : []),
+    ...(colo ? [`colo;desc="${colo}"`] : [])
+  ].join(', ')
 }
 
 // 一組 [開始, 結束] 的聯集長度：重疊的只算一次
@@ -101,9 +129,17 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
     dnsMs: span(entry.domainLookupStart, entry.domainLookupEnd),
     connectMs: span(entry.connectStart, entry.connectEnd),
     tlsMs: span(entry.secureConnectionStart, entry.connectEnd),
-    edgeColo: items.find(item => item.name === 'colo' && COLO.test(item.description))?.description ?? null
+    edgeColo: items.find(item => item.name === 'colo' && COLO.test(item.description))?.description ?? null,
+    clientTcpRttMs: dur('rtt'),
+    webWakeOffsetMs: dur('wakesent'),
+    webWakeMs: dur('wake'),
+    webWakeTokenMs: dur('waketoken')
   }
-  return colds.map(cold => ({ id: cold.description.toLowerCase(), webColdWaitMs: cold.duration, ...shared }))
+  const sentOf = (id: string) => items.find(item => item.name === 'coldsent' && item.description.toLowerCase() === id)?.duration ?? null
+  return colds.map((cold) => {
+    const id = cold.description.toLowerCase()
+    return { id, webColdWaitMs: cold.duration, webColdOffsetMs: sentOf(id), ...shared }
+  })
 }
 
 // 伺服器端收到的回報（公開端點，什麼都可能送來）：只留定好的欄位，其他欄位、格式不對就整筆不收

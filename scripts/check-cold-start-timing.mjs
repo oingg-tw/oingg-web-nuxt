@@ -20,6 +20,9 @@ assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }, { id: ID2, waitMs: 
 assert.equal(coldStartServerTiming([], 120, 340, false, null), 'waitall;dur=120, web;dur=340')
 // 入口機房寫在最後
 assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452 }], 452, 900, true, 'SJC'), `cold;dur=452;desc="${ID}", waitall;dur=452, web;dur=900, webcold, colo;desc="SJC"`)
+// 送出時間點、入口來回、叫醒數據中台那次（2026-10-28）：有量到才寫
+assert.equal(coldStartServerTiming([{ id: ID, waitMs: 452, offsetMs: 12.4 }], 452, 900, false, 'SJC', 127.6, { offsetMs: 410.2, tokenMs: 380, ms: 1020.7 }),
+  `cold;dur=452;desc="${ID}", coldsent;dur=12;desc="${ID}", waitall;dur=452, web;dur=900, rtt;dur=128, wake;dur=1021, wakesent;dur=410, waketoken;dur=380, colo;desc="SJC"`)
 
 // 等所有業務中台呼叫的時間：重疊的只算一次，包在裡面的不加，隔開的相加
 assert.equal(unionMs([]), 0)
@@ -57,6 +60,7 @@ assert.deepEqual(report, {
   kind: 'document',
   at: '2026-10-26T01:00:00.000Z',
   webColdWaitMs: 5612,
+  webColdOffsetMs: null,
   webBusinessWaitMs: 5650,
   webServerMs: 5700,
   isWebCold: true,
@@ -66,8 +70,19 @@ assert.deepEqual(report, {
   dnsMs: 20,
   connectMs: 55,
   tlsMs: 40,
-  edgeColo: 'SJC'
+  edgeColo: 'SJC',
+  clientTcpRttMs: null,
+  webWakeOffsetMs: null,
+  webWakeMs: null,
+  webWakeTokenMs: null
 })
+// 拆「網路／容器啟動」的那幾項（2026-10-28）：送出時間點跟著自己的 id 走、rtt 與叫醒數據中台那次各帶一份
+const split = coldStartReportsOf({ ...navigation, serverTiming: [{ name: 'cold', duration: 452, description: ID }, { name: 'coldsent', duration: 31, description: ID2 },
+  { name: 'cold', duration: 7045, description: ID2 }, { name: 'coldsent', duration: 12, description: ID }, ...navigation.serverTiming.slice(1),
+  { name: 'rtt', duration: 128, description: '' }, { name: 'wake', duration: 1021, description: '' }, { name: 'wakesent', duration: 410, description: '' }, { name: 'waketoken', duration: 380, description: '' }] }, 'document', 0)
+assert.deepEqual(split.map(item => [item.id, item.webColdOffsetMs]), [[ID, 12], [ID2, 31]])
+assert.deepEqual([split[0].clientTcpRttMs, split[0].webWakeOffsetMs, split[0].webWakeMs, split[0].webWakeTokenMs], [128, 410, 1021, 380])
+assert.deepEqual(cleanColdStartReport(split[1]), split[1])
 const api = { ...navigation, name: 'https://example.test/api/core/watchlists', startTime: 9000, requestStart: 9010, responseStart: 9300, responseEnd: 9320, secureConnectionStart: 0, serverTiming: navigation.serverTiming.slice(0, 3) }
 const [apiReport] = coldStartReportsOf(api, 'api', 0)
 assert.equal(apiReport.responseStartMs, 300)

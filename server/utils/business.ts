@@ -17,7 +17,7 @@
 // 業務中台 only through /api/core and /api/cached.
 
 import type { H3Event } from 'h3'
-import type { ColdStartWait } from '#shared/utils/cold-start-timing'
+import type { AnalysisWake, ColdStartWait } from '#shared/utils/cold-start-timing'
 
 declare module 'h3' {
   interface H3EventContext {
@@ -25,6 +25,8 @@ declare module 'h3' {
     coldStarts?: ColdStartWait[]
     // 這個請求等過的每一支業務中台呼叫（開始、結束，performance.now()），冷啟動那一筆的 webBusinessWaitMs 取它們的聯集
     businessWaits?: [number, number][]
+    // 這個請求順手叫醒數據中台的那一次（見 wakeAnalysis），回應送出前回來才有
+    analysisWake?: AnalysisWake
   }
 }
 
@@ -92,11 +94,19 @@ function wakeAnalysis(): void {
   const { analysisBase } = useRuntimeConfig()
   if (!analysisBase || Date.now() - analysisWokenAt < ANALYSIS_WAKE_INTERVAL_MS) return
   analysisWokenAt = Date.now()
-  const wake = idTokenFor(analysisBase)
-    .then(token => $fetch(analysisBase, { headers: { 'x-serverless-authorization': `Bearer ${token}` }, timeout: 15_000, retry: 0 }))
-    .catch((error: Error) => console.warn(`analysis wake failed: ${error.message}`))
+  const event = currentEvent()
+  const target = userRequestOf(event)
+  const startedAt = performance.now()
+  const wake = (async () => {
+    const token = await idTokenFor(analysisBase)
+    const sentAt = performance.now()
+    await $fetch(analysisBase, { headers: { 'x-serverless-authorization': `Bearer ${token}` }, timeout: 15_000, retry: 0 })
+    // 記在使用者那個請求上，回應還沒送出就會寫進它的 Server-Timing（冷啟動時頁面通常還在等業務中台，叫醒約 1 秒就回來）
+    const origin = target?.context.coldStartClock?.startedAt
+    if (target && origin !== undefined) target.context.analysisWake = { offsetMs: sentAt - origin, tokenMs: sentAt - startedAt, ms: performance.now() - sentAt }
+  })().catch((error: Error) => console.warn(`analysis wake failed: ${error.message}`))
   // 回應送出後別被砍掉；沒有請求可掛（背景重算拿不到 event）就讓它自己跑
-  currentEvent()?.waitUntil(wake)
+  event?.waitUntil(wake)
 }
 
 async function fetchIdToken(audience: string, serviceAccountKey: string): Promise<string> {
@@ -129,14 +139,21 @@ export async function businessAuthHeaders(): Promise<Record<string, string>> {
 // 回應多半已經送出、寫不進去，就不算（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webColdWaitMs 短就知道是背景的。
 // ponytail: 背景重算剛好在回應送出前跑完會被當成使用者在等，要精確得把 swr 的背景執行另外標記
 export function noteBusinessCall(event: H3Event | null, serverTiming: string | null, startedAt: number, endedAt: number): void {
-  if (!event) return
-  let target = event
-  while (target.context.coldStartParent) target = target.context.coldStartParent
+  const target = userRequestOf(event)
+  if (!target) return
   ;(target.context.businessWaits ??= []).push([startedAt, endedAt])
   const id = coldStartIdOf(serverTiming)
   if (!id) return
   const colds = (target.context.coldStarts ??= [])
-  if (!colds.some(cold => cold.id === id)) colds.push({ id, waitMs: endedAt - startedAt })
+  const origin = target.context.coldStartClock?.startedAt
+  if (!colds.some(cold => cold.id === id)) colds.push({ id, waitMs: endedAt - startedAt, ...(origin === undefined ? {} : { offsetMs: startedAt - origin }) })
+}
+
+// 使用者在等的那個請求（伺服器渲染時的內部 /api 一路往上找）
+function userRequestOf(event: H3Event | null): H3Event | null {
+  let target = event
+  while (target?.context.coldStartParent) target = target.context.coldStartParent
+  return target
 }
 
 function currentEvent(): H3Event | null {
