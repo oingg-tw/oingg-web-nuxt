@@ -8,7 +8,7 @@
 # 的內容檔，不打後端。action 用 commit SHA 釘住，Dependabot 的 github-actions 生態系會更新它們。
 #
 # ## Dependabot 自動合併（第二個 job）
-# `needs: checks`：同一次執行裡 checks 通過才會跑，`--match-head-commit` 只合併剛驗證過的那個 commit。
+# `needs: [checks, workers]`：同一次執行裡 checks 與 Workers 開機測試都通過才會跑，`--match-head-commit` 只合併剛驗證過的那個 commit。
 # 只合 semver-patch。dependabot.yml 把 patch 與 minor 分成兩個群組，patch 群組 PR 的等級才會是 patch（群組回報的是組內最大的等級）。
 # 預設分支是 development（同日改），所以 Dependabot 的 PR——包括安全性更新——都開到 development。push 到 development 會自動部署到
 # DEV（Cloudflare Workers Builds，2026-10-28 起），合併的 patch 會上 DEV（使用者 2026-10-27 接受）；PRD 還沒設，合到 main 一律由人做。
@@ -28,6 +28,12 @@ on:
 
 permissions:
   contents: read
+
+# 兩個開機測試（Node 版、Workers 版）打的同一批頁面：業務中台連不到時仍應回 200（本機實測；/industries、/learn/{指標} 拿不到型錄時回 503
+# 是設計，不列）。2026-10-27 拿掉兩頁（CI 從那之後一直失敗）：/screener 10-16 起 301 到 /screener/common、/macro 10-21 起是景氣時鐘，
+# 讀不到資料回 503 是設計
+env:
+  SMOKE_PATHS: / /screener/common /watchlist /stock/2330 /stock/2330/roe /screener/etf /screener/preferred /preferred/2881a/dividends /etf/0050 /rank /learn /calendar /holdings /guru-indicators
 
 # 沒改 base 的 edited（只改標題、說明）用自己的 run_id 當 group：concurrency 在 workflow 層級求值，checks 被 if 跳過的那次執行
 # 還是會進同一個 group，cancel-in-progress 會把同一個 PR 正在跑的 checks 砍掉，新的那次又不跑 checks，這一輪就不會自動合併。
@@ -72,12 +78,10 @@ jobs:
             if curl -sf -o page.html http://127.0.0.1:3000/accessibility; then
               echo "Server startup to first 200: $(( ($(date +%s%N) - start) / 1000000 ))ms"
               grep -q '<h1' page.html || { echo "::error::/accessibility 回 200 但沒有 h1"; exit 1; }
-              # 起得來之後再打一輪主要頁面（2026-10-14）：/screener 在正式建置下 500（Pragmatic DnD 的 CJS 被打進伺服器 bundle，
-              # 見 useElTableColumnDrag.ts），只打 /accessibility 抓不到；App Hosting DEV 上線才發現。這些頁在業務中台連不到時仍應回 200
-              #（本機實測；/industries、/learn/{指標} 拿不到型錄時回 503 是設計，不列）。2026-10-27 拿掉兩頁（CI 從那之後一直失敗）：
-              # /screener 10-16 起 301 到 /screener/common（當初的 500 在那一頁照樣測得到）、/macro 10-21 起是景氣時鐘，讀不到資料回 503 是設計
+              # 起得來之後再打一輪主要頁面（2026-10-14，清單在上面的 SMOKE_PATHS）：/screener 在正式建置下 500（Pragmatic DnD 的 CJS
+              # 被打進伺服器 bundle，見 useElTableColumnDrag.ts），只打 /accessibility 抓不到；App Hosting DEV 上線才發現
               failed=0
-              for path in / /screener/common /watchlist /stock/2330 /stock/2330/roe /screener/etf /screener/preferred /preferred/2881a/dividends /etf/0050 /rank /learn /calendar /holdings /guru-indicators; do
+              for path in $SMOKE_PATHS; do
                 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "http://127.0.0.1:3000$path")
                 echo "$code $path"
                 [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }
@@ -93,8 +97,56 @@ jobs:
       # 不需要伺服器的自我檢查；清單在 package.json 的 selfcheck，跟 .githooks/pre-push 共用
       - run: pnpm selfcheck
 
+  # Workers 版開機測試（2026-10-28，使用者「請加上測試」）：DEV 跑在 Cloudflare Workers，上面的 Node 版開機測試抓不到只在 workerd 才炸的
+  # 問題（缺的 Node API、Cloudflare preset 的打包），而 push 到 development（含 Dependabot 自動合併的 patch）會直接部署。這裡照
+  # Workers Builds 的方式建置（Node 24、同樣兩個變數），用 wrangler dev 在本機的 workerd 開起來（KV、D1 是本機模擬，不需要
+  # Cloudflare 帳號），打同一批頁面。業務中台一樣指到連不到的位址
+  workers:
+    if: github.event.action != 'edited' || github.event.changes.base != null
+    name: workers smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        env:
+          NITRO_PRESET: cloudflare_module
+          NUXT_SITE_ENV: preview
+      - name: 開機測試（Workers 版起得來）
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          pnpm dlx wrangler@4 dev --ip 127.0.0.1 --port 8787 --var NUXT_BUSINESS_BASE:http://127.0.0.1:9 --show-interactive-dev-session=false > wrangler.log 2>&1 &
+          start=$(date +%s%N)
+          for i in $(seq 1 120); do
+            if curl -sf -o page.html http://127.0.0.1:8787/accessibility; then
+              echo "wrangler dev startup to first 200: $(( ($(date +%s%N) - start) / 1000000 ))ms"
+              grep -q '<h1' page.html || { echo "::error::/accessibility 回 200 但沒有 h1"; exit 1; }
+              failed=0
+              for path in $SMOKE_PATHS; do
+                code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "http://127.0.0.1:8787$path")
+                echo "$code $path"
+                [ "$code" = 200 ] || { echo "::error::$path 回 $code"; failed=1; }
+              done
+              [ "$failed" = 0 ] || { cat wrangler.log; exit 1; }
+              exit 0
+            fi
+            sleep 1
+          done
+          cat wrangler.log
+          echo "::error::wrangler dev 120 秒內沒有回 200"
+          exit 1
+
   dependabot-merge:
-    needs: checks
+    needs: [checks, workers]
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.base.ref == 'development'
     runs-on: ubuntu-latest
     timeout-minutes: 5
