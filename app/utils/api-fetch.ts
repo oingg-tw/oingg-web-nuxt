@@ -62,6 +62,8 @@ export interface ClassifiedFailure {
 const CODE_KINDS: Record<string, LoadFailureKind> = {
   upstream_timeout: 'timeout',
   upstream_unavailable: 'unavailable',
+  // 上游有回應但回了錯誤狀態（2026-10-28 業務中台從 upstream_unavailable 分出來；原本沒這行也會因 502 退回 unavailable）
+  upstream_error: 'unavailable',
   upstream_bad_response: 'unavailable',
   rate_limited: 'unavailable',
   // 503＋Retry-After：全站每分鐘額度（每個實例 3,800 次，2026-10-08）滿了，不是這個呼叫端的錯（RFC 9110），所以不是 429
