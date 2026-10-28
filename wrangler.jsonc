@@ -22,6 +22,8 @@
     // 見 shared/utils/business-go-compat.ts
     "NUXT_BUSINESS_BASE": "https://oingg-business-go-dev-xradmqyx5q-as.a.run.app",
     "NUXT_BUSINESS_AUDIENCE": "https://oingg-business-go-dev-xradmqyx5q-as.a.run.app",
+    // 數據中台 DEV：打業務中台時順手叫醒它（2026-10-28，見 server/utils/business.ts 的 wakeAnalysis）；網址兼 IAM audience
+    "NUXT_ANALYSIS_BASE": "https://oingg-data-rust-dev-188704795199.asia-southeast1.run.app",
     "NUXT_SITE_ENV": "preview",
     "NUXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyD_fVz_HBT2USKSLCrJ17tBcAEE5DgrPUo",
     "NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "oingg-web-dev.firebaseapp.com",

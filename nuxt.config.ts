@@ -167,6 +167,9 @@ export default defineNuxtConfig({
     // web-nuxt 在 Cloudflare Workers 上的 Google 身分（2026-10-27）：服務帳戶金鑰的 JSON 整份（NUXT_GOOGLE_SERVICE_ACCOUNT_KEY，Cloudflare 的機密）。
     // 本機與 CI 留空。見 server/utils/business.ts 的 businessAuthHeaders
     googleServiceAccountKey: '',
+    // 數據中台的網址，也是它 IAM 的 audience（NUXT_ANALYSIS_BASE，2026-10-28）：只拿來在打業務中台時順手叫醒它（GET /），見
+    // server/utils/business.ts 的 wakeAnalysis。本機與 CI 留空＝不叫
+    analysisBase: '',
     public: {
       firebase: {
         apiKey: '',

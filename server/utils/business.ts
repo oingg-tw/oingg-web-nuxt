@@ -69,9 +69,35 @@ function releaseSlot(): void {
 // Cloudflare 的機密；Workers 上沒有 GCP 的 metadata server）自己換一張 ID token（shared/utils/id-token.ts），放在
 // X-Serverless-Authorization——Authorization 已經被使用者的 Firebase token 佔用（/api/core 照轉），Cloud Run 會先看 X-Serverless-Authorization。
 // businessAudience 空字串＝本機與 CI：不帶任何身分（本機的業務中台沒有 IAM 鎖）。
-// token 快取到到期前 5 分鐘。拿不到就丟錯——跟上游失敗一樣不會被快取。只快取值、不共用進行中的請求：Workers 上一個請求等另一個請求
-// 的 promise，發起的那個先被取消就會卡住；冷的時候同時要的幾個請求各換一次
-let identity: { token: string; exp: number | null } | null = null
+// token 依 audience 各快取到到期前 5 分鐘（業務中台、數據中台各一張）。拿不到就丟錯——跟上游失敗一樣不會被快取。只快取值、
+// 不共用進行中的請求：Workers 上一個請求等另一個請求的 promise，發起的那個先被取消就會卡住；冷的時候同時要的幾個請求各換一次
+const identities = new Map<string, { token: string; exp: number | null }>()
+
+async function idTokenFor(audience: string): Promise<string> {
+  const cached = identities.get(audience)
+  if (cached && !idTokenNeedsRefresh(cached.exp, Date.now() / 1000)) return cached.token
+  const token = await fetchIdToken(audience, useRuntimeConfig().googleServiceAccountKey)
+  identities.set(audience, { token, exp: jwtExpiry(token) })
+  return token
+}
+
+// 同時叫醒數據中台（2026-10-28，使用者「web-nuxt 收到請求時，同時叫醒業務中台和數據中台」）：業務中台冷啟動時要等自己的容器開好、
+// 行程起來才去叫數據中台，兩段開容器串在一起（10/28 兩次冷啟動 6.1／7.4 秒，業務中台開容器 0.9～2.1 秒）。要打業務中台時順手在背景
+// 送 GET / 給數據中台，兩邊一起開；業務中台照樣自己叫一次，當備援。GET / 不碰資料庫、不用金鑰，只要過 IAM（web-nuxt-workers 在
+// oingg-data-rust-dev 有 run.invoker）。每個 isolate 5 分鐘最多一次（Cloud Run 閒置約 15 分鐘才縮到 0）。analysisBase 空字串＝本機與 CI：不送
+const ANALYSIS_WAKE_INTERVAL_MS = 5 * 60_000
+let analysisWokenAt = 0
+
+function wakeAnalysis(): void {
+  const { analysisBase } = useRuntimeConfig()
+  if (!analysisBase || Date.now() - analysisWokenAt < ANALYSIS_WAKE_INTERVAL_MS) return
+  analysisWokenAt = Date.now()
+  const wake = idTokenFor(analysisBase)
+    .then(token => $fetch(analysisBase, { headers: { 'x-serverless-authorization': `Bearer ${token}` }, timeout: 15_000, retry: 0 }))
+    .catch((error: Error) => console.warn(`analysis wake failed: ${error.message}`))
+  // 回應送出後別被砍掉；沒有請求可掛（背景重算拿不到 event）就讓它自己跑
+  currentEvent()?.waitUntil(wake)
+}
 
 async function fetchIdToken(audience: string, serviceAccountKey: string): Promise<string> {
   // Nitro 讀環境變數時會把 JSON 字串先解析成物件（2026-10-27 Workers 上實測），兩種都收
@@ -90,14 +116,11 @@ async function fetchIdToken(audience: string, serviceAccountKey: string): Promis
 // /api/core 代理會加）。所有呼叫業務中台的路徑都經過這一支，所以一處加、處處有。代理另外加 x-oingg-client-ip；伺服器端渲染的快取
 // 是全站共用的，沒有「某一位使用者」，只帶金鑰。
 export async function businessAuthHeaders(): Promise<Record<string, string>> {
-  const { businessAudience: audience, businessNitroKey: nitroKey, googleServiceAccountKey } = useRuntimeConfig()
+  wakeAnalysis()
+  const { businessAudience: audience, businessNitroKey: nitroKey } = useRuntimeConfig()
   const headers: Record<string, string> = nitroKey ? { 'x-oingg-nitro-key': nitroKey } : {}
   if (!audience) return headers
-  if (!identity || idTokenNeedsRefresh(identity.exp, Date.now() / 1000)) {
-    const token = await fetchIdToken(audience, googleServiceAccountKey)
-    identity = { token, exp: jwtExpiry(token) }
-  }
-  return { ...headers, 'x-serverless-authorization': `Bearer ${identity.token}` }
+  return { ...headers, 'x-serverless-authorization': `Bearer ${await idTokenFor(audience)}` }
 }
 
 // 冷啟動等待（2026-10-26，見 shared/utils/cold-start-timing.ts）：每一支業務中台呼叫都記下起訖，回應帶 cold 標記的再記 id 與等了多久，
