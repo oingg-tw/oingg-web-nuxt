@@ -6,6 +6,7 @@
 //   pnpm lighthouse:check                 基準組（9 頁）
 //   pnpm lighthouse:check -- --plan=full  全站組（scripts/site-routes.mjs 的每一種頁面模板）
 //   pnpm lighthouse:check -- --dry-run    只量、不送業務中台（摘要存在報告資料夾）
+//   pnpm lighthouse:check -- --routes=/,/rank   只量指定的頁（逗號分隔；Git Bash 要加 MSYS_NO_PATHCONV=1，不然 / 開頭會被改寫）
 //   pnpm lighthouse:check -- --send=lighthouse-report/<資料夾>/run.json   補送（量完時業務中台沒開、或送出失敗）
 // 需要 .env 的 PSI_API_KEY（只限 PageSpeed Insights API 的金鑰）；送業務中台要 LIGHTHOUSE_INGEST_KEY（從業務中台的 .env 複製）。兩把都永不印出。
 //
@@ -28,10 +29,12 @@ const CATEGORIES = { performance: 'performance', accessibility: 'accessibility',
 const METRICS = { fcpMs: 'first-contentful-paint', lcpMs: 'largest-contentful-paint', tbtMs: 'total-blocking-time', cls: 'cumulative-layout-shift', speedIndexMs: 'speed-index' }
 
 const args = process.argv.slice(2)
-const planName = args.find(arg => arg.startsWith('--plan='))?.slice('--plan='.length) ?? 'baseline'
+// 指定頁面時報告資料夾標成 custom，免得跟基準組混在一起比
+const planName = args.some(arg => arg.startsWith('--routes=')) ? 'custom' : args.find(arg => arg.startsWith('--plan='))?.slice('--plan='.length) ?? 'baseline'
 const dryRun = args.includes('--dry-run')
 const sendPath = args.find(arg => arg.startsWith('--send='))?.slice('--send='.length)
-const routes = PLANS[planName]
+const customRoutes = args.find(arg => arg.startsWith('--routes='))?.slice('--routes='.length).split(',')
+const routes = customRoutes ?? PLANS[planName]
 
 const median = (values) => {
   const sorted = values.filter(value => typeof value === 'number').sort((a, b) => a - b)
