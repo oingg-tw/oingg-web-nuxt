@@ -10,9 +10,9 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
-  // 在業務中台旁邊（gcp:asia-southeast1）執行（2026-10-28 使用者「Worker 還是固定在新加坡好了」，恢復後跟 SJC 執行在同樣負載下比）。
-  // 10/27 試過一次：兩次冷啟動整頁慢 0.7～1.1 秒——HiNet 入口還是 SJC，請求與回應多繞一段。見 docs/cloudflare-migration-plan.md
-  "placement": { "region": "gcp:asia-southeast1" },
+  // 不設 placement：改在業務中台旁邊（gcp:asia-southeast1）執行試過兩次都比較慢——10/27 冷啟動整頁慢 0.7～1.1 秒，10/28 持續負載下
+  // 頁面 p50 慢 300～570 ms（HiNet 入口還是 SJC，整頁 HTML 要從新加坡繞回來）；入口在新加坡的使用者不設也已經在那裡執行。
+  // 見 docs/cloudflare-migration-plan.md
   // Nitro 的快取（nuxt.config 的 nitro.storage.cache）；沒寫 id，第一次部署時 wrangler 自己建
   "kv_namespaces": [{ "binding": "CACHE" }],
   // Nuxt Content（部落格）在 Workers 上用 D1，binding 名稱是 @nuxt/content 的預設 DB
