@@ -165,6 +165,7 @@
    - 公開頁面加邊緣快取：用 `routeRules` 設 SWR，或 Cache API；會員頁、`/share/**`、`/api/core` 一律不快取；確認有 `Set-Cookie` 的回應不會被快取。
 5. **第 4 階段：PRD 切換（使用者決定時機）**
    - 上線前預熱 KV（10/29 使用者選，取代業務中台 bundle 端點）：把 sitemap 的頁面爬一遍，讓使用者打開的都不是「這一頁第一次」。分散跑、避開業務中台限流；約 5 萬頁 × 每頁 9 支業務中台呼叫，一次性。網路上的做法（10/29 查）：用 GET 不用 HEAD；限速（太快等於自己 DDoS 上游）、先跑一小批確認內容對了再全跑（預熱進去的錯誤值比冷的還糟）；在最後一次部署之後、上線前跑，不要提早幾週；跑完用 KV 鍵數驗證，不是「爬完」就算。KV 是全球一份，跟 CDN 快取每個機房各一份不同，爬一次就夠；也不會幫 Google 自己的快取預熱。
+   - 數據中台 PRD 10/29 已經準備好（https://oingg-data-rust-prd-188704795199.asia-southeast1.run.app，數據中台說不急）：PRD Worker 的 `NUXT_ANALYSIS_BASE` 用這個網址，audience 用根網址；PRD Worker 的服務帳戶定好後告訴數據中台，由它申請 `run.invoker`（跨專案權限要先經使用者核准）。爬 sitemap 預熱 KV 的時間要先跟業務中台和數據中台約。
    - 正式網域的 DNS 交給 Cloudflare。
    - 舊網域 301 轉址。
    - App Hosting 保留一段時間當回退。

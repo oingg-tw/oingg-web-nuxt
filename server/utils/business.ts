@@ -122,12 +122,35 @@ async function fetchIdToken(audience: string, serviceAccountKey: string): Promis
   return token
 }
 
+// 設定值頭尾不能有空白或換行（2026-10-29，使用者：「請你明確檢查」）：不 trim——trim 會把來源的髒值藏起來，fetch 也會自己去掉標頭值
+// 頭尾的空白、new URL() 去掉頭尾的控制字元，換一個讀取端才壞、症狀離原因很遠。直接丟錯並說出變數名，第一次用到就浮出來，回來源修。
+// 服務帳戶金鑰被 Nitro 解析成物件時頭尾已經被 JSON 吃掉，只查得到字串形式
+const CONFIG_ENV_NAMES = {
+  businessBase: 'NUXT_BUSINESS_BASE',
+  businessAudience: 'NUXT_BUSINESS_AUDIENCE',
+  businessNitroKey: 'NUXT_BUSINESS_NITRO_KEY',
+  googleServiceAccountKey: 'NUXT_GOOGLE_SERVICE_ACCOUNT_KEY',
+  analysisBase: 'NUXT_ANALYSIS_BASE'
+} as const
+
+function assertCleanConfig(config: ReturnType<typeof useRuntimeConfig>): void {
+  for (const field of Object.keys(CONFIG_ENV_NAMES) as (keyof typeof CONFIG_ENV_NAMES)[]) {
+    const value: unknown = config[field]
+    if (typeof value !== 'string' || !/^\s|\s$/.test(value)) continue
+    const message = `${CONFIG_ENV_NAMES[field]} has leading or trailing whitespace or a line break; fix the stored value`
+    console.error(message)
+    throw new Error(message)
+  }
+}
+
 // 共享金鑰也在這裡加（2026-10-14，業務中台查 log：伺服器端渲染與 system-health 的呼叫都沒帶 x-oingg-nitro-key——原本只有
 // /api/core 代理會加）。所有呼叫業務中台的路徑都經過這一支，所以一處加、處處有。代理另外加 x-oingg-client-ip；伺服器端渲染的快取
-// 是全站共用的，沒有「某一位使用者」，只帶金鑰。
+// 是全站共用的，沒有「某一位使用者」，只帶金鑰。上面的設定檢查也放這裡：businessFetch 與 /api/core 都先經過這一支
 export async function businessAuthHeaders(): Promise<Record<string, string>> {
+  const config = useRuntimeConfig()
+  assertCleanConfig(config)
   wakeAnalysis()
-  const { businessAudience: audience, businessNitroKey: nitroKey } = useRuntimeConfig()
+  const { businessAudience: audience, businessNitroKey: nitroKey } = config
   const headers: Record<string, string> = nitroKey ? { 'x-oingg-nitro-key': nitroKey } : {}
   if (!audience) return headers
   return { ...headers, 'x-serverless-authorization': `Bearer ${await idTokenFor(audience)}` }
