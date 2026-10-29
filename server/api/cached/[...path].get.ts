@@ -32,11 +32,16 @@ import { createHash } from 'node:crypto'
 // not just the page coverage.
 //
 // So if a future change needs to widen this list, widen it for a REASON OTHER than symbol shape.
-const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily' }[] = [
+//
+// 每條規則收哪些查詢參數、什麼格式（2026-10-29）：查詢字串是使用者送來的，每一組不同的值都是一個永遠不過期的 KV 鍵（swr 時 Nitro
+// 不給 KV 到期時間）加一次打業務中台——實測 /api/cached/securities?probe=… 回 200、寫進一個新鍵。不在表上的參數、格式不對的值一律丟掉。
+// shortcut: 值只驗格式、不列舉，合法值的組合（limit、from、symbols）仍造得出新鍵；KV 鍵數明顯變多時再替 KV 寫入補到期時間
+const COUNT = /^\d{1,5}$/
+const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily'; query?: Record<string, RegExp> }[] = [
   { pattern: /^stocks\/\d{4}$/, ttl: 'quote' },
-  { pattern: /^stocks\/\d{4}\/daily-price-history$/, ttl: 'quote' },
+  { pattern: /^stocks\/\d{4}\/daily-price-history$/, ttl: 'quote', query: { limit: COUNT, from: /^\d{4}-\d{2}-\d{2}$/ } },
   { pattern: /^stocks\/\d{4}\/profile$/, ttl: 'daily' },
-  { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly' },
+  { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly', query: { symbols: /^[0-9A-Z]{4,6}(,[0-9A-Z]{4,6}){0,99}$/ } },
   // metrics 2026-10-16 拿掉：指標目錄改由 /api/hub/filter-schema（精簡版）與 /api/hub/metrics（完整版）提供，同一份快取
   // 公開、不分使用者的型錄與清單（2026-10-16）：原本走不快取的 /api/core，每位訪客打開篩選頁、搜尋框都各打一次上游（業務中台依 IP
   // 限流每 60 秒 300 次，所有訪客共用我們伺服器的出口）。特別股清單同 screener-data 的 cachedPreferredStocks 一小時
@@ -44,7 +49,7 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily' }[] = [
   { pattern: /^screener\/templates$/, ttl: 'hourly' },
   { pattern: /^screener\/column-preset-templates$/, ttl: 'hourly' },
   { pattern: /^stocks\/preferred-stocks$/, ttl: 'hourly' },
-  { pattern: /^securities$/, ttl: 'hourly' }
+  { pattern: /^securities$/, ttl: 'hourly', query: { limit: COUNT, offset: COUNT } }
 ]
 
 const TTL_SECONDS = { quote: 15 * 60, hourly: HOUR, daily: 24 * HOUR }
@@ -82,8 +87,8 @@ export default defineEventHandler(async event => {
   if (!rule) throw createError({ statusCode: 404, statusMessage: 'not a proxied 業務中台 endpoint' })
   const query: QueryRecord = {}
   for (const [key, value] of Object.entries(getQuery(event))) {
-    if (typeof value === 'string') query[key] = value
-    else if (Array.isArray(value)) query[key] = value.map(String).join(',')
+    const text = Array.isArray(value) ? value.map(String).join(',') : typeof value === 'string' ? value : null
+    if (text !== null && rule.query?.[key]?.test(text)) query[key] = text
   }
   try {
     return await BY_TTL[rule.ttl](path, query)
