@@ -19,7 +19,7 @@
   - Worker 未壓縮 8.3 MiB、gzip 1.75 MiB（上限 64 MiB，官方已取消壓縮後的上限；下面「方案」那條的 3／10 MB 是舊數字）。
   - 啟動 CPU 約 219 ms（本機量，上限 1 秒）。
   - 免費方案不能用：每次請求只有 10 ms CPU、50 個子請求。
-- **第 1 階段已改：** A2（`googleServiceAccountKey`＋`serviceAccountAssertion`）、A3 前半（內部請求改看 `coldStartParent`）、A5、A6、A7（KV＋`patches/nitropack@2.13.4.patch` 讓快取的背景重算掛上 `waitUntil`；`/api/cached` 的鍵超過 300 bytes 改雜湊）、A8（拿掉共用的 IAM 請求；12 格限流留著，等待的請求還活著時跨請求解開沒問題）、B（Workers 上不叫醒業務中台、不送 webup）。平台判斷是 `server/utils/platform.ts` 的 `onWorkers`。
+- **第 1 階段已改：** A2（`googleServiceAccountKey`＋`serviceAccountAssertion`）、A3 前半（內部請求改看 `coldStartParent`）、A5、A6、A7（KV＋`patches/nitropack@2.13.4.patch` 讓快取的背景重算掛上 `waitUntil`；`/api/cached` 的鍵超過 300 bytes 改雜湊）、A8（拿掉共用的 IAM 請求；12 格限流當時以為「等待的請求還活著時跨請求解開沒問題」而留著，**錯了**，10/29 拿掉：排隊的請求自己沒有 I/O，Workers 直接當成卡住取消、回 500，位子還會漏掉。寶雅指標速覽的月營收 500 就是它，本機 workerd＋慢的假業務中台 20 個同時穩定重現 8 個 500；`scripts/check-concurrent-upstream.mjs` 在 CI 的 workers smoke 守著）、B（Workers 上不叫醒業務中台、不送 webup）。平台判斷是 `server/utils/platform.ts` 的 `onWorkers`。
 - **DEV 已上 Workers（手動部署）：** https://oingg-web-nuxt-dev.oingg-web-nuxt.workers.dev（Worker `oingg-web-nuxt-dev`，Cloudflare 量的啟動時間 70～115 ms）。KV `oingg-web-nuxt-dev-cache`（第一次部署時 wrangler 自動建）、D1 `oingg-web-nuxt-dev-content`。GCP 服務帳戶 `web-nuxt-workers@oingg-web-dev`，只有業務中台 DEV 的 `run.invoker`；金鑰只在 Worker 機密 `NUXT_GOOGLE_SERVICE_ACCOUNT_KEY`。Nitro 金鑰複製一份到機密 `NUXT_BUSINESS_NITRO_KEY`（使用者選複製：去 Secret Manager 讀會在冷啟動多一段延遲，跟換平台的目的相反；業務中台換金鑰時這邊要跟著換）。瀏覽器開 14 頁沒有錯誤。
   - 建置與部署：`NITRO_PRESET=cloudflare_module NUXT_SITE_ENV=preview pnpm build`，再 `pnpm dlx wrangler@4 deploy`。Nitro 對這個 preset 預設用 `nodejs_compat`＋`no_nodejs_compat_v2`（它的 polyfill 配 v1），照它的。
   - Nitro 讀環境變數會把 JSON 字串解析成物件，服務帳戶金鑰兩種都要收。
@@ -110,7 +110,7 @@
 | A5 | **回應可能被壓縮兩次：** 我們自己壓 brotli／gzip，Workers 又會依 `Content-Encoding` 再處理，還會吃 CPU | `server/plugins/compress-responses.ts` | 在 Workers 上停用，交給邊緣壓縮；`compressPublicAssets` 也可以拿掉 |
 | A6 | **使用者 IP 會取錯：** 取 X-Forwarded-For 從右邊數第 3 段，這是照 App Hosting 的兩層代理量出來的；換平台後會是空的或可被偽造，業務中台的限流會把所有匿名訪客算在同一桶 | `server/api/core/[...path].ts` | 改讀 `cf-connecting-ip` |
 | A7 | **伺服器快取只存在記憶體：** 46 支 `defineCachedFunction`，沒有掛任何 storage。Workers 的 isolate 很短命，快取幾乎命中不了；背景更新沒用 `waitUntil`，回應送出後可能被中斷 | `server/utils/hub-data.ts`（19）、`stock-data.ts`（7）、`screener-data.ts`（8）、`macro-data.ts`（4）、`company-logo.ts`、`server/api/cached/[...path].get.ts`（3）等 | `nitro.storage.cache` 掛 Cloudflare KV；包一層讓背景更新呼叫 `event.waitUntil`（用 `useEvent()`，asyncContext 已經開了）。KV 的 key 上限 512 bytes：`/api/cached` 的 `keyOf` 直接用使用者送來的 query 組 key，要先正規化並限制長度。`system-health` 的 15 秒 TTL 在 KV 會被拉長到 60 秒，要另外處理 |
-| A8 | **跨請求共用的 promise：** Workers 不允許一個請求去解開另一個請求的 promise，可能卡住 | `business.ts` 的 12 格限流（`active`／`waiters`）、IAM 憑證的共用請求 `identityRequest` | 限流改成每個請求自己算；Workers 每個請求本來就最多 6 條同時連線。憑證只快取「值」，不快取 promise |
+| A8 | **跨請求共用的 promise：** Workers 不允許一個請求去解開另一個請求的 promise，可能卡住 | `business.ts` 的 12 格限流（`active`／`waiters`）、IAM 憑證的共用請求 `identityRequest` | 限流拿掉（10/29；Workers 每個請求本來就最多 6 條同時連線）。憑證只快取「值」，不快取 promise。nitropack 快取的同時讀取（`pending[key]`）實測沒事：同一個鍵同時 3 個都 200 |
 | A9 | **Firebase Auth 的 Node 版被打包進伺服器端**（`@firebase` 1.4 MB＋undici 1.2 MB） | `app/pages/profile.vue`、`app/pages/auth/line.vue` 在頂層 import `firebase/auth` | 照 2026-10-26 `UserEmailVerificationGate.vue` 的做法，改成用到時才 import |
 
 ### B. 換平台後語意會變、要調整

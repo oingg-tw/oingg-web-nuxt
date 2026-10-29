@@ -144,6 +144,19 @@ jobs:
           cat wrangler.log
           echo "::error::wrangler dev 120 秒內沒有回 200"
           exit 1
+      # 同時打很多支上游都要 200（2026-10-29，寶雅月營收的 500）：Workers 上請求不能互等，排隊等別的請求的會被當成卡住取消。本機
+      # workerd 只有一個 isolate，配慢的假業務中台才穩定重現；IAM 與叫醒數據中台清空，假業務中台不驗身分。說明在腳本開頭
+      - name: 同時讀取（Workers 上請求不互等）
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          node scripts/check-concurrent-upstream.mjs serve &
+          pnpm dlx wrangler@4 dev --ip 127.0.0.1 --port 8788 --var NUXT_BUSINESS_BASE:http://127.0.0.1:8799 --var NUXT_BUSINESS_AUDIENCE: --var NUXT_ANALYSIS_BASE: --show-interactive-dev-session=false > wrangler-concurrent.log 2>&1 &
+          for i in $(seq 1 120); do
+            curl -sf -o /dev/null http://127.0.0.1:8788/accessibility && break
+            sleep 1
+          done
+          CHECK_BASE=http://127.0.0.1:8788 node scripts/check-concurrent-upstream.mjs || { cat wrangler-concurrent.log; exit 1; }
 
   dependabot-merge:
     needs: [checks, workers]
