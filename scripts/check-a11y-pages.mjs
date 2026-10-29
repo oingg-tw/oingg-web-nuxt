@@ -23,7 +23,7 @@ const NAME_RULES = new Set(['button-name', 'link-name', 'label', 'role-img-alt',
 
 // 公開路由。/blog/<slug> 從列表頁的 SSR 連結取第一個。
 // 特別股與 ETF 的個別頁寫死一檔（2026-10-15）：篩選頁的結果在瀏覽器端才讀，伺服器輸出裡沒有連結可以找
-const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/screener/preferred', '/screener/etf',
+const STATIC_ROUTES = ['/', '/calendar', '/watchlist', '/holdings', '/appearance', '/sitemap', '/accessibility', '/changelog', '/screener/preferred', '/screener/etf',
   '/guru-indicators', '/blog', '/industries', '/screener/common?template=value', '/preferred/2881a', '/etf/0050', '/etf/0050/distribution-composition', '/etf/0050/expenses', '/etf/0050/liquidity', '/etf/0050/size', '/etf/0050/premium-discount', '/etf/0050/holders',
   '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms']
 // 不存在時記為 skip 而不是 fail 的路由（目前沒有）

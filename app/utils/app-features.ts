@@ -72,10 +72,11 @@ const HOME_LINK: SiteMapLink = { label: '首頁', to: '/', description: '搜尋�
 const APPEARANCE_LINK: SiteMapLink = { label: '外觀設定', to: '/appearance', description: '字型大小、深淺色、版面寬度、主題色與漲跌顏色' }
 const PROFILE_LINK: SiteMapLink = { label: '個人資料設定', to: '/profile', description: '帳號與登入方式', requiresLogin: true }
 const ACCESSIBILITY_LINK: SiteMapLink = { label: '無障礙聲明', to: '/accessibility', description: '本站的無障礙規範、檢測方式與回饋管道' }
+const CHANGELOG_LINK: SiteMapLink = { label: '更新紀錄', to: '/changelog', description: '本站最近改了什麼，以及進行中的維護公告' }
 
 // 本站相關：頁尾只放這一組（2026-10-22，使用者先要「網站地圖 請在footer也來一份」，看過之後改成「footer 只放 本站相關」「學習 塞進去
 // 網站導覽」）。其餘分組只在網站導覽頁
-export const ABOUT_SITE_LINKS: SiteMapLink[] = [HOME_LINK, SITEMAP, APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK]
+export const ABOUT_SITE_LINKS: SiteMapLink[] = [HOME_LINK, SITEMAP, APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK, CHANGELOG_LINK]
 
 // 網站地圖（網站導覽頁 /sitemap）：用「我想…」分組（2026-10-22，使用者在方案頁選了 B；網站導覽「主要服務 a11y 與新手」——新手不用先知道
 //「篩選」「月覽」是什麼），每一頁一句說明、要登入的標出來。網站導覽從每一頁的頁尾連過去，所以每個區塊的入口都要列在這裡，不然那一區
@@ -114,5 +115,5 @@ export const SITE_MAP: SiteMapGroup[] = [
       { ...HOLDINGS, description: '記下買賣，看持股、配息、報酬與風險', requiresLogin: true }
     ]
   },
-  { label: '我想調整網站或了解本站', links: [APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK, HOME_LINK] }
+  { label: '我想調整網站或了解本站', links: [APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK, CHANGELOG_LINK, HOME_LINK] }
 ]

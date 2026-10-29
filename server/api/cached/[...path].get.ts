@@ -49,7 +49,10 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily'; query?: 
   { pattern: /^screener\/templates$/, ttl: 'hourly' },
   { pattern: /^screener\/column-preset-templates$/, ttl: 'hourly' },
   { pattern: /^stocks\/preferred-stocks$/, ttl: 'hourly' },
-  { pattern: /^securities$/, ttl: 'hourly', query: { limit: COUNT, offset: COUNT } }
+  { pattern: /^securities$/, ttl: 'hourly', query: { limit: COUNT, offset: COUNT } },
+  // 更新紀錄（2026-10-29，/changelog）：管理站寫、業務中台存。
+  // shortcut: swr 下最多慢 15 分鐘，閒置很久後第一位訪客看到舊版；維護公告要上橫幅時改短或不用 swr
+  { pattern: /^release-notes$/, ttl: 'quote' }
 ]
 
 const TTL_SECONDS = { quote: 15 * 60, hourly: HOUR, daily: 24 * HOUR }
