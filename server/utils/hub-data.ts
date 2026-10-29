@@ -498,7 +498,8 @@ const ETF_PAGE_SIZE = 200
 const ETF_FUND_TYPE_ORDER = ['股票型', '債券型', '槓桿型／反向型', '平衡型', '不動產證券化／其他']
 
 async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPageData> {
-  type EtfResult = { symbol: string; shortName: string; values: Record<string, string | number | boolean | null> }
+  // Rust 換版並存（contract-delta C4）：簡稱 Go 叫 shortName、Rust 叫 companyName
+  type EtfResult = { symbol: string; shortName?: string; companyName?: string; values: Record<string, string | number | boolean | null> }
   const results: EtfResult[] = []
   for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
     const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
@@ -512,7 +513,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     .map(result => ({ result, value: parseDecimal(result.values[definition.field] as string | number | null) }))
     .filter((entry): entry is { result: EtfResult; value: number } => entry.value !== null)
   const toRows = (entries: typeof ranked): RankingRow[] => entries.slice(0, RANKING_LIMIT)
-    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.shortName, value: entry.value, knowledgeDate: null }))
+    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName ?? entry.result.shortName ?? entry.result.symbol, value: entry.value, knowledgeDate: null }))
   const rows = toRows(ranked)
   const typeOrder = (name: string) => (ETF_FUND_TYPE_ORDER.includes(name) ? ETF_FUND_TYPE_ORDER.indexOf(name) : ETF_FUND_TYPE_ORDER.length)
   const groups = [...new Set(ranked.map(entry => entry.result.values.fundType).filter((name): name is string => typeof name === 'string'))]
@@ -716,7 +717,8 @@ const EX_DIVIDEND_KINDS: Record<string, ExDividendKind> = { COMMON: 'common', PR
 // 櫃買中心的預告）。依除權息日、代號排序
 export const getExDividendMonth = defineCachedFunction(
   async (month: string): Promise<ExDividendRow[]> => {
-    const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { month } })
+    // Rust 換版並存（contract-delta C5）：?month= → ?yearMonth=；兩個都送，Go 與 Rust 都忽略不認得的那個
+    const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { month, yearMonth: month } })
     // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日，withExType 換回來
     return response.entries
       .map(withExType)
@@ -739,9 +741,11 @@ export const getExDividendMonth = defineCachedFunction(
 
 // 每個月有幾檔除權息（業務中台 00329e4 轉發 analysis-ts GET /stocks/ex-dividend-calendar/monthly-counts，跟行事曆同一批列、同一個分類；
 // 兩端都含，最多 24 個月）。unclassified ＝ securityType 是 null
+// Rust 換版並存（contract-delta C5）：months[].month → months[].yearMonth，換回 month
 const getExDividendMonthlyCounts = defineCachedFunction(
   async (from: string, to: string) =>
-    (await businessFetch<{ months: { month: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } })).months,
+    (await businessFetch<{ months: { month?: string; yearMonth?: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } }))
+      .months.map(entry => ({ ...entry, month: entry.yearMonth ?? entry.month ?? '' })),
   { name: 'hub-ex-dividend-monthly-counts', getKey: (from: string, to: string) => `${from}:${to}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 

@@ -10,6 +10,8 @@ export interface PublicHolding {
   symbol: string
   weight?: string | null
   pnlPct?: string | null
+  // Rust 換版並存（contract-delta C6）：百分比（5＝5%），pnlPct 是 0～1；shareReturnRatio 換回 0～1
+  returnPct?: number | string | null
   quantity?: number
   averageCost?: string | null
   costUnknownQuantity?: number
@@ -44,7 +46,7 @@ const rows = computed(() => props.holdings.map((holding) => {
     kind: entry?.kind ?? 'common',
     link: entry ? routeFor(entry) : securityPath(holding.symbol),
     weight: holding.weight == null ? null : Number(holding.weight),
-    pnlPct: holding.pnlPct == null ? null : Number(holding.pnlPct),
+    pnlPct: shareReturnRatio(holding),
     quantity,
     figures: quantity === null
       ? null

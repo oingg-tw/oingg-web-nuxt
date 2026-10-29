@@ -9,7 +9,9 @@ export type EtfValue = string | number | boolean | null
 export interface EtfDetail {
   symbol: string
   fundName: string
-  shortName: string
+  // Rust 換版並存（contract-delta C4）：簡稱 Go 叫 shortName、Rust 叫 companyName（發行投信一律是 issuerName）
+  shortName?: string
+  companyName?: string
   issuerName: string
   category: string
   trackingIndex: string | null

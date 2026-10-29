@@ -29,7 +29,9 @@ type EtfValue = string | number | boolean | null
 interface EtfScreenerRow {
   symbol: string
   fundName: string
-  shortName: string
+  // Rust 換版並存（contract-delta C4）：簡稱 Go 叫 shortName、Rust 叫 companyName（發行投信一律是 issuerName）
+  shortName?: string
+  companyName?: string
   issuerName: string
   category: string
   values: Record<string, EtfValue>
@@ -185,7 +187,7 @@ export function useEtfSource(): UniverseSource {
   function toRow(row: EtfScreenerRow): ScreenerResultRow {
     return {
       symbol: row.symbol,
-      name: row.shortName,
+      name: row.companyName ?? row.shortName ?? row.symbol,
       values: Object.fromEntries(Object.entries(row.values).map(([field, value]) => [
         snapshotFieldId(field),
         { value: value === null ? null : String(value), knowledgeDate: '', nullReason: null }

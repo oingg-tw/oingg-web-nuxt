@@ -107,7 +107,8 @@ export function useDividendCalendar(month: Ref<string>) {
     }
     pending.value = true
     try {
-      const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { month: key } })
+      // Rust 換版並存（contract-delta C5）：?month= → ?yearMonth=；兩個都送，Go 與 Rust 都忽略不認得的那個
+      const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { month: key, yearMonth: key } })
       // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
       const entries = result.entries.map(withExType)
       cache.value[key] = entries
