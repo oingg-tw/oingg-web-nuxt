@@ -16,3 +16,6 @@ export const SCREENER_ZONE_ITEMS: ScreenerZoneItem[] = [
   { key: 'preferred', subject: '特別股', label: '特別股篩選', to: SCREENER_PATHS.preferred },
   { key: 'etf', subject: 'ETF', label: 'ETF 篩選', to: SCREENER_PATHS.etf }
 ]
+
+// 側欄：三組篩選，再加 REITs 總覽（2026-10-29 使用者：「把"篩選" 改成 選擇 或是總覽」「至少要可以排序」）——不是篩選頁，沒有 universe
+export const SCREENER_NAV_ITEMS = [...SCREENER_ZONE_ITEMS, { label: 'REITs 總覽', to: SCREENER_PATHS.reits }]

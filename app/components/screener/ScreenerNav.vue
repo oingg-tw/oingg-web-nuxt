@@ -6,5 +6,5 @@ defineProps<{ activeTo?: string }>()
 </script>
 
 <template>
-  <SectionNav label="股票篩選" :items="SCREENER_ZONE_ITEMS" :active-to="activeTo" />
+  <SectionNav label="股票篩選" :items="SCREENER_NAV_ITEMS" :active-to="activeTo" />
 </template>

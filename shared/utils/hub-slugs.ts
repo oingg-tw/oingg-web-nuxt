@@ -233,7 +233,9 @@ export function rankPath(slug: string): string {
 export const SCREENER_PATHS = {
   common: '/screener/common',
   preferred: '/screener/preferred',
-  etf: '/screener/etf'
+  etf: '/screener/etf',
+  // 不是篩選（掛牌的只有約 6 檔，條件篩不掉什麼），是可排序的總覽表；放在篩選區的側欄（2026-10-29 使用者）
+  reits: '/screener/reits'
 } as const
 
 // 普通股篩選的進入點：?template={範本 slug}、?sector={類股代碼}（只有普通股有）
@@ -245,7 +247,7 @@ export function commonScreenerPath(query: { template?: string, sector?: string }
 
 // 除權息月覽的「到篩選器打開」（2026-10-22）：篩選頁的網址就是篩選本身（?f=…，格式在 app/utils/screener-url.ts），帶一個
 //「除權息月份：包含 N 月」的條件。普通股的欄位有期別（.EOD），特別股、ETF 的沒有
-export function exDividendMonthScreenerPath(universe: keyof typeof SCREENER_PATHS, month: number): string {
+export function exDividendMonthScreenerPath(universe: Exclude<keyof typeof SCREENER_PATHS, 'reits'>, month: number): string {
   return `${SCREENER_PATHS[universe]}?f=${universe === 'common' ? 'exDividendMonths.EOD' : 'exDividendMonths'}:${month}`
 }
 

@@ -97,6 +97,7 @@ export const SITE_MAP: SiteMapGroup[] = [
       { label: '普通股篩選', to: SCREENER_PATHS.common, description: '用 ROE、負債比率、殖利率等條件，篩出符合的上市櫃公司' },
       { label: '特別股篩選', to: SCREENER_PATHS.preferred, description: '比較特別股的股息率、最差殖利率與契約條件' },
       { label: 'ETF 篩選', to: SCREENER_PATHS.etf, description: '依規模、費用率、配息頻率比較 ETF' },
+      { label: 'REITs 總覽', to: SCREENER_PATHS.reits, description: '比較 REITs 的淨值折溢價與近 12 個月分配率' },
       { ...RANK, description: '單一指標由高到低的全市場排行' },
       { ...INDUSTRIES, description: '證交所各類股的家數、殖利率與公司名單' }
     ]
