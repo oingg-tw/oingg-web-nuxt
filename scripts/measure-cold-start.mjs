@@ -92,6 +92,6 @@ for (const line of timings) console.log(`server-timing ${line}`)
 const report = beacons.find(beacon => beacon.kind === 'document') ?? beacons[0]
 const ms = value => (typeof value === 'number' ? `${(value / 1000).toFixed(2)}` : '—')
 console.log('\n| 台北 | 入口（rtt） | 業務中台最久那支 cold | waitall | Worker 自己 | 送出請求到第一個位元組 | webColdOffsetMs | 叫醒：送出／換 token／總長 |')
-console.log(`| ${taipei(startedAt.toISOString()).slice(6, 11)} | ${report?.edgeColo ?? '—'}（${report?.clientTcpRttMs ?? '—'}） | ${ms(Math.max(...beacons.map(beacon => beacon.webColdWaitMs ?? 0)) || undefined)} | ${ms(report?.webBusinessWaitMs)} | ${ms(report?.webServerMs)} | ${ms(nav.ttfb)} | ${report?.webColdOffsetMs ?? '—'} ms | ${report?.webWakeOffsetMs ?? '—'}／${report?.webWakeTokenMs ?? '—'}／${report?.webWakeMs ?? '—'} ms |`)
+console.log(`| ${taipei(startedAt.toISOString()).slice(6, 11)} | ${report?.edgeColo ?? '—'}（${report?.clientTcpRttMs ?? '—'}） | ${ms(Math.max(...beacons.map(beacon => beacon.webColdWaitMs ?? 0)) || undefined)} | ${ms(report?.webBusinessWaitMs)} | ${ms(report ? report.webServerMs - report.webBusinessWaitMs : undefined)} | ${ms(nav.ttfb)} | ${report?.webColdOffsetMs ?? '—'} ms | ${report?.webWakeOffsetMs ?? '—'}／${report?.webWakeTokenMs ?? '—'}／${report?.webWakeMs ?? '—'} ms |`)
 if (!beacons.length) console.log('（沒有冷啟動回報：這一頁沒有叫醒任何後端，可能 KV 命中或後端是熱的）')
 console.log('\n記進 docs/cloudflare-migration-plan.md 的冷啟動一節，再通知管理站恢復輪詢。')
