@@ -3,7 +3,8 @@ import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue
 
 // REITs 總覽（2026-10-29，使用者：「screener 那邊要新增REITS篩選」→「把"篩選" 改成 選擇 或是總覽」「至少要可以排序」）。掛牌的只有
 // 約 6 檔，條件篩不掉什麼，所以不是第四組篩選（沒有條件、欄位組合、我的篩選），是一張可排序的總覽表，放在篩選區的側欄。
-// 資料：數據中台 GET /reits（mops 的 REITs 表＋證交所收盤，詞彙表二之五之一），業務中台原樣轉發，這裡經 /api/cached 一小時快取。
+// 資料：數據中台 GET /reits（mops 的 REITs 表＋證交所收盤，詞彙表二之五之一），業務中台 Rust 版原樣轉發（外層 entries，同它其他清單端點），
+// 這裡經 /api/cached 一小時快取。
 interface Reit {
   symbol: string
   companyName: string
@@ -27,10 +28,10 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}${SCREENER_PATHS.reits}` }] })
 
-const { data, error } = await useFetch<{ items: Reit[] }>('/api/cached/reits', { key: 'reits' })
+const { data, error } = await useFetch<{ entries: Reit[] }>('/api/cached/reits', { key: 'reits' })
 // 讀不到回 503（照其他總覽頁）：搜尋引擎要拿到暫時錯誤，不是一頁空白的 200
 if (error.value) throw createError({ statusCode: 503, statusMessage: 'REITs 資料暫時無法取得', fatal: true })
-const rows = computed(() => data.value?.items ?? [])
+const rows = computed(() => data.value?.entries ?? [])
 
 // 各檔的日期通常同一天；不同天時寫成區間，不挑其中一天冒充全部
 function dateSpan(key: 'tradeDate' | 'navDate'): string {
