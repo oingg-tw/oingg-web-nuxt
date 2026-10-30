@@ -106,15 +106,14 @@ export const getEquityRiskPremium = defineCachedFunction(
 export const getMarketEvents = defineCachedFunction(
   async (): Promise<MarketEventsPageData> => {
     const [summary, daily] = await Promise.all([
-      // Go 換版並存（contract-delta A15）：月份 period → yearMonth
-      businessFetch<{ entries: { period?: string; yearMonth?: string; avgTaiex: string | number | null }[] }>('/macro/stock-market-summary'),
+      businessFetch<{ entries: { yearMonth: string; avgTaiex: string | number | null }[] }>('/macro/stock-market-summary'),
       // Daily alongside the monthly average — a different series with a different sensitivity, and
       // the page keeps them in separate lists. Fetched here rather than by the page so both halves
       // come from one cached call, same as every other page in this zone.
       businessFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=daily&limit=${TAIEX_LIMIT}`)
     ])
     const months: MarketEventMonth[] = summary.entries
-      .map(entry => ({ period: entry.yearMonth ?? entry.period ?? '', avgTaiex: Number(entry.avgTaiex) }))
+      .map(entry => ({ period: entry.yearMonth, avgTaiex: Number(entry.avgTaiex) }))
       .filter(month => month.period && Number.isFinite(month.avgTaiex))
     const days: MarketEventDay[] = daily.entries
       .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
@@ -143,9 +142,9 @@ export const getMacroPage = defineCachedFunction(
 
     const keys = page.series.map(spec => spec.key)
     // 月序列帶 `period`（YYYY-MM），是請 analysis-ts 組好的：每個用戶端各自拿 (year, month) 重組，就是每個用戶端各有一份同樣的 bug。
-    // Go 換版並存（contract-delta A15）：Go 版叫 yearMonth
+    // 業務中台叫 yearMonth，站內的序列叫 period
     const series: MacroSeriesPoint[] = source.entries.map(entry => ({
-      period: typeof entry.yearMonth === 'string' ? entry.yearMonth : typeof entry.period === 'string' ? entry.period : '',
+      period: typeof entry.yearMonth === 'string' ? entry.yearMonth : '',
       values: Object.fromEntries(keys.map(key => {
         const raw = entry[key]
         const value = typeof raw === 'string' ? Number(raw) : raw

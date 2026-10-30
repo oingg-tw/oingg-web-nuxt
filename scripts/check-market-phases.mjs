@@ -49,7 +49,7 @@ console.log('\n實際序列')
 try {
   const res = await fetch('http://localhost:4000/macro/stock-market-summary', { signal: AbortSignal.timeout(30_000) })
   const entries = (await res.json()).entries ?? []
-  const months = entries.filter(e => e.avgTaiex != null).map(e => ({ period: e.yearMonth ?? e.period, value: Number(e.avgTaiex) })) // Go 換版並存（contract-delta A15）
+  const months = entries.filter(e => e.avgTaiex != null).map(e => ({ period: e.yearMonth, value: Number(e.avgTaiex) }))
   const phases = findMarketPhases(months)
   console.log(`  ${months.length} 個月，門檻 20%，找到 ${phases.length} 段`)
   const biggest = phases.reduce((a, b) => (b.declinePct < a.declinePct ? b : a))

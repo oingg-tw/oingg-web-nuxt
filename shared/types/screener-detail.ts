@@ -9,9 +9,8 @@ export type EtfValue = string | number | boolean | null
 export interface EtfDetail {
   symbol: string
   fundName: string
-  // Rust 換版並存（contract-delta C4）：簡稱 Go 叫 shortName、Rust 叫 companyName（發行投信一律是 issuerName）
-  shortName?: string
-  companyName?: string
+  // 簡稱（發行投信是 issuerName）
+  companyName: string
   issuerName: string
   category: string
   trackingIndex: string | null
@@ -107,9 +106,10 @@ export interface EtfLiquidityMonth {
 // GET /stocks/preferred-stocks 的一列（28 檔）
 export interface PreferredStockEntry {
   symbol: string
-  name: string
+  // 特別股簡稱（例「富邦特」）
+  companyName: string
   isinCode: string | null
-  listedDate: string | null
+  listingDate: string | null
   marketType: string
   issueDate: string | null
   issuePrice: number | null

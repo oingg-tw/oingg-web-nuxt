@@ -28,7 +28,7 @@ const facts = computed<FactItem[]>(() => {
     { label: '可轉換普通股', value: preferredYesNo(stockEntry.convertible, '可以', '不可以'), note: stockEntry.convertible && stockEntry.conversionStartDate ? `${stockEntry.conversionStartDate} 起` : undefined },
     { label: '公司可收回', value: preferredYesNo(stockEntry.redeemable, '可以', '不可以') },
     { label: '發行日', value: stockEntry.issueDate ?? '－' },
-    { label: '上市日', value: stockEntry.listedDate ?? '－' },
+    { label: '上市日', value: stockEntry.listingDate ?? '－' },
     { label: '市場', value: stockEntry.marketType }
   ]
 })

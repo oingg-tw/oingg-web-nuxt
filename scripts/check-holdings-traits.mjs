@@ -18,7 +18,7 @@ const traits = (values, coverage = '0.900000') => Object.fromEntries(KEYS.map((k
   if (Array.isArray(value)) return [key, { value: value[0], coverage: value[1] }]
   return [key, { value: value ?? null, coverage: value === undefined ? '0.000000' : coverage }]
 }))
-const tagsOf = (portfolio, market = null, coverage) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio, coverage), market: market ? traits(market, '1.000000') : null })
+const tagsOf = (portfolio, market = null, coverage) => traitTags({ asOf: '2026-10-16', portfolio: traits(portfolio, coverage), benchmark: market ? traits(market, '1.000000') : null })
 
 console.log('Beta 的標籤不需要大盤')
 assert(same(tagsOf({ beta: '0.750000' }), ['低 Beta']), 'Beta 0.75：低 Beta')

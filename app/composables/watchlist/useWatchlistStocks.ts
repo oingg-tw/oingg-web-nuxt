@@ -67,7 +67,7 @@ export interface DividendEvent {
 
 function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent | null {
   return notices
-    // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
+    // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
     .map(withExType)
     .flatMap((notice): DividendEvent[] => {
       const amount = notice.distributionPerUnit ?? notice.cashDividend

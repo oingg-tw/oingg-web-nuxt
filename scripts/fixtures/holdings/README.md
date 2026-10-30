@@ -2,6 +2,8 @@
 
 Regenerated 2026-10-07 by 業務中台 (commit 9d691cd), now including the 9 extra metrics. The ledger is synthetic, held in memory and never written to any DB; no real user's data is involved. Every trade price is the stock's actual close on the trade date. Market data (closes, TAIEX, ex-dividend calendar, 1-year deposit rate) is real, taken from analysis-ts on that day. Values will differ if regenerated later.
 
+2026-10-30: the four *.performance.json files were converted to the Rust 業務中台 key names with oingg-business-rust tools/contract-delta.mjs toNewContract (C1 period → yearMonth, latestPeriod → latestYearMonth, sourcePeriod → sourceYearMonth; C2 series[].date → tradeDate). Values unchanged.
+
 Synthetic ledger:
 - 2024-06-03 BUY 2330 ×2000, 2317 ×5000, 0056 ×20000, 2882 ×10000
 - 2025-11-03 BUY 2603 ×3000, 2026-02-02 SELL 2603 ×3000 (a round trip, so tradeStats has a win and a loss)

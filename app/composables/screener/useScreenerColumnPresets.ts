@@ -115,9 +115,9 @@ export function useScreenerColumnPresets(universe: ScreenerUniverse = 'common') 
   // 公開端點（跟 GET /screener/templates 一樣不帶身分），登出也能瀏覽官方欄位組合
   async function listTemplates(): Promise<ColumnPresetTemplate[]> {
     try {
-      // Go 換版並存（contract-delta A7）：fieldKeys 改叫 fields
-      const response = await apiFetch<{ templates: (ColumnPresetTemplate & { fields?: string[] })[] }>('/screener/column-preset-templates', { baseURL: BUSINESS_CACHED_BASE })
-      return response.templates.map(({ fields, ...template }) => ({ ...template, fieldKeys: template.fieldKeys ?? fields ?? [] }))
+      // 業務中台叫 fields，站內的欄位組合叫 fieldKeys
+      const response = await apiFetch<{ templates: (Omit<ColumnPresetTemplate, 'fieldKeys'> & { fields: string[] })[] }>('/screener/column-preset-templates', { baseURL: BUSINESS_CACHED_BASE })
+      return response.templates.map(({ fields, ...template }) => ({ ...template, fieldKeys: fields }))
     } catch (error) {
       // 讀不到往上丟（2026-10-11），理由同 useScreenerTemplates 的 list()
       warn('GET /screener/column-preset-templates', error)

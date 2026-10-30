@@ -58,8 +58,8 @@ export const getSectors = defineCachedFunction(
 
 interface StocksCollectionResponse {
   count: number
-  // Go 換版並存（contract-delta A1／A3）：name → companyName；market 從 TWSE／TPEx 改成 TYPEK（sii／otc／rotc），isEmerging 拿掉
-  entries: { symbol: string; name?: string | null; companyName?: string | null; market?: string | null; isEmerging?: boolean | null; sectorCode?: string | null; sectorName?: string | null }[]
+  // market 是 TYPEK：sii 上市、otc 上櫃、rotc 興櫃
+  entries: { symbol: string; companyName: string | null; market: string | null; sectorCode?: string | null; sectorName?: string | null }[]
 }
 
 const LISTED_SYMBOL = /^\d{4}$/
@@ -85,7 +85,7 @@ export const getMarketDirectory = defineCachedFunction(
         // 自己的決定，資料在這裡備好就好。興櫃股的代號同樣是四碼（6744、6748…），所以 LISTED_SYMBOL
         // 那道正規表示式擋不掉它們——這個欄位是唯一可靠的判準。
         // name 可能是 null（業務中台 f750e92）：用代號頂上，產業頁表格與搜尋都假設它是字串
-        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.companyName ?? entry.name ?? entry.symbol, isEmerging: entry.isEmerging ?? entry.market === 'rotc' }
+        const company: DirectoryCompany = { symbol: entry.symbol, name: entry.companyName ?? entry.symbol, isEmerging: entry.market === 'rotc' }
         const code = entry.sectorCode ?? null
         if (code && SECTORS[code]) {
           const list = bySector.get(code) ?? []
@@ -121,9 +121,8 @@ interface ScreenerRunResponse {
   results: ScreenerResultRow[]
 }
 
-// Go 換版並存（contract-delta A1）：公司名稱 business-ts 叫 name、Go 版叫 companyName
-interface ScreenerResultRow { symbol: string; name?: string; companyName?: string; values: Record<string, ScreenerFieldValue | null> }
-const companyNameOf = (row: ScreenerResultRow) => row.companyName ?? row.name ?? row.symbol
+interface ScreenerResultRow { symbol: string; companyName: string | null; values: Record<string, ScreenerFieldValue | null> }
+const companyNameOf = (row: ScreenerResultRow) => row.companyName ?? row.symbol
 
 // The screener's own "sector population": a {min:null,max:null} filter keeps only rows where
 // that field exists, and debtRatio.Q is the widest one（2,066 rows market-wide on 2026-09-19 vs
@@ -296,10 +295,9 @@ export const getSectorMonthlyRevenue = defineCachedFunction(
 // 機械性下滑（conductor 景氣對策信號文件 §2.2）——領先指標同樣含股價指數，景氣時鐘頁的注意事項有寫。
 export const getBusinessCycleIndicators = defineCachedFunction(
   async (): Promise<BusinessCycleIndicatorPoint[]> => {
-    // Go 換版並存（contract-delta A15）：月份 period → yearMonth（同樣是 YYYY-MM）
-    const response = await businessFetch<{ entries: { period?: string; yearMonth?: string; leadingIndexDetrended: number | string | null; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
+    const response = await businessFetch<{ entries: { yearMonth: string; leadingIndexDetrended: number | string | null; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
     const num = (value: number | string | null) => (value === null ? null : Number.isFinite(Number(value)) ? Number(value) : null)
-    return response.entries.map(entry => ({ period: entry.yearMonth ?? entry.period ?? '', leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
+    return response.entries.map(entry => ({ period: entry.yearMonth, leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
   },
   { name: 'hub-business-cycle-indicators', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
@@ -498,8 +496,7 @@ const ETF_PAGE_SIZE = 200
 const ETF_FUND_TYPE_ORDER = ['股票型', '債券型', '槓桿型／反向型', '平衡型', '不動產證券化／其他']
 
 async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPageData> {
-  // Rust 換版並存（contract-delta C4）：簡稱 Go 叫 shortName、Rust 叫 companyName
-  type EtfResult = { symbol: string; shortName?: string; companyName?: string; values: Record<string, string | number | boolean | null> }
+  type EtfResult = { symbol: string; companyName: string; values: Record<string, string | number | boolean | null> }
   const results: EtfResult[] = []
   for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
     const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
@@ -513,7 +510,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     .map(result => ({ result, value: parseDecimal(result.values[definition.field] as string | number | null) }))
     .filter((entry): entry is { result: EtfResult; value: number } => entry.value !== null)
   const toRows = (entries: typeof ranked): RankingRow[] => entries.slice(0, RANKING_LIMIT)
-    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName ?? entry.result.shortName ?? entry.result.symbol, value: entry.value, knowledgeDate: null }))
+    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName, value: entry.value, knowledgeDate: null }))
   const rows = toRows(ranked)
   const typeOrder = (name: string) => (ETF_FUND_TYPE_ORDER.includes(name) ? ETF_FUND_TYPE_ORDER.indexOf(name) : ETF_FUND_TYPE_ORDER.length)
   const groups = [...new Set(ranked.map(entry => entry.result.values.fundType).filter((name): name is string => typeof name === 'string'))]
@@ -591,9 +588,9 @@ export const getRanking = defineCachedFunction(
 )
 
 // GET /metrics — the whole catalog, passed through untyped: the app types it as MetricCatalog
-// (useFilterSchema.ts) and the server never reads into it. Go 換版並存（contract-delta A6）：Go 版的鍵在這裡換回舊的
+// (useFilterSchema.ts) and the server never reads into it. 業務中台型錄的鍵在這裡換成篩選器用的那組（business-shapes.ts）
 export const getMetricsCatalog = defineCachedFunction(
-  async () => metricsCatalogFromGo(await businessFetch<{ categories: unknown[] }>('/metrics')),
+  async () => metricsCatalogFromBusiness(await businessFetch<{ categories: unknown[] }>('/metrics')),
   { name: 'hub-metrics-catalog', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -717,9 +714,8 @@ const EX_DIVIDEND_KINDS: Record<string, ExDividendKind> = { COMMON: 'common', PR
 // 櫃買中心的預告）。依除權息日、代號排序
 export const getExDividendMonth = defineCachedFunction(
   async (month: string): Promise<ExDividendRow[]> => {
-    // Rust 換版並存（contract-delta C5）：?month= → ?yearMonth=；兩個都送，Go 與 Rust 都忽略不認得的那個
-    const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { month, yearMonth: month } })
-    // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日，withExType 換回來
+    const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: month } })
+    // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
     return response.entries
       .map(withExType)
       .map(entry => ({
@@ -741,11 +737,9 @@ export const getExDividendMonth = defineCachedFunction(
 
 // 每個月有幾檔除權息（業務中台 00329e4 轉發 analysis-ts GET /stocks/ex-dividend-calendar/monthly-counts，跟行事曆同一批列、同一個分類；
 // 兩端都含，最多 24 個月）。unclassified ＝ securityType 是 null
-// Rust 換版並存（contract-delta C5）：months[].month → months[].yearMonth，換回 month
 const getExDividendMonthlyCounts = defineCachedFunction(
   async (from: string, to: string) =>
-    (await businessFetch<{ months: { month?: string; yearMonth?: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } }))
-      .months.map(entry => ({ ...entry, month: entry.yearMonth ?? entry.month ?? '' })),
+    (await businessFetch<{ months: { yearMonth: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } })).months,
   { name: 'hub-ex-dividend-monthly-counts', getKey: (from: string, to: string) => `${from}:${to}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
@@ -753,7 +747,7 @@ const getExDividendMonthlyCounts = defineCachedFunction(
 // 含已公告、還沒除息的。一次讀去年 1 月到今年 12 月
 export async function getExDividendMonthCells(current: string): Promise<ExDividendMonthCell[]> {
   const year = Number(current.slice(0, 4))
-  const byMonth = new Map((await getExDividendMonthlyCounts(`${year - 1}-01`, `${year}-12`)).map(entry => [entry.month, entry]))
+  const byMonth = new Map((await getExDividendMonthlyCounts(`${year - 1}-01`, `${year}-12`)).map(entry => [entry.yearMonth, entry]))
   return Array.from({ length: 12 }, (_, index) => {
     const month = `${year}-${String(index + 1).padStart(2, '0')}`
     const estimated = month > current

@@ -16,8 +16,8 @@ export async function useEtf() {
   const values = computed(() => etf.value?.values ?? {})
   const num = (field: string): number | null => (typeof values.value[field] === 'number' ? values.value[field] as number : null)
   const text = (field: string): string | null => (typeof values.value[field] === 'string' ? values.value[field] as string : null)
-  // Rust 換版並存（contract-delta C4）：簡稱 shortName → companyName（ETF 的發行投信是 issuerName，不是 companyName）
-  const shortName = computed(() => etf.value?.companyName ?? etf.value?.shortName ?? code.value)
+  // 簡稱是 companyName（ETF 的發行投信是 issuerName）
+  const shortName = computed(() => etf.value?.companyName ?? code.value)
   const stock = computed<Stock | null>(() => (etf.value
     ? { code: etf.value.symbol, name: shortName.value, price: data.value?.quote?.price ?? null, change: data.value?.quote?.change ?? null, changePercent: data.value?.quote?.changePercent ?? null }
     : null))

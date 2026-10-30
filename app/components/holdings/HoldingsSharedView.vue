@@ -9,9 +9,8 @@ import type { ShareColumn } from '~/composables/share/useShares'
 export interface PublicHolding {
   symbol: string
   weight?: string | null
-  pnlPct?: string | null
-  // Rust 換版並存（contract-delta C6）：百分比（5＝5%），pnlPct 是 0～1；shareReturnRatio 換回 0～1
-  returnPct?: number | string | null
+  // 報酬率：百分比字串，4 位小數（"12.3456"＝12.3456%）；成本不明時 null
+  returnPct?: string | null
   quantity?: number
   averageCost?: string | null
   costUnknownQuantity?: number
@@ -46,7 +45,8 @@ const rows = computed(() => props.holdings.map((holding) => {
     kind: entry?.kind ?? 'common',
     link: entry ? routeFor(entry) : securityPath(holding.symbol),
     weight: holding.weight == null ? null : Number(holding.weight),
-    pnlPct: shareReturnRatio(holding),
+    // 表格的報酬率欄用 0～1 的比值（分享設定裡這一欄的 key 仍叫 pnlPct）
+    pnlPct: holding.returnPct == null ? null : Number(holding.returnPct) / 100,
     quantity,
     figures: quantity === null
       ? null

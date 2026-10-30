@@ -64,11 +64,10 @@ function toBigInt(value: unknown): bigint | null {
 // Real backend responses can't carry Date/bigint over JSON, so the raw payload arrives
 // as ISO date strings and stringified numbers — hydrate it into the typed shape here.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
-  // Go 換版並存（contract-delta A2／A3／A13）：全名 name → companyFullName、簡稱 shortName → companyName、paidInCapital →
-  // paidInCapitalNtd；isEmerging 拿掉，改看 market 的 TYPEK（rotc＝興櫃），market 是 null 時照樣三態的 null
-  const name = raw.companyFullName ?? raw.name
-  const shortName = raw.companyName ?? raw.shortName
-  const emerging = typeof raw.isEmerging === 'boolean' ? raw.isEmerging : raw.market === 'rotc' ? true : raw.market === 'sii' || raw.market === 'otc' ? false : null
+  // 全名 companyFullName、簡稱 companyName；興櫃看 market 的 TYPEK（rotc），market 是 null 時照樣三態的 null
+  const name = raw.companyFullName
+  const shortName = raw.companyName
+  const emerging = raw.market === 'rotc' ? true : raw.market === 'sii' || raw.market === 'otc' ? false : null
   return {
     isEmerging: emerging,
     // 不再用 String()：null 會變成字面上的 "null" 名稱（業務中台 f750e92）
@@ -79,7 +78,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     sectorName: (raw.sectorName as string | null) ?? null,
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
-    paidInCapital: toBigInt(raw.paidInCapitalNtd ?? raw.paidInCapital),
+    paidInCapital: toBigInt(raw.paidInCapitalNtd),
     privatePlacementShares: toBigInt(raw.privatePlacementShares),
     preferredStockShares: toBigInt(raw.numberOfPreferenceShares),
     metricDataType: (raw.metricDataType as string | null) ?? null,

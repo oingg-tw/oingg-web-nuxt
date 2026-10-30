@@ -95,7 +95,8 @@ export default defineNuxtConfig({
   nitro: {
     experimental: { asyncContext: true },
     externals: { inline: ['echarts', 'zrender', 'vue-echarts', 'lodash-es'] },
-    ...(onCloudflare && { storage: { cache: { driver: 'cloudflare-kv-binding', binding: 'CACHE' } }, cloudflare: { deployConfig: true } })
+    // base 是 KV 鍵的前綴：鍵永遠不過期，改了回應形狀而舊值讀不懂時換一個（v2：2026-10-30 Go／TS 退場、拿掉讀舊鍵的並存）
+    ...(onCloudflare && { storage: { cache: { driver: 'cloudflare-kv-binding', binding: 'CACHE', base: 'v2' } }, cloudflare: { deployConfig: true } })
   },
   // 篩選區首頁拿掉（2026-10-16 使用者：「screener 這一個畫面是多的，我希望預設就是跑到 screener/common 就好」）。站內連結都直接指向
   // /screener/common，這條只接住書籤、外部連結與搜尋引擎（301 讓它把 /screener 換成新網址）

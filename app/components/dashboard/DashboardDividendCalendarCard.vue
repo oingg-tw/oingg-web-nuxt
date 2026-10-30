@@ -3,7 +3,7 @@ import type { DividendCalendarEvent, DividendCalendarExType } from '~/composable
 
 // 配息月曆——/calendar 的核心（「總覽 dashboard 我設計錯了，應該以配息月曆為核心才對」），涵蓋全市場而不只自選股（「擴大成全市場」）。
 // 用 el-calendar（本專案「鎖定 Element Plus」的慣例），不手刻月格。
-// 資料來自 GET /stocks/ex-dividend-calendar?month=YYYY-MM（2026-09-10 接上，見 useDividendCalendar）。
+// 資料來自 GET /stocks/ex-dividend-calendar?yearMonth=YYYY-MM（2026-09-10 接上，見 useDividendCalendar）。
 const selectedMonth = ref(new Date())
 const monthKey = computed(() => {
   const year = selectedMonth.value.getFullYear()

@@ -15,7 +15,8 @@ type PreferredValue = string | number | boolean | null | number[]
 
 interface PreferredStockEntry {
   symbol: string
-  name: string
+  // 特別股簡稱（例「富邦特」）
+  companyName: string
   latestPriceDate: string | null
   [field: string]: PreferredValue
 }
@@ -94,7 +95,7 @@ function matches(entry: PreferredStockEntry, filter: FilterCriterion): boolean {
 function toRow(entry: PreferredStockEntry): ScreenerResultRow {
   return {
     symbol: entry.symbol,
-    name: entry.name,
+    name: entry.companyName,
     // 陣列寫成跟 ETF、普通股上游一樣的「6、7」，空的是 null
     values: Object.fromEntries(Object.entries(entry).map(([field, value]) => [
       snapshotFieldId(field),
@@ -111,8 +112,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   function loadEntries(): Promise<PreferredStockEntry[]> {
     if (entries.value) return Promise.resolve(entries.value)
     inFlight ??= apiFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks', { baseURL: BUSINESS_CACHED_BASE })
-      // Go 換版並存（contract-delta A12）：preferredStockFromGo 換回舊鍵
-      .then(response => (entries.value = response.entries.map(preferredStockFromGo)))
+      .then(response => (entries.value = response.entries))
       .finally(() => { inFlight = null })
     return inFlight
   }

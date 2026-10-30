@@ -236,13 +236,13 @@ export function cachedEarlierStatements(symbol: string, statementType: Statement
 
 // GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（業務中台 2026-09-27 上線）。
 // 查無權益變動表回 entries: []（200，不是 404），所以呼叫端不需要處理 404。
-// Go 換版並存（contract-delta A8）：本期淨利 netIncome 改叫 IFRS 名 profitLossAttributableToOrdinaryEquityHoldersOfParentEntityPerShare
+// 本期淨利業務中台用 IFRS 名 profitLossAttributableToOrdinaryEquityHoldersOfParentEntityPerShare，站內叫 netIncome
 export const cachedBookValueBreakdown = defineCachedFunction(
   async (symbol: string): Promise<StockBookValueBreakdownResponse> => {
     const response = await businessFetch<StockBookValueBreakdownResponse>(`/stocks/${symbol}/book-value-breakdown`)
     return {
       ...response,
-      entries: response.entries.map(entry => ({ ...entry, netIncome: entry.netIncome ?? (entry as unknown as Record<string, number>).profitLossAttributableToOrdinaryEquityHoldersOfParentEntityPerShare! }))
+      entries: response.entries.map(entry => ({ ...entry, netIncome: (entry as unknown as Record<string, number>).profitLossAttributableToOrdinaryEquityHoldersOfParentEntityPerShare! }))
     }
   },
   { name: 'stock-book-value-breakdown', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }

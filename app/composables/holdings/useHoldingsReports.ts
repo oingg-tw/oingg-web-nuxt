@@ -43,9 +43,7 @@ export function useHoldingsReports() {
   // 時間加權報酬、不含息。每日報酬是「流入算開盤前、流出算收盤後」：分母包含當天投入的錢，所以大筆加碼
   // 的隔天不會算出 −2041% 這種爆掉的單日報酬（業務中台 對原規格的更正）。series 的日期就是加權指數的交易日，
   // 跟 /market/taiex-daily-price 逐日對得上。
-  // Rust 換版並存（contract-delta C1）：月份座標 yearMonth 等換回 period 等
   const fetchPerformance = (from: string, to: string): Promise<PerformanceOutcome> => periodReport<PerformanceResult>('performance', '期間報酬率', from, to)
-    .then(outcome => (outcome.ok ? { ok: true, result: performanceFromRust(outcome.result) } : outcome))
 
   // ---- 風險指標（GET /holdings/risk，業務中台 23b7b09） ----
   //
@@ -84,14 +82,13 @@ export function useHoldingsReports() {
 
   // ---- 配息日程（GET /holdings/dividends，業務中台 97bd1e2） ----
   // 用上游的預設期間（往前 12 個月、往後 3 個月）。股數是從交易紀錄回推的。
-  // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
+  // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
   const fetchDividends = () => scopedReport<HoldingDividendsResult>('dividends').then(result => result && { ...result, dividends: result.dividends.map(withExType) })
 
   // ---- 持股特色（GET /holdings/traits，業務中台 bd8a4e9，2026-10-19） ----
-  // 組合依市值占比加權（本益比、股價淨值比調和平均），Beta 是近一年回推、跟 /holdings/risk 同一支；market 是全市場同一套算法，
-  // analysis-ts 上線前是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。
-  // Go 換版並存（contract-delta A11）：大盤 market 改叫 benchmark
-  const fetchTraits = () => scopedReport<HoldingsTraitsResult>('traits').then(result => result && traitsFromGo(result))
+  // 組合依市值占比加權（本益比、股價淨值比調和平均），Beta 是近一年回推、跟 /holdings/risk 同一支；benchmark 是全市場同一套算法，
+  // 大盤沒有資料時是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。
+  const fetchTraits = () => scopedReport<HoldingsTraitsResult>('traits')
 
   return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache }
 }

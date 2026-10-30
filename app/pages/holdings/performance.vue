@@ -131,14 +131,15 @@ const annualizedText = computed(() => {
   return `年化：時間加權 ${holdingsMetricText(result.annualized.twr, 'signedPct', '－', 2)}、資金加權 ${holdingsMetricText(result.annualized.mwr, 'signedPct', '－', 2)}。`
 })
 
-const periodRow = (row: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }) => ({
-  name: row.period,
+// 逐年的座標叫 period（年份）、逐月的叫 yearMonth（業務中台詞彙表）
+const periodRow = (name: string, row: { portfolio: string | null; benchmark: string | null; tradingDays: number }) => ({
+  name,
   value: holdingsMetricText(row.portfolio, 'signedPct', '－', 2),
   market: holdingsMetricText(row.benchmark, 'signedPct', '－', 2),
   meaning: `${row.tradingDays} 天`
 })
-const yearlyRows = computed(() => (report.value?.periodReturns.yearly ?? []).map(periodRow))
-const monthlyRows = computed(() => (report.value?.periodReturns.monthly ?? []).map(periodRow))
+const yearlyRows = computed(() => (report.value?.periodReturns.yearly ?? []).map(row => periodRow(row.period, row)))
+const monthlyRows = computed(() => (report.value?.periodReturns.monthly ?? []).map(row => periodRow(row.yearMonth, row)))
 const yearCountHint = useLayoutHint('holdings-performance-years', 2)
 watch(yearlyRows, (rows) => {
   if (report.value) yearCountHint.value = rows.length

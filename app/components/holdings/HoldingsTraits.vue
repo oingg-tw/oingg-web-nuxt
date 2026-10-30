@@ -19,7 +19,7 @@ const props = defineProps<{
 const loading = computed(() => !props.traits)
 const tags = computed(() => (props.traits ? traitTags(props.traits) : []))
 // 讀的時候照「有大盤」畫（2026-10-19 起都有）
-const hasMarket = computed(() => !props.traits || !!props.traits.market)
+const hasMarket = computed(() => !props.traits || !!props.traits.benchmark)
 
 // 九宮格（使用者：「要做 而且要九宮格」）：這組持股一張、大盤一張，深淺分三階（主色 light-9／8／7），比位置就好。排法試過三種：
 // 並排在表格左邊（「怪尷尬的」）、只留一張（「畫面不平衡」），使用者最後選上下兩層——兩張並排、各占一半寬、在自己那一半置中，
@@ -34,19 +34,19 @@ const boxRows = (values: Traits) => STYLE_BOX_ROWS.map(row => ({
 const emptyBoxRows = () => STYLE_BOX_ROWS.map(row => ({ label: row.label, cells: STYLE_BOX_COLUMNS.map(column => ({ key: column.key, text: '', level: 0 })) }))
 const boxes = computed(() => {
   if (!props.traits) return [{ caption: '這組持股', rows: emptyBoxRows() }, { caption: '大盤', rows: emptyBoxRows() }]
-  const { portfolio, market } = props.traits
+  const { portfolio, benchmark: market } = props.traits
   if (!hasBox(portfolio)) return []
   return [{ caption: '這組持股', rows: boxRows(portfolio) }, ...(market && hasBox(market) ? [{ caption: '大盤', rows: boxRows(market) }] : [])]
 })
-const boxEmpty = computed(() => !!props.traits && !boxes.value.length && hasBox(props.traits.market))
+const boxEmpty = computed(() => !!props.traits && !boxes.value.length && hasBox(props.traits.benchmark))
 
 // 指標表：組合與大盤都沒有值的那一列不畫（營收年增率波動在上游有資料之前不出現）；讀的時候每一列都畫、數字留空
 const rows = computed(() => {
   const traits = props.traits
   if (!traits) return TRAIT_ROWS.map(row => ({ ...row, value: '', market: '' }))
   return TRAIT_ROWS
-    .filter(row => traits.portfolio[row.key]?.value != null || traits.market?.[row.key]?.value != null)
-    .map(row => ({ ...row, value: traitText(traits.portfolio[row.key]?.value, row.unit), market: traitText(traits.market?.[row.key]?.value, row.unit) }))
+    .filter(row => traits.portfolio[row.key]?.value != null || traits.benchmark?.[row.key]?.value != null)
+    .map(row => ({ ...row, value: traitText(traits.portfolio[row.key]?.value, row.unit), market: traitText(traits.benchmark?.[row.key]?.value, row.unit) }))
 })
 
 // 指標的意思與計算方式（使用者：「打開怎麼看都像散亂的文字，這邊也請設計下」）：照頁面上的順序分四組——標籤、九宮格、指標、大盤，

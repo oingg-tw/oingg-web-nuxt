@@ -13,8 +13,7 @@ interface SecuritiesResponse {
   count: number
   limit: number
   offset: number
-  // Go 換版並存（contract-delta A1）：business-ts 叫 name、Go 版叫 companyName
-  entries: { symbol: string; name?: string | null; companyName?: string | null; type: 'COMMON' | 'PREFERRED' | 'ETF' }[]
+  entries: { symbol: string; companyName: string | null; type: 'COMMON' | 'PREFERRED' | 'ETF' }[]
 }
 
 const KINDS: Record<string, CompanyIndexEntry['kind']> = { COMMON: 'common', PREFERRED: 'preferred', ETF: 'etf' }
@@ -42,7 +41,7 @@ export function useCompanyIndex() {
         const kind = KINDS[entry.type]
         if (!kind) continue
         // name 型別上可能是 null（本機 0 筆）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
-        entries.push({ code: entry.symbol, name: entry.companyName ?? entry.name ?? entry.symbol, kind })
+        entries.push({ code: entry.symbol, name: entry.companyName ?? entry.symbol, kind })
       }
       offset += response.entries.length
     }
@@ -87,9 +86,8 @@ export function useCompanyLookup(codes: () => string[]) {
     for (const code of list) {
       if (known.has(code) || code in profileNames.value) continue
       profileNames.value[code] = null
-      // Go 換版並存（contract-delta A2）：簡稱 business-ts 叫 shortName、Go 版叫 companyName
-      apiFetch<{ shortName?: string | null; companyName?: string | null }>(`/stocks/${code}/profile`, { baseURL: BUSINESS_CACHED_BASE })
-        .then((profile) => { profileNames.value[code] = profile.companyName ?? profile.shortName ?? null })
+      apiFetch<{ companyName: string | null }>(`/stocks/${code}/profile`, { baseURL: BUSINESS_CACHED_BASE })
+        .then((profile) => { profileNames.value[code] = profile.companyName })
         .catch(() => {})
     }
   }, { immediate: true })

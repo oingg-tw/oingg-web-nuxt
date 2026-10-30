@@ -26,7 +26,8 @@ export type TraitKey = 'peRatio' | 'pbRatio' | 'dividendYield' | 'roe' | 'revenu
 // coverage ＝ 參與計算的持股占的權重（0～1）。全是 ETF 時 top3HoldingsPct 是真的 "0"，不是沒有資料
 export interface TraitValue { value: string | null; coverage: string | null }
 export type Traits = Record<TraitKey, TraitValue>
-export interface HoldingsTraitsResult { asOf: string | null; portfolio: Traits; market: Traits | null }
+// benchmark：大盤（業務中台詞彙表）
+export interface HoldingsTraitsResult { asOf: string | null; portfolio: Traits; benchmark: Traits | null }
 
 // 名稱不帶算法（「整體」「加權」寫在意思裡，手機上名稱才不換行）；「近一年」「ETF 除外」改變了意思，留在名稱上
 export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; meaning: string }[] = [
@@ -82,7 +83,7 @@ export function traitTags(result: HoldingsTraitsResult): string[] {
   return TAG_RULES.flatMap((rule) => {
     const own = read(result.portfolio, rule.keys)
     if (own.value === null || own.coverage === null || own.coverage < MIN_COVERAGE) return []
-    const market = read(result.market, rule.keys).value
+    const market = read(result.benchmark, rule.keys).value
     if (rule.needsMarket && market === null) return []
     return rule.test(own.value, market ?? 0) ? [rule.label] : []
   })

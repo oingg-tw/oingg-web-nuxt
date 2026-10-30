@@ -157,10 +157,10 @@ export interface BenchmarkComparison {
   benchmark: number | null
 }
 
-export function compareWithBenchmark(series: { date: string; cumulative: string | null }[], index: Map<string, number>): BenchmarkComparison {
+export function compareWithBenchmark(series: { tradeDate: string; cumulative: string | null }[], index: Map<string, number>): BenchmarkComparison {
   const first = series.findIndex(point => point.cumulative !== null)
   if (first === -1) return { start: null, points: [], benchmark: null }
-  const start = series[first]!.date
+  const start = series[first]!.tradeDate
   let baseDay: string | null = null
   for (const day of index.keys()) if (day < start && (baseDay === null || day > baseDay)) baseDay = day
   const base = baseDay === null ? null : index.get(baseDay)!
@@ -169,11 +169,11 @@ export function compareWithBenchmark(series: { date: string; cumulative: string 
     return base && close !== undefined ? close / base - 1 : null
   }
   const points = series.slice(first).map(point => ({
-    date: point.date,
+    date: point.tradeDate,
     portfolio: point.cumulative === null ? null : Number(point.cumulative),
-    benchmark: relative(point.date)
+    benchmark: relative(point.tradeDate)
   }))
-  return { start, points, benchmark: relative(series.at(-1)!.date) }
+  return { start, points, benchmark: relative(series.at(-1)!.tradeDate) }
 }
 
 // ---- 組合殖利率（市值加權） ----

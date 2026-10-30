@@ -80,7 +80,7 @@ export interface DividendCalendarEvent {
   stockHoldingRatio: number | null
 }
 
-// GET /stocks/ex-dividend-calendar?month=YYYY-MM — 業務中台's own forwarding route onto
+// GET /stocks/ex-dividend-calendar?yearMonth=YYYY-MM — 業務中台's own forwarding route onto
 // analysis-ts's endpoint (confirmed live 2026-09-10, commit 41efef7 on 業務中台's side after a
 // real routing-order bug: this path was initially shadowed by the existing `/stocks/:symbol`
 // catch-all, same class of fix as 業務中台's own preferred-stocks/ex-dividend-notices precedent).
@@ -107,16 +107,15 @@ export function useDividendCalendar(month: Ref<string>) {
     }
     pending.value = true
     try {
-      // Rust 換版並存（contract-delta C5）：?month= → ?yearMonth=；兩個都送，Go 與 Rust 都忽略不認得的那個
-      const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { month: key, yearMonth: key } })
-      // Go 換版並存（contract-delta A14）：exDate＋exType 換成除息日／除權日
+      const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: key } })
+      // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
       const entries = result.entries.map(withExType)
       cache.value[key] = entries
       if (month.value === key) failure.value = null
       // 「最新的贏」——使用者已經換月之後才回來的慢回應不能蓋掉新狀態（同 useMetricsHistory 的 load()）
       if (month.value === key) events.value = entries
     } catch (error) {
-      devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?month=${key} unavailable`, error)
+      devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?yearMonth=${key} unavailable`, error)
       if (classifyApiError(error).kind === 'client') cache.value[key] = null
       else if (month.value === key) failure.value = error
       if (month.value === key) events.value = []

@@ -154,7 +154,7 @@ export interface PerformanceResult {
   // 期間時間加權報酬（小數字串，6 位）；整段沒有持股時是 null
   twr: string | null
   // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）
-  series: { date: string; cumulative: string | null }[]
+  series: { tradeDate: string; cumulative: string | null }[]
   // 沒成交、沿用前一個收盤價的天數。刻意不顯示（使用者 2026-10-05：「不用特別寫出來」）——逐檔列出
   // 讀起來像錯誤清單。2026-10-05 量到的大多是上櫃日線停在 9/24 的資料延遲，不是真的沒成交（已回報上游）。
   missingPrices: { symbol: string; dates: number }[]
@@ -180,12 +180,12 @@ export interface PerformanceResult {
     trackingError: string | null
     informationRatio: string | null
   }
-  // 五大銀行一年期定存；sourcePeriod ≠ period 表示那個月還沒有資料、沿用較早的月份
-  riskFree: { source: string; latestPeriod: string | null; rates: { period: string; ratePct: number; sourcePeriod: string }[] } | null
+  // 五大銀行一年期定存；sourceYearMonth ≠ yearMonth 表示那個月還沒有資料、沿用較早的月份
+  riskFree: { source: string; latestYearMonth: string | null; rates: { yearMonth: string; ratePct: number; sourceYearMonth: string }[] } | null
   // 2026-10-07（業務中台 9d691cd）：逐年／逐月報酬（頭尾可能不滿一整期，tradingDays 看得出來）
   periodReturns: {
     yearly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
-    monthly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
+    monthly: { yearMonth: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
   }
   // 實際帳本的跌幅：underwaterDays ＝ 期間內低於前高的交易日數，longestUnderwaterDays ＝ 最長連續那一段
   drawdown: { maxDrawdown: string; peakDate: string | null; troughDate: string | null; recoveryDate: string | null; underwaterDays: number; longestUnderwaterDays: number; currentDrawdown: string }

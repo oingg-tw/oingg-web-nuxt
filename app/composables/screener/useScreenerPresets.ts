@@ -50,9 +50,10 @@ interface ScreenerPagination {
   totalPages: number
 }
 
-// Go 換版並存（contract-delta A1）：結果列的公司名稱 business-ts 叫 name、Go 版叫 companyName（preset.name 是組合名稱，沒改）
-const withName = (rows: (ScreenerResultRow & { companyName?: string })[]): ScreenerResultRow[] =>
-  rows.map(({ companyName, ...row }) => ({ ...row, name: companyName ?? row.name }))
+// 結果列的公司名稱業務中台叫 companyName，站內的列叫 name（preset.name 是組合名稱，另一回事）
+type BusinessResultRow = Omit<ScreenerResultRow, 'name'> & { companyName: string | null }
+const withName = (rows: BusinessResultRow[]): ScreenerResultRow[] =>
+  rows.map(({ companyName, ...row }) => ({ ...row, name: companyName ?? row.symbol }))
 
 // GET /screener/presets/{id}/run 的回應包在 `screener` 底下（不是平的）；run() 攤平成 ScreenerRunResult。
 interface ScreenerRunApiResponse {
@@ -60,7 +61,7 @@ interface ScreenerRunApiResponse {
   screener: {
     count: number
     columns: ScreenerResultColumn[]
-    results: ScreenerResultRow[]
+    results: BusinessResultRow[]
   } & ScreenerPagination
   // 伺服器決定這次顯示的欄位組合：傳入的 columnPresetId → 這個 preset 上次看的 → 使用者的 isDefault → null（內建的
   // 股價／PER／PBR／殖利率）。下次 run 把它傳回去，伺服器就記成這個分頁的檢視。
@@ -100,7 +101,7 @@ export interface StatelessScreenerRunResult extends ScreenerPagination {
 interface StatelessScreenerRunApiResponse extends ScreenerPagination {
   count: number
   columns: ScreenerResultColumn[]
-  results: ScreenerResultRow[]
+  results: BusinessResultRow[]
   columnPresetId: string | null
 }
 

@@ -27,7 +27,7 @@ assert(firstReason(null, false, 'B') === 'B' && firstReason(null) === '－', 'fi
 console.log('(a) 一年、全部有值')
 {
   const p = fixture('a-normal-1y.performance')
-  assert(riskFreeLine(p.riskFree) === '無風險利率：五大銀行一年期定存 1.70%（2026-08）', '利率日期寫 sourcePeriod（最後一個月沿用 2026-08）')
+  assert(riskFreeLine(p.riskFree) === '無風險利率：五大銀行一年期定存 1.70%（2026-08）', '利率日期寫 sourceYearMonth（最後一個月沿用 2026-08）')
   // 範例資料重新產生時數值會變（業務中台 用當天的市場資料），所以跟資料本身比，不寫死數字
   assert(p.riskAdjusted.sharpe !== null && holdingsMetricText(p.riskAdjusted.sharpe, 'ratio') === Number(p.riskAdjusted.sharpe).toFixed(2), 'Sharpe 有值、兩位小數')
 }

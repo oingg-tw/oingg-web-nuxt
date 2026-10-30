@@ -19,7 +19,7 @@
 import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { createHash } from 'node:crypto'
 import { METRIC_COPY } from '../shared/utils/metric-copy.ts'
-import { metricsCatalogFromGo } from '../shared/utils/business-go-compat.ts'
+import { metricsCatalogFromBusiness } from '../shared/utils/business-shapes.ts'
 
 const API = process.env.API_BASE ?? 'http://localhost:4000'
 
@@ -69,8 +69,8 @@ if (!response.ok) {
   process.exitCode = 2
   throw new Error('catalog unavailable')
 }
-// Go 換版並存（contract-delta A6）：換回舊鍵
-const catalog = metricsCatalogFromGo(await response.json())
+// 換成篩選器用的那組鍵（同網站）
+const catalog = metricsCatalogFromBusiness(await response.json())
 const byCode = new Map()
 for (const category of catalog.categories ?? []) {
   for (const metric of category.metrics ?? []) byCode.set(metric.key, metric)

@@ -34,11 +34,11 @@ export function firstReason(...reasons: (string | null | false | undefined)[]): 
   return reasons.find((reason): reason is string => !!reason) ?? '－'
 }
 
-// 「無風險利率：五大銀行一年期定存 1.70%（2026-08）」。用最後一個月實際套用的那一筆，日期寫它的 sourcePeriod
-// 而不是 period——央行月報落後一到兩個月，寫 period 會讓人以為是即時利率（業務中台 的要求）。
-export function riskFreeLine(riskFree: { rates: { period: string; ratePct: number; sourcePeriod: string }[] } | null): string | null {
+// 「無風險利率：五大銀行一年期定存 1.70%（2026-08）」。用最後一個月實際套用的那一筆，日期寫它的 sourceYearMonth
+// 而不是 yearMonth——央行月報落後一到兩個月，寫 period 會讓人以為是即時利率（業務中台 的要求）。
+export function riskFreeLine(riskFree: { rates: { yearMonth: string; ratePct: number; sourceYearMonth: string }[] } | null): string | null {
   const last = riskFree?.rates.at(-1)
-  return last ? `無風險利率：五大銀行一年期定存 ${last.ratePct.toFixed(2)}%（${last.sourcePeriod}）` : null
+  return last ? `無風險利率：五大銀行一年期定存 ${last.ratePct.toFixed(2)}%（${last.sourceYearMonth}）` : null
 }
 
 // 「2026-02-26 高點 → 2026-03-31 低點，期間結束時尚未回到前高」（風險頁「計算方式」裡的最大回撤）
