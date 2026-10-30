@@ -24,10 +24,6 @@ export interface Share {
 // 網址裡的 token（業務中台 產生，128-bit 亂數的 base64url）。格式不對的網址不必問上游
 export const SHARE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,64}$/
 
-// 報酬率欄的 key 從 pnlPct 改成 returnPct（2026-10-30，業務中台 B2）。業務中台搬完庫裡的舊 key 之前，讀到的設定可能還是 pnlPct
-// shortcut: 業務中台 B2 第 2 步（migration）做完就拿掉這個與 HoldingsSharedView 的 pnlPct 別名
-const withReturnPct = (share: Share): Share => ({ ...share, columns: share.columns.map(column => (column.key === 'pnlPct' ? { ...column, key: 'returnPct' } : column)) })
-
 export function useShares() {
   const authedFetch = useAuthedFetch()
   const currentUser = useCurrentUser()
@@ -42,7 +38,7 @@ export function useShares() {
     if (!uid || shares.value) return
     try {
       const response = await authedFetch<{ shares: Share[] }>('/shares')
-      if (loadedFor.value === uid) shares.value = (response.shares ?? []).map(withReturnPct)
+      if (loadedFor.value === uid) shares.value = response.shares ?? []
     } catch (error) {
       devWarn('shares', 'GET /shares unavailable', error)
     }

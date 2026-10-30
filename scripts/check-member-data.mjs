@@ -14,8 +14,6 @@ const performance = fixture('a-normal-1y.performance')
 const trait = value => ({ value, coverage: '1.000000' })
 const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait('14.2'), dividendYield: trait('5.1') }, benchmark: { peRatio: trait('17.84'), dividendYield: trait('2.9') } }
 const SHARE_TOKEN = 'check-member-data-0001'
-// 報酬率欄的 key 改名過渡（業務中台 B2，2026-10-30）：還存著舊 key pnlPct 的分享也要畫得出來。B2 搬完庫、web-nuxt 拿掉別名時，連同這組一起拿掉
-const OLD_KEY_SHARE_TOKEN = 'check-member-data-0002'
 const holdingsShare = key => ({ kind: 'holdings', displayName: '檢查用分享', columns: [{ key, label: '報酬率' }], asOf: '2026-10-29', holdings: [{ symbol: '2330', returnPct: '12.3456' }], traits: TRAITS })
 const STUBS = {
   '/api/core/portfolios': { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] },
@@ -27,9 +25,8 @@ const STUBS = {
     dividends: [{ symbol: '2330', exDividendDate: '2026-09-16', exRightsDate: null, paymentDate: '2026-10-09', status: 'paid', cashPerShare: 5, stockRatio: null, sharesHeld: 1000, sharesHeldIsEstimate: false, cashAmount: 5000, stockShares: null, fractionalShares: null }]
   },
   [`/api/core/public/shares/${SHARE_TOKEN}`]: holdingsShare('returnPct'),
-  [`/api/core/public/shares/${OLD_KEY_SHARE_TOKEN}`]: holdingsShare('pnlPct'),
-  // 擁有者的分享設定（全部帳戶與那一個帳戶各一條，不管頁面選哪個都對得到）：存的是舊 key，打開分享視窗時報酬率要是勾著的
-  '/api/core/shares': { shares: [null, 'p-a'].map(portfolioId => ({ token: SHARE_TOKEN, kind: 'holdings', watchlistId: null, portfolioId, columns: [{ key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }], displayName: null, createdAt: '2026-10-30T00:00:00Z', updatedAt: '2026-10-30T00:00:00Z' })) }
+  // 擁有者的分享設定（全部帳戶與那一個帳戶各一條，不管頁面選哪個都對得到）：打開分享視窗時，存著的報酬率要是勾著的
+  '/api/core/shares': { shares: [null, 'p-a'].map(portfolioId => ({ token: SHARE_TOKEN, kind: 'holdings', watchlistId: null, portfolioId, columns: [{ key: 'weight', label: '占比' }, { key: 'returnPct', label: '報酬率' }], displayName: null, createdAt: '2026-10-30T00:00:00Z', updatedAt: '2026-10-30T00:00:00Z' })) }
 }
 
 const blocked = []
@@ -93,7 +90,7 @@ for (const [route, label, texts] of PAGES) {
   await context.close()
 }
 
-// 分享設定：打開持股頁的分享視窗，已存的報酬率（舊 key pnlPct）要勾著
+// 分享設定：打開持股頁的分享視窗，已存的報酬率要勾著
 console.log('/holdings 分享設定')
 const settingsContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
 await stub(settingsContext)
@@ -102,12 +99,12 @@ await settings.goto(`${base}/holdings`, { waitUntil: 'networkidle', timeout: 180
 await settings.getByRole('button', { name: '已分享' }).click({ timeout: 30000 })
 const returnBox = settings.getByRole('dialog').getByRole('checkbox', { name: '報酬率' })
 const checked = await returnBox.isChecked({ timeout: 15000 }).catch(() => false)
-console.log(`  ${checked ? 'PASS' : 'FAIL'}  分享視窗：已存的報酬率（pnlPct → returnPct）是勾著的`)
+console.log(`  ${checked ? 'PASS' : 'FAIL'}  分享視窗：已存的報酬率（returnPct）是勾著的`)
 if (!checked) failures++
 await settingsContext.close()
 
 // 分享頁伺服器端取資料攔不到：先開別頁，再在瀏覽器裡換頁過去，這時才從瀏覽器抓
-for (const [token, label] of [[SHARE_TOKEN, 'returnPct'], [OLD_KEY_SHARE_TOKEN, '舊 key pnlPct']]) {
+for (const [token, label] of [[SHARE_TOKEN, 'returnPct']]) {
   console.log(`/share/${token}`)
   const shareContext = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   await stub(shareContext)
