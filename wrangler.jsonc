@@ -18,10 +18,10 @@
   // Nuxt Content（部落格）在 Workers 上用 D1，binding 名稱是 @nuxt/content 的預設 DB
   "d1_databases": [{ "binding": "DB", "database_name": "oingg-web-nuxt-dev-content", "database_id": "24d880a4-304b-48e1-aa0f-2593c08bfa1c" }],
   "vars": {
-    // 業務中台 Go 版（2026-10-28 使用者「要切到 Go 版業務中台」）。TS 版同日停掉、不會退回；新舊回應鍵 web-nuxt 都收，
-    // 見 shared/utils/business-go-compat.ts
-    "NUXT_BUSINESS_BASE": "https://oingg-business-go-dev-xradmqyx5q-as.a.run.app",
-    "NUXT_BUSINESS_AUDIENCE": "https://oingg-business-go-dev-xradmqyx5q-as.a.run.app",
+    // 業務中台 Rust 版（2026-10-30 使用者「把網站 DEV 切到 Rust 版」；10/28 起是 Go 版，Go 凍結、只修 bug）。新舊回應鍵 web-nuxt 都收，
+    // 見 shared/utils/business-rust-compat.ts。要退回就改回 https://oingg-business-go-dev-xradmqyx5q-as.a.run.app（兩個一起，同一個庫）
+    "NUXT_BUSINESS_BASE": "https://oingg-business-rust-dev-xradmqyx5q-as.a.run.app",
+    "NUXT_BUSINESS_AUDIENCE": "https://oingg-business-rust-dev-xradmqyx5q-as.a.run.app",
     // 數據中台 DEV：打業務中台時順手叫醒它（2026-10-28，見 server/utils/business.ts 的 wakeAnalysis）；網址兼 IAM audience
     "NUXT_ANALYSIS_BASE": "https://oingg-data-rust-dev-188704795199.asia-southeast1.run.app",
     "NUXT_SITE_ENV": "preview",

@@ -10,8 +10,9 @@ import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { GOOGLE_TOKEN_URL, serviceAccountAssertion } from '../shared/utils/id-token.ts'
 
+// 登記到網站正在接的那一版業務中台（DEV 10/30 起是 Rust，同一個庫，latest 接得上 Go 裡記的；PRD 還是 Go）
 const URLS = {
-  dev: 'https://oingg-business-go-dev-xradmqyx5q-as.a.run.app',
+  dev: 'https://oingg-business-rust-dev-xradmqyx5q-as.a.run.app',
   prd: 'https://oingg-business-go-704437269028.asia-southeast1.run.app'
 }
 

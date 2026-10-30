@@ -26,7 +26,8 @@ if (!path?.startsWith('/')) {
 const base = process.env.COLD_BASE ?? 'https://oingg-web-nuxt-dev.oingg-web-nuxt.workers.dev'
 const idleMinutes = Number(process.env.COLD_IDLE_MINUTES ?? 20)
 const BACKENDS = [
-  { name: '業務中台', project: 'oingg-business', service: 'oingg-business-go-dev' },
+  // 網站 DEV 正在接的那一版（10/30 起 Rust；Go 是 oingg-business-go-dev）
+  { name: '業務中台', project: 'oingg-business', service: 'oingg-business-rust-dev' },
   { name: '數據中台', project: 'oingg-data', service: 'oingg-data-rust-dev' }
 ]
 const taipei = iso => new Date(new Date(iso).getTime() + 8 * 3600e3).toISOString().slice(5, 19).replace('T', ' ')
