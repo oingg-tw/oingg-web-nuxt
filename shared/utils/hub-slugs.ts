@@ -261,6 +261,11 @@ export function etfPath(code: string): string {
   return `/etf/${code.toLowerCase()}`
 }
 
+// REITs 個別頁（2026-10-30，使用者「REITs 沒有像是 個股瀏覽那樣的頁面嗎?」→「要」）：/reit/01001t
+export function reitPath(code: string): string {
+  return `/reit/${code.toLowerCase()}`
+}
+
 // 一個證券代號該去哪一頁（2026-10-21，使用者：「從配息月曆 點選 00931B 會跑出 找不到這檔股票」——行事曆一律連 /stock/{代號}，ETF 與
 // 特別股都落到個股頁的「找不到」）。只看代號：2026-10-21 全部 2,725 檔證券量過，ETF（353 檔）都以 00 開頭、普通股沒有一檔是；特別股
 //（28 檔）都是四碼加字母、普通股沒有一檔帶字母。連結用這個，/stock/{代號} 也用它把走錯的轉過去（server/middleware/legacy-redirects.ts）。

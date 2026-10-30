@@ -12,6 +12,7 @@ export const ALL_ROUTES = [
   ...STOCK_FIXED.map(path => `/stock/2330${path}`),
   ...ETF_FACETS.map(path => `/etf/0050${path}`), '/etf/00400a',
   '/preferred/2881a', '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms',
+  '/reit/01001t', '/reit/01001t/nav', '/reit/01001t/distributions', '/reit/01001t/properties', '/reit/01001t/profile',
   '/screener/common', '/screener/common?template=value', '/screener/etf', '/screener/preferred', '/screener/reits',
   '/macro', '/macro?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
   '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', '/industries/sensitivity', ...INDUSTRY_FACETS.map(facet => `/industry/24-semiconductor${facet.suffix}`),

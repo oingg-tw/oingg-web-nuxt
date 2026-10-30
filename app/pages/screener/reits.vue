@@ -76,7 +76,7 @@ const num = (value: number | null, digits: number) => (value === null ? '—' : 
         caption-hidden
       >
         <template #row="{ row }">
-          <th scope="row">{{ row.companyName }}（{{ row.symbol }}）</th>
+          <th scope="row"><NuxtLink :to="reitPath(row.symbol)">{{ row.companyName }}（{{ row.symbol }}）</NuxtLink></th>
           <td class="seo-table__num">{{ num(row.close, 2) }}</td>
           <td class="seo-table__num">{{ num(row.nav, 2) }}</td>
           <td class="seo-table__num">{{ row.premiumDiscountPct === null ? '—' : fixedSignedRateText(row.premiumDiscountPct) }}</td>

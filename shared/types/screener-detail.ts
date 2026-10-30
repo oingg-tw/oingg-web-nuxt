@@ -145,3 +145,65 @@ export interface PreferredPageResponse {
   // 實際配發的現金股息，依除息日的年份加總（投資人問的是「哪一年領到多少」）；null ＝ 讀不到這一檔的配息紀錄
   dividendsByYear: Record<string, number> | null
 }
+
+// ---- REITs 個別頁（2026-10-30，/reit/{代號}；資料是數據中台的 GET /reits/{symbol}、/daily-nav、/distributions，業務中台照轉）----
+
+// GET /reits/{symbol}：基本資料、收益分配政策原文，加上總覽那幾個數字（同 GET /reits 的一列）
+export interface ReitDetail {
+  symbol: string
+  // 簡稱；fundName 是全名
+  companyName: string
+  fundName: string | null
+  trusteeName: string | null
+  listingDate: string | null
+  maturityDate: string | null
+  totalIssueAmountNtd: number | null
+  creditRating: string | null
+  // 基本資料頁「收益分配」與它的「說明」原文
+  distributionPolicy: string | null
+  distributionNote: string | null
+  close: number | null
+  tradeDate: string | null
+  nav: number | null
+  navDate: string | null
+  premiumDiscountPct: number | null
+  trailing12MonthDistributionPerUnit: number | null
+  trailing12MonthDistributionYieldPct: number | null
+  trailing12MonthDistributionCount: number | null
+  // 標的不動產（2026-10-30 數據中台 3a8fd18）
+  properties: ReitProperty[]
+}
+
+// 標的不動產一筆：值都是公開資訊觀測站的原文（面積帶單位、估價金額含估價機構，note 可能是空字串）
+export interface ReitProperty {
+  name: string | null
+  address: string | null
+  propertyType: string | null
+  floors: string | null
+  area: string | null
+  appraisalValue: string | null
+  note: string | null
+}
+
+// /reits/{symbol}/daily-nav 每日一列，伺服器端併成每月一列（shared/utils/reit-nav.ts）
+export type { ReitNavMonthRow as ReitNavMonth } from '../utils/reit-nav'
+
+// /reits/{symbol}/distributions 一次分配（由新到舊）。yieldOnPreviousClose＝每單位分配 ÷ 除息前一個交易日的收盤（%，數據中台算好，同個股配息表的同名欄位）；
+// distributionPerUnit 是公告原值、小數很長，顯示時自己取位
+export interface ReitDistribution {
+  exDividendDate: string
+  recordDate: string | null
+  paymentDate: string | null
+  announcementDate: string | null
+  distributionPerUnit: number | null
+  yieldOnPreviousClose: number | null
+}
+
+export interface ReitPageResponse {
+  reit: ReitDetail
+  // 摘要卡的收盤價與漲跌（日線最後兩個有成交的交易日，同特別股）；讀不到用 reit.close、沒有漲跌
+  quote: LatestClose | null
+  // 讀不到是 null，不讓整頁失敗
+  navMonths: import('../utils/reit-nav').ReitNavMonthRow[] | null
+  distributions: ReitDistribution[] | null
+}

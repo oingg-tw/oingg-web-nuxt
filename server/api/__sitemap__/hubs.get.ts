@@ -8,7 +8,7 @@
 // - /screener/{slug}: AVAILABLE templates that have a slug;
 // - /learn/{slug}: the METRIC_PAGE_SLUGS allow-list plus the LEARN_TOPICS pages（新手專區，2026-10-12）;
 // - /preferred/{code}（2026-10-18 moved from /screener/preferred）and /etf/{code}（2026-10-18 moved from /screener/etf）: every preferred stock and ETF（2026-10-15, the per-symbol
-//   pages of the screener zone）.
+//   pages of the screener zone）; /reit/{code}（2026-10-30）: every listed REIT.
 // No lastmod where none is truthful（industry pages, condition pages）.
 const INDEXABLE_ROW_FLOOR = 5
 
@@ -49,6 +49,10 @@ export default defineEventHandler(async () => {
   // ETF 每檔十頁（速覽＋九個面向，2026-10-18；後綴同 app/utils/etf-pages.ts 的 ETF_FACETS）
   for (const symbol of (await settle(cachedEtfSymbols())) ?? []) {
     for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
+  }
+  // REITs 每檔五頁（2026-10-30；後綴同 app/utils/reit-pages.ts 的 REIT_FACETS）。清單同 /screener/reits，約 6 檔
+  for (const reit of (await settle(businessFetch<{ entries: { symbol: string }[] }>('/reits')))?.entries ?? []) {
+    for (const suffix of ['', '/nav', '/distributions', '/properties', '/profile']) urls.push({ loc: `${reitPath(reit.symbol)}${suffix}` })
   }
 
   return urls
