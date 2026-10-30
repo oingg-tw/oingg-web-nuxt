@@ -10,7 +10,8 @@ const hasNote = computed(() => properties.value.some(property => property.note))
 const answer = computed(() => {
   if (!reit.value) return null
   if (!properties.value.length) return `目前沒有${shortName.value}（${code.value}）的標的不動產資料。`
-  const types = [...new Set(properties.value.map(property => property.propertyType).filter(Boolean))]
+  // 原文的「無」（01010T 有一筆）是沒有分類，不算一種類型；表格照原文列
+  const types = [...new Set(properties.value.map(property => property.propertyType).filter(type => type && type !== '無'))]
   return `${shortName.value}（${code.value}）公告的標的不動產共 ${properties.value.length} 筆${types.length ? `，類型有${types.join('、')}` : ''}。`
 })
 </script>
