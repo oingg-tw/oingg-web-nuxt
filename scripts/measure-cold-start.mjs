@@ -2,7 +2,8 @@
 // docs/cloudflare-migration-plan.md 的冷啟動各節）。量「Worker 冷、KV 沒有、業務中台與數據中台都冷」時，使用者打開一頁要等多久、等在哪裡。
 //
 // 流程（照順序，每一步都不能省）：
-//   1. 先通知管理站（oingg-admin-vue）停掉打 DEV 的輪詢（例如 /admin/health 每 30 秒一次），並請其他 session 測試期間別打 DEV。
+//   1. 先通知管理站（oingg-admin-vue）停掉打 DEV 的輪詢（例如 /admin/health 每 30 秒一次），並請其他 session 測試期間別打 DEV——
+//      包括業務中台 Rust 版（oingg-business-rust）：它驗自己的 DEV 時會呼叫數據中台 DEV（10/30 01:06 就是它）。
 //      有人在打，後端就不會冷，量到的是熱的。
 //   2. 選一頁「從來沒被打開過」的頁面（KV 的鍵永遠不過期，開過一次就一直命中），例如沒人看過的代號的 /stock/{代號}/dividend；
 //      不要先用 curl 試，試一次就熱了。歷次用過：1104、1108、1235、1237、1238、2002、1301。
@@ -32,8 +33,13 @@ const taipei = iso => new Date(new Date(iso).getTime() + 8 * 3600e3).toISOString
 
 // 最近的請求（Cloud Logging API；gcloud 只拿 token，過濾條件不經 shell）
 async function recentRequests({ project, service }) {
-  // 字串指令（Windows 的 gcloud 是 .cmd，要經 shell；沒有使用者給的參數）
-  const token = execSync('gcloud auth print-access-token', { encoding: 'utf8' }).trim()
+  // 字串指令（Windows 的 gcloud 是 .cmd，要經 shell；沒有使用者給的參數）。Google 會定期要求重新登入（10/30 排程的 3 次因此沒跑）
+  let token
+  try {
+    token = execSync('gcloud auth print-access-token', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch {
+    throw new Error('拿不到 gcloud 憑證（多半是登入過期）：先在終端機跑 gcloud auth login，再重跑')
+  }
   const since = new Date(Date.now() - 6 * 3600e3).toISOString()
   const res = await fetch('https://logging.googleapis.com/v2/entries:list', {
     method: 'POST',
