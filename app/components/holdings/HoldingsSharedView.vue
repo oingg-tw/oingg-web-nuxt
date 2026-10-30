@@ -45,8 +45,8 @@ const rows = computed(() => props.holdings.map((holding) => {
     kind: entry?.kind ?? 'common',
     link: entry ? routeFor(entry) : securityPath(holding.symbol),
     weight: holding.weight == null ? null : Number(holding.weight),
-    // 表格的報酬率欄用 0～1 的比值（分享設定裡這一欄的 key 仍叫 pnlPct）
-    pnlPct: holding.returnPct == null ? null : Number(holding.returnPct) / 100,
+    // 表格的報酬率欄用 0～1 的比值
+    returnRatio: holding.returnPct == null ? null : Number(holding.returnPct) / 100,
     quantity,
     figures: quantity === null
       ? null
@@ -60,13 +60,15 @@ type SharedRow = (typeof rows.value)[number]
 const tone = (value: number | null, digits: number) => (value === null ? null : Number(value.toFixed(digits)))
 const DEFINITIONS: Record<string, (label: string) => HoldingsSymbolColumn<SharedRow>> = {
   weight: label => ({ key: 'weight', label, minWidth: 100, card: 'summary', sortLabel: `${label}（大到小）`, text: row => holdingsMetricText(row.weight === null ? null : String(row.weight), 'pct'), sortValue: row => row.weight }),
-  pnlPct: label => ({ key: 'pnlPct', label, minWidth: 110, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.pnlPct), sortValue: row => row.pnlPct, tone: row => tone(row.pnlPct === null ? null : row.pnlPct * 100, 2) }),
+  returnPct: label => ({ key: 'returnPct', label, minWidth: 110, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.returnRatio), sortValue: row => row.returnRatio, tone: row => tone(row.returnRatio === null ? null : row.returnRatio * 100, 2) }),
   dayChange: label => ({ key: 'dayChange', label, minWidth: 120, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.dayPct === null ? null : row.dayPct / 100), sortValue: row => row.dayPct, tone: row => tone(row.dayPct, 2) }),
   quantity: label => ({ key: 'quantity', label, minWidth: 100, card: 'summary', sortLabel: `${label}（多到少）`, text: row => (row.quantity === null ? '－' : groupThousands(row.quantity)), sortValue: row => row.quantity }),
   marketValue: label => ({ key: 'marketValue', label, minWidth: 120, card: 'summary', text: row => (row.figures?.marketValue == null ? '－' : holdingsMoney(row.figures.marketValue)), sortValue: row => row.figures?.marketValue ?? null }),
   unrealizedPnl: label => ({ key: 'unrealizedPnl', label, minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.figures?.pnl ?? null), sortValue: row => row.figures?.pnl ?? null, tone: row => tone(row.figures?.pnl ?? null, 0) }),
   annualDividend: label => ({ key: 'annualDividend', label, minWidth: 120, card: 'summary', text: row => (row.figures?.annualDividend == null ? '－' : holdingsMoney(row.figures.annualDividend)), sortValue: row => row.figures?.annualDividend ?? null })
 }
+// 業務中台搬完庫裡的舊 key（B2）之前，舊的分享還存著 pnlPct。shortcut: B2 第 2 步做完就拿掉（同 useShares 的 withReturnPct）
+DEFINITIONS.pnlPct = DEFINITIONS.returnPct!
 // 照分享時勾的順序；不認得的 key 不畫
 const tableColumns = computed(() => props.columns.flatMap(column => (DEFINITIONS[column.key] ? [DEFINITIONS[column.key]!(column.label)] : [])))
 // 預設排序：有占比照占比，其次市值、股數，都沒有就照代號（同持股總覽「最大的先看」）

@@ -244,7 +244,7 @@ watch(importVisible, (open) => { if (open) importAccountId.value = defaultAccoun
 const SHARE_COLUMNS = [
   { key: 'traits', label: '持股特色' },
   { key: 'weight', label: '占比' },
-  { key: 'pnlPct', label: '報酬率' },
+  { key: 'returnPct', label: '報酬率' },
   { key: 'dayChange', label: '今日漲跌' },
   { key: 'quantity', label: '股數', sensitive: true },
   { key: 'marketValue', label: '市值', sensitive: true },
