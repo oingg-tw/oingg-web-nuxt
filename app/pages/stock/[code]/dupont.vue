@@ -32,7 +32,7 @@ const [{ data: filterSchema }, { data: dupontData, error: dupontError, status: d
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => dupontDataStatus.value !== 'pending' && (!!dupontError.value || dupontData.value?.series === null))
-const answerSkeleton = computed(() => (dupontPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的股東權益報酬率（近四季）為 00.00%、稅後淨利率 00.00%、資產週轉率 0.00 次、權益乘數 0.00 倍。` : null))
+const answerSkeleton = computed(() => (dupontPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的 ROE（近四季）為 00.00%、稅後淨利率 00.00%、資產週轉率 0.00 次、權益乘數 0.00 倍。` : null))
 watchLoadFailure(() => `stock-dupont:${code.value}`, () => dupontError.value ?? readFailed.value, refreshDupontData)
 
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
@@ -70,7 +70,7 @@ const dataSources = computed(() => collectMetricSources(filterSchema.value?.cate
 const TOPIC_GUIDE = findLearnTopic('dupont')!
 const footerLinks = computed(() => [
   { to: learnTopicPath(TOPIC_GUIDE.slug), label: `${TOPIC_GUIDE.topic}怎麼看（新手專區）` },
-  { to: `/stock/${code.value}/roe`, label: '股東權益報酬率' },
+  { to: `/stock/${code.value}/roe`, label: 'ROE' },
   { to: `/stock/${code.value}/net-profit-margin`, label: '稅後淨利率' },
   { to: `/stock/${code.value}/margins`, label: '財報三率' },
   { to: `/stock/${code.value}/solvency`, label: '安全韌性的組成' },
@@ -93,7 +93,7 @@ const hasExpansion = computed(() =>
 const valueAnswer = computed(() => {
   if (!hasFactors.value) return null
   return joinClauses([
-    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的股東權益報酬率（${basisLabel.value}）為 ${fixedRateText(roe.value)}`,
+    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的 ROE（${basisLabel.value}）為 ${fixedRateText(roe.value)}`,
     `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
     `資產週轉率 ${timesText(assetTurnover.value)}`,
     `權益乘數 ${multipleText(equityMultiplier.value)}`

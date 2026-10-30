@@ -220,13 +220,15 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   await page.locator('.screener-filters__add-slot').first().click()
   const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
   if (picker.ok) {
+    // 搜全名：改名成 ROE 之後（2026-10-31，使用者「一律改用 ROE」）靠型錄的搜尋別名找到；點的是名稱剛好是 ROE（改名前是全名）的那一支，
+    // 不是「五年加權平均 ROE」
     await page.locator('.condition-panel .indicator-dialog__search input').fill('股東權益報酬率')
     await page.waitForTimeout(600)
-    await page.locator('.indicator-dialog__metric', { hasText: '股東權益報酬率' }).first().click()
+    await page.locator('.indicator-dialog__metric').filter({ has: page.locator('.indicator-dialog__metric-label', { hasText: /^(ROE|股東權益報酬率)$/ }) }).first().click()
     const editor = await waitFor(page.locator('.condition-panel .range-editor'), 15000)
     const periods = page.locator('.condition-panel .range-editor__period')
     const labels = (await periods.allTextContents()).map(text => text.trim())
-    expect('換期別', '股東權益報酬率可以換單季、近四季、年度', editor.ok && ['單季', '近四季', '年度'].every(label => labels.includes(label)), labels.join('／') || '沒有期別按鈕')
+    expect('換期別', 'ROE 可以換單季、近四季、年度', editor.ok && ['單季', '近四季', '年度'].every(label => labels.includes(label)), labels.join('／') || '沒有期別按鈕')
     if (labels.includes('單季')) {
       const quarter = periods.filter({ hasText: '單季' })
       await quarter.click()

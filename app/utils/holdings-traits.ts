@@ -34,7 +34,7 @@ export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; m
   { key: 'peRatio', name: '本益比', unit: 'ratio', meaning: '各檔本益比依市值的調和平均，等於把整組持股當成一家公司；虧損公司不算入' },
   { key: 'pbRatio', name: '股價淨值比', unit: 'ratio', meaning: '各檔股價淨值比依市值的調和平均' },
   { key: 'dividendYield', name: '殖利率', unit: 'pct', meaning: '交易所公布的殖利率，依市值加權平均' },
-  { key: 'roe', name: 'ROE', unit: 'pct', meaning: '近四季股東權益報酬率，依市值加權平均' },
+  { key: 'roe', name: 'ROE', unit: 'pct', meaning: '近四季 ROE，依市值加權平均' },
   { key: 'revenueGrowth', name: '營收成長率', unit: 'pct', meaning: '近四季營收年增率，依市值加權平均' },
   { key: 'beta', name: 'Beta（近一年）', unit: 'ratio', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %；用現在的持股比例，套近一年含息、已還原除權與減資的股價回推（大盤用加權報酬指數），ETF 也算在內' },
   { key: 'revenueYoyVolatility', name: '營收年增率波動', unit: 'pct', meaning: '近三個月累計營收年增率在近五年的起伏大小，越大代表營收越跟著景氣起落；依市值加權平均。營建股不算（營收依完工交屋認列，年增率本來就大起大落），去年同期基數異常低的月份也不採用' },
