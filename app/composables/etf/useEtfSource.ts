@@ -89,8 +89,9 @@ const FILTER_TEMPLATES: UniverseTemplate[] = [
 ]
 
 // 總費用率（最近完整年度，官方值）旁邊放近 12 個月估算：今年才成立的 ETF 沒有完整年度，只有後者（使用者 2026-10-15「新增近 12 個月總費用率欄位」）。
-// 收盤價放在淨值前面，兩個並排看得出折溢價（2026-10-30 數據中台補上 close，使用者「screener/etf 能補上市價嗎?」）
-const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'close', 'nav', 'market', 'fundType'].map(snapshotFieldId)
+// 收盤價排第一欄（2026-10-31，使用者：「ETF 基本欄位 設計下排序 收盤價應該要放前面的」，同普通股），淨值緊接在後，兩個並排看得出
+// 折溢價（2026-10-30 數據中台補上 close，使用者「screener/etf 能補上市價嗎?」）
+const DEFAULT_COLUMNS = ['close', 'nav', 'aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'market', 'fundType'].map(snapshotFieldId)
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: ['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y'].map(snapshotFieldId) },
@@ -212,10 +213,13 @@ export function useEtfSource(): UniverseSource {
     const filters = query.filters.filter(filter => filter !== held)
     if (filters.length) body.filters = filters.map(toEtfFilter)
     if (held?.values?.length) body[held.exclude ? 'excludeHeldPortfolioIds' : 'heldPortfolioIds'] = held.values.map(String)
-    if (query.sort) {
-      body.sortField = query.sort.field
-      body.order = query.sort.order
-    }
+    // 預設順序是規模由大到小（2026-10-31，使用者：「ETF 篩選 希望預設排序按照規模」）：沒選排序就照規模排，表頭不標箭頭。業務中台只排
+    // 請求裡有的欄位（sortField 不在 columns 回 400），這一組的欄位沒有規模時多帶這一欄，畫面上不會多出來
+    const sort = query.sort ?? { field: 'aum', order: 'desc' }
+    const sentColumns = body.columns as { field: string }[]
+    if (!sentColumns.some(column => column.field === sort.field) && sort.field !== 'symbol') sentColumns.push({ field: sort.field })
+    body.sortField = sort.field
+    body.order = sort.order
     const response = await (currentUser.value ? authedFetch : apiFetch)<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
     return { rows: response.results.map(toRow), total: response.count, totalPages: response.totalPages }
   }

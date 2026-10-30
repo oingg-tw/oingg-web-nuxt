@@ -24,7 +24,8 @@ const only = process.env.SCREENER_CHECK_ONLY?.split(',')
 const PAGES = [
   { name: '普通股', universe: 'common', path: '/screener/common?template=value', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
   { name: '特別股', universe: 'preferred', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率', wide: 'c=latestClosePrice,issuePrice,premiumRatePct,nominalDividendRatePct,currentYieldPct,ytwPct,exDividendMonths,cumulativeDividend,participatingExcessDividend,liquidationPreference,votingRights,convertible,redeemable,marketType,issueDate' },
-  { name: 'ETF', universe: 'etf', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '規模', wide: 'c=aum,return1y,expenseRatio,trailing12MonthExpenseRatioPct,nav,market,fundType,return3m,return6m,returnYtd,return2y,return3y,return5y,return10y,holders,netFlow,dcaAmount,marketShareRate' }
+  // ETF 的預設順序就是規模由大到小（2026-10-31），排序改測淨值，第一列才會換
+  { name: 'ETF', universe: 'etf', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '淨值', wide: 'c=aum,return1y,expenseRatio,trailing12MonthExpenseRatioPct,nav,market,fundType,return3m,return6m,returnYtd,return2y,return3y,return5y,return10y,holders,netFlow,dcaAmount,marketShareRate' }
 ].filter(target => !only || only.includes(target.name))
 
 const failures = []
