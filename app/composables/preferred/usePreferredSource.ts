@@ -43,6 +43,9 @@ const CATEGORIES = [
     { field: 'votingRights', name: '表決權', kind: 'categorical', options: yesNo('有表決權', '無表決權') },
     { field: 'convertible', name: '可轉換普通股', kind: 'categorical', options: yesNo('可轉換', '不可轉換') },
     { field: 'redeemable', name: '公司可收回', kind: 'categorical', options: yesNo('可收回', '不可收回') },
+    // 發行日（2026-10-31，使用者：「screener/preferred 能加上發行日不?」「就是欄位裡面找不到我再問的」）：YYYY-MM-DD 原樣顯示、照字串排序
+    //（compareFieldValues）。shortcut: 只能當欄位（columnOnly），matches 只會比數字與類別、範圍編輯器沒有日期；要當條件時兩邊一起補
+    { field: 'issueDate', name: '發行日', columnOnly: true },
     { field: 'marketType', name: '市場', kind: 'categorical', options: [{ value: '上市', label: '上市' }, { value: '上櫃', label: '上櫃' }] }
   ])
 ]
@@ -50,7 +53,6 @@ const CATEGORIES = [
 const METRICS = new Map(CATEGORIES.flatMap(category => category.metrics).map(metric => [metric.key, metric]))
 
 // 型錄外、只當欄位顯示的（日期這一版的條件面板還不能設）
-const EXTRA_LABELS: Record<string, string> = { issueDate: '發行日' }
 
 // 第一下由小到大：溢價率越低、離被收回的虧損越遠（舊表格的「負凸性」提示說的就是這件事）
 const ASCENDING_FIRST = new Set(['premiumRatePct'])
@@ -130,7 +132,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => raw ?? '—', sortable: 'client' }
     return {
       field: fieldId,
-      label: METRICS.get(field)?.name ?? EXTRA_LABELS[field] ?? field,
+      label: METRICS.get(field)?.name ?? field,
       format: raw => formatValue(field, raw),
       sortable: 'client',
       ascendingFirst: ASCENDING_FIRST.has(field)

@@ -49,6 +49,8 @@ export interface Metric {
   // 只給搜尋比對、畫面不顯示的別名：英文縮寫（PBR、P/B）、其他英文寫法、台灣俗稱（淨值比）。analysis-ts 9236756d（2026-10-22，
   // 使用者：「要建立別名表也是可以的喔 跟上游提需求」），每支都有，沒有是 []
   searchAliases?: string[]
+  // 只能當欄位、不能當條件（2026-10-31，特別股的發行日：日期還不能設範圍）：「新增條件」的挑選器不列，新增欄位、欄位設定照常列
+  columnOnly?: boolean
   // 精簡版目錄（/api/hub/filter-schema）不帶：沒有呼叫端在讀
   path?: string
   // 指標層級的單位（實測 GET /metrics 與各 field 的 `unit` 相同，如 "無單位"／"%"／"元"）；2026-09-10 加，一個指標一個單位。

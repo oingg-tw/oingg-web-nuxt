@@ -37,6 +37,7 @@ export interface SnapshotMetric {
   kind?: 'numeric' | 'categorical'
   options?: { value: string | number; label: string }[]
   description?: string
+  columnOnly?: boolean
 }
 
 export function snapshotCategory(key: string, name: string, sort: number, metrics: SnapshotMetric[]): MetricCategory {
@@ -53,6 +54,7 @@ export function snapshotCategory(key: string, name: string, sort: number, metric
       kind: metric.kind ?? 'numeric',
       options: metric.options,
       description: metric.description ?? null,
+      columnOnly: metric.columnOnly,
       fields: [{ key: 'snapshot', name: metric.name, period: 'snapshot', unit: metric.unit ?? '', sort: 0, description: metric.description }]
     }))
   }

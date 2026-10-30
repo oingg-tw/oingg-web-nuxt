@@ -67,7 +67,11 @@ const searchQuery = ref('')
 // 同名的幾支只留一支能挑（2026-10-21）：不列的那幾支與留下來的是哪一支、理由，都在 app/utils/replaced-metrics.ts（存過的條件與欄位
 // 也照那張表換掉，2026-10-22）
 const PICKER_HIDDEN_METRICS = new Set(Object.keys(REPLACED_METRICS))
-const sortedCategories = computed(() => props.categories.map(category => ({ ...category, metrics: category.metrics.filter(metric => !PICKER_HIDDEN_METRICS.has(metric.key)) })))
+// 選條件時（hidePeriod）也不列只能當欄位的（Metric.columnOnly）
+const sortedCategories = computed(() => props.categories.map(category => ({
+  ...category,
+  metrics: category.metrics.filter(metric => !PICKER_HIDDEN_METRICS.has(metric.key) && !(props.hidePeriod && metric.columnOnly))
+})))
 
 const activeCategoryKey = ref<string | undefined>(sortedCategories.value[0]?.key)
 const activeMetricKey = ref<string | undefined>(bySort(sortedCategories.value[0]?.metrics ?? [])[0]?.key)
