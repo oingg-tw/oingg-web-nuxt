@@ -10,10 +10,11 @@ import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { GOOGLE_TOKEN_URL, serviceAccountAssertion } from '../shared/utils/id-token.ts'
 
-// 登記到網站正在接的那一版業務中台（DEV 10/30 起是 Rust，同一個庫，latest 接得上 Go 裡記的；PRD 還是 Go）
+// 業務中台 Rust 版（10/30 起；Go 版同日刪掉，latest 接得上 Go 記的那幾筆）。PRD 還沒有 web-nuxt 的部署，用到時 web-nuxt-deploy-record
+// 要先成為 oingg-business-rust 的 invoker（業務中台核准），建置變數換 DEPLOY_RECORD_KEY_PRD
 const URLS = {
   dev: 'https://oingg-business-rust-dev-xradmqyx5q-as.a.run.app',
-  prd: 'https://oingg-business-go-704437269028.asia-southeast1.run.app'
+  prd: 'https://oingg-business-rust-704437269028.asia-southeast1.run.app'
 }
 
 // `git log --format=%H%x1f%s%x1f%b%x1e` 的輸出 → commits[]（最多 200 個、新到舊）
