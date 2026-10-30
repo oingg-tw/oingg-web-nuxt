@@ -278,7 +278,7 @@ const chartOption = computed(() => ({
       // than carried over verbatim with the rest of the chart.
       return `<div style="font-size: 1rem;min-width:170px;">
         <div style="font-weight:600;margin-bottom:4px;">${point.label}</div>
-        ${point.price !== null ? row('股價', `${groupThousands(point.price.toFixed(2))} 元`) : row('股價', '尚無資料', true)}
+        ${point.price !== null ? row('收盤價', `${groupThousands(point.price.toFixed(2))} 元`) : row('收盤價', '尚無資料', true)}
         ${point.base !== null ? row(baseLabel.value, `${groupThousands(point.base.toFixed(2))} 元`) : ''}
         ${point.ratio !== null ? row(spec.value.ratioLabel, formatMultiple(point.ratio)) : row(spec.value.ratioLabel, '尚無資料', true)}
         ${band ? row('河道位置', band, true) : ''}
@@ -305,7 +305,7 @@ const chartOption = computed(() => ({
   series: [
     ...bandSeries(),
     {
-      name: '股價',
+      name: '收盤價',
       type: 'line',
       // 每日收盤，沒有「轉折點」可標（高齡友善規格的 ≥ 8px 標記是給季資料那種疏的點，2026-09-30）；
       // 也不平滑——每日資料本身就夠細，平滑只會畫出不存在的價格

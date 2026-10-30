@@ -21,7 +21,7 @@ const answer = computed(() => {
 
 <template>
   <EtfPage :etf-data="etfData" facet="premium" :description="answer">
-    <StockQuestionSection id="etf-premium" :question="`${shortName}（${code}）的市價比淨值高還是低？`" :answer="answer">
+    <StockQuestionSection id="etf-premium" :question="`${shortName}（${code}）的收盤價比淨值高還是低？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="premium" />
       <SharedTable v-if="months.length" :label="`${shortName}每月折溢價`" :caption="`${shortName} ${code} 每月折溢價的平均、單日最高與最低（新的在上）`">
         <thead>
@@ -43,7 +43,7 @@ const answer = computed(() => {
           </tr>
         </tbody>
       </SharedTable>
-      <p class="hub-answer">折溢價 ＝（收盤價 − 淨值）÷ 淨值。正的是溢價（市價高於淨值），負的是折價。淨值來自基金資訊觀測站，沒有成交的日子不算。</p>
+      <p class="hub-answer">折溢價 ＝（收盤價 − 淨值）÷ 淨值。正的是溢價（收盤價高於淨值），負的是折價。淨值來自基金資訊觀測站，沒有成交的日子不算。</p>
     </StockQuestionSection>
   </EtfPage>
 </template>

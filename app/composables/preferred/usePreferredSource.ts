@@ -32,7 +32,7 @@ const CATEGORIES = [
     { field: 'exDividendMonths', name: '除權息月份', kind: 'categorical', options: EX_DIVIDEND_MONTH_OPTIONS }
   ]),
   snapshotCategory('price', '價格', 1, [
-    { field: 'latestClosePrice', name: '現價', unit: '元' },
+    { field: 'latestClosePrice', name: '收盤價', unit: '元' },
     { field: 'issuePrice', name: '發行價', unit: '元' },
     { field: 'premiumRatePct', name: '溢價率', unit: '%' }
   ]),
@@ -66,7 +66,7 @@ const FILTER_TEMPLATES: UniverseTemplate[] = [
 const DEFAULT_COLUMNS = ['latestClosePrice', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct', 'cumulativeDividend', 'premiumRatePct'].map(snapshotFieldId)
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
-  { key: 'valuation', name: '估值與報酬', description: '發行價、現價、票面利率、殖利率、最差殖利率', fieldKeys: ['issuePrice', 'latestClosePrice', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct'].map(snapshotFieldId) },
+  { key: 'valuation', name: '估值與報酬', description: '發行價、收盤價、票面利率、殖利率、最差殖利率', fieldKeys: ['issuePrice', 'latestClosePrice', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct'].map(snapshotFieldId) },
   { key: 'rights', name: '股東權利', description: '股息累積性、參與權、清算優先權、表決權、可轉換', fieldKeys: ['cumulativeDividend', 'participatingExcessDividend', 'liquidationPreference', 'votingRights', 'convertible'].map(snapshotFieldId) },
   { key: 'call-risk', name: '收回資訊', description: '發行日、公司可收回、溢價率', fieldKeys: ['issueDate', 'redeemable', 'premiumRatePct'].map(snapshotFieldId) }
 ]

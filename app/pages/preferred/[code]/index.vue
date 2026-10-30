@@ -25,8 +25,8 @@ const facts = computed<FactItem[]>(() => {
     { label: '每年股息', value: preferredYuan(stockEntry.dividendRate) },
     { label: '發行價', value: preferredYuan(stockEntry.issuePrice) },
     { label: '票面利率', value: preferredPct(stockEntry.nominalDividendRatePct), note: '股息 ÷ 發行價' },
-    { label: '現價', value: preferredYuan(price.value), note: priceDate.value ?? undefined },
-    { label: '殖利率', value: preferredPct(stockEntry.currentYieldPct), note: '股息 ÷ 現價' },
+    { label: '收盤價', value: preferredYuan(price.value), note: priceDate.value ?? undefined },
+    { label: '殖利率', value: preferredPct(stockEntry.currentYieldPct), note: '股息 ÷ 收盤價' },
     { label: '最差殖利率 YTW', value: preferredPct(stockEntry.ytwPct), note: '持有到期與被收回兩種情況取較低者' }
   ]
 })

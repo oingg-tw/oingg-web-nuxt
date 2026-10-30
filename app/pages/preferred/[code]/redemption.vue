@@ -39,11 +39,11 @@ const facts = computed<FactItem[]>(() => {
     { label: '最早可收回日', value: dateText.value },
     { label: '收回條件', value: stockEntry.redemptionConditions ?? '－', note: '發行條件原文' },
     { label: '發行價', value: preferredYuan(stockEntry.issuePrice), note: '被收回時拿回的金額' },
-    { label: '現價', value: preferredYuan(price.value), note: priceDate.value ?? undefined },
+    { label: '收盤價', value: preferredYuan(price.value), note: priceDate.value ?? undefined },
     {
       label: '溢價率',
       value: preferredPct(stockEntry.premiumRatePct),
-      note: premium ? '現價高於發行價：公司依條款收回時，以發行價收回，高出的部分是損失' : '（現價 − 發行價）÷ 發行價',
+      note: premium ? '收盤價高於發行價：公司依條款收回時，以發行價收回，高出的部分是損失' : '（收盤價 − 發行價）÷ 發行價',
       warning: premium
     },
     { label: '收回殖利率 YTC', value: preferredPct(stockEntry.ytcPct), note: (stockEntry.ytcAssumption && YTC_ASSUMPTION_TEXT[stockEntry.ytcAssumption]) || undefined },

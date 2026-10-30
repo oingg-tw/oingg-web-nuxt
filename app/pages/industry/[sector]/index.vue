@@ -16,7 +16,7 @@ const companyCount = computed(() => data.value?.sector.companyCount ?? 0)
 const facts = computed<FactItem[]>(() => [
   // 全部都有指標數值時不寫第二個一樣的數字
   { label: '上市櫃公司', value: `${companyCount.value} 家`, note: rows.value.length === companyCount.value ? undefined : `有財報指標數值 ${rows.value.length} 家` },
-  { label: '股價資料日期', value: data.value?.companies.quoteDate ?? '－' },
+  { label: '收盤價日期', value: data.value?.companies.quoteDate ?? '－' },
   { label: '財報資料至', value: data.value?.companies.fundamentalsDate ?? '－' }
 ])
 

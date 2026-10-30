@@ -367,7 +367,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   // 前端排序：股價。要驗的是「真的排好了」而不只是「變了」——第一版只改了 sortable 沒配
   // sort-method，表頭標著 descending 但順序是亂的（el-table 預設拿 prop 當 row 的鍵去讀，
   // 而值其實在 row.values[field].value）。所以這裡直接量單調性。
-  const priceIndex = await headerIndex('股價')
+  const priceIndex = await headerIndex('收盤價')
   if (priceIndex >= 0) {
     // 先等列數穩定：表格現在最高一個螢幕（2026-10-15），20 列剛好碰到底，無限捲動會自己再載一頁——那不是排序發的請求
     for (let stable = 0, last = -1; stable < 4;) {
