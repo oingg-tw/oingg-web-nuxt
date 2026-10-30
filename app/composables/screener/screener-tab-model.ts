@@ -74,6 +74,8 @@ export interface ScreenerWorkspace {
   // 結果表的排序：server＝點表頭打後端（普通股、ETF），client＝在手上的列自己排（特別股，全部一次讀進來）
   sortMode: 'server' | 'client'
   rowLink(symbol: string): string
+  // 每一格的連結（普通股：那家公司這支指標的頁；ETF、特別股：那個面向的頁）；null＝整列連 rowLink
+  cellLink(symbol: string, field: string): string | null
   // true：欄名的期別與每格的資料日期跟著「顯示資料時間」開關（普通股）；false：欄名照原樣、不印每格日期（特別股、ETF 沒有期別）
   periodToggle: boolean
   // 整份結果的資料日期（特別股是最新收盤日）；沒有就不顯示

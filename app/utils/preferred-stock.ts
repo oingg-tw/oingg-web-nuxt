@@ -14,6 +14,16 @@ export const PREFERRED_FACETS = [
 
 export type PreferredFacetLabel = typeof PREFERRED_FACETS[number]['label']
 
+// 特別股篩選結果表的一格連到這檔那個面向的頁（2026-10-30）。股息與殖利率那幾欄不在這裡：整列本來就連到第一頁
+const FIELD_FACETS: Record<string, typeof PREFERRED_FACETS[number]['suffix']> = {
+  ytwPct: '/redemption', issuePrice: '/redemption', premiumRatePct: '/redemption',
+  exDividendMonths: '/dividends',
+  cumulativeDividend: '/terms', participatingExcessDividend: '/terms', liquidationPreference: '/terms', votingRights: '/terms', convertible: '/terms',
+  redeemable: '/terms', issueDate: '/terms', marketType: '/terms'
+}
+export const preferredFieldPath = (code: string, field: string): string | null =>
+  FIELD_FACETS[field] === undefined ? null : `${preferredStockPath(code)}${FIELD_FACETS[field]}`
+
 export const preferredFacetItems = (code: string) =>
   PREFERRED_FACETS.map(facet => ({ label: facet.label, to: `${preferredStockPath(code)}${facet.suffix}` }))
 

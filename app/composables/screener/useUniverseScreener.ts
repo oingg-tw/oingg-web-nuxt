@@ -93,6 +93,8 @@ export interface UniverseSource {
   column(fieldId: string): ScreenerResultTableColumn
   run(query: UniverseQuery): Promise<UniverseResult>
   rowLink(symbol: string): string
+  // 每一格連到這檔哪個面向的頁；null＝整列（rowLink）
+  cellLink(symbol: string, fieldId: string): string | null
   sortMode: 'server' | 'client'
   // 整份資料的日期（特別股：最新的收盤日）；ETF 各欄位的時間不同，不給
   dataDate?: Readonly<Ref<string | null>>
@@ -655,6 +657,7 @@ export function useUniverseScreener(source: UniverseSource) {
     activeTab,
     sortMode: source.sortMode,
     rowLink: source.rowLink,
+    cellLink: source.cellLink,
     periodToggle: false,
     dataDate: source.dataDate ?? ref(null),
     presetItems,

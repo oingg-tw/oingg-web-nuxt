@@ -52,6 +52,8 @@ const props = withDefaults(defineProps<{
   // ---- 2026-10-15 三組篩選共用 ----
   // 代號／名稱連去哪裡：普通股 /stock/{代號}、特別股與 ETF 是各自的個別頁
   rowLink?: (symbol: string) => string
+  // 每一格連去哪裡（2026-10-30，普通股：那家公司這支指標的頁；ETF、特別股：那個面向的頁）；null＝這一欄沒有頁，點了照舊是整列（rowLink）
+  cellLink?: (symbol: string, field: string) => string | null
   // 符合條件的總檔數：最後一列寫「已顯示全部 N 檔」
   total?: number
   // 表格跟著整頁捲：表頭黏在頁首下面、橫向捲軸黏在畫面底部（2026-10-15 使用者：「我希望橫向scrollbar可以呈現在第一個畫面…才可以
@@ -68,6 +70,7 @@ const props = withDefaults(defineProps<{
   showPeriod: undefined,
   cellDates: undefined,
   rowLink: (symbol: string) => securityPath(symbol),
+  cellLink: () => null,
   total: undefined,
   sticky: false,
   loading: false
@@ -142,6 +145,16 @@ const YOY_NAME = /(年增率|年減率)(變化)?$/
 function directionClassOf(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(raw) : ''
+}
+
+// 有值、而且這一欄有頁才連（空格連過去也是空的）。格子整塊是連結：數字照原本的顏色（年增率的漲跌色、河道位置），只有滑過或聚焦時畫底線
+const NuxtLink = resolveComponent('NuxtLink')
+function cellHref(row: ScreenerResultRow, column: ScreenerResultTableColumn): string | null {
+  return row.values[column.field]?.value == null ? null : props.cellLink(row.symbol, column.field)
+}
+// 點到連結（名稱、有頁的格子）由連結自己換頁；其他地方點整列進個股頁
+function onRowClick(row: ScreenerResultRow, _column: unknown, event: MouseEvent) {
+  if (!(event.target as Element).closest('a')) emit('rowClick', row.symbol)
 }
 
 const emit = defineEmits<{
@@ -619,7 +632,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       scrollbar-always-on
       :default-sort="defaultSort"
       @sort-change="handleSortChange"
-      @row-click="row => emit('rowClick', row.symbol)"
+      @row-click="onRowClick"
     >
       <!-- Real backend sort (see handleSortChange) — sortable="custom" so el-table only
            reports the click instead of trying to reorder `rows` itself, which is already in
@@ -646,7 +659,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           </button>
         </template>
         <template #default="{ row }">
-          <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link" @click.stop>{{ row.name }}</NuxtLink>
+          <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
         </template>
       </el-table-column>
       <!-- Real bug fixed 2026-09-11 (reported live: "點選市值排序無反應") — this column never
@@ -678,7 +691,7 @@ watch(() => props.loading, (loading, wasLoading) => {
           </button>
         </template>
         <template #default="{ row }">
-          <div class="screener-result-table__cell">
+          <component :is="cellHref(row, column) ? NuxtLink : 'div'" :to="cellHref(row, column) ?? undefined" class="screener-result-table__cell" :class="{ 'screener-result-table__cell--link': cellHref(row, column) }">
             <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
               <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
             </span>
@@ -690,7 +703,7 @@ watch(() => props.loading, (loading, wasLoading) => {
             <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">
               {{ cellPeriodText(row.values[column.field]!) }}
             </span>
-          </div>
+          </component>
         </template>
       </el-table-column>
       <el-table-column width="48" align="center">
@@ -736,11 +749,13 @@ watch(() => props.loading, (loading, wasLoading) => {
             <div v-for="column in orderedColumns" :key="column.field" class="smt-card__value">
               <dt>{{ displayLabel(column) }}</dt>
               <dd>
+                <component :is="cellHref(row, column) ? NuxtLink : 'span'" :to="cellHref(row, column) ?? undefined" :class="{ 'screener-result-table__cell--link': cellHref(row, column) }">
                 <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
                   <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
                 </span>
                 <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
                 <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ cellPeriodText(row.values[column.field]!) }}</span>
+                </component>
               </dd>
             </div>
           </dl>
@@ -938,6 +953,20 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .screener-result-table__name-link:hover,
 .screener-result-table__name-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* 有頁的格子（cellLink）：同名稱連結，平常跟一般格子一樣，滑過或聚焦才畫底線 */
+.screener-result-table__cell--link {
+  color: inherit;
+  text-decoration: none;
+  /* 24px（WCAG 2.5.8）比一行字高：字置中，才跟旁邊沒有連結的格子對齊 */
+  min-height: 24px;
+  justify-content: center;
+}
+
+.screener-result-table__cell--link:hover,
+.screener-result-table__cell--link:focus-visible {
   text-decoration: underline;
 }
 

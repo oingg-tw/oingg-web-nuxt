@@ -332,6 +332,21 @@ export function hasPinnableChart(slug: string): boolean {
   return quickViewChartOf(slug) !== null
 }
 
+// 篩選結果表的一格連到那家公司這支指標的頁（2026-10-30，使用者「點選篩選結果eps，就導向該公司的eps頁面」）：專頁的 metricCode 直接對；
+// 同一支指標的即時、交易所、河道位置版本，與畫在固定頁上的（殖利率在 /dividend、三率三升在 /margins）列在下面。沒有頁的回 null
+// （那一格點了照舊進個股首頁）。scripts/check-metric-page-links.mjs 檢查這裡的每個目的地都存在
+export const METRIC_PAGE_ALIASES: Record<string, string> = {
+  livePeRatio: 'pe-ratio', exchangePeRatio: 'pe-ratio', peRatioRiverBand: 'pe-ratio',
+  livePbRatio: 'pb-ratio', exchangePbRatio: 'pb-ratio', pbRatioRiverBand: 'pb-ratio',
+  psrRiverBand: 'psr', liveShareholderYield: 'shareholder-yield',
+  dividendYield: 'dividend', cashDividendYield: 'dividend', liveCashDividendYield: 'dividend', dividendPerShare: 'dividend', liveDividendPerShare: 'dividend',
+  threeMarginsRising: 'margins'
+}
+
+export function metricPageSlug(metricCode: string): string | null {
+  return METRIC_PAGE_ALIASES[metricCode] ?? [...METRIC_PAGES, ...BADGE_PAGES].find(page => page.metricCode === metricCode)?.slug ?? null
+}
+
 // 唯一會靜默壞頁而不報錯的不變量：兩份登記表都認領的 slug 會渲染分派器先測到的那個模板，另一頁變成無法到達。開發時由分派器呼叫。
 export function assertMetricPagesDisjoint(): void {
   const collision = METRIC_PAGES.find(page => BADGE_PAGES.some(badge => badge.slug === page.slug))

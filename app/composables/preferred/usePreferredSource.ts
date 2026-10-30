@@ -174,6 +174,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     column,
     run,
     rowLink: preferredStockPath,
+    cellLink: (symbol: string, fieldId: string) => preferredFieldPath(symbol, snapshotField(fieldId)),
     sortMode: 'client',
     dataDate
   }

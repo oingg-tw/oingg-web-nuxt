@@ -24,6 +24,17 @@ export type EtfFacetKey = typeof ETF_FACETS[number]['key']
 
 export const etfFacetPath = (code: string, key: EtfFacetKey) => `${etfPath(code)}${ETF_FACETS.find(facet => facet.key === key)!.suffix}`
 
+// ETF 篩選結果表的一格連到這檔那個面向的頁（2026-10-30，使用者要篩選每一格都能點進對應的頁）。基本資料那幾欄（成立年數、市場、基金類型…）
+// 不在這裡：整列本來就連到速覽
+const FIELD_FACETS: [RegExp, EtfFacetKey][] = [
+  [/^(aum|holders|netFlow|dcaAmount|marketShareRate|statutoryAumThreshold|belowStatutoryThreshold)$/, 'size'],
+  [/^(nav|close|premiumDiscountPct|tradeDate)$/, 'premium'],
+  [/^return/, 'returns'],
+  [/^(trailing12MonthDistributionYieldPct|distributionFrequency|exDividendMonths)$/, 'distributions'],
+  [/^(expenseRatio|trailing12MonthExpenseRatio)|FeeRate$|^(commissionRate|transactionTaxRate)$/, 'expenses']
+]
+export const etfFieldFacet = (field: string): EtfFacetKey | null => FIELD_FACETS.find(([pattern]) => pattern.test(field))?.[1] ?? null
+
 // 配息組成的五個來源（投信公告的預估比例），順序同公告
 export const ETF_DISTRIBUTION_PARTS = [
   { key: 'dividendIncomePct', name: '股利所得' },

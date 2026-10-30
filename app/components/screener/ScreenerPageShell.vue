@@ -183,6 +183,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             :show-period="screener.periodToggle ? undefined : true"
             :cell-dates="screener.periodToggle ? undefined : false"
             :row-link="screener.rowLink"
+            :cell-link="screener.cellLink"
             :total="tab.total"
             sticky
             @reorder="fields => screener.handleReorderColumns(tab!, fields)"

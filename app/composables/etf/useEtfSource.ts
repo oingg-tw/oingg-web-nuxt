@@ -88,8 +88,9 @@ const FILTER_TEMPLATES: UniverseTemplate[] = [
   { id: 'active', name: '主動式', category: '主動或被動', description: '由經理人選股的主動式 ETF', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'isActive', min: null, max: null, exclude: false, values: ['true'] }] }
 ]
 
-// 總費用率（最近完整年度，官方值）旁邊放近 12 個月估算：今年才成立的 ETF 沒有完整年度，只有後者（使用者 2026-10-15「新增近 12 個月總費用率欄位」）
-const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'nav', 'market', 'fundType'].map(snapshotFieldId)
+// 總費用率（最近完整年度，官方值）旁邊放近 12 個月估算：今年才成立的 ETF 沒有完整年度，只有後者（使用者 2026-10-15「新增近 12 個月總費用率欄位」）。
+// 收盤價放在淨值前面，兩個並排看得出折溢價（2026-10-30 數據中台補上 close，使用者「screener/etf 能補上市價嗎?」）
+const DEFAULT_COLUMNS = ['aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'close', 'nav', 'market', 'fundType'].map(snapshotFieldId)
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: ['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y'].map(snapshotFieldId) },
@@ -110,7 +111,8 @@ function formatValue(field: EtfFilterField | undefined, raw: string | null | und
   if (field?.kind === 'categorical') return labelEachValue(raw, value => valueLabel(field.field, value))
   const value = Number(raw)
   if (!Number.isFinite(value)) return raw
-  if (field?.unit === '元') return field.field === 'nav' ? groupThousands(value.toFixed(2)) : formatMoney(value)
+  // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
+  if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(value.toFixed(2)) : formatMoney(value)
   if (field?.unit === '%') return `${raw}%`
   return field?.unit && field.unit !== '無單位' ? `${groupThousands(raw)} ${field.unit}` : groupThousands(raw)
 }
@@ -229,6 +231,10 @@ export function useEtfSource(): UniverseSource {
     column,
     run,
     rowLink: etfPath,
+    cellLink: (symbol: string, fieldId: string) => {
+      const facet = etfFieldFacet(snapshotField(fieldId))
+      return facet ? etfFacetPath(symbol, facet) : null
+    },
     sortMode: 'server'
   }
 }
