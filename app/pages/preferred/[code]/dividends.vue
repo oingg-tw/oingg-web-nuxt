@@ -18,14 +18,24 @@ const years = computed(() => {
   })
 })
 
+// 不配息是特別股的主要風險（2026-10-31，使用者：「特別股不配息是一大主要風險」）：沒配的那一年會怎樣看股息累積性，照發行條件陳述。
+// 停發過的國喬特（1312A，2024、2025 年）是累積型，近 7 年實領平均反而高於公告股息，所以不用「配息次數 × 股息」算期望值。
+// 另一檔停發的是開發金乙特（2883B，2023 年，公司虧損；數據中台 2026-10-31 核對 mops 股利決議）
+const skipConsequence = computed(() => {
+  const cumulative = entry.value?.cumulativeDividend
+  if (cumulative === true) return '這檔是累積型：哪一年停發，積欠的股息依發行條件之後要補發。'
+  if (cumulative === false) return '這檔是非累積型：哪一年沒配，那一年的股息不會補發。'
+  return ''
+})
+
 const answer = computed(() => {
   const stockEntry = entry.value
   if (!stockEntry || byYear.value === null) return null
   const paid = years.value.filter(row => row.amount !== null)
   const latest = paid.at(-1)
-  if (!latest) return `${shortName.value}（${code.value}）目前沒有除息紀錄；目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}。`
+  if (!latest) return `${shortName.value}（${code.value}）目前沒有除息紀錄；目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}。${skipConsequence.value}`
   const same = stockEntry.dividendRate !== null && Math.abs(latest.amount! - stockEntry.dividendRate) <= 0.01
-  return `${shortName.value}（${code.value}）最近一次配發在 ${latest.year} 年，合計 ${preferredYuan(latest.amount)}，${same ? '跟' : '不同於'}目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}；近 ${years.value.length} 年中有 ${paid.length} 年有除息紀錄。`
+  return `${shortName.value}（${code.value}）最近一次配發在 ${latest.year} 年，合計 ${preferredYuan(latest.amount)}，${same ? '跟' : '不同於'}目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}；近 ${years.value.length} 年中有 ${paid.length} 年有除息紀錄。${skipConsequence.value}`
 })
 </script>
 
