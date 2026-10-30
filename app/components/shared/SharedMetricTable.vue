@@ -440,6 +440,8 @@ const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${g
 
 // ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），彈窗在 SharedColumnSettings（觀察清單共用）----
 const columnSettingsOpen = ref(false)
+// 手機的「檢視」面板（呼叫端的）也有「欄位設定」：面板關掉之後再從這裡打開，彈窗不疊
+defineExpose({ openColumnSettings: () => { columnSettingsOpen.value = true } })
 
 // 彈窗按「儲存」：整份交給父層（saveColumns），父層檢查完自己的部分（篩選頁的「這一組」）再呼叫 done。done(true) 時表格先照新順序排——
 // 這張表保留自己的拖曳順序、不跟父層換順序（見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
@@ -582,11 +584,12 @@ watch(() => props.loading, (loading, wasLoading) => {
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap screener-result-table-wrap--cards">
-    <!-- 卡片版面時兩列（2026-10-22 使用者選操作區方案 A）：顯示欄位＋欄位設定一列，排序＋方向一列；表格版面只有第一列。
+    <!-- 卡片版面只有排序那一列（2026-10-31 使用者改選操作區方案 B）：排序＋方向＋呼叫端的按鈕（篩選頁的「檢視」），顯示欄位與欄位設定
+         收進呼叫端的檢視面板；表格版面只有第一列。以前（方案 A，2026-10-22）卡片版面兩列都在。
          欄位設定是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7），各寬度都在。排序選單只在卡片版面（容器 <720px）出現：卡片沒有表頭；
          表格的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個選單只是重複（2026-10-08 使用者同意） -->
     <div class="smt-toolbar">
-      <div class="smt-toolbar__row">
+      <div class="smt-toolbar__row smt-toolbar__columns">
         <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
         <slot name="toolbar" />
         <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
@@ -604,8 +607,9 @@ watch(() => props.loading, (loading, wasLoading) => {
         <!-- 方向一直在（沒選排序欄位時停用），選了欄位不會多冒出一個選單把版面推開。圖示是全站的排序圖示（沒排序兩個三角形、排序中只留
              那個方向；使用者 2026-10-21 的規範），不用文字箭頭：↑↓ 的高低跟著字型跑，跟旁邊的字對不齊 -->
         <el-button class="smt-direction" :disabled="!activeSort.field" @click="applySort(activeSort.field, activeSort.order === 'ascending' ? 'descending' : 'ascending')">
-          <span class="visually-hidden">排序方向：</span><SharedSortIcon class="smt-direction__icon" :state="activeSort.field ? activeSort.order : null" />{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}
+          <SharedSortIcon :state="activeSort.field ? activeSort.order : null" /><span class="visually-hidden">排序方向：{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}</span>
         </el-button>
+        <slot name="sort-actions" />
       </div>
     </div>
     <SharedColumnSettings
@@ -788,8 +792,14 @@ watch(() => props.loading, (loading, wasLoading) => {
   min-height: 0;
 }
 
+/* 卡片版面：顯示欄位＋欄位設定那一列收起來（方案 B，在呼叫端的檢視面板裡）。兩個 class，理由同下 */
+.smt-toolbar .smt-toolbar__columns {
+  display: none;
+}
+
 @container (min-width: 720px) {
-  .screener-result-table-wrap--cards .smt-table-view {
+  .screener-result-table-wrap--cards .smt-table-view,
+  .smt-toolbar .smt-toolbar__columns {
     display: flex;
   }
 
@@ -852,8 +862,9 @@ watch(() => props.loading, (loading, wasLoading) => {
   padding-left: calc(12px + 2em + 8px);
 }
 
-.smt-direction__icon {
-  margin-right: 6px;
+/* 方向鍵只畫圖示（方案 B：排序選單旁邊還有「檢視」，選單要留寬度給欄位名），方向照樣念出來 */
+.smt-toolbar__row > .smt-direction {
+  min-width: 44px;
 }
 
 .smt-cards {

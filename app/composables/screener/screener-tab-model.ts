@@ -119,6 +119,10 @@ export interface ScreenerWorkspace {
   handleSelect(fieldId: string, fieldLabel: string): void
   changeRangeEditorPeriod(fieldId: string): void
   backToPicker(): void
+  // 手機的條件清單（面板的第一頁）與「完成」回到上一頁
+  listVisible: boolean
+  openConditionList(tab: WorkspaceTab): void
+  finishStep(): void
   closePanel(): void
 
   // 結果表

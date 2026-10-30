@@ -101,10 +101,12 @@ for (const mode of modes) {
         }
       }
 
+      // :visible：手機上條件收進「篩選條件 N 個」（方案 B，2026-10-31），攤開的那份藏起來；電腦版反過來
       const triggers = [
         ['我的篩選選單', '.screener-shell__setup .el-select__wrapper'],
-        ['條件的值', '.screener-shell__setup .condition-pill__value'],
-        ['新增條件', '.screener-shell__setup .screener-filters__add-slot'],
+        ['篩選條件', '.screener-shell__setup .screener-shell__conditions-open:visible'],
+        ['條件的值', '.screener-shell__setup .condition-pill__value:visible'],
+        ['新增條件', '.screener-shell__setup .screener-filters__add-slot:visible'],
         ['新增篩選', '.screener-shell__setup button[aria-label="新增篩選"]'],
         ['管理我的篩選', '.screener-shell__setup button[aria-label="管理我的篩選"]']
       ]

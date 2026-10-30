@@ -153,8 +153,8 @@ async function confirmGuestOnboarding() {
     <template #result-meta>
       <label class="common-screener__period-toggle">
         <el-switch v-model="showPeriod" />
-        <!-- 手機上只畫「資料時間」（操作區方案 A，跟檔數擠同一行），名稱照樣是「顯示資料時間」 -->
-        <span><span class="common-screener__period-verb">顯示</span>資料時間</span>
+        <!-- 手機上在「檢視」面板裡（操作區方案 B，2026-10-31），不再跟檔數擠同一行，所以都寫完整 -->
+        <span>顯示資料時間</span>
       </label>
     </template>
 
@@ -181,14 +181,4 @@ async function confirmGuestOnboarding() {
   cursor: pointer;
 }
 
-@media (max-width: 559px) {
-  .common-screener__period-verb {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-}
 </style>

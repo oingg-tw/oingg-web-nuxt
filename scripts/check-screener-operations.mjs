@@ -140,7 +140,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 
 // ── 3. 條件：加 → 挑指標 → 設區間 → 結果換一批 → 移除 ───────────────────────
 {
-  const pillsBefore = await page.locator('.condition-pill').count()
+  const pillsBefore = await page.locator('.screener-shell__setup .condition-pill').count()
   await page.locator('.screener-filters__add-slot').first().click()
   // 2026-10-07 起選指標與設定範圍在同一個面板（ScreenerConditionPanel，el-dialog .condition-panel）
   const picker = await waitFor(page.locator('.condition-panel .indicator-dialog'), 15000)
@@ -158,9 +158,9 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 
     // **挑了欄位之後膠囊數「不該」增加**，那是明文要求的行為，不是漏掉：早期版本按下「新增條件」
     // 就立刻塞一個空白膠囊，使用者指出那讀起來像「已經有一個條件了」。現在挑欄位只產生一個 draft
-    // （useScreenerTabs 的 handleSelect），要等值也設好、而且編輯器關掉才會變成真的 slot
-    //（closeRangeEditor）。我第一版把這條寫成「要多一個」，是我沒讀那段註解。
-    const pillsDraft = await page.locator('.condition-pill').count()
+    // （useScreenerConditionEditor 的 handleSelect），值設好的那一刻才變成真的 slot（commitDraft，2026-10-31 起不用等「完成」）。
+    // 我第一版把這條寫成「要多一個」，是我沒讀那段註解。
+    const pillsDraft = await page.locator('.screener-shell__setup .condition-pill').count()
     expect('條件', '挑了欄位還不算一個條件（要等值也設好）', pillsDraft === pillsBefore, `${pillsBefore} → ${pillsDraft}`)
 
     const editor = await waitFor(page.locator('.condition-panel .range-editor'), 15000)
@@ -182,19 +182,17 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
         // 跟挑到哪一支指標無關——任何數值指標都會變成 0 列，而那是一個明確、可斷言的結果。
         await inputs.first().fill('999999999')
         await inputs.first().press('Enter')
-        await page.waitForTimeout(600)
-        // 關閉面板才 commit。Escape 讓 el-dialog 關閉 → close → closePanel → closeRangeEditor。
-        await page.keyboard.press('Escape')
-        await page.waitForTimeout(1200)
-
-        pillsAfter = await page.locator('.condition-pill').count()
-        expect('條件', `設好值並關閉後才真的多一個條件（${picked}）`, pillsAfter === pillsBefore + 1,
-          `${pillsBefore} → ${pillsAfter}`)
-
+        // 面板還開著就要套用（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」）：不按「完成」，結果就該換一批
         const changed = await waitForRowsChange(page, before)
         const lastStatus = upstream[upstream.length - 1]
-        expect('條件', '不可能的下限會讓結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
+        pillsAfter = await page.locator('.screener-shell__setup .condition-pill').count()
+        expect('條件', `設好值、面板還開著就多一個條件（${picked}）`, pillsAfter === pillsBefore + 1 && await page.locator('.condition-panel .range-editor').isVisible(),
+          `${pillsBefore} → ${pillsAfter}`)
+        expect('條件', '不可能的下限不按完成就讓結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
           `${before.count}列/${before.first} → ${changed.now.count}列，業務中台 ${lastStatus}，等了 ${changed.ms}ms`)
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(800)
+        expect('條件', '關掉面板後條件還在', await page.locator('.screener-shell__setup .condition-pill').count() === pillsAfter)
       } else {
         await page.keyboard.press('Escape')
         await page.waitForTimeout(800)
@@ -205,9 +203,9 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     // 請求回 400（實測訊息是 "At least one filter is required"），結果也是 0 列，兩種 0 混在一起
     // 就分不出來了。
     const beforeRemove = await rowsSignature(page)
-    await page.locator('.condition-pill').last().locator('.condition-pill__remove').click()
+    await page.locator('.screener-shell__setup .condition-pill').last().locator('.condition-pill__remove').click()
     await page.waitForTimeout(1500)
-    const pillsNow = await page.locator('.condition-pill').count()
+    const pillsNow = await page.locator('.screener-shell__setup .condition-pill').count()
     expect('條件', '移除後膠囊少一個', pillsNow === pillsAfter - 1, `${pillsAfter} → ${pillsNow}`)
     const back = await waitForRowsChange(page, beforeRemove, 30000)
     const backStatus = upstream[upstream.length - 1]
@@ -243,10 +241,10 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       await page.keyboard.press('Escape')
       const start = Date.now()
       while (sentBodies.length === sent && Date.now() - start < 30000) await page.waitForTimeout(300)
-      const pillText = (await page.locator('.condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? ''
+      const pillText = (await page.locator('.screener-shell__setup .condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? ''
       expect('換期別', '膠囊寫「單季」', pillText.includes('單季'), pillText)
       expect('換期別', '送出的條件是 roe.Q', sentBodies.slice(sent).some(body => body.includes('"roe.Q"')), `${sentBodies.length - sent} 次查詢`)
-      await page.locator('.condition-pill').last().locator('.condition-pill__remove').click()
+      await page.locator('.screener-shell__setup .condition-pill').last().locator('.condition-pill__remove').click()
       await page.waitForTimeout(1500)
     } else {
       await page.keyboard.press('Escape')
@@ -302,20 +300,20 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       const labels = (await options.allTextContents()).map(text => text.trim())
       expect('市場別', '第二步是上市、上櫃、興櫃三個選項', shown.ok && labels.join('／') === '上市／上櫃／興櫃', labels.join('／'))
       const sent = sentBodies.length
-      const pillsBefore = await page.locator('.condition-pill').count()
+      const pillsBefore = await page.locator('.screener-shell__setup .condition-pill').count()
       if (labels.includes('興櫃')) await options.filter({ hasText: '興櫃' }).click()
       await page.waitForTimeout(400)
       await page.keyboard.press('Escape')
       const start = Date.now()
       while (sentBodies.length === sent && Date.now() - start < 30000) await page.waitForTimeout(300)
-      const added = await page.locator('.condition-pill').count() === pillsBefore + 1
-      const pillText = added ? (await page.locator('.condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? '' : '沒有多出條件'
+      const added = await page.locator('.screener-shell__setup .condition-pill').count() === pillsBefore + 1
+      const pillText = added ? (await page.locator('.screener-shell__setup .condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? '' : '沒有多出條件'
       // 只有每日一個期別，膠囊不寫「每日」（ScreenerConditionPill 的 NON_INFORMATIVE_SOLE_PERIODS）
       expect('市場別', '膠囊寫「市場別 包含 興櫃」', pillText.replace(/\s/g, '') === '市場別包含興櫃', pillText)
       expect('市場別', '送出 market.EOD 的字串值 rotc', sentBodies.slice(sent).some(body => body.includes('"market.EOD"') && body.includes('"rotc"')), `${sentBodies.length - sent} 次查詢、業務中台 ${upstream.at(-1)}`)
       // 只移除剛加的那一顆：沒加成功時移除最後一顆會刪到範本原本的條件，後面的排序與載入更多就全部跟著錯
       if (added) {
-        await page.locator('.condition-pill').last().locator('.condition-pill__remove').click()
+        await page.locator('.screener-shell__setup .condition-pill').last().locator('.condition-pill__remove').click()
         await page.waitForTimeout(1500)
       }
     } else {
@@ -519,8 +517,9 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const countText = await m.locator('.screener-shell__count').textContent()
     expect('手機', '顯示並朗讀符合檔數', /符合上述條件 [\d,]+ 檔/.test(countText ?? '') && await m.locator('.screener-shell__count[role="status"]').count() === 1, countText ?? '')
 
+    // 操作區方案 B（2026-10-31）：手機上「顯示欄位」收進「檢視」面板，頁面上只有「我的篩選」
     const groups = await m.getByRole('group', { name: /^(我的篩選|顯示欄位)$/ }).count()
-    expect('手機', '「我的篩選」「顯示欄位」兩組選單都在', groups === 2, `${groups} 組`)
+    expect('手機', '頁面上只有「我的篩選」一組選單，顯示欄位在檢視裡', groups === 1 && await m.getByRole('button', { name: '檢視' }).isVisible(), `${groups} 組`)
 
     // 排序選單：選「本益比」→ 後端排序（多一次 POST）。方向鍵一直在：沒選排序時停用，選了本益比是小到大（估值倍數的第一下），
     // 按一下換成大到小、再打一次後端
@@ -541,8 +540,13 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 
     // 欄位設定（彈窗，手機滿版）：下移第一欄、儲存 → 卡片裡的欄位順序跟著換
     const labelsBefore = await m.locator('.smt-card').first().locator('dt').allTextContents()
-    await m.getByRole('button', { name: '欄位設定' }).click()
+    // 欄位設定在檢視面板裡；面板先關掉才開欄位設定（不疊彈窗）
+    await m.getByRole('button', { name: '檢視' }).click()
+    await waitFor(m.locator('.screener-shell__view'), 10000)
+    expect('手機', '檢視面板有顯示欄位', await m.getByRole('group', { name: '顯示欄位' }).count() === 1)
+    await m.locator('.screener-shell__view').getByRole('button', { name: '欄位設定' }).click()
     await waitFor(m.locator('.column-settings__row').first(), 10000)
+    expect('手機', '打開欄位設定時檢視面板已經關掉', !await m.locator('.screener-shell__view').isVisible())
     const settingsRows = await m.locator('.column-settings__row').count()
     expect('手機', '欄位設定列出每一欄', settingsRows === labelsBefore.length, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
     await m.locator('.column-settings__row').first().getByRole('button', { name: /下移/ }).click()
@@ -551,14 +555,17 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const labelsAfter = await m.locator('.smt-card').first().locator('dt').allTextContents()
     expect('手機', '下移第一欄後順序對調', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)
 
-    // 條件面板：手機是貼底的面板；選了指標換到第二步，有看得見的標籤；沒設值就關，不多一個條件
-    const pillsBefore = await m.locator('.condition-pill').count()
-    await m.locator('.screener-filters__add-slot:visible').first().click()
+    // 條件面板：手機是貼底的面板，條件收在「篩選條件 N 個」裡（方案 B）；先到條件清單，新增條件在同一個面板換頁；
+    // 選了指標換到第二步，有看得見的標籤；沒設值就完成，回到清單、不多一個條件
+    const pillsBefore = await m.locator('.screener-shell__conditions-inline .condition-pill').count()
+    await m.getByRole('button', { name: /^篩選條件 \d+ 個$/ }).click()
+    await waitFor(m.locator('.condition-panel .screener-filters'), 10000)
+    await m.locator('.condition-panel .screener-filters__add-slot').click()
     const panel = await waitFor(m.locator('.condition-panel .indicator-dialog'), 15000)
     expect('手機', '新增條件打開面板', panel.ok, `${panel.ms}ms`)
     if (panel.ok) {
       await m.waitForTimeout(500)
-      const box = await m.locator('.el-dialog.condition-panel').boundingBox()
+      const box = await m.locator('.el-dialog.condition-panel:visible').boundingBox()
       expect('手機', '面板貼在畫面底部', box !== null && Math.abs(box.y + box.height - 800) <= 2, box ? `底 ${Math.round(box.y + box.height)}` : '找不到')
       await m.locator('.indicator-dialog__metric').first().click()
       const range = await waitFor(m.locator('.condition-panel .range-editor'), 10000)
@@ -566,7 +573,10 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       expect('手機', '第二步有看得見的標籤', labels.includes('條件') && labels.length >= 2, labels.join('/'))
       await m.getByRole('button', { name: '完成' }).click()
       await m.waitForTimeout(800)
-      expect('手機', '沒設值就完成不會多一個條件', await m.locator('.condition-pill').count() === pillsBefore)
+      expect('手機', '完成回到條件清單，同一個面板', await m.locator('.condition-panel .screener-filters').isVisible() && await m.locator('.el-overlay:visible .el-dialog').count() === 1)
+      expect('手機', '沒設值就完成不會多一個條件', await m.locator('.screener-shell__conditions-inline .condition-pill').count() === pillsBefore)
+      await m.keyboard.press('Escape')
+      await m.waitForTimeout(600)
     }
 
     // 卡片的無限捲動

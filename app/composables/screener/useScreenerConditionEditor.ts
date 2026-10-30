@@ -35,6 +35,15 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   const pickerTargetTab = shallowRef<T | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
 
+  // 手機的條件清單（2026-10-31，使用者選結果區方案 B，並要「篩選條件與欄位設定，兩個操作體驗方式應該要一樣」）：手機上條件不再
+  // 攤在頁面上，按「篩選條件 N 個」打開同一個面板的第一頁（ScreenerConditionPanel 的 list），新增、修改都在這個面板裡換頁，不疊彈窗。
+  // 從清單進去的那幾步，「完成」回到清單（finishStep），關掉面板（×、Esc、點外面）才整個關（closePanel）。電腦版不打開清單
+  const listVisible = ref(false)
+  function openConditionList(tab: T) {
+    pickerTargetTab.value = tab
+    listVisible.value = true
+  }
+
   function nextSlotId(tab: T): number {
     return tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
   }
@@ -42,7 +51,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
   // slotId null＝「新增條件」— per explicit feedback, pressing it must NOT add anything to tab.slots
   // yet (an earlier version appended a blank placeholder immediately, which the user pointed out
   // reads as "a new filter already exists" even before a field or value is chosen). handleSelect
-  // below only actually creates a slot once a value has been set too (see closeRangeEditor).
+  // below only actually creates a slot once a value has been set too (see commitDraft).
   function openFieldPicker(tab: T, slotId: number | null) {
     pickerTargetTab.value = tab
     pickerTargetSlotId.value = slotId
@@ -107,19 +116,22 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     if (rangeEditorSlot.value) rangeEditorSlot.value.fieldId = fieldId
   }
 
-  // Closing the editor is the only moment a brand-new condition actually becomes real —
-  // pressing "新增條件" and then picking a field builds a draft slot (see handleSelect) that
-  // lives only in rangeEditorDraftSlot until now. Only commits it if the user actually set a
-  // value; picking a field and closing without touching min/max is treated as abandoning the
-  // add, exactly matching the explicit request that nothing gets added to the filter list
-  // until a field AND a value are both set. Editing an already-real slot needs no such
-  // commit step here — its min/max/exclude are two-way-bound straight onto the real slot the
-  // whole time this was open, so they're already live.
-  function closeRangeEditor() {
+  // 新條件在設了值的那一刻變成真的條件（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」）：以前要按「完成」才算數，
+  // 面板開著時勾項目、填數字，結果都不動。現在一有值就放進 tab.slots，之後跟編輯既有條件一樣直接綁在真的 slot 上，
+  // 自動查詢（useScreenerTabs 的 watchTabForAutoSearch）照常 600ms 後重跑。只挑了指標、沒設值就關，照舊不算一個條件
+  //（使用者明文要求：指標與值都設了才算）。同一個物件從草稿搬進 tab.slots，編輯器綁的還是它，輸入框不會重建、焦點不會掉
+  const hasValue = (slot: TabFilterSlot) => slot.min !== null || slot.max !== null || (slot.values?.length ?? 0) > 0
+  function commitDraft() {
     const draft = rangeEditorDraftSlot.value
-    if (draft && rangeEditorTab.value && (draft.min !== null || draft.max !== null || (draft.values?.length ?? 0) > 0)) {
-      rangeEditorTab.value.slots.push(draft)
-    }
+    if (!draft || !rangeEditorTab.value || !hasValue(draft)) return
+    rangeEditorTab.value.slots.push(draft)
+    rangeEditorSlotId.value = draft.id
+    rangeEditorDraftSlot.value = null
+  }
+  watch(() => rangeEditorDraftSlot.value && hasValue(rangeEditorDraftSlot.value), commitDraft)
+
+  function closeRangeEditor() {
+    commitDraft()
     // Deliberately NOT clearing rangeEditorTab/SlotId/DraftSlot here — the popover
     // (desktop) stays mounted across a close the same way ScreenerConditionPill's own used to
     // (only ever v-if'd on having a field, never on being open), so its close transition can
@@ -151,7 +163,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
 
       if (pickerTargetSlotId.value === null) {
         // Brand-new condition — field's picked, but this isn't a real slot yet (see
-        // closeRangeEditor for when/whether it becomes one).
+        // commitDraft for when/whether it becomes one).
         rangeEditorDraftSlot.value = { id: nextSlotId(tab), fieldId, fieldLabel, min: null, max: null, exclude: false }
         rangeEditorTab.value = tab
         rangeEditorSlotId.value = null
@@ -200,10 +212,16 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     pickerVisible.value = true
   }
 
-  // 面板關閉：在第二步就照原本的規則收尾（有值才把草稿變成條件），在第一步就只是關掉
-  function closePanel() {
+  // 面板的「完成」（設定範圍）與「上一步：條件清單」（選指標）：回到前一頁；不是從清單進來的，就是關掉面板
+  function finishStep() {
     if (rangeEditorVisible.value) closeRangeEditor()
     else pickerVisible.value = false
+  }
+
+  // 面板整個關掉：在第二步就照原本的規則收尾（有值才把草稿變成條件），清單一起關
+  function closePanel() {
+    finishStep()
+    listVisible.value = false
   }
 
   function removeSlot(tab: T, slotId: number) {
@@ -223,6 +241,9 @@ export function useScreenerConditionEditor<T extends ConditionTab>(ctx: {
     closeRangeEditor,
     changeRangeEditorPeriod,
     backToPicker,
+    listVisible,
+    openConditionList,
+    finishStep,
     closePanel
   }
 }
