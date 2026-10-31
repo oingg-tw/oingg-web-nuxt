@@ -137,6 +137,23 @@ export interface PreferredStockEntry {
   ytcAssumption: string | null
   ytwPct: number | null
   premiumRatePct: number | null
+  // 配息年數（數據中台 79ff406＋49dea86，2026-10-31）：完整年度從 max(上市隔年, 2020) 到去年，依除息日的年份、現金 > 0 就算有配。
+  // 2020 起是因為 mops 的分派表那年才完整收集。還沒有完整年度的：觀察年數 0、起算年 null、沒配的年份空陣列
+  cashDividendObservedYears: number
+  cashDividendPaidYears: number
+  cashDividendObservedFromYear: number | null
+  cashDividendMissedYears: number[]
+  // 發行公司的信用評等（數據中台 2f7b6f9，MOPS t191sb01）：每家機構最新公布的一筆，依機構名稱排序；沒有申報是空陣列。是發行公司的，不是這檔特別股的
+  issuerCreditRatings: IssuerCreditRating[]
+}
+
+// 值都是 MOPS 原文：機構名稱不正規化（中英文、國際與台灣尺度並存）、沒有短期評等是 null 或「無」、展望中英文都有
+export interface IssuerCreditRating {
+  ratingAgency: string
+  longTermRating: string | null
+  shortTermRating: string | null
+  outlook: string | null
+  announcementDate: string
 }
 
 export interface PreferredPageResponse {

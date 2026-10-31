@@ -2,6 +2,7 @@ import type { FilterCriterion, ScreenerResultRow } from '~/composables/screener/
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 import type { UniverseQuery, UniverseResult, UniverseSource, UniverseTemplate } from '~/composables/screener/useUniverseScreener'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
+import type { IssuerCreditRating } from '#shared/types/screener-detail'
 
 // 特別股篩選的資料來源（2026-10-15 三組篩選重新設計）。全部只有 28 檔（GET /stocks/preferred-stocks），一次讀進來、在瀏覽器裡篩與排，
 // 所以結果表是 client 排序、沒有下一頁。畫面與「我的篩選」的儲存跟另外兩組共用（ScreenerPageShell、useUniverseScreener）。
@@ -10,8 +11,8 @@ import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetric
 // 原本的三個固定分頁（全部／非累積型／累積型）變成「股息累積性」這個類別型條件；三組欄位預設變成「新增欄位組合」的範本。
 // 每股淨值那些償債欄位（利息保障倍數、負債比…）上游一直是 null，不放。
 
-// 陣列只有除權息月份（[6, 7]，analysis-ts 617ba6bb）
-type PreferredValue = string | number | boolean | null | number[]
+// 陣列是除權息月份（[6, 7]，analysis-ts 617ba6bb）、沒配的年份，與 withDerivedFields 拿掉之前的評等
+type PreferredValue = string | number | boolean | null | number[] | IssuerCreditRating[]
 
 interface PreferredStockEntry {
   symbol: string
@@ -29,7 +30,11 @@ const CATEGORIES = [
     { field: 'currentYieldPct', name: '殖利率', unit: '%' },
     { field: 'ytwPct', name: '最差殖利率 YTW', unit: '%' },
     // 還沒到的月份看去年同月（同普通股、ETF 的上游定義，跟除權息月覽一致）
-    { field: 'exDividendMonths', name: '除權息月份', kind: 'categorical', options: EX_DIVIDEND_MONTH_OPTIONS }
+    { field: 'exDividendMonths', name: '除權息月份', kind: 'categorical', options: EX_DIVIDEND_MONTH_OPTIONS },
+    // 不配息是特別股的主要風險（2026-10-31，使用者選了不算期望值、只陳述事實）：配息年數（4/6（2020 起））只當欄位，篩停發用「曾經停發」。
+    // 兩欄都是 withDerivedFields 從數據中台的 cashDividend* 組出來的
+    { field: 'cashDividendYears', name: '配息年數', columnOnly: true, description: '完整年度裡有配現金股息的年數 ÷ 觀察的年數（配息紀錄 2020 年起才完整）' },
+    { field: 'cashDividendSkipped', name: '曾經停發', kind: 'categorical', options: yesNo('曾經停發', '每年都有配') }
   ]),
   snapshotCategory('price', '價格', 1, [
     { field: 'latestClosePrice', name: '收盤價', unit: '元' },
@@ -46,6 +51,10 @@ const CATEGORIES = [
     // 發行日（2026-10-31，使用者：「screener/preferred 能加上發行日不?」「就是欄位裡面找不到我再問的」）：YYYY-MM-DD 原樣顯示、照字串排序
     //（compareFieldValues）。shortcut: 只能當欄位（columnOnly），matches 只會比數字與類別、範圍編輯器沒有日期；要當條件時兩邊一起補
     { field: 'issueDate', name: '發行日', columnOnly: true },
+    // 發行公司的信用評等（2026-10-31，使用者「screener/preferred 能加上發行公司的信用評等嗎」）：尺度混在一起（twAA、BBB、A+(twn)），
+    // 排序與數字條件沒有意義，所以只當欄位；條件只有有沒有評等。不是這檔特別股本身的評等
+    { field: 'issuerCreditRatingText', name: '發行公司信用評等', columnOnly: true, description: '發行公司申報的各家機構最新長期評等原文，不是這檔特別股本身的評等' },
+    { field: 'hasIssuerCreditRating', name: '有發行公司信用評等', kind: 'categorical', options: yesNo('有評等', '沒有評等') },
     { field: 'marketType', name: '市場', kind: 'categorical', options: [{ value: '上市', label: '上市' }, { value: '上櫃', label: '上櫃' }] }
   ])
 ]
@@ -94,6 +103,23 @@ function matches(entry: PreferredStockEntry, filter: FilterCriterion): boolean {
   return filter.exclude ? !inRange : inRange
 }
 
+// 從上游欄位組出來的幾欄（見 CATEGORIES）：配息年數、曾經停發（還沒有完整年度的是 null：不知道，不是沒停發），發行公司信用評等與有沒有評等。
+// 評等陣列本身不留在列上（toRow 會把陣列接成字串）
+function withDerivedFields(entry: PreferredStockEntry): PreferredStockEntry {
+  const { issuerCreditRatings, ...rest } = entry
+  const ratings = (Array.isArray(issuerCreditRatings) ? issuerCreditRatings : []) as unknown as IssuerCreditRating[]
+  const observed = entry.cashDividendObservedYears
+  const missed = entry.cashDividendMissedYears
+  const hasYears = typeof observed === 'number' && observed > 0
+  return {
+    ...rest,
+    cashDividendYears: hasYears ? `${entry.cashDividendPaidYears}/${observed}（${entry.cashDividendObservedFromYear} 起）` : null,
+    cashDividendSkipped: hasYears ? Array.isArray(missed) && missed.length > 0 : null,
+    issuerCreditRatingText: issuerRatingsText(ratings),
+    hasIssuerCreditRating: ratings.length > 0
+  }
+}
+
 function toRow(entry: PreferredStockEntry): ScreenerResultRow {
   return {
     symbol: entry.symbol,
@@ -114,7 +140,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   function loadEntries(): Promise<PreferredStockEntry[]> {
     if (entries.value) return Promise.resolve(entries.value)
     inFlight ??= apiFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks', { baseURL: BUSINESS_CACHED_BASE })
-      .then(response => (entries.value = response.entries))
+      .then(response => (entries.value = response.entries.map(withDerivedFields)))
       .finally(() => { inFlight = null })
     return inFlight
   }
@@ -135,7 +161,8 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
       label: METRICS.get(field)?.name ?? field,
       format: raw => formatValue(field, raw),
       sortable: 'client',
-      ascendingFirst: ASCENDING_FIRST.has(field)
+      ascendingFirst: ASCENDING_FIRST.has(field),
+      wide: field === 'issuerCreditRatingText'
     }
   }
 

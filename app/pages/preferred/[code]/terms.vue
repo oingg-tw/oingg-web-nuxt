@@ -29,7 +29,15 @@ const facts = computed<FactItem[]>(() => {
     { label: '公司可收回', value: preferredYesNo(stockEntry.redeemable, '可以', '不可以') },
     { label: '發行日', value: stockEntry.issueDate ?? '－' },
     { label: '上市日', value: stockEntry.listingDate ?? '－' },
-    { label: '市場', value: stockEntry.marketType }
+    { label: '市場', value: stockEntry.marketType },
+    // 發行公司的信用評等（2026-10-31）：每家機構一列，MOPS 原文。有的最新一筆已經好幾年（國泰金 2015），所以寫公布日
+    ...(stockEntry.issuerCreditRatings.length
+      ? stockEntry.issuerCreditRatings.map(rating => ({
+        label: `發行公司信用評等（${ratingAgencyShort(rating.ratingAgency)}）`,
+        value: [ratingValue(rating.longTermRating) && `長期 ${rating.longTermRating}`, ratingValue(rating.shortTermRating) && `短期 ${rating.shortTermRating}`].filter(Boolean).join('、') || '－',
+        note: [ratingValue(rating.outlook) && `展望 ${rating.outlook}`, `${rating.announcementDate} 公布`, rating.ratingAgency].filter(Boolean).join('，')
+      }))
+      : [{ label: '發行公司信用評等', value: '公開資訊觀測站沒有申報紀錄' }])
   ]
 })
 </script>
@@ -38,6 +46,7 @@ const facts = computed<FactItem[]>(() => {
   <PreferredStockPage :preferred="preferred" topic="權利條款" :description="answer">
     <StockQuestionSection id="preferred-terms" :question="`${shortName}（${code}）有哪些權利與條款？`" :answer="answer">
       <SharedFactList :items="facts" :label="`${shortName}的權利與條款`" />
+      <p v-if="entry?.issuerCreditRatings.length" class="hub-answer">信用評等是發行公司向公開資訊觀測站申報的各家機構評等原文，是發行公司的，不是這檔特別股本身的評等，也不是本站的評等。</p>
     </StockQuestionSection>
   </PreferredStockPage>
 </template>

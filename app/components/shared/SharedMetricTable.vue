@@ -17,6 +17,8 @@ export interface ScreenerResultTableColumn {
   sortable?: 'server' | 'client' | false
   // 第一下由小到大（溢價率、費用率這類「越小越符合多數人要找的」）；不給就照 ASCENDING_FIRST_METRICS
   ascendingFirst?: boolean
+  // 長文字欄（特別股的發行公司信用評等，2026-10-31）：靠左、約 20 個字寬、放不下換行。其他欄的值不換行、靠右（數字）
+  wide?: boolean
 }
 
 const props = withDefaults(defineProps<{
@@ -310,6 +312,7 @@ function sortableFor(field: string): boolean | 'custom' {
 const NUMBER_COLUMN_WIDTH = 104
 const RIVER_TRACK_WIDTH = 60
 function minWidthFor(column: ScreenerResultTableColumn): number {
+  if (column.wide) return 20 * 16
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   const labels = (metric?.options ?? []).map(option => option.label)
   // 一格可能列好幾個選項（已經持有的帳戶名稱）：照全部串起來估，最多 20 個字
@@ -680,7 +683,8 @@ watch(() => props.loading, (loading, wasLoading) => {
         v-for="(column, index) in orderedColumns"
         :key="`${column.field}::${column.label}`"
         :prop="column.field"
-        align="right"
+        :align="column.wide ? 'left' : 'right'"
+        :class-name="column.wide ? 'screener-result-table__wide' : undefined"
         :min-width="minWidthFor(column)"
         :sortable="sortableFor(column.field)"
         :sort-method="sortMethodFor(column.field)"
@@ -690,7 +694,7 @@ watch(() => props.loading, (loading, wasLoading) => {
         <template #header>
           <!-- 點表頭打開欄位選單（2026-10-22，SharedColumnMenu）：排序、移動、移除都在選單裡；表頭上沒有直接刪除的 X
                （2026-10-21 使用者拿掉的，一按就刪）。排序的箭頭是 SharedSortIcon，el-table 自己的箭頭藏起來（見 CSS） -->
-          <button type="button" class="screener-result-table__head" :data-field="column.field" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === column.field">
+          <button type="button" class="screener-result-table__head" :class="{ 'screener-result-table__head--start': column.wide }" :data-field="column.field" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === column.field">
             <SharedSortIcon :state="activeSort.field === column.field ? activeSort.order : null" /><span class="screener-result-table__column-label">{{ displayLabel(column) }}</span><span class="visually-hidden">{{ sortStateText(column.field) }}</span>
           </button>
         </template>
@@ -927,6 +931,14 @@ watch(() => props.loading, (loading, wasLoading) => {
 /* 值不折行；表頭在欄寬裡折行、對齊底部（2026-10-22 方案 1B，見 minWidthFor） */
 .screener-result-table :deep(.cell) {
   white-space: nowrap;
+}
+
+.screener-result-table :deep(td.screener-result-table__wide .cell) {
+  white-space: normal;
+}
+
+.screener-result-table :deep(td.screener-result-table__wide .screener-result-table__cell) {
+  align-items: flex-start;
 }
 
 /* 表格的顏色、表頭、列線、左右 16px 是全站表格的規則（main.css 與 element-plus.css 的「全站表格」，2026-10-23 從這裡抽出去）。
