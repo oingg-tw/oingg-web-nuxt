@@ -16,6 +16,9 @@ export interface ColdStartReport {
   webColdWaitMs: number | null
   // 從 web-nuxt 收到這個請求到送出叫醒這台容器的那一支（2026-10-28，對上業務中台的到達時刻就分得出晚送還是網路）
   webColdOffsetMs: number | null
+  // 那一支回應主體的 UTF-8 位元組數（2026-10-31，管理站：等待比到達、回完多出來的 0.3～0.6 秒是不是回應大）。webColdWaitMs 算到主體讀完、
+  // 解析完，所以大的回應等比較久；沒拿到回應（逾時、連不上）是 null
+  webColdResponseBytes: number | null
   webBusinessWaitMs: number | null
   webServerMs: number | null
   isWebCold: boolean | null
@@ -41,6 +44,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const COLO = /^[A-Z]{3}$/
 const MS_FIELDS = ['webColdWaitMs', 'webColdOffsetMs', 'webBusinessWaitMs', 'webServerMs', 'requestStartMs', 'responseStartMs', 'responseEndMs', 'dnsMs', 'connectMs', 'tlsMs',
   'clientTcpRttMs', 'webWakeOffsetMs', 'webWakeMs', 'webWakeTokenMs'] as const
+// 回應大小的上限（業務中台同一個數字）：最大的日線歷史約 1 MB，100 MB 只是擋亂送的
+const MAX_RESPONSE_BYTES = 100_000_000
 
 // 業務中台回應標頭裡的冷啟動 id：`cold;desc="<uuid>"`（可能跟其他項目用逗號串在一起）
 export function coldStartIdOf(serverTiming: string | null | undefined): string | null {
@@ -53,6 +58,8 @@ export interface ColdStartWait {
   waitMs: number
   // 從 web-nuxt 收到這個請求到送出這一支（2026-10-28，管理站要分出「web-nuxt 晚送」和「網路」）
   offsetMs?: number
+  // 回應主體的 UTF-8 位元組數（2026-10-31）
+  bytes?: number
 }
 
 // 叫醒數據中台的那一次 GET /（server/utils/business.ts 的 wakeAnalysis）：從收到請求到送出、換 ID token、送出到回應
@@ -68,10 +75,15 @@ export interface AnalysisWake {
 // 沒有冷啟動的回應也寫（colds 是空的，2026-10-27），只是沒有 cold 那幾項；
 // colo 是 Cloudflare 的入口機房，沒有就不寫。
 // 2026-10-28（管理站要把「網路＋開容器」拆開）：coldsent 是送出那一支的時間點（從收到請求算）；rtt 是瀏覽器到入口的 TCP 來回；
-// wake／wakesent／waketoken 是叫醒數據中台那次，回應送出前還沒回來就不寫
+// wake／wakesent／waketoken 是叫醒數據中台那次，回應送出前還沒回來就不寫。
+// coldbytes（2026-10-31）是那一支回應的位元組數，借 dur 放（Server-Timing 只有 dur 是數字）
 export function coldStartServerTiming(colds: readonly ColdStartWait[], waitAllMs: number, serverMs: number, webCold: boolean, colo: string | null, clientTcpRttMs: number | null = null, wake: AnalysisWake | null = null): string {
   return [
-    ...colds.flatMap(cold => [`cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`, ...(cold.offsetMs === undefined ? [] : [`coldsent;dur=${Math.round(cold.offsetMs)};desc="${cold.id}"`])]),
+    ...colds.flatMap(cold => [
+      `cold;dur=${Math.round(cold.waitMs)};desc="${cold.id}"`,
+      ...(cold.offsetMs === undefined ? [] : [`coldsent;dur=${Math.round(cold.offsetMs)};desc="${cold.id}"`]),
+      ...(cold.bytes === undefined ? [] : [`coldbytes;dur=${cold.bytes};desc="${cold.id}"`])
+    ]),
     `waitall;dur=${Math.round(waitAllMs)}`,
     `web;dur=${Math.round(serverMs)}`,
     ...(webCold ? ['webcold'] : []),
@@ -135,10 +147,10 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
     webWakeMs: dur('wake'),
     webWakeTokenMs: dur('waketoken')
   }
-  const sentOf = (id: string) => items.find(item => item.name === 'coldsent' && item.description.toLowerCase() === id)?.duration ?? null
+  const ofId = (name: string, id: string) => items.find(item => item.name === name && item.description.toLowerCase() === id)?.duration ?? null
   return colds.map((cold) => {
     const id = cold.description.toLowerCase()
-    return { id, webColdWaitMs: cold.duration, webColdOffsetMs: sentOf(id), ...shared }
+    return { id, webColdWaitMs: cold.duration, webColdOffsetMs: ofId('coldsent', id), webColdResponseBytes: ofId('coldbytes', id), ...shared }
   })
 }
 
@@ -146,15 +158,16 @@ export function coldStartReportsOf(entry: TimingEntry, kind: 'document' | 'api',
 export function cleanColdStartReport(raw: unknown): ColdStartReport | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const input = raw as Record<string, unknown>
-  const allowed = new Set<string>(['id', 'route', 'kind', 'at', 'isWebCold', 'edgeColo', ...MS_FIELDS])
+  const allowed = new Set<string>(['id', 'route', 'kind', 'at', 'isWebCold', 'edgeColo', 'webColdResponseBytes', ...MS_FIELDS])
   if (Object.keys(input).some(key => !allowed.has(key))) return null
-  const { id, route, kind, at, isWebCold, edgeColo } = input
+  const { id, route, kind, at, isWebCold, edgeColo, webColdResponseBytes: bytes } = input
   if (typeof id !== 'string' || !UUID.test(id)) return null
   if (typeof route !== 'string' || !route.startsWith('/') || route.includes('?') || route.length > 300) return null
   if (kind !== 'document' && kind !== 'api') return null
   if (typeof at !== 'string' || !/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(at) || Number.isNaN(Date.parse(at))) return null
   if (isWebCold !== undefined && isWebCold !== null && typeof isWebCold !== 'boolean') return null
   if (edgeColo !== undefined && edgeColo !== null && (typeof edgeColo !== 'string' || !COLO.test(edgeColo))) return null
+  if (bytes !== undefined && bytes !== null && !(Number.isInteger(bytes) && (bytes as number) >= 0 && (bytes as number) <= MAX_RESPONSE_BYTES)) return null
   const ms: Partial<Record<(typeof MS_FIELDS)[number], number | null>> = {}
   for (const field of MS_FIELDS) {
     const value = input[field]
@@ -162,5 +175,5 @@ export function cleanColdStartReport(raw: unknown): ColdStartReport | null {
     else if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 600_000) ms[field] = Math.round(value)
     else return null
   }
-  return { id: id.toLowerCase(), route, kind, at, isWebCold: isWebCold ?? null, edgeColo: edgeColo ?? null, ...ms } as ColdStartReport
+  return { id: id.toLowerCase(), route, kind, at, isWebCold: isWebCold ?? null, edgeColo: edgeColo ?? null, webColdResponseBytes: bytes ?? null, ...ms } as ColdStartReport
 }

@@ -133,7 +133,8 @@ export async function businessAuthHeaders(): Promise<Record<string, string>> {
 // 伺服器渲染時呼叫自己的 /api 是內部請求，一路往上記到外層請求（coldStartParent，由那個外掛記）。快取在背景重算時碰到的，
 // 回應多半已經送出、寫不進去，就不算（使用者沒在等）；還沒送出就會被算進去——管理站看 webServerMs 比 webColdWaitMs 短就知道是背景的。
 // ponytail: 背景重算剛好在回應送出前跑完會被當成使用者在等，要精確得把 swr 的背景執行另外標記
-export function noteBusinessCall(event: H3Event | null, serverTiming: string | null, startedAt: number, endedAt: number): void {
+// body 是收到的回應主體（文字或解析後的 JSON），只有冷的那支才量大小；沒拿到回應是 undefined
+export function noteBusinessCall(event: H3Event | null, serverTiming: string | null, startedAt: number, endedAt: number, body?: unknown): void {
   const target = userRequestOf(event)
   if (!target) return
   ;(target.context.businessWaits ??= []).push([startedAt, endedAt])
@@ -141,7 +142,13 @@ export function noteBusinessCall(event: H3Event | null, serverTiming: string | n
   if (!id) return
   const colds = (target.context.coldStarts ??= [])
   const origin = target.context.coldStartClock?.startedAt
-  if (!colds.some(cold => cold.id === id)) colds.push({ id, waitMs: endedAt - startedAt, ...(origin === undefined ? {} : { offsetMs: startedAt - origin }) })
+  if (colds.some(cold => cold.id === id)) return
+  colds.push({ id, waitMs: endedAt - startedAt, ...(origin === undefined ? {} : { offsetMs: startedAt - origin }), ...(body === undefined ? {} : { bytes: bodyBytes(body) }) })
+}
+
+// 解析後的 JSON 再序列化一次：業務中台送的是緊湊 JSON，長度跟原本的主體一樣。一次冷啟動只算一次
+function bodyBytes(body: unknown): number {
+  return new TextEncoder().encode(typeof body === 'string' ? body : JSON.stringify(body) ?? '').byteLength
 }
 
 // 使用者在等的那個請求（伺服器渲染時的內部 /api 一路往上找）
@@ -166,8 +173,9 @@ export async function businessFetch<T>(path: string, options: BusinessFetchOptio
   // ＋ firstRequestMs），剩下的是台灣到新加坡的網路＋Cloud Run 在行程啟動前開容器，兩者分不開
   const startedAt = performance.now()
   let serverTiming: string | null = null
+  let body: T | undefined
   try {
-    return await $fetch<T>(path, {
+    return (body = await $fetch<T>(path, {
       baseURL: config.businessBase,
       method: options.method ?? 'GET',
       query: options.query,
@@ -178,10 +186,10 @@ export async function businessFetch<T>(path: string, options: BusinessFetchOptio
       onResponse: ({ response }) => {
         serverTiming = response.headers.get('server-timing')
       }
-    })
+    }))
   } finally {
     // 失敗、逾時也是在等
-    noteBusinessCall(currentEvent(), serverTiming, startedAt, performance.now())
+    noteBusinessCall(currentEvent(), serverTiming, startedAt, performance.now(), body)
   }
 }
 
