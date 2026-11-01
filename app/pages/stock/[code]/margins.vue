@@ -51,8 +51,13 @@ const [{ data: filterSchema }, { data: marginsData, error: marginsError, status:
 ])
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
-const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || marginsData.value?.series === null))
-const answerSkeleton = computed(() => (marginsPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的財報三率（單季）、毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
+// 期別切換（2026-11-01，使用者：「可以讓財報三率也有近四季選項嗎」）：預設照舊單季（「請讓指標預設只用單季數字」）。兩種序列同一次請求
+// 就有，切換是換資料不是重抓；basisLabel 穿過答句、表名與拆解，同杜邦頁
+const basis = ref<'TTM' | 'Q'>('Q')
+const basisLabel = computed(() => TIMEFRAME_LABELS[basis.value])
+const activeSeries = computed(() => (basis.value === 'Q' ? marginsData.value?.series : marginsData.value?.ttmSeries))
+const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || activeSeries.value === null))
+const answerSkeleton = computed(() => (marginsPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的財報三率（${basisLabel.value}）、毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
 
 // 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
@@ -66,7 +71,7 @@ watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?
 // so removing it here fixes the chart and both tables at once. A period missing only SOME of the
 // three is kept — that gap is real information and the chart's own connectNulls: false shows it.
 const ascending = computed<MetricsHistoryEntry[]>(() =>
-  (marginsData.value?.series?.entries ?? []).filter(entry => MARGIN_RATE_CODES.some(rateCode => entry.values[rateCode]?.value != null))
+  (activeSeries.value?.entries ?? []).filter(entry => MARGIN_RATE_CODES.some(rateCode => entry.values[rateCode]?.value != null))
 )
 const periods = computed(() => [...ascending.value].reverse())
 
@@ -155,7 +160,7 @@ const waterfallSteps = computed<WaterfallStep[]>(() => {
 const valueAnswer = computed(() => {
   if (!latest.value || !hasRates.value) return null
   return joinClauses([
-    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的財報三率（單季）`,
+    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的財報三率（${basisLabel.value}）`,
     `毛利率 ${fixedRateText(grossMargin.value)}`,
     `營業利益率 ${fixedRateText(operatingMargin.value)}`,
     `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
@@ -173,11 +178,11 @@ const relationAnswer = computed(() => {
 
 const history = computed(() => {
   const list = periods.value
-  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '財報三率', basis: '單季', count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '財報三率', basis: basisLabel.value, count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
 const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
 // 拆解表的表名（caption 藏起來，同 SharedTable 的 label；2026-10-13 統一）
-const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（單季）`
+const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value} ${latestPeriodText.value} 的${topic}拆解（${basisLabel.value}）`
 
 // 三率三升（2026-09-21,「三率三升的徽章可以加上去了」）. Everything a reader sees here comes from
 // the BACKEND — the badge's own summary, its threshold note, and the metric's own limitations and
@@ -283,7 +288,7 @@ const { breadcrumbs } = useStockPageSeo({
     :footer="{ sources: dataSources, links: footerLinks }"
   >
     <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
-      <StockRatioLinesChart v-if="hasRates" page="margins" :entries="ascending" />
+      <StockRatioLinesChart v-if="hasRates" v-model:basis="basis" page="margins" :entries="ascending" />
       <SharedChartCard v-else-if="marginsPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
       <template v-else-if="readFailed" />
       <p v-else class="stock-margins-page__line">

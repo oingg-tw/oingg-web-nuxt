@@ -19,6 +19,8 @@ export interface StockMarginsPageResponse {
   // period's own `values`. `null` when the history endpoint failed — the page degrades to its
   // definition/link content and goes noindex rather than erroring, same rule as the metric page.
   series: MetricsHistorySeries | null
+  // 近四季（2026-11-01，使用者：「可以讓財報三率也有近四季選項嗎」）：同上、TTM 口徑。頁面預設照舊單季，切換是換資料不重抓（同杜邦頁）
+  ttmSeries: MetricsHistorySeries | null
   // The 三率三升 badge for this symbol（2026-09-21,「三率三升的徽章可以加上去了」）— null when the
   // symbol has no reading, which as of this date is almost all of them: measured across 20 large
   // symbols, only 2330 carries any threeMarginsRising data at all（20 Q periods; the other 19

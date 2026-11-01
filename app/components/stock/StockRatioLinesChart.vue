@@ -8,6 +8,8 @@ const props = defineProps<{
   // 由舊到新，原樣傳進來
   entries: MetricsHistoryEntry[]
 }>()
+// 期別切換（2026-11-01，財報三率頁）：有綁 v-model:basis 才畫，指標速覽與安全韌性不綁；資料由頁面換（同 StockDupontChart）
+const basis = defineModel<'TTM' | 'Q'>('basis')
 
 // 一張圖三條線。三率 2026-09-30 曾拆成上下兩張（高齡友善的折線規格一張圖最多兩條線），2026-10-24 合回一張（使用者：「三率的關係
 // 正名 財報三率 並且 合併 三條線，也就是把圖表合併成一個」）。2026-09-30 抽 61 檔、912 期量過：營業利益率沒有一期高過毛利率
@@ -37,6 +39,13 @@ const { period, shown } = useChartPeriod({ all: plotted, keyOf: entry => `${entr
   <SharedChartCard :period="plotted.length ? period : undefined">
     <template v-if="$slots.header" #header>
       <slot name="header" />
+    </template>
+    <!-- 期別在近N年的左邊，同 StockDupontChart -->
+    <template v-if="basis && plotted.length" #controls>
+      <el-radio-group v-model="basis" aria-label="期別（單季或近四季）">
+        <el-radio-button value="TTM">近四季</el-radio-button>
+        <el-radio-button value="Q">單季</el-radio-button>
+      </el-radio-group>
     </template>
     <StockMultiSeriesLineChart v-if="plotted.length" :entries="shown" :series="series" unit="%" :format="fixedRateText" />
     <p v-else class="stock-ratio-lines-chart__line">目前沒有這張圖的資料。</p>

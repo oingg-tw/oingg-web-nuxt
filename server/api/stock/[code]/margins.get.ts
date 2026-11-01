@@ -18,9 +18,8 @@ import { MARGIN_METRIC_CODES, THREE_MARGINS_RISING_CODE, type StockMarginsPageRe
 // identity did NOT close would have made this page's whole subject wrong, so it was measured
 // rather than assumed.
 //
-// One basis rather than a 單季/近四季 toggle: this page's subject is the RELATIONSHIP between the
-// three rates, and the per-rate pages each carry their own basis toggle for reading one rate at a
-// different cadence.
+// 2026-11-01 加回近四季（使用者：「可以讓財報三率也有近四季選項嗎」）：兩種口徑各一支快取的呼叫，頁面切換不重抓（同 dupont.get.ts）。
+// 拆解在 TTM 一樣閉合（上面那段量的就是從 TTM 換過來）；指標速覽只讀 series（單季）。
 //
 // settle(): a history hiccup must degrade the page, never 500 it — the page decides what degrading
 // means (noindex, a 尚無資料 line), this route only reports what it found.
@@ -31,8 +30,9 @@ export default defineEventHandler(async (event): Promise<StockMarginsPageRespons
   // Two independent reads, neither allowed to take the page down with it — settle() rather than a
   // bare Promise.all, same rule metric.get.ts states: a backend hiccup degrades this page, it
   // never 500s it.
-  const [series, badges] = await Promise.all([
+  const [series, ttmSeries, badges] = await Promise.all([
     settle(cachedMetricsHistory(code, 'Q', MARGIN_METRIC_CODES, STOCK_HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, 'TTM', MARGIN_METRIC_CODES, STOCK_HISTORY_LIMIT)),
     settle(cachedBadges(code))
   ])
 
@@ -42,5 +42,5 @@ export default defineEventHandler(async (event): Promise<StockMarginsPageRespons
     .flatMap(category => category.badges)
     .find(badge => badge.metricCode === THREE_MARGINS_RISING_CODE) ?? null
 
-  return { symbol: code, series, threeMarginsRising }
+  return { symbol: code, series, ttmSeries, threeMarginsRising }
 })
