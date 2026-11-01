@@ -19,6 +19,10 @@ import type { SheetColumn } from '~/components/shared/SharedSheetGrid.vue'
 // 從指標目錄挑（SharedMetricColumnPicker，觀察清單同一個），挑到的就是一欄 =METRIC("roe.TTM")——跟其他欄一樣是公式欄，有字母、
 // 可以被別的公式引用。上游把公式當純文字存，所以不用改後端。
 //
+// 2026-11-01 先隱藏（使用者：「holdings/columns 這個功能先註解隱藏好了 連同sidebar」）：網址導回持股總覽（帶著 ?account=），側欄那一項
+// 註解掉（HoldingsNav）；程式留著，恢復時拿掉這段 redirect、打開側欄那一行
+definePageMeta({ redirect: to => ({ path: '/holdings', query: to.query }) })
+
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '自訂欄位', robots: 'noindex, nofollow' })
 

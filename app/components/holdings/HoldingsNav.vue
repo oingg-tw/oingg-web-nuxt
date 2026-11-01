@@ -22,9 +22,10 @@ const HOLDINGS_NAV_ITEMS = [
   // 捕獲率、Beta、Sharpe 這些進階統計，名詞門檻高，自成一頁
   { label: '績效統計', to: '/holdings/statistics' },
   // 使用者 2026-10-05：「讓用戶可以自己定義，比如第二欄數值除以第一欄數值」「可能是另外的 sidebar 項目」
-  { label: '自訂欄位', to: '/holdings/columns', heading: '設定' },
+  // 2026-11-01 先隱藏（使用者：「holdings/columns 這個功能先註解隱藏好了 連同sidebar」）：頁面導回 /holdings，恢復時拿掉 columns.vue 的 redirect
+  // { label: '自訂欄位', to: '/holdings/columns', heading: '設定' },
   // 2026-10-19 使用者選「側欄加一頁帳戶管理」：新增、改名、刪除、排序帳戶。一個帳戶的人也找得到（切換那一段只在兩個以上帳戶時才有）
-  { label: '帳戶管理', to: '/holdings/accounts' }
+  { label: '帳戶管理', to: '/holdings/accounts', heading: '設定' }
 ]
 
 // 帳戶切換在側欄最下面（SharedScopeSwitch，兩個以上帳戶才有）；兩個以上帳戶時，手機底部條寫出正在看哪個帳戶（手機看不到側欄）。

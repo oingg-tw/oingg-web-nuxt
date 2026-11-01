@@ -17,5 +17,6 @@ export const ALL_ROUTES = [
   '/macro', '/macro?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
   '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', '/industries/sensitivity', ...INDUSTRY_FACETS.map(facet => `/industry/24-semiconductor${facet.suffix}`),
   '/rank', '/rank/dividend-yield', '/learn', '/learn/dupont', '/learn/dividend-source/2330', '/blog', '/blog/low-pe-ratio-trap-cyclical-stocks',
-  '/calendar', '/calendar/months', '/watchlist', '/watchlist/lists', '/holdings', '/holdings/dividends', '/holdings/columns', '/holdings/accounts', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/changelog', '/profile'
+  // /holdings/columns 2026-11-01 先隱藏（導回 /holdings），恢復時加回來
+  '/calendar', '/calendar/months', '/watchlist', '/watchlist/lists', '/holdings', '/holdings/dividends', '/holdings/accounts', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/changelog', '/profile'
 ]

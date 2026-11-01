@@ -5,6 +5,7 @@
 //   - /watchlist 欄位設定彈窗的「＋ 新增欄位」（2026-10-22 起）：同一個挑選器本體在彈窗裡換一頁（不疊彈窗），挑了回到清單、按「儲存」
 //     才存進觀察清單欄位；額度已滿時說明（含看方案）寫在彈窗裡、不換到挑指標
 // 持股、觀察清單、欄位設定、方案全是攔截的假資料；寫入一律擋下並記錄（PUT 的內容拿來比對）。
+// 2026-11-01 起 /holdings/columns 先隱藏（導回 /holdings）：這支的持股那幾項會失敗，只看觀察清單那幾項；頁面恢復時一起恢復
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-metric-columns.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
 import { chromium } from 'playwright'
