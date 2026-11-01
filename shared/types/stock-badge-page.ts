@@ -1,6 +1,7 @@
 import type { StockBadgeEntry } from './stock-badges'
 import type { MetricProvenanceResponse } from './metric-provenance'
 import type { MetricsHistorySeries } from './metrics-history'
+import type { RiverLatestByTimeframe } from './stock-metric-page'
 
 // server/api/stock/[code]/badge.get.ts — everything one /stock/:code/{badge-slug} page
 // (app/pages/stock/[code]/[slug].vue, 2026-09-20) needs in one same-origin round trip: the
@@ -23,4 +24,6 @@ export interface StockBadgePageResponse {
   series: MetricsHistorySeries | null
   // 單季口徑的同一支指標（2026-10-12，歷年變化表用）；chartTimeframe 本來就是 Q 的頁不另抓，是 null
   quarterly: MetricsHistorySeries | null
+  // 河流圖頁（股價營收比）圖的最後一點，同 StockMetricPageResponse 的同名欄位
+  riverLatest: RiverLatestByTimeframe | null
 }

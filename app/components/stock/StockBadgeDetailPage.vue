@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { StockBadgePageResponse } from '#shared/types/stock-badge-page'
+import type { RiverLatest } from '#shared/types/stock-metric-page'
 // The BADGE half of /stock/{code}/{slug} (2026-09-20), generalizing f-score.vue's per-stock ×
 // per-metric template to other guru badges.
 //
@@ -144,6 +145,15 @@ const passedText = computed(() => {
 const basisLabel = computed(() => (entry.value ? TIMEFRAME_LABELS[entry.value.timeframe as keyof typeof TIMEFRAME_LABELS] ?? entry.value.timeframe : ''))
 const basisSuffix = computed(() => (entry.value && entry.value.timeframe !== 'EOD' ? `（${basisLabel.value}）` : ''))
 
+// 河流圖頁（股價營收比）的答句先寫圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」，同 StockMetricDetailPage 的 riverLead）。
+// 徽章是用財報公告日那天的數字判定的，所以那個數字留著、寫明是判定用的，不然「本期未符合」對不上前面的數字
+const riverLive = ref<RiverLatest | null | undefined>()
+const riverLatest = computed(() => (riverLive.value !== undefined ? riverLive.value : badgeData.value?.riverLatest?.TTM ?? null))
+const riverLead = computed(() => {
+  const point = riverLatest.value
+  return point ? `${stockShortName.value}以 ${point.tradeDate} 收盤 ${groupThousands(point.price)} 元、${point.baseLabel} ${point.base} 元計算，${badgePage.topic}為 ${formatSignificantDigits(point.ratio, 4)}${unit.value}` : null
+})
+
 // 讀取中的答句骨架（同 StockMetricDetailPage）：值、資料時間、徽章門檻那一句差不多長
 const answerSkeleton = computed(() => (badgePending.value ? `${stockShortName.value}的${badgePage.topic}（近四季）為 00.00、資料時間 2026-08-11、徽章門檻「≥ 00%」本期符合。` : null))
 
@@ -155,6 +165,15 @@ const valueAnswer = computed(() => {
   // an absolute-threshold badge sends neither.
   const rank = entry.value.rank
   const totalCount = entry.value.totalCount
+  if (riverLead.value) {
+    return joinSentences([
+      joinClauses([riverLead.value]),
+      joinClauses([
+        `徽章用 ${entry.value.knowledgeDate ?? '財報公告日'} 財報公告日的${badgePage.topic}${basisSuffix.value} ${valueText.value} 判定`,
+        badgeDefinition.value ? `門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
+      ])
+    ])
+  }
   return joinClauses([
     `${lead}${badgePage.topic}${basisSuffix.value}為 ${valueText.value}`,
     rank != null && totalCount != null ? `全市場第 ${rank} 名（共 ${totalCount} 檔）` : null,
@@ -188,6 +207,7 @@ const footerLinks = computed(() => [
 // 50-CJK-char floor (scripts/check-stock-pages.mjs).
 const description = computed(() => {
   if (!entry.value) return null
+  if (riverLead.value) return clampDescription(joinSentences([valueAnswer.value, badgeDefinition.value?.summary]) ?? '')
   const lead = joinClauses([
     `${stockShortName.value}（${code.value}）${badgePage.topic}${basisSuffix.value}：${valueText.value}`,
     entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
@@ -243,7 +263,7 @@ const { breadcrumbs } = useStockPageSeo({
              of those with none of the context. See StockMetricDetailPage's own note. -->
         <!-- Same one-line branch StockMetricDetailPage makes, for the same reason: only the
              chart inside this card differs, never the page's document shape. -->
-        <StockValuationRiverChart v-if="badgePage.riverKind" :symbol="code" :kind="badgePage.riverKind" />
+        <StockValuationRiverChart v-if="badgePage.riverKind" :symbol="code" :kind="badgePage.riverKind" @latest="value => { riverLive = value }" />
         <StockMetricHistoryChartInteractive
           v-else-if="badgePage.chartTimeframe"
           :symbol="code"

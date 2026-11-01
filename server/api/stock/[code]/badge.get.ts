@@ -24,7 +24,7 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
   const badgePage = typeof slug === 'string' ? findBadgePage(slug) : null
   if (!badgePage) throw createError({ statusCode: 404, statusMessage: 'unknown badge page' })
 
-  const [badges, provenance, series, quarterly] = await Promise.all([
+  const [badges, provenance, series, quarterly, riverLatest] = await Promise.all([
     settle(cachedBadges(code)),
     badgePage.provenanceMetricCode ? settle(cachedMetricProvenance(code, badgePage.provenanceMetricCode)) : Promise.resolve(null),
     badgePage.chartTimeframe
@@ -33,12 +33,13 @@ export default defineEventHandler(async (event): Promise<StockBadgePageResponse>
     // 歷年變化表一律單季（2026-10-12，同 metric.get.ts）；沒有單季口徑的指標回空，頁面退回 series
     badgePage.chartTimeframe && badgePage.chartTimeframe !== 'Q'
       ? settle(cachedMetricsHistory(code, 'Q', [badgePageChartMetricCode(badgePage)], STOCK_HISTORY_LIMIT))
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+    riverLatestOf(code, badgePage.riverKind)
   ])
 
   // 徽章整包讀不到＝讀取失敗，回錯誤讓頁面交給全站彈窗（2026-10-11）；原本 entry 留 null，頁面當成「不在適用範圍」
   if (!badges) throw createError({ statusCode: 502, statusMessage: 'badges unavailable' })
   const entry = badges.categories.flatMap(category => category.badges).find(badge => badge.metricCode === badgePage.metricCode) ?? null
 
-  return { symbol: code, slug: badgePage.slug, entry, provenance, series, quarterly }
+  return { symbol: code, slug: badgePage.slug, entry, provenance, series, quarterly, riverLatest }
 })

@@ -31,4 +31,17 @@ export interface StockMetricPageResponse {
   //（grossProfitPerShare、operatingIncomePerShare、sellingExpensePerShare… 2026-10-01 實測全部 400），
   // 所以那 14 頁拿到 null、不渲染這一段。已開需求；上游補上的那天這裡不用改一個字。
   provenance: MetricProvenanceResponse | null
+  // 河流圖頁（riverKind）才有：圖每種期別的最後一點，答句用它（2026-11-01，使用者選「摘要用圖的最新一點」）。其他頁、讀不到是 null
+  riverLatest: RiverLatestByTimeframe | null
 }
+
+// 河流圖的最後一點（valuation-river 的 current）。價與每股基數都換算到今天的股數，所以 price 就是那天的實際收盤
+export interface RiverLatest {
+  tradeDate: string
+  price: number
+  base: number
+  ratio: number
+  // 「近四季平均每股淨值」這種，端點給的
+  baseLabel: string
+}
+export type RiverLatestByTimeframe = Partial<Record<'TTM' | 'Q', RiverLatest>>

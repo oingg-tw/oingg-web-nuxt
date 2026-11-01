@@ -33,7 +33,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
   // basis at all (dividendPayoutRatio/dividendCoverageRatio/shareholderYield) simply comes back
   // with zero entries and the page falls back to its TTM sentence — no need to know in advance
   // which metrics those are, and no second place to keep that list in sync.
-  const [mainSeries, compareSeries, quarterly, provenance] = await Promise.all([
+  const [mainSeries, compareSeries, quarterly, provenance, riverLatest] = await Promise.all([
     // 母項與成分同一次取回（2026-09-28 的組成段）。metrics-history 一次最多 10 支，而最長的一組是
     // 營業費用的 1＋4——不設上限檢查是因為登記表就在同一個檔案裡，加到第十支會在這裡 400，當場看得到。
     // 併在同一次還有一個不只是省請求的理由：成分與母項必須是**同一個快取世代**，分兩次取有機會拿到
@@ -64,7 +64,8 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     // 真正需要判斷的不是「打不打得到」而是「打到的數字對不對」——那道對帳在
     // StockMetricProvenanceSection 裡（溯源的值跟頁面講的值對不起來就不渲染），因為只有那裡
     // 同時看得到兩個數字。
-    settle(cachedMetricProvenance(code, metricPage.metricCode))
+    settle(cachedMetricProvenance(code, metricPage.metricCode)),
+    riverLatestOf(code, metricPage.riverKind)
   ])
 
 
@@ -81,5 +82,5 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
       }
     : mainSeries
 
-  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance }
+  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance, riverLatest }
 })

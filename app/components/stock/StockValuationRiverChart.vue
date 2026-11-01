@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+import type { RiverLatest } from '#shared/types/stock-metric-page'
+import type { RiverKind, RiverTimeframe } from '#shared/utils/metric-pages'
 import type { LookbackWindow } from '~/utils/lookback-window'
 
 
@@ -29,10 +31,13 @@ import type { LookbackWindow } from '~/utils/lookback-window'
 //   * 原本逐支抓資料的單一指標 history composable。資料現在來自 analysis-ts 的 valuation-river 端點（2026-10-08，見資料段的註解）。
 const props = defineProps<{
   symbol: string
-  kind: 'pe' | 'pb' | 'ps'
+  kind: RiverKind
 }>()
+// 圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」）：資料到之前是 undefined、到了沒有比值是 null。指標頁拿它蓋過伺服器那一份
+// （答句）；指標速覽從 #header 的 latest 拿（卡片標題的數字）
+const emit = defineEmits<{ latest: [latest: RiverLatest | null | undefined] }>()
 
-// baseLabels：河道能用哪些期別、各自的基準叫什麼（第一個是預設）。只有一種的不出期別切換，同其他圖卡。提示框優先用端點回的
+// baseLabels：各期別的基準叫什麼（有哪些期別在 RIVER_TIMEFRAMES）。只有一種的不出期別切換，同其他圖卡。提示框優先用端點回的
 // baseLabel，這裡是資料到之前的備用（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）
 const KINDS = {
   pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabels: { TTM: '近四季 EPS' } },
@@ -50,11 +55,10 @@ const KINDS = {
   ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabels: { TTM: '近四季每股營收' } }
 } as const
 
-type RiverTimeframe = 'TTM' | 'Q'
 const spec = computed(() => KINDS[props.kind])
-const riverTimeframes = computed(() => Object.keys(spec.value.baseLabels) as RiverTimeframe[])
-// 這張圖自己的期別，不跟其他卡片共用（同近N年）
-const riverTimeframe = ref<RiverTimeframe>('TTM')
+const riverTimeframes = computed(() => RIVER_TIMEFRAMES[props.kind])
+// 這張圖自己的期別，不跟其他卡片共用（同近N年）。指標頁用 v-model:timeframe 接走，答句跟著同一個期別
+const riverTimeframe = defineModel<RiverTimeframe>('timeframe', { default: 'TTM' })
 
 // 這張圖自己的近N年（2026-10-15「每個圖表的右上角狀態請分開不要共用」）。在這裡建而不是交給 useChartPeriod 預設：抓幾年要在資料
 // 回來之前決定（見下面的 fetchYears），useChartPeriod 要等資料才能呼叫
@@ -72,6 +76,7 @@ const activeWindow = ref<LookbackWindow>('近5年')
 interface ValuationRiverResponse {
   lookback: { requestedYears: number; from: string; to: string }
   bandMultiples: number[] | null
+  current: { tradeDate: string; price: number | null; base: number | null; ratio: number | null } | null
   prices: { tradeDate: string; close: number }[]
   bases: { effectiveFrom: string; base: number | null }[]
   // 河道基準的名稱（例如「近四季平均每股淨值」），analysis-ts 1cf7b237 起有
@@ -123,6 +128,15 @@ watchLoadFailure(() => `valuation-river:${props.symbol}:${props.kind}:${fetchYea
 
 
 const baseLabel = computed(() => river.value?.baseLabel ?? (spec.value.baseLabels as Partial<Record<RiverTimeframe, string>>)[riverTimeframe.value] ?? spec.value.baseLabels.TTM)
+
+// 最後一點：同伺服器的 cachedRiverLatest（底數 ≤ 0 那天沒有比值＝null）
+const latest = computed<RiverLatest | null | undefined>(() => {
+  if (riverStatus.value !== 'success') return riverStatus.value === 'error' ? null : undefined
+  const current = river.value?.current
+  if (!current || current.ratio === null || current.price === null || current.base === null) return null
+  return { tradeDate: current.tradeDate, price: current.price, base: current.base, ratio: current.ratio, baseLabel: baseLabel.value }
+})
+watch(latest, value => emit('latest', value), { immediate: true })
 
 interface RiverPoint {
   label: string
@@ -322,7 +336,7 @@ const chartOption = computed(() => ({
 <template>
   <SharedChartCard :period="period">
     <template v-if="$slots.header" #header>
-      <slot name="header" />
+      <slot name="header" :latest="latest" />
     </template>
     <!-- 期別在近N年的左邊，同 StockMetricHistoryChartInteractive；只有一種期別（本益比、股價營收比）就不出 -->
     <template v-if="riverTimeframes.length > 1" #controls>

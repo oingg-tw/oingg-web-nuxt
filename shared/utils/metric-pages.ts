@@ -5,6 +5,12 @@
 // **這個檔案刻意不 import 任何東西**：scripts/check-*.mjs 用 Node 直接載入它（只剝型別），而 useStockPinnedMetrics 在 app.vue
 // 的初始化路徑上也讀它。
 
+// 河流圖的三種比率與各自的期別（2026-11-01 從 StockValuationRiverChart 搬來：伺服器替答句抓圖的最後一點也要知道有哪幾種）。
+// 淨值比 2026-10-23 起預設近四季平均、可選單季；第一個是預設
+export type RiverKind = 'pe' | 'pb' | 'ps'
+export type RiverTimeframe = 'TTM' | 'Q'
+export const RIVER_TIMEFRAMES: Record<RiverKind, readonly RiverTimeframe[]> = { pe: ['TTM'], pb: ['TTM', 'Q'], ps: ['TTM'] }
+
 // 徽章頁：主軸是門檻（符合／未符合）與計算依據表。
 export interface BadgePageDefinition {
   // URL 段。手寫而不是 metricSlug(metricCode)：那會把 liveGrahamNumber 變成無意義的 live-graham-number（EOD／TTM 的 live 前綴是
@@ -24,7 +30,7 @@ export interface BadgePageDefinition {
   // 見 MetricPageDefinition.timeframe
   chartTimeframe?: 'TTM' | 'Q' | 'FY'
   // 改畫河流圖（2026-09-21「PSR 是不是也用河流圖比較適合?」）；只有「股價 ÷ 每股某值」的比率才做得出帶狀，設了就不用 chartTimeframe
-  riverKind?: 'pe' | 'pb' | 'ps'
+  riverKind?: RiverKind
   // 一起畫在圖上的第二支指標，同 MetricPageDefinition 的同名欄位。配對由我們決定、讀者沒有選單（2026-09-29 做過自選版，使用者判斷
   // 「很混淆難用」）；只在「單獨看會被誤讀、而某一支剛好能說明誤讀來源」時才設
   compareMetricCode?: string
@@ -100,7 +106,7 @@ export interface MetricPageDefinition {
   // 改畫河流圖（2026-09-21「我希望 PER PBR 都改用河流圖而非長條圖」）：只有 /pe-ratio、/pb-ratio、/psr——河流圖要比率、它除的每股
   // 基數（EPS／每股淨值／每股營收）和股價。**這三頁沒有期別切換器是確認過的決定**（使用者 2026-10-02）：x 軸是日線股價、帶狀是
   // 每股基數 × 倍數，換期別只改帶狀解析度，不是讀者在問的事。
-  riverKind?: 'pe' | 'pb' | 'ps'
+  riverKind?: RiverKind
   // 接著讀的其他頁（兩份登記表的 slug 都可）。2026-09-22 從「該不該把 EPS、淨利與淨利成長合成一頁」來的：散落是真的（EPS 在獲利能力、
   // 成長率在成長動能，讀完 EPS 沒路到成長率），但合併是錯的修法——/eps 是這個家族最高價值的長尾頁；合併頁得是關係頁，而關係頁靠
   // 真的成立的恆等式，(1+EPS成長)=(1+淨利成長)÷(1+股數成長) 只有 17/25 在 ±0.5pp 內（台泥就不成立）。所以用連結不用架構；

@@ -6,6 +6,8 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
+import type { RiverLatest, RiverLatestByTimeframe } from '#shared/types/stock-metric-page'
+import type { RiverKind, RiverTimeframe } from '#shared/utils/metric-pages'
 
 // Per-symbol 業務中台 data behind the /stock/:code pages, each wrapped in Nitro's
 // defineCachedFunction (2026-09-19, the SEO build). Why a server cache layer instead of the
@@ -71,6 +73,29 @@ export const cachedMetricsHistory = defineCachedFunction(
     swr: true
   }
 )
+
+// 河流圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」）：指標頁、徽章頁的答句跟圖同一個數字。只要 current，抓 1 年最省；
+// current 是最新交易日的「股價 ÷ 每股基數」，跟回溯幾年無關。股價每天變，快取 15 分鐘（同 /api/cached 的 quote）；頁面載入後圖自己的
+// 那份到了會蓋過這一份（StockMetricDetailPage 的 riverLive），所以盤後這 15 分鐘的落差只在伺服器畫的那一瞬間
+export const cachedRiverLatest = defineCachedFunction(
+  async (symbol: string, kind: RiverKind, timeframe: RiverTimeframe): Promise<RiverLatest | null> => {
+    const response = await businessFetch<{ baseLabel: string, current: { tradeDate: string, price: number | null, base: number | null, ratio: number | null } | null }>(
+      `/stocks/${symbol}/valuation-river`,
+      { query: { ratio: kind, lookbackYears: 1, timeframe } }
+    )
+    const current = response.current
+    // 底數 ≤ 0（近四季虧損）那天沒有比值：沒有這一點，答句退回原本的寫法
+    if (!current || current.ratio === null || current.price === null || current.base === null) return null
+    return { tradeDate: current.tradeDate, price: current.price, base: current.base, ratio: current.ratio, baseLabel: response.baseLabel }
+  },
+  { name: 'stock-river-latest', getKey: (symbol, kind, timeframe) => `${symbol}:${kind}:${timeframe}`, maxAge: 15 * 60, staleMaxAge: HOUR, swr: true }
+)
+// 一頁要的每一種期別（淨值比兩種），讀不到的那種不放
+export async function riverLatestOf(symbol: string, kind: RiverKind | undefined): Promise<RiverLatestByTimeframe | null> {
+  if (!kind) return null
+  const pairs = await Promise.all(RIVER_TIMEFRAMES[kind].map(async timeframe => [timeframe, await settle(cachedRiverLatest(symbol, kind, timeframe))] as const))
+  return Object.fromEntries(pairs.filter(([, latest]) => latest))
+}
 
 export const cachedBadges = defineCachedFunction(
   (symbol: string) => businessFetch<StockBadges>(`/stocks/${symbol}/badges`),

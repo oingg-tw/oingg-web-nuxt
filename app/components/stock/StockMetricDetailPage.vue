@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
+import type { RiverLatest, StockMetricPageResponse } from '#shared/types/stock-metric-page'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+import type { RiverTimeframe } from '#shared/utils/metric-pages'
 // Explicit, not auto-imported: a newly added file under shared/ isn't picked up until the dev
 // server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
 // this component's own helpers are imported explicitly too.
@@ -149,6 +150,17 @@ const latestValueText = computed(() => cellTextOf(latest.value?.point ?? null))
 
 const timeframeLabel = computed(() => TIMEFRAME_LABELS[metricPage.timeframe])
 
+// 河流圖頁（本益比、股價淨值比）的答句、title、meta description 用圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」：原本寫的是
+// 財報公告日那天的數字，5314 股價淨值比答句 10.89、圖上 10/30 是 17.26）。期別跟圖的切換同一個（v-model:timeframe）；圖自己的資料
+// 到了就用它（riverLive，同一支端點、一定跟圖一樣），之前（伺服器畫的、圖還在讀）用伺服器那一份。財報公告日的數字留在歷年表
+const riverTimeframe = ref<RiverTimeframe>(metricPage.riverKind ? RIVER_TIMEFRAMES[metricPage.riverKind][0]! : 'TTM')
+const riverLive = ref<RiverLatest | null | undefined>()
+const riverLatest = computed(() => (riverLive.value !== undefined ? riverLive.value : metricData.value?.riverLatest?.[riverTimeframe.value] ?? null))
+const riverLead = computed(() => {
+  const point = riverLatest.value
+  return point ? `${stockShortName.value}以 ${point.tradeDate} 收盤 ${groupThousands(point.price)} 元、${point.baseLabel} ${point.base} 元計算，${valueTopic}為 ${valueTextOf(point.ratio)}` : null
+})
+
 // 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
 // 0.28元，季增-24.32%，近四季EPS為1.51元」為目標句型）.
 //
@@ -220,6 +232,12 @@ function cjkLength(text: string): number {
 const hasTrailingFigure = computed(() => metricPage.timeframe === 'TTM' && latest.value !== null)
 
 const titleKeywords = computed(() => {
+  // 河流圖頁跟著答句（「要連動網頁title」）：最後一點的數字與日期，超過字數就用固定片語
+  const point = riverLatest.value
+  if (point) {
+    const river = `${valueTopic}為 ${valueTextOf(point.ratio)}（${point.tradeDate.slice(5).replace('-', '/')} 收盤）`
+    return cjkLength(`${stockShortName.value} ${code.value} `) + cjkLength(river) + TITLE_BRAND_COST <= TITLE_BUDGET ? river : metricPage.titleKeywords
+  }
   const q = latestQuarterly.value
   if (!q || metricPage.valueTopic) return metricPage.titleKeywords
   const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic}為 ${valueTextOf(q.value)}`
@@ -233,6 +251,7 @@ const titleKeywords = computed(() => {
 const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic}為 00.00、近四季${valueTopic}為 00.00、資料時間 2026-08-11。` : null))
 
 const valueAnswer = computed(() => {
+  if (riverLead.value) return joinClauses([riverLead.value])
   if (!latest.value) return null
   // 財報狗's own shape when a real 單季 figure exists: 單季值 → 年增（財報狗原句是季增，這個目錄
   // 沒有季增率可用，改用年增，見 METRIC_PAGES 裡 eps 這筆自己的註解）→ 近四季值. Falls back to the
@@ -269,7 +288,9 @@ const description = computed(() => {
   // 單季 first here too（「文案上單季優先」）— this is the snippet a searcher reads under the title,
   // so it opens on the same figure the title does. The TTM value follows in the same sentence
   // rather than being dropped: the two together are what the 財報狗 shape states.
-  const lead = quarterlyLead.value
+  const lead = riverLead.value
+    ? joinClauses([riverLead.value])
+    : quarterlyLead.value
     ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null])
     : joinClauses([
       `${stockShortName.value}（${code.value}）${valueTopic}：${latestValueText.value}`,
@@ -326,7 +347,7 @@ const { breadcrumbs } = useStockPageSeo({
              already states the value, its period and its knowledge date, and the chart below
              plots the same series — so any figure here was the same fact a third time. The
              sentence and the chart both stay; nothing was lost with it. -->
-        <StockValuationRiverChart v-if="metricPage.riverKind" :symbol="code" :kind="metricPage.riverKind" />
+        <StockValuationRiverChart v-if="metricPage.riverKind" v-model:timeframe="riverTimeframe" :symbol="code" :kind="metricPage.riverKind" @latest="value => { riverLive = value }" />
         <StockMetricHistoryChartInteractive
           v-else
           :symbol="code"

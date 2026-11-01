@@ -10,6 +10,8 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
+import type { RiverLatest, RiverLatestByTimeframe } from '#shared/types/stock-metric-page'
+import type { RiverKind } from '#shared/utils/metric-pages'
 import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
 import type { QuickViewChart } from '#shared/utils/metric-pages'
 import type { StockNavNode } from '~/utils/stock-page-nav'
@@ -116,6 +118,33 @@ const { data: values, status: valuesStatus, error: valuesError, refresh: refresh
 )
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息
 watchLoadFailure(() => `quick-view-values:${code.value}`, () => valuesError.value, refreshValues)
+
+// 河流圖那幾列（本益比、股價淨值比、股價營收比）的數字是圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」，表格也一樣）：
+// 圖的預設期別那一份，伺服器端就算好（表格給搜尋引擎）。卡片標題在圖讀到之前也先用它
+const riverKindOf = (slug: string): RiverKind | null => {
+  const spec = quickViewChartOf(slug)
+  return spec?.kind === 'river' ? spec.river : null
+}
+const riverKinds = computed(() => [...new Set(rows.value.flatMap(row => riverKindOf(row.slug) ?? []))])
+type RiverLatestByKind = Partial<Record<RiverKind, RiverLatestByTimeframe>>
+const { data: riverLatestByKind, status: riverStatus } = useAsyncData<RiverLatestByKind>(
+  () => `quick-view-river-${code.value}-${riverKinds.value.join(',')}`,
+  async () => (riverKinds.value.length
+    ? await $fetch<RiverLatestByKind>(`/api/stock/${code.value}/river-latest`, { query: { kinds: riverKinds.value.join(',') }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => ({}))
+    : {}),
+  { watch: [riverKinds], default: () => ({}) }
+)
+// undefined＝還在讀，null＝沒有這一點（底數 ≤ 0、讀不到）
+function riverLatestOfRow(slug: string): RiverLatest | null | undefined {
+  const kind = riverKindOf(slug)
+  if (!kind || (riverStatus.value !== 'success' && riverStatus.value !== 'error')) return undefined
+  return riverLatestByKind.value[kind]?.[RIVER_TIMEFRAMES[kind][0]!] ?? null
+}
+function riverPeriodText(slug: string): string {
+  const kind = riverKindOf(slug)!
+  const latest = riverLatestOfRow(slug)
+  return `${TIMEFRAME_LABELS[RIVER_TIMEFRAMES[kind][0]!]}${latest ? `（${latest.tradeDate} 收盤）` : ''}`
+}
 
 // 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁畫的是同一張。哪一頁畫哪張
 // 由 metric-pages.ts 的 quickViewChartOf 決定，hasPinnableChart 讀同一份，所以能釘的都畫得出來、格子跟釘選清單一對一。
@@ -229,6 +258,13 @@ function valueText(field: string | null, slug?: string): string {
   const located = locateFieldInSchema(schema.value?.categories ?? [], field)
   return `${(slug && VALUE_PREFIX[slug]) ?? ''}${formatScreenerValue(cell.value, located?.field.unit, field, located?.metric.options)}`
 }
+// 河流圖卡片的數字：圖的最後一點，格式同 valueText（同一個單位、同一支格式函式）
+function riverValueText(latest: RiverLatest | null | undefined, field: string | null): string {
+  if (latest === undefined) return '…'
+  if (latest === null) return '－'
+  const located = field ? locateFieldInSchema(schema.value?.categories ?? [], field) : null
+  return formatScreenerValue(String(latest.ratio), located?.field.unit, field ?? '', located?.metric.options)
+}
 function periodText(field: string | null): string {
   if (!field) return '整頁內容'
   const basis = field.split('.')[1] as MetricsHistoryTimeframe | 'EOD'
@@ -261,8 +297,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockDividendYieldHistoryChart v-if="item.spec.kind === 'dividend' && dividendYieldHistory?.entries?.length" :entries="dividendYieldHistory.entries" :cash-dividends="dividendYieldHistory.cashDividends">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockDividendYieldHistoryChart>
+        <!-- 標題的數字是圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」），跟著圖的期別切換；圖還在讀是「…」 -->
         <StockValuationRiverChart v-else-if="item.spec.kind === 'river'" :symbol="code" :kind="item.spec.river">
-          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
+          <template #header="{ latest }"><StockQuickViewChartHead :to="item.to" :label="item.label" :value="riverValueText(latest === undefined ? riverLatestOfRow(item.slug) : latest, item.field)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockValuationRiverChart>
         <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue' && monthlyRevenue?.entries?.length" measure="amount" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
@@ -394,8 +431,8 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <tbody>
           <tr v-for="(row, index) in rows" :key="row.slug">
             <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
-            <td class="seo-table__num">{{ valueText(row.field, row.slug) || '－' }}</td>
-            <td data-label="期別">{{ periodText(row.field) }}</td>
+            <td class="seo-table__num">{{ riverKindOf(row.slug) ? riverValueText(riverLatestOfRow(row.slug), row.field) : valueText(row.field, row.slug) || '－' }}</td>
+            <td data-label="期別">{{ riverKindOf(row.slug) ? riverPeriodText(row.slug) : periodText(row.field) }}</td>
             <td class="stock-quick-view-page__order">
               <div class="stock-quick-view-page__order-buttons">
               <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
