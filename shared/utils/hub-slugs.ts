@@ -143,7 +143,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者選「全站改自算」，理由見 app/utils/replaced-metrics.ts）
   { slug: 'dividend-yield', field: 'liveCashDividendYield.EOD', direction: 'desc', label: '殖利率', metricCode: 'liveCashDividendYield' },
   { slug: 'pe-ratio-low', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
-  { slug: 'pb-ratio-low', field: 'exchangePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'exchangePbRatio' },
+  // 股價淨值比讀即時版（2026-11-01，使用者核准，理由見 app/utils/replaced-metrics.ts）：即時版沒有 ≤ 0 的值，由小排到大不會先排到淨值為負的
+  { slug: 'pb-ratio-low', field: 'livePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'livePbRatio' },
   { slug: 'roe', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
   // /rank/eps 撤掉（2026-10-01 使用者：「eps 由高到低前 50 檔沒有意義，EPS 成長排行才有意義」）：EPS 高低幾乎只反映股本大小與
   // 面額。換成成長率之後成了下面的 eps-growth／eps-turnaround 兩頁。

@@ -38,7 +38,7 @@ const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
   { field: 'stock.price', label: '收盤價' },
   { field: WATCHLIST_CHANGE, label: '漲跌' },
   { field: 'exchangePeRatio.EOD', label: '本益比' },
-  { field: 'exchangePbRatio.EOD', label: '股價淨值比' },
+  { field: 'livePbRatio.EOD', label: '股價淨值比' },
   { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放' },
   { field: 'liveCashDividendYield.EOD', label: '殖利率' }
 ]

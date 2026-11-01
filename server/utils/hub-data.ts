@@ -129,8 +129,9 @@ const companyNameOf = (row: ScreenerResultRow) => row.companyName ?? row.symbol
 // 1,400–1,800 for the others）. Any page that includes stock.price is capped at 100 rows by 業務中台,
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
-// 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者「現在就換」，同篩選與排行，理由見 app/utils/replaced-metrics.ts）
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'exchangePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
+// 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者「現在就換」，同篩選與排行，理由見 app/utils/replaced-metrics.ts）；
+// 股價淨值比讀即時版（2026-11-01，同上）
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'livePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -196,7 +197,7 @@ export const getSectorCompanies = defineCachedFunction(
           name: companyNameOf(result),
           price: number('stock.price'),
           peRatio: number('exchangePeRatio.EOD'),
-          pbRatio: number('exchangePbRatio.EOD'),
+          pbRatio: number('livePbRatio.EOD'),
           dividendYield: number('liveCashDividendYield.EOD'),
           dividendYieldDate: cell('liveCashDividendYield.EOD')?.knowledgeDate || null,
           roe: number('roe.TTM'),
@@ -218,7 +219,8 @@ export const getSectorCompanies = defineCachedFunction(
       fundamentalsDate: maxIsoDate(fundamentalsDates)
     }
   },
-  { name: 'hub-sector-companies', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：2026-11-01 股價淨值比換成即時版，舊鍵裡是交易所的數字
+  { name: 'hub-sector-companies-v2', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // 一個類股的上市櫃公司（2026-10-09 從 /api/hub/industry/:code 抽出來，產業成長座標圖共用）。興櫃不顯示（2026-09-26
@@ -584,7 +586,8 @@ export const getRanking = defineCachedFunction(
       asOf: maxIsoDate(rows.map(row => row.knowledgeDate))
     }
   },
-  { name: 'hub-ranking', getKey: slug => slug, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  // 鍵帶欄位：排行換一支指標（2026-11-01 股價淨值比換即時版）就是新的鍵，不會再讀到舊指標排的那一份
+  { name: 'hub-ranking', getKey: slug => `${slug}:${findRankPage(slug)?.field ?? ''}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // GET /metrics — the whole catalog, passed through untyped: the app types it as MetricCatalog
