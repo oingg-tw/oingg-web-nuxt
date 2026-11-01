@@ -47,7 +47,7 @@ console.log('合成序列')
 
 console.log('\n實際序列')
 try {
-  const res = await fetch('http://localhost:4000/macro/stock-market-summary', { signal: AbortSignal.timeout(30_000) })
+  const res = await fetch('http://localhost:5400/macro/stock-market-summary', { signal: AbortSignal.timeout(30_000) })
   const entries = (await res.json()).entries ?? []
   const months = entries.filter(e => e.avgTaiex != null).map(e => ({ period: e.yearMonth, value: Number(e.avgTaiex) }))
   const phases = findMarketPhases(months)
@@ -65,7 +65,7 @@ try {
   // The daily series gets the same coverage guard, against its own context table. Keyed by peak
   // DATE, not month — see FAST_PHASE_CONTEXT's own comment for why the two can't share.
   try {
-    const dailyRes = await fetch('http://localhost:4000/market/taiex-daily-price?interval=daily&limit=8000', { signal: AbortSignal.timeout(60_000) })
+    const dailyRes = await fetch('http://localhost:5400/market/taiex-daily-price?interval=daily&limit=8000', { signal: AbortSignal.timeout(60_000) })
     const daily = (await dailyRes.json()).entries ?? []
     const days = daily.map(e => ({ period: e.tradeDate, value: Number(e.close) })).filter(d => Number.isFinite(d.value))
     const fast = findMarketPhases(days)

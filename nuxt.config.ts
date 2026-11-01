@@ -158,7 +158,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // 業務中台（原 業務中台）的網址，伺服器專用（2026-10-08 起瀏覽器一律走同網域的 /api/core 與 /api/cached，見
     // server/api/core/[...path].ts）。原本是 public.apiBase，會寫進每一頁的 HTML。環境變數 NUXT_BUSINESS_BASE。
-    businessBase: 'http://localhost:4000',
+    businessBase: 'http://localhost:5400',
     // 業務中台 Cloud Run 的 IAM audience（NUXT_BUSINESS_AUDIENCE，2026-10-14）：部署環境填業務中台的服務網址，Nitro 會帶 ID token；
     // 本機與 CI 留空＝不帶身分。見 server/utils/business.ts 的 businessAuthHeaders
     businessAudience: '',

@@ -3,7 +3,7 @@ import type { EtfDetail, EtfDistributions, EtfHolders, EtfMonthlyPoint, EtfPremi
 // 篩選區兩種個別頁（ETF、特別股）與它們的 sitemap 的伺服器端讀取（2026-10-15 三組篩選重新設計）。同 stock-data.ts 的規則：
 // businessFetch 丟錯就不快取、具名、stale-while-revalidate。
 //
-// DEV 注意：GET /etfs/:symbol 要等 analysis-ts 部署，在那之前 DEV 對每一檔都回 404（業務中台 2026-10-15）；本機 4000 可以用。
+// DEV 注意：GET /etfs/:symbol 要等 analysis-ts 部署，在那之前 DEV 對每一檔都回 404（業務中台 2026-10-15）；本機 5400 可以用。
 
 export const cachedEtf = defineCachedFunction(
   (symbol: string) => businessFetch<EtfDetail>(`/etfs/${symbol}`),

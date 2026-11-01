@@ -3,7 +3,7 @@
 // 用法：node scripts/check-sector-cycle.mjs（需要 dev server 與業務中台都在跑）
 import assert from 'node:assert/strict'
 
-const BUSINESS = process.env.BUSINESS_URL ?? 'http://localhost:4000'
+const BUSINESS = process.env.BUSINESS_URL ?? 'http://localhost:5400'
 const APP = process.env.APP_URL ?? 'http://localhost:3000'
 const SECTORS = ['15', '02'] // 航運（起伏最大的一類）、食品（最平穩的一類）
 const get = async url => { const res = await fetch(url); assert.ok(res.ok, `${url} → ${res.status}`); return res.json() }

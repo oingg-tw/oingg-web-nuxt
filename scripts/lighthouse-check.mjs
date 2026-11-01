@@ -57,7 +57,7 @@ async function send(run, runPath) {
     console.log('.env 沒有 LIGHTHOUSE_INGEST_KEY：沒有送出')
     return
   }
-  const response = await fetch(`${(process.env.NUXT_BUSINESS_BASE ?? 'http://localhost:4000').replace(/\/$/, '')}/lighthouse-runs`, {
+  const response = await fetch(`${(process.env.NUXT_BUSINESS_BASE ?? 'http://localhost:5400').replace(/\/$/, '')}/lighthouse-runs`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-oingg-lighthouse-key': key },
     body: JSON.stringify(run)

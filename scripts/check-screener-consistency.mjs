@@ -393,7 +393,7 @@ for (const target of PAGES) {
 await browser.close()
 
 // ── 個別頁（ETF、特別股，2026-10-15）：伺服器端就有標題與內容（不靠瀏覽器再讀）、一圖一表、找不到的代號 noindex。
-// ETF 個別頁讀 GET /etfs/:symbol——DEV 要等 analysis-ts 部署才有，對著本機 4000 跑
+// ETF 個別頁讀 GET /etfs/:symbol——DEV 要等 analysis-ts 部署才有，對著本機 5400 跑
 const DETAIL_PAGES = [
   { path: '/etf/0050/distributions', name: '元大台灣50' },
   { path: '/etf/00679b/distribution-composition', name: '元大美債20年' },

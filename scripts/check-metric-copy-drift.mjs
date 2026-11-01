@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto'
 import { METRIC_COPY } from '../shared/utils/metric-copy.ts'
 import { metricsCatalogFromBusiness } from '../shared/utils/business-shapes.ts'
 
-const API = process.env.API_BASE ?? 'http://localhost:4000'
+const API = process.env.API_BASE ?? 'http://localhost:5400'
 
 // WHAT GOES INTO THE PIN, and why it is not just the formula.
 //

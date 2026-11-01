@@ -48,7 +48,7 @@
 //   node scripts/check-metric-identities.mjs --sample 400
 //   node scripts/check-metric-identities.mjs --all        # 全市場，慢（每家 2 次請求）
 //   node scripts/check-metric-identities.mjs --symbols 5904,6546
-const API = process.env.BUSINESS_BASE ?? 'http://localhost:4000'
+const API = process.env.BUSINESS_BASE ?? 'http://localhost:5400'
 const SITE = process.env.SITE_BASE ?? 'http://localhost:3000'
 
 // 門檻取自實測分布，不是拍腦袋：A 的正常範圍是 0.738~1.403（n=180），異常是 10 倍以上。訂在

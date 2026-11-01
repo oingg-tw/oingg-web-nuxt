@@ -1,7 +1,7 @@
 # CI（2026-10-13）：Dependabot 自動合併的前提（使用者選了「加 CI，只自動合併 patch」）。範本是 oingg-mops-ts 的 ci.yml。
 #
 # 抓得到的：型別錯、lint、正式建置壞掉，以及不需要伺服器的自我檢查腳本。**抓不到的**：畫面壞掉——check-stock-pages 這類
-# 瀏覽器檢查要 dev server＋本機業務中台（bff-ts:4000）＋資料，CI 上沒有。所以自動合併只放 patch，minor／major 留給人在本機跑
+# 瀏覽器檢查要 dev server＋本機業務中台（:5400）＋資料，CI 上沒有。所以自動合併只放 patch，minor／major 留給人在本機跑
 # 瀏覽器檢查（Element Plus 升個 minor 就可能壞版面）。
 #
 # Node 24 與 26 都跑、pnpm 11 跟本機一致（本機 26；Workers Builds 預設 24）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
