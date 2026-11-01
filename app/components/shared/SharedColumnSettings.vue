@@ -165,7 +165,7 @@ function save() {
     v-model="open"
     :title="step === 'pick' ? '新增欄位' : live ? '欄位' : '欄位設定'"
     class="column-settings"
-    :class="live ? ['column-settings--live', 'condition-panel', { 'condition-panel--range': step === 'list' }] : { 'column-settings--pick': step === 'pick' }"
+    :class="live ? ['column-settings--live', 'condition-panel', { 'condition-panel--narrow': step === 'list' }] : { 'column-settings--pick': step === 'pick' }"
     :modal-class="live ? 'condition-panel-overlay' : undefined"
     :align-center="false"
     destroy-on-close

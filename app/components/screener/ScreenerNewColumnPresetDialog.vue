@@ -38,7 +38,8 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   <el-dialog
     v-model="visible"
     :title="step === 'choose' ? '新增欄位組合' : '官方精選欄位組合'"
-    width="min(560px, 92%)"
+    class="condition-panel condition-panel--narrow"
+    modal-class="condition-panel-overlay"
     append-to-body
     @open="step = 'choose'"
   >

@@ -78,7 +78,8 @@ const activeTemplates = computed(() => {
   <el-dialog
     v-model="visible"
     :title="step === 'grid' ? '新增篩選' : selectedCategory!"
-    width="min(560px, 92%)"
+    class="condition-panel condition-panel--narrow"
+    modal-class="condition-panel-overlay"
     append-to-body
     @open="backToGrid"
   >

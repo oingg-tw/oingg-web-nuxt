@@ -11,6 +11,7 @@ import type { PresetSelectItem } from './ScreenerPresetSelect.vue'
 //   - 名稱框按 Enter 就是「儲存」（2026-10-24，使用者：「管理我的篩選 連續按下enter 要視同儲存」）：清單是一個表單，「儲存」是它的送出鈕，
 //     交給瀏覽器的隱式送出——注音、倉頡選字確認的那一下 Enter 瀏覽器不會拿來送出，選完再按一次才存
 // 套用順序（改名 → 刪除 → 排序）由 ScreenerPageShell 負責
+// 手機從下延展、桌機置中（2026-11-02，.condition-panel）：手機置中的彈窗裡有名稱框，鍵盤一彈起就把彈窗往上擠
 interface Row extends PresetDraftRow {
   unsaved: boolean
 }
@@ -90,7 +91,13 @@ function save() {
 </script>
 
 <template>
-  <el-dialog v-if="everOpened" v-model="open" :title="`管理${label}`" width="min(560px, 92vw)" class="preset-manage">
+  <el-dialog
+    v-if="everOpened"
+    v-model="open"
+    :title="`管理${label}`"
+    class="preset-manage condition-panel condition-panel--narrow"
+    modal-class="condition-panel-overlay"
+  >
     <form :id="`${uid}-form`" @submit.prevent="save">
     <ul ref="listRef" class="preset-manage__list">
       <li v-for="(row, index) in rows" :key="row.id" :data-id="row.id" class="preset-manage__row">

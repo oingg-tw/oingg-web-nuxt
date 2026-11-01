@@ -8,7 +8,8 @@ import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 //
 // 同一個 el-dialog：手機是貼底的面板（全寬、最高 92dvh、可見的關閉鈕），桌機（≥768px）是置中對話框——
 // 只靠 CSS，不在渲染時用 useIsDesktop 選標記（專案規則；原本兩個元件都違反）。焦點的進出交給 el-dialog
-// 自己的 focus trap：打開時進到面板、關閉時回到觸發按鈕。
+// 自己的 focus trap：打開時進到面板、關閉時回到觸發按鈕。篩選頁其他面板（管理、新增篩選、新增欄位組合、手機的「欄位 N 個」）
+// 也掛 .condition-panel 借這組樣式（2026-11-02，CLAUDE.md「篩選頁的面板」）
 //
 // 手機多一頁「條件清單」（2026-10-31，使用者的操作區方案 B；同時做的「檢視」面板 11/1 還原，這一頁留著）：頁面上只剩「篩選條件 N 個」，按了先到清單（#list，
 // 呼叫端放 ScreenerFilters），新增、修改從清單換到選指標、設定範圍，「完成」回到清單——同一個面板換頁，不疊彈窗
@@ -69,7 +70,7 @@ const unit = computed(() => {
     :title="title"
     width="min(960px, 100vw)"
     class="condition-panel"
-    :class="{ 'condition-panel--range': step === 'range' }"
+    :class="{ 'condition-panel--narrow': step === 'range' }"
     modal-class="condition-panel-overlay"
     :align-center="false"
     lock-scroll
@@ -175,8 +176,8 @@ const unit = computed(() => {
   }
 
   /* 設定範圍那一步不用那麼寬（2026-10-22，使用者：「設定範圍 這個彈窗 太寬了 請讓他寬度適中」）：兩個輸入框或三欄勾選就夠，
-     挑指標那一步照舊 960px */
-  .el-dialog.condition-panel.condition-panel--range {
+     挑指標那一步照舊 960px。欄位清單、管理、新增篩選、新增欄位組合也用這個寬度 */
+  .el-dialog.condition-panel.condition-panel--narrow {
     width: min(600px, 92vw) !important;
   }
 
