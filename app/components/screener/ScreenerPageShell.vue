@@ -282,11 +282,12 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 /* 設定區：我的篩選一列、條件清單在下面（2026-10-19；清單 2026-10-22 方案 B）。同日拆掉外面的卡片（使用者：「篩選條件 卡片我想拆掉
    看看效果」）：直接排在頁面上，跟結果區一樣沒有框。container：窄於 720px 時「我的篩選」併成一行（ScreenerPresetSelect 的
    compactLabel，同結果區）。不會困住裡面的對話框：container-type 不帶 layout containment，「管理」的遮罩照樣蓋滿畫面 */
+/* 手機 8px：「篩選條件 N 個」跟結果區的「欄位 N 個」同一個間距（2026-11-02，對齊方案 B「使用手感一樣」）；寬的時候 12px，隔開我的篩選和攤開的條件 */
 .screener-shell__setup {
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .screener-shell__results {
@@ -321,6 +322,10 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 }
 
 @container (min-width: 722px) {
+  .screener-shell__setup {
+    gap: 12px;
+  }
+
   .screener-shell__conditions-inline {
     display: block;
   }

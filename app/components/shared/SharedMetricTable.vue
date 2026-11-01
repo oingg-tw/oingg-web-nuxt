@@ -865,6 +865,8 @@ watch(() => props.loading, (loading, wasLoading) => {
    用滑鼠看手機版面時比旁邊的按鈕高一截（2026-10-22，使用者：「手機版 排序 小到大 高度不對」）。觸控時全站規則把 select 撐到 44px */
 .smt-toolbar__row.smt-toolbar__sort {
   align-items: stretch;
+  /* 排序欄位和方向是同一組，跟上一列「欄位 總覽 ＋ 管理」一樣 8px（2026-11-02，使用者：「排序與 大到小 中間的間距 要調整」） */
+  column-gap: 8px;
 }
 
 .smt-sort {
