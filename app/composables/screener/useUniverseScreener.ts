@@ -534,12 +534,7 @@ export function useUniverseScreener(source: UniverseSource) {
 
 
   // ---- 條件與欄位的編輯（三組共用同一套流程）----
-  const editor = useScreenerConditionEditor<UniverseTab>({
-    // 從「新增欄位」挑了一欄：存成目前這一組的欄位（重新套上這一欄的格式與說明）
-    syncColumnPreset: async tab => setActiveColumns(tab.columns.map(column => column.field)),
-    runSearch: tab => search(tab),
-    cacheColumnView: () => {}
-  })
+  const editor = useScreenerConditionEditor<UniverseTab>()
 
   function handleRemoveColumn(_tab: UniverseTab, field: string) {
     setActiveColumns((activeColumnSet.value?.fields ?? []).filter(item => item !== field))

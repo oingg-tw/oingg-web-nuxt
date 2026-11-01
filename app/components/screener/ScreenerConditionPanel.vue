@@ -10,14 +10,11 @@ import type { TabFilterSlot } from '~/composables/screener/screener-tab-model'
 // 只靠 CSS，不在渲染時用 useIsDesktop 選標記（專案規則；原本兩個元件都違反）。焦點的進出交給 el-dialog
 // 自己的 focus trap：打開時進到面板、關閉時回到觸發按鈕。
 //
-// 「新增欄位」（column 模式）只用第一步，選了就關。
-//
-// 手機多一頁「條件清單」（2026-10-31，使用者要篩選條件跟「檢視」一樣收進面板）：頁面上只剩「篩選條件 N 個」，按了先到清單（#list，
+// 手機多一頁「條件清單」（2026-10-31，使用者的操作區方案 B；同時做的「檢視」面板 11/1 還原，這一頁留著）：頁面上只剩「篩選條件 N 個」，按了先到清單（#list，
 // 呼叫端放 ScreenerFilters），新增、修改從清單換到選指標、設定範圍，「完成」回到清單——同一個面板換頁，不疊彈窗
 const props = defineProps<{
   listVisible?: boolean
   pickerVisible: boolean
-  pickerMode: 'condition' | 'column'
   rangeVisible: boolean
   slot: TabFilterSlot | null
   categories: MetricCategory[]
@@ -56,7 +53,7 @@ const categorical = computed(() => metric.value?.kind === 'categorical')
 const title = computed(() => {
   if (step.value === 'list') return '篩選條件'
   if (step.value === 'range') return categorical.value ? '選擇項目' : '設定範圍'
-  return props.pickerMode === 'column' ? '新增欄位' : '選擇篩選指標'
+  return '選擇篩選指標'
 })
 const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fieldId ?? null))
 // 輸入框後面的單位（元、%、倍、人…），三組型錄的單位都是看得懂的字；「無單位」不顯示
@@ -87,7 +84,7 @@ const unit = computed(() => {
       :categories="categories"
       :current-field-id="currentFieldId"
       :active="open"
-      :hide-period="pickerMode === 'condition'"
+      hide-period
       @select="(fieldId: string, fieldLabel: string) => emit('select', fieldId, fieldLabel)"
     />
     <ScreenerRangeEditor

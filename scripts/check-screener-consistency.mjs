@@ -88,8 +88,8 @@ for (const target of PAGES) {
     const group = page.getByRole('group', { name: label })
     expect(target.name, `「${label}」一組`, await group.count() === 1)
     expect(target.name, `「${label}」有下拉選單`, await group.locator('.el-select').count() === 1)
-    // 顯示欄位的改名／移動／刪除在「欄位設定」面板最上面（2026-10-21 合併），沒有自己的「管理」
-    expect(target.name, `「${label}」${label === '我的篩選' ? '有' : '沒有'}管理`, await group.getByRole('button', { name: `管理${label}` }).count() === (label === '我的篩選' ? 1 : 0))
+    // 兩組都有自己的「管理」（顯示欄位的 2026-10-21 併進欄位設定，11/1 使用者「希望管理 欄位設定 分開」又分出來）
+    expect(target.name, `「${label}」有管理`, await group.getByRole('button', { name: `管理${label}` }).count() === 1)
   }
   expect(target.name, '「新增篩選」按鈕', await page.getByRole('button', { name: '新增篩選' }).count() === 1)
   expect(target.name, '「新增欄位組合」按鈕', await page.getByRole('button', { name: '新增欄位組合' }).count() === 1)

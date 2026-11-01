@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loading, Plus } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
@@ -162,9 +162,8 @@ function onRowClick(row: ScreenerResultRow, _column: unknown, event: MouseEvent)
 const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
-  addColumnClick: []
-  // 欄位設定彈窗按「儲存」（saveFromSettings）：done(false)＝父層不套用這份欄位（例如這一組要刪掉），只關彈窗
-  saveColumns: [columns: ColumnDraft[], done: (apply?: boolean) => void]
+  // 欄位設定彈窗按「儲存」、欄位面板的每一步、表頭選單的移除（saveFromSettings、removeFromMenu）：整份欄位
+  saveColumns: [columns: ColumnDraft[]]
   rowClick: [symbol: string]
   loadMore: []
   // Only ever emitted for symbol/metric columns — see handleSortChange below. field is null
@@ -443,16 +442,22 @@ const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${g
 
 // ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），彈窗在 SharedColumnSettings（觀察清單共用）----
 const columnSettingsOpen = ref(false)
-// 手機的「檢視」面板（呼叫端的）也有「欄位設定」：面板關掉之後再從這裡打開，彈窗不疊
-defineExpose({ openColumnSettings: () => { columnSettingsOpen.value = true } })
+// 卡片版面的「欄位 N 個」打開的是 live（每一步馬上套用，比照篩選條件的面板，2026-11-01）；表格版面的「欄位設定」照舊按儲存
+const columnSettingsLive = ref(false)
+function openColumnSettings(live: boolean) {
+  columnSettingsLive.value = live
+  columnSettingsOpen.value = true
+}
 
-// 彈窗按「儲存」：整份交給父層（saveColumns），父層檢查完自己的部分（篩選頁的「這一組」）再呼叫 done。done(true) 時表格先照新順序排——
-// 這張表保留自己的拖曳順序、不跟父層換順序（見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
+// 彈窗按「儲存」（live 是每一步）：整份交給父層（saveColumns），表格先照新順序排——這張表保留自己的拖曳順序、不跟父層換順序
+// （見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
+function saveColumns(columns: ColumnDraft[]) {
+  emit('saveColumns', columns)
+  applyLocalOrder(columns)
+}
 function saveFromSettings(columns: ColumnDraft[], close: () => void) {
-  emit('saveColumns', columns, (apply = true) => {
-    if (apply) applyLocalOrder(columns)
-    close()
-  })
+  saveColumns(columns)
+  close()
 }
 function applyLocalOrder(columns: ColumnDraft[]) {
   orderedColumns.value = columns.map(draft => orderedColumns.value.find(column => column.field === draft.field) ?? { field: draft.field, label: draft.label })
@@ -461,7 +466,7 @@ function applyLocalOrder(columns: ColumnDraft[]) {
 
 // ---- 表頭的欄位選單（SharedColumnMenu，2026-10-22）：點表頭打開，不直接排序 ----
 // 表頭格裡任何地方點到都算（按鈕蓋不滿整格，格子的留白也要），在 el-table 自己的表頭點擊（會直接排序）之前就攔下來；
-// 鍵盤在表頭按鈕上按 Enter／空白鍵也是一個 click。「＋ 新增欄位」那一欄沒有表頭按鈕，照舊
+// 鍵盤在表頭按鈕上按 Enter／空白鍵也是一個 click
 const menu = reactive<{ open: boolean, field: string | null, anchor: HTMLElement | null }>({ open: false, field: null, anchor: null })
 const menuStatus = ref('')
 function onTableClickCapture(event: MouseEvent) {
@@ -538,10 +543,8 @@ function removeFromMenu(column: ScreenerResultTableColumn) {
   const previous = orderedColumns.value.map(({ field, label }) => ({ field, label }))
   const next = previous.filter(item => item.field !== column.field)
   const label = displayLabel(column)
-  emit('saveColumns', next, apply => { if (apply !== false) applyLocalOrder(next) })
-  undoToast(`已移除「${label}」欄`, () => {
-    emit('saveColumns', previous, apply => { if (apply !== false) applyLocalOrder(previous) })
-  }, () => {})
+  saveColumns(next)
+  undoToast(`已移除「${label}」欄`, () => saveColumns(previous), () => {})
 }
 
 // ---- 無限捲動：哨兵（表格 #append 那一列、卡片清單最後）進到畫面附近就載下一批 ----
@@ -587,17 +590,20 @@ watch(() => props.loading, (loading, wasLoading) => {
        parent passes in (screener-result-body__table) still falls through automatically —
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap screener-result-table-wrap--cards">
-    <!-- 卡片版面只有排序那一列（2026-10-31 使用者改選操作區方案 B）：排序＋方向＋呼叫端的按鈕（篩選頁的「檢視」），顯示欄位與欄位設定
-         收進呼叫端的檢視面板；表格版面只有第一列。以前（方案 A，2026-10-22）卡片版面兩列都在。
-         欄位設定是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7），各寬度都在。排序選單只在卡片版面（容器 <720px）出現：卡片沒有表頭；
-         表格的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個選單只是重複（2026-10-08 使用者同意） -->
+    <!-- 表格版面一列：顯示欄位＋欄位設定。卡片版面三列，比照設定區的「我的篩選」＋「篩選條件 N 個」（2026-11-01，使用者：「讓多條件或是
+         多欄位的使用手感一樣」；10/31 試過的「檢視」面板同日拿掉）：顯示欄位一列、「欄位 N 個」一列（打開貼底面板，每一步馬上套用）、
+         排序＋方向一列。兩顆都在 DOM 裡、CSS 切換。欄位設定與欄位面板都是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7）。排序選單只在卡片版面
+         （容器 <720px）出現：卡片沒有表頭；表格的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個選單只是重複（2026-10-08 使用者同意） -->
     <div class="smt-toolbar">
-      <div class="smt-toolbar__row smt-toolbar__columns">
+      <div class="smt-toolbar__row">
         <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
         <slot name="toolbar" />
         <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
-        <el-button class="smt-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
+        <el-button class="smt-toolbar__settings" @click="openColumnSettings(false)">欄位設定</el-button>
       </div>
+      <el-button class="smt-columns-open" aria-haspopup="dialog" @click="openColumnSettings(true)">
+        <span>欄位 {{ orderedColumns.length }} 個</span><span class="smt-columns-open__chevron" aria-hidden="true" />
+      </el-button>
       <div class="smt-toolbar__row smt-toolbar__sort">
         <!-- 標籤疊在選單框裡（不攔點擊），名稱照樣是「排序」 -->
         <label class="smt-sort">
@@ -610,9 +616,8 @@ watch(() => props.loading, (loading, wasLoading) => {
         <!-- 方向一直在（沒選排序欄位時停用），選了欄位不會多冒出一個選單把版面推開。圖示是全站的排序圖示（沒排序兩個三角形、排序中只留
              那個方向；使用者 2026-10-21 的規範），不用文字箭頭：↑↓ 的高低跟著字型跑，跟旁邊的字對不齊 -->
         <el-button class="smt-direction" :disabled="!activeSort.field" @click="applySort(activeSort.field, activeSort.order === 'ascending' ? 'descending' : 'ascending')">
-          <SharedSortIcon :state="activeSort.field ? activeSort.order : null" /><span class="visually-hidden">排序方向：{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}</span>
+          <span class="visually-hidden">排序方向：</span><SharedSortIcon class="smt-direction__icon" :state="activeSort.field ? activeSort.order : null" />{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}
         </el-button>
-        <slot name="sort-actions" />
       </div>
     </div>
     <SharedColumnSettings
@@ -620,10 +625,9 @@ watch(() => props.loading, (loading, wasLoading) => {
       :columns="orderedColumns"
       :label-of="displayLabel"
       :categories="categories"
+      :live="columnSettingsLive"
       @save="saveFromSettings"
-    >
-      <template v-if="$slots['column-settings-head']" #head><slot name="column-settings-head" /></template>
-    </SharedColumnSettings>
+    />
 
     <!-- 窄的時候是卡片，寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
          渲染時用寬度選標記）。 -->
@@ -714,12 +718,6 @@ watch(() => props.loading, (loading, wasLoading) => {
           </component>
         </template>
       </el-table-column>
-      <el-table-column width="48" align="center">
-        <template #header>
-          <el-button :icon="Plus" circle text size="small" title="新增欄位" aria-label="新增欄位" @click.stop="emit('addColumnClick')" />
-        </template>
-      </el-table-column>
-
       <!-- Renders INSIDE el-table's body, after the last data row — reads as the table's own
            last row. observeSentinel (script) watches it against the viewport. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
@@ -796,22 +794,49 @@ watch(() => props.loading, (loading, wasLoading) => {
   min-height: 0;
 }
 
-/* 卡片版面：顯示欄位＋欄位設定那一列收起來（方案 B，在呼叫端的檢視面板裡）。兩個 class，理由同下 */
-.smt-toolbar .smt-toolbar__columns {
+/* 卡片版面：「欄位設定」換成「欄位 N 個」（兩個 class：蓋過 Element 的 .el-button { display: inline-flex }） */
+.smt-toolbar .smt-toolbar__settings {
   display: none;
 }
 
 @container (min-width: 720px) {
-  .screener-result-table-wrap--cards .smt-table-view,
-  .smt-toolbar .smt-toolbar__columns {
+  .screener-result-table-wrap--cards .smt-table-view {
     display: flex;
+  }
+
+  .smt-toolbar .smt-toolbar__settings {
+    display: inline-flex;
   }
 
   .smt-cards-view,
   /* 兩個 class：同特異性時排在後面的 .smt-toolbar__row { display: flex } 會贏 */
-  .smt-toolbar .smt-toolbar__sort {
+  .smt-toolbar .smt-toolbar__sort,
+  .smt-toolbar .smt-columns-open {
     display: none;
   }
+}
+
+/* 「欄位 N 個」：同設定區的「篩選條件 N 個」（ScreenerPageShell 的 .screener-shell__conditions-open） */
+.smt-columns-open {
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+}
+
+.smt-columns-open :deep(> span) {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.smt-columns-open__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  transform: rotate(-45deg);
 }
 
 /* minmax(0, 1fr)：auto 欄寬的下限是內容的最小寬度，原生選單的最小寬度是最長的選項——欄位名一長，兩列一起撐出畫面（375 寬量到右緣 452） */
@@ -866,9 +891,8 @@ watch(() => props.loading, (loading, wasLoading) => {
   padding-left: calc(12px + 2em + 8px);
 }
 
-/* 方向鍵只畫圖示（方案 B：排序選單旁邊還有「檢視」，選單要留寬度給欄位名），方向照樣念出來 */
-.smt-toolbar__row > .smt-direction {
-  min-width: 44px;
+.smt-direction__icon {
+  margin-right: 6px;
 }
 
 .smt-cards {

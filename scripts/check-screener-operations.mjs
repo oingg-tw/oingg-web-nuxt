@@ -519,9 +519,10 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const countText = await m.locator('.screener-shell__count').textContent()
     expect('手機', '顯示並朗讀符合檔數', /符合上述條件 [\d,]+ 檔/.test(countText ?? '') && await m.locator('.screener-shell__count[role="status"]').count() === 1, countText ?? '')
 
-    // 操作區方案 B（2026-10-31）：手機上「顯示欄位」收進「檢視」面板，頁面上只有「我的篩選」
+    // 2026-11-01 比照條件（「檢視」面板拿掉）：手機上「顯示欄位」跟「我的篩選」一樣一列、都有「管理」
     const groups = await m.getByRole('group', { name: /^(我的篩選|顯示欄位)$/ }).count()
-    expect('手機', '頁面上只有「我的篩選」一組選單，顯示欄位在檢視裡', groups === 1 && await m.getByRole('button', { name: '檢視' }).isVisible(), `${groups} 組`)
+    expect('手機', '「我的篩選」「顯示欄位」兩組選單都在', groups === 2, `${groups} 組`)
+    expect('手機', '「顯示欄位」有管理', await m.getByRole('button', { name: '管理顯示欄位' }).isVisible())
 
     // 排序選單：選「本益比」→ 後端排序（多一次 POST）。方向鍵一直在：沒選排序時停用，選了本益比是小到大（估值倍數的第一下），
     // 按一下換成大到小、再打一次後端
@@ -540,22 +541,33 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     expect('手機', '按方向鍵換成大到小並打後端', toggledText.includes('大到小') && upstream.length > requestsBeforeToggle && upstream.at(-1) === 200, `${toggledText}，多發了 ${upstream.length - requestsBeforeToggle} 次`)
     expect('手機', '排序後卡片還在', await m.locator('.smt-card').count() > 0)
 
-    // 欄位設定（彈窗，手機滿版）：下移第一欄、儲存 → 卡片裡的欄位順序跟著換
+    // 「欄位 N 個」（2026-11-01，比照「篩選條件 N 個」）：貼底面板、每一步馬上套用——下移第一欄，面板還開著卡片就換順序；
+    // 移除留在原位可以復原；沒有儲存鈕
     const labelsBefore = await m.locator('.smt-card').first().locator('dt').allTextContents()
-    // 欄位設定在檢視面板裡；面板先關掉才開欄位設定（不疊彈窗）
-    await m.getByRole('button', { name: '檢視' }).click()
-    await waitFor(m.locator('.screener-shell__view'), 10000)
-    expect('手機', '檢視面板有顯示欄位', await m.getByRole('group', { name: '顯示欄位' }).count() === 1)
-    await m.locator('.screener-shell__view').getByRole('button', { name: '欄位設定' }).click()
+    expect('手機', '表格版面的「欄位設定」藏起來', !await m.locator('.smt-toolbar__settings').isVisible())
+    await m.getByRole('button', { name: /^欄位 \d+ 個$/ }).click()
     await waitFor(m.locator('.column-settings__row').first(), 10000)
-    expect('手機', '打開欄位設定時檢視面板已經關掉', !await m.locator('.screener-shell__view').isVisible())
-    const settingsRows = await m.locator('.column-settings__row').count()
-    expect('手機', '欄位設定列出每一欄', settingsRows === labelsBefore.length, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
-    await m.locator('.column-settings__row').first().getByRole('button', { name: /下移/ }).click()
-    await m.getByRole('dialog', { name: '欄位設定' }).getByRole('button', { name: '儲存' }).click()
+    const sheet = m.getByRole('dialog', { name: '欄位' })
+    // 等打開的動畫跑完（同下面條件面板）
+    await m.waitForTimeout(500)
+    const box = await m.locator('.el-dialog.column-settings--live').boundingBox()
+    expect('手機', '欄位面板貼在畫面底部', box !== null && Math.abs(box.y + box.height - 800) <= 2, box ? `底 ${Math.round(box.y + box.height)}` : '找不到')
+    const settingsRows = await sheet.locator('.column-settings__row').count()
+    expect('手機', '欄位面板列出每一欄、沒有儲存鈕', settingsRows === labelsBefore.length && await sheet.getByRole('button', { name: '儲存' }).count() === 0, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
+    await sheet.locator('.column-settings__row').first().getByRole('button', { name: /下移/ }).click()
     await m.waitForTimeout(1500)
     const labelsAfter = await m.locator('.smt-card').first().locator('dt').allTextContents()
-    expect('手機', '下移第一欄後順序對調', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)
+    expect('手機', '下移第一欄、面板開著卡片就換順序', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)
+    await sheet.getByRole('button', { name: `移除「${labelsAfter[0]}」` }).click()
+    await m.waitForTimeout(1500)
+    const afterRemove = await m.locator('.smt-card').first().locator('dt').allTextContents()
+    expect('手機', '移除馬上少一欄、那一列留著「復原」', afterRemove.length === labelsAfter.length - 1 && await sheet.getByRole('button', { name: `復原「${labelsAfter[0]}」` }).isVisible(), `${labelsAfter.length} → ${afterRemove.length} 欄`)
+    await sheet.getByRole('button', { name: `復原「${labelsAfter[0]}」` }).click()
+    await m.waitForTimeout(1500)
+    const afterRestore = await m.locator('.smt-card').first().locator('dt').allTextContents()
+    expect('手機', '復原回到原位', afterRestore.join('|') === labelsAfter.join('|'), afterRestore.slice(0, 2).join('、'))
+    await m.keyboard.press('Escape')
+    await m.waitForTimeout(600)
 
     // 條件面板：手機是貼底的面板，條件收在「篩選條件 N 個」裡（方案 B）；先到條件清單，新增條件在同一個面板換頁；
     // 選了指標換到第二步，有看得見的標籤；沒設值就完成，回到清單、不多一個條件

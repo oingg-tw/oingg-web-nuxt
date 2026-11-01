@@ -4,7 +4,7 @@
 // 下拉選單不論有幾組都只佔一行。
 //
 // 「管理」打開 ScreenerPresetManageDialog（2026-10-22，原本是下拉選單）：一次看到全部、按「儲存」才套用，變更整包交給父層（manage）。
-// 顯示欄位沒有「管理」（hideManage）：它的名稱、移動、刪除在欄位設定彈窗最上面（ScreenerColumnSetHead）
+// 兩組都有「管理」：顯示欄位的「管理」2026-10-21 併進欄位設定，11/1 使用者「希望管理 欄位設定 分開」又搬回來
 import type { PresetChanges } from '~/utils/preset-changes'
 
 export interface PresetSelectItem {
@@ -24,8 +24,6 @@ const props = defineProps<{
   addLabel: string
   // 目前這一組未儲存時的按鈕文字：「存成我的篩選」「存成我的欄位組合」
   saveLabel: string
-  // 不畫「管理」（顯示欄位，見上面）
-  hideManage?: boolean
   // 外框（container）窄於 720px 時標籤收進選單框裡當前綴、「＋新增」只留「＋」、「存成…」換到下一行：結果區的「顯示欄位」用「欄位」
   //（2026-10-22 操作區方案 A），設定區的「我的篩選」用「篩選」（同日設定區方案 B）
   compactLabel?: string
@@ -66,10 +64,8 @@ function optionLabel(item: PresetSelectItem) {
     </el-select>
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button screener-preset-select__save" @click="emit('save')">{{ saveLabel }}</el-button>
     <el-button class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
-    <template v-if="!hideManage">
-      <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
-      <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
-    </template>
+    <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
+    <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
   </div>
 </template>
 
@@ -126,7 +122,6 @@ function optionLabel(item: PresetSelectItem) {
   display: none;
   color: var(--el-text-color-secondary);
 }
-
 /* compactLabel：外框窄於 720px——結果區（SharedMetricTable，同卡片版面的斷點）或設定區（ScreenerPageShell）——時標籤收進選單框、
    ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 560px 那段 */
 @container (max-width: 719px) {
@@ -156,7 +151,6 @@ function optionLabel(item: PresetSelectItem) {
   .screener-preset-select--compact .screener-preset-select__prefix {
     display: inline;
   }
-
   /* 未儲存時「存成…」自己一行、整組寬：選單、＋、管理留在第一行，不會被擠成選單＋存成一行、＋與管理另一行 */
   .screener-preset-select--compact .screener-preset-select__save {
     order: 1;

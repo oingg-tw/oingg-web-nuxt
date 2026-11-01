@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { ScreenerWorkspace } from '~/composables/screener/screener-tab-model'
 import type { ScreenerUniverse } from '~/utils/screener-zone'
-import type ScreenerColumnSetHead from './ScreenerColumnSetHead.vue'
-import type { ColumnDraft } from '~/components/shared/SharedColumnSettings.vue'
 import type { PresetChanges } from '~/utils/preset-changes'
 // 三組篩選（普通股、特別股、ETF）共用的整頁（2026-10-15 三組篩選重新設計）。使用者：「三組最後使用UIUX要接近，降低用戶負擔」。
 // 每一個控制項都只在這裡接一次，三頁只給「資料」（screener：useScreenerTabs 或 useUniverseScreener 包成的 ScreenerWorkspace）
@@ -47,26 +45,11 @@ const countParts = computed(() => {
   if (current.loading) return { prefix: '', main: '搜尋中…', note: '' }
   const main = `${groupThousands(current.total)} 檔`
   if (!countedWithConditions.value) return { prefix: '全部 ', main, note: '' }
-  return { prefix: '符合上述條件 ', main, note: current.total > 0 && current.total < 10 ? '；檔數少，條件稍微變動結果就可能不同' : '' }
+  return { prefix: '符合上述條件 ', main, note: current.total > 0 && current.total < 10 ? '檔數少，條件稍微變動結果就可能不同' : '' }
 })
 
 const empty = computed(() => !!tab.value?.searched && !tab.value.loading && tab.value.total === 0 && hasConditions.value)
 const conditionCount = computed(() => tab.value?.slots.filter(slot => slot.fieldId !== null).length ?? 0)
-
-// 手機的「檢視」面板（2026-10-31，使用者改選操作區方案 B）：顯示欄位、新增欄位組合、欄位設定、資料時間收在這裡，卡片前只剩排序一列。
-// 新增欄位組合、欄位設定是各自的彈窗：先關檢視、關閉動畫結束（closed）才打開，彈窗不疊
-const viewOpen = ref(false)
-const tableRef = ref<{ openColumnSettings: () => void } | null>(null)
-let afterView: (() => void) | null = null
-function fromView(action: () => void) {
-  afterView = action
-  viewOpen.value = false
-}
-function onViewClosed() {
-  const action = afterView
-  afterView = null
-  action?.()
-}
 const lastSlotId = computed(() => tab.value?.slots.at(-1)?.id ?? null)
 
 // 新增條件按「完成」之後焦點落在新膠囊的值上，不是回到「新增條件」：鍵盤使用者接著要改值或移除，不必再找一次。
@@ -82,7 +65,7 @@ function focusNewCondition() {
   setupRef.value?.querySelector<HTMLElement>(`[data-slot-id="${slots.at(-1)!.id}"] .condition-pill__value`)?.focus()
 }
 
-// 彈窗按「儲存」之後的套用（我的篩選的管理、欄位設定的「這一組」）：一項做完再做下一項。刪除要先做完才排序——業務中台 的排序要
+// 管理彈窗按「儲存」之後的套用（我的篩選、顯示欄位各一個）：一項做完再做下一項。刪除要先做完才排序——業務中台 的排序要
 // 「全部已存的 id」，還沒刪掉的那一組不能少；刪到目前這一組時，換選哪一組由各自的 remove 決定
 interface GroupOps {
   rename(id: string, name: string): Promise<void> | void
@@ -99,25 +82,12 @@ const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
   remove: props.screener.removePreset,
   reorder: props.screener.reorderTabs
 })
-
-// 欄位設定彈窗按「儲存」（SharedColumnSettings → SharedMetricTable）：「這一組」的名稱不對就不關（焦點到那一格）；這一組要刪掉就不存
-// 它的欄位。欄位先存（新增的要重查），再改名、刪除、排序
-const columnSetHead = useTemplateRef<InstanceType<typeof ScreenerColumnSetHead>>('columnSetHead')
-async function saveColumnSettings(columns: ColumnDraft[], done: (apply?: boolean) => void) {
-  const head = columnSetHead.value
-  if (head && !head.validate()) return
-  const removed = head?.activeRemoved() ?? false
-  const changes = head?.changes()
-  done(!removed)
-  if (!removed && tab.value) await props.screener.applyColumnChoices(tab.value, columns)
-  if (changes) {
-    await applyChanges(changes, {
-      rename: props.screener.renameColumnSet,
-      remove: props.screener.removeColumnSet,
-      reorder: props.screener.reorderColumnSets
-    })
-  }
-}
+// 欄位組合的管理跟欄位設定分開（2026-11-01，使用者：「希望管理 欄位設定 分開」）：「顯示欄位」自己的「管理」，同「我的篩選」
+const applyColumnSetChanges = (changes: PresetChanges) => applyChanges(changes, {
+  rename: props.screener.renameColumnSet,
+  remove: props.screener.removeColumnSet,
+  reorder: props.screener.reorderColumnSets
+})
 
 function openRow(symbol: string) {
   navigateTo(props.screener.rowLink(symbol))
@@ -158,7 +128,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             @manage="applyPresetChanges"
             @save="screener.saveActiveTab()"
           />
-          <!-- 手機：條件收進面板（方案 B 的收法，同結果區的「檢視」），頁面上只有這一顆；電腦版條件照舊攤開。兩份都在 DOM 裡、CSS 切換 -->
+          <!-- 手機：條件收進面板（方案 B），頁面上只有這一顆；電腦版條件照舊攤開。兩份都在 DOM 裡、CSS 切換 -->
           <el-button class="screener-shell__conditions-open" aria-haspopup="dialog" @click="screener.openConditionList(tab!)">
             <span>篩選條件 {{ conditionCount }} 個</span><span class="screener-shell__chevron" aria-hidden="true" />
           </el-button>
@@ -178,7 +148,10 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           <SharedTable custom class="screener-shell__results-card">
           <div class="screener-shell__results-header">
             <h2 :id="`${uid}-results`" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
-            <p class="screener-shell__count" role="status"><template v-if="countParts"><span class="screener-shell__count-prefix">{{ countParts.prefix }}</span>{{ countParts.main }}{{ countParts.note }}</template></p>
+            <!-- 提醒在 live region 裡照樣念，畫面上是後面那個 aria-hidden 的：擠在檔數那一格裡，手機會折成三到五行（2026-11-01），
+                 窄的時候它自己一行、寬的時候接在檔數後面 -->
+            <p class="screener-shell__count" role="status"><template v-if="countParts"><span class="screener-shell__count-prefix">{{ countParts.prefix }}</span>{{ countParts.main }}<span v-if="countParts.note" class="visually-hidden">；{{ countParts.note }}</span></template></p>
+            <p v-if="countParts?.note" class="screener-shell__count-note" aria-hidden="true">{{ countParts.note }}</p>
             <p v-if="screener.dataDate" class="screener-shell__date">資料日期 {{ screener.dataDate }}</p>
             <div v-if="$slots['result-meta']" class="screener-shell__result-meta">
               <slot name="result-meta" />
@@ -192,7 +165,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           </div>
           <SharedMetricTable
             v-else
-            ref="tableRef"
             :loading="tab.loading"
             :rows="tab.results"
             :columns="tab.columns"
@@ -210,20 +182,14 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             sticky
             @reorder="fields => screener.handleReorderColumns(tab!, fields)"
             @remove-column="field => screener.handleRemoveColumn(tab!, field)"
-            @add-column-click="screener.openColumnPicker(tab!)"
-            @save-columns="saveColumnSettings"
+            @save-columns="columns => screener.applyColumnChoices(tab!, columns)"
             @row-click="openRow"
             @load-more="screener.loadMoreResults(tab!)"
             @sort-change="(field, order) => screener.changeSort(tab!, field, fromElOrder(order))"
           >
-            <!-- 手機的排序列最後一顆：打開檢視面板 -->
-            <template #sort-actions>
-              <el-button class="screener-shell__view-open" aria-haspopup="dialog" @click="viewOpen = true">檢視</el-button>
-            </template>
             <!-- 放進表格的工具列：跟「欄位設定」同一列 -->
             <template #toolbar>
               <ScreenerPresetSelect
-                hide-manage
                 compact-label="欄位"
                 label="顯示欄位"
                 add-label="新增欄位組合"
@@ -232,47 +198,13 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
                 :active-id="screener.activeColumnSetId"
                 @update:active-id="screener.selectColumnSet"
                 @add="screener.openNewColumnPresetDialog(tab!)"
+                @manage="applyColumnSetChanges"
                 @save="screener.saveColumnSet()"
               />
-            </template>
-            <!-- 欄位組合的名稱、移動、刪除在欄位設定彈窗最上面（2026-10-21 使用者把顯示欄位的「管理」併進欄位設定） -->
-            <template #column-settings-head>
-              <ScreenerColumnSetHead ref="columnSetHead" :items="screener.columnSetItems" :active-id="screener.activeColumnSetId" />
             </template>
           </SharedMetricTable>
           </SharedTable>
         </section>
-
-        <!-- 手機的檢視面板：跟條件面板同一個貼底面板的樣子（.condition-panel 的樣式，ScreenerConditionPanel 裡），裡面是同一批元件。
-             放在這個等 hydration 的區塊裡：外面用 v-if="tab" 會跟伺服器畫的不一樣（2026-10-31 特別股頁 hydration 壞掉） -->
-        <el-dialog
-          v-model="viewOpen"
-          title="檢視"
-          width="min(600px, 100vw)"
-          class="condition-panel condition-panel--range"
-          modal-class="condition-panel-overlay"
-          :align-center="false"
-          lock-scroll
-          @closed="onViewClosed"
-        >
-          <div class="screener-shell__view">
-            <ScreenerPresetSelect
-              hide-manage
-              label="顯示欄位"
-              add-label="新增欄位組合"
-              save-label="存成我的欄位組合"
-              :items="screener.columnSetItems"
-              :active-id="screener.activeColumnSetId"
-              @update:active-id="screener.selectColumnSet"
-              @add="fromView(() => screener.openNewColumnPresetDialog(tab!))"
-              @save="screener.saveColumnSet()"
-            />
-            <el-button class="screener-shell__view-settings" @click="fromView(() => tableRef?.openColumnSettings())">欄位設定</el-button>
-            <div v-if="$slots['result-meta']" class="screener-shell__view-meta">
-              <slot name="result-meta" />
-            </div>
-          </div>
-        </el-dialog>
       </template>
       <!-- 還沒有任何一組可以顯示（普通股的訪客要先選一組範本） -->
       <slot v-else name="no-tab" />
@@ -287,7 +219,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     <ScreenerConditionPanel
       :list-visible="screener.listVisible"
       :picker-visible="screener.pickerVisible"
-      :picker-mode="screener.pickerMode"
       :range-visible="screener.rangeEditorVisible"
       :slot="screener.rangeEditorSlot"
       :categories="screener.categories"
@@ -399,24 +330,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   }
 }
 
-/* 檢視面板：顯示欄位一組、欄位設定、資料時間由上往下 */
-.screener-shell__view {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 4px 0 8px;
-}
-
-.screener-shell__view > .screener-preset-select {
-  align-self: stretch;
-}
-
-.screener-shell__view-settings {
-  min-height: 44px;
-  margin: 0;
-}
-
 .screener-shell__results-card {
   display: flex;
   flex-direction: column;
@@ -432,11 +345,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     border: 0;
     border-radius: 0;
     background: none;
-  }
-
-  /* 卡片版面：資料時間的開關搬進檢視面板（方案 B） */
-  .screener-shell__results-header .screener-shell__result-meta {
-    display: none;
   }
 }
 
@@ -481,16 +389,43 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   }
 }
 
-/* 手機（操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，個位數的提醒在
-   自己那一格裡折行——推不動開關，上面那條 2026-10-16 的位移不會回來 */
-@media (max-width: 559px) {
-  .screener-shell__results-header {
-    flex-wrap: nowrap;
+/* 標題、檔數、資料日期、開關都不折行（2026-11-01，使用者：「讓文字不要折行佔高度」）；個位數的提醒自己一行、排在最後 */
+.screener-shell__results-title,
+.screener-shell__count,
+.screener-shell__date,
+.screener-shell__result-meta {
+  white-space: nowrap;
+}
+
+.screener-shell__count-note {
+  flex-basis: 100%;
+  order: 1;
+  margin: 0;
+  color: var(--el-text-color-regular);
+}
+
+/* 頁面夠寬（標題＋檔數＋提醒＋開關約 730px）就接回檔數後面，不多佔一行 */
+@container (min-width: 900px) {
+  .screener-shell__count-note {
+    flex-basis: auto;
+    order: 0;
+    margin-left: -16px;
+    white-space: nowrap;
   }
 
+  .screener-shell__count-note::before {
+    content: '；';
+  }
+}
+
+/* 手機（操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，太窄就省略號——
+   推不動開關，上面那條 2026-10-16 的位移不會回來 */
+@media (max-width: 559px) {
   .screener-shell__count {
     flex: 1 1 0;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .screener-shell__count-prefix {

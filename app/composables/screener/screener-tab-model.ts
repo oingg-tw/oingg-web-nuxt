@@ -107,14 +107,12 @@ export interface ScreenerWorkspace {
 
   // 條件（useScreenerConditionEditor）
   pickerVisible: boolean
-  pickerMode: 'condition' | 'column'
   pickerCurrentFieldId: string | null
   rangeEditorVisible: boolean
   rangeEditorSlot: TabFilterSlot | null
   // slotId null＝新增條件
   openFieldPicker(tab: WorkspaceTab, slotId: number | null): void
   openRangeEditor(tab: WorkspaceTab, slotId: number): void
-  openColumnPicker(tab: WorkspaceTab): void
   removeSlot(tab: WorkspaceTab, slotId: number): void
   handleSelect(fieldId: string, fieldLabel: string): void
   changeRangeEditorPeriod(fieldId: string): void

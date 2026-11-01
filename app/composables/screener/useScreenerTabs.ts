@@ -488,12 +488,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
 
 
   // 條件編輯（欄位挑選器＋區間編輯器＋移除條件）搬到 useScreenerConditionEditor，2026-10-02。
-  // 那一塊對核心只有這三個依賴，而核心沒有反向依賴它——所以它是這個檔案裡最乾淨的一刀。
-  const conditionEditor = useScreenerConditionEditor({
-    syncColumnPreset,
-    runSearch: handleSearch,
-    cacheColumnView: cacheCurrentColumnView
-  })
+  const conditionEditor = useScreenerConditionEditor<ScreenerTab>()
 
   // 頁籤增刪改搬到 useScreenerTabCrud，2026-10-02（第三刀）。那個檔案的開頭寫了它的風險與驗證
   // 覆蓋範圍——建立路徑都在登入閘門後面，所以只有 typecheck 在保護，改之前要手動走一遍。
