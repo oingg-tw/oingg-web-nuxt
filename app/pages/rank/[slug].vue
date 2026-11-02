@@ -7,9 +7,9 @@ import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 // above the table, not in a footer; wording is statistical throughout; the 50 rows are links to
 // the stock pages（the hub's internal-link job）. Unknown slug → 404.
 //
-// No sector-scoped variants: 業務中台 rejects sectorCodes on the EOD valuation fields by design
-// (2026-09-19), and a ranking is one URL per field so it can't become a paginated or filtered
-// URL family.
+// No sector-scoped variants: a ranking is one URL per field so it can't become a paginated or
+// filtered URL family. (業務中台 refused sectorCodes on the EOD valuation fields until 93df746,
+// 2026-11-02; that is no longer a reason.)
 const route = useRoute()
 const slug = String(route.params.slug)
 const definition = findRankPage(slug)

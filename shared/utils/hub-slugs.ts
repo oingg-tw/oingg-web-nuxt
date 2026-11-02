@@ -90,8 +90,8 @@ export function industryFacetPath(code: string, key: IndustryFacetKey): string {
 
 // /rank/{slug} — one objective screener field each, ranked by GET /screener/ranking. The
 // wording is deliberately statistical（由高到低／由低到高）; the pages carry the compliance
-// disclaimer directly above the table. No sector-scoped variants: 業務中台 rejects sectorCodes on
-// the EOD fields by design (2026-09-19).
+// disclaimer directly above the table. No sector-scoped variants: a ranking is one URL per field.
+// (業務中台 refused sectorCodes on the EOD valuation fields until 93df746, 2026-11-02; it accepts them now.)
 export interface RankPageDefinition {
   slug: string
   field: string
