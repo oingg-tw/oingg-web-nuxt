@@ -51,11 +51,36 @@ const seasonAnswer = computed(() => {
 
 const selected = computed(() => cells.value.find(cell => cell.month === data.value!.month)!)
 const rows = computed(() => data.value!.rows.filter(row => kind.value === 'all' || row.kind === kind.value))
-const days = computed(() => {
+const groupByDay = (list: ExDividendRow[]) => {
   const groups = new Map<string, ExDividendRow[]>()
-  for (const row of rows.value) (groups.get(row.exDate) ?? groups.set(row.exDate, []).get(row.exDate)!).push(row)
-  return [...groups].map(([date, list]) => ({ date, rows: list, count: new Set(list.map(row => row.symbol)).size }))
+  for (const row of list) (groups.get(row.exDate) ?? groups.set(row.exDate, []).get(row.exDate)!).push(row)
+  return [...groups].map(([date, rowsOfDay]) => ({ date, rows: rowsOfDay, count: new Set(rowsOfDay.map(row => row.symbol)).size }))
+}
+const days = computed(() => groupByDay(rows.value))
+
+// 在這個月找代號或名稱（2026-11-02，手機方案 A＋B 的搜尋）：7 月 805 檔，原本要一天一天打開才找得到某一檔。符合的日子全部展開；
+// 答句與最多的那一天照舊用整個月算
+const query = ref('')
+const needle = computed(() => query.value.trim().toLowerCase())
+const shownDays = computed(() => (needle.value
+  ? groupByDay(rows.value.filter(row => row.symbol.toLowerCase().includes(needle.value) || row.name.toLowerCase().includes(needle.value)))
+  : days.value))
+const searchResult = computed(() => {
+  if (!needle.value) return ''
+  const count = new Set(shownDays.value.flatMap(day => day.rows.map(row => row.symbol))).size
+  const m = monthNumber(selected.value.month)
+  return count ? `${m} 月有 ${count} 檔符合「${query.value.trim()}」，在 ${shownDays.value.length} 天。` : `${m} 月沒有符合「${query.value.trim()}」的標的。`
 })
+
+// 手機的切換列（2026-11-02，方案 A）：月份橫向捲動，換月時把目前的月份捲到中間，不然 7 月以後一開始看不到
+const monthStrip = ref<HTMLElement | null>(null)
+function centerCurrentMonth() {
+  const strip = monthStrip.value
+  const current = strip?.querySelector<HTMLElement>('[aria-current="true"]')
+  if (strip && current) strip.scrollLeft = current.offsetLeft - (strip.clientWidth - current.offsetWidth) / 2
+}
+onMounted(centerCurrentMonth)
+watch(() => data.value?.month, () => nextTick(centerCurrentMonth))
 
 const WEEKDAYS = '日一二三四五六'
 // 試算月份的日期是去年的那一天
@@ -102,7 +127,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
     <CalendarNav />
 
     <StockQuestionSection id="ex-months-season" question="今年哪幾個月除權息最多？" :answer="seasonAnswer">
-      <el-radio-group v-model="kind" aria-label="標的種類">
+      <el-radio-group v-model="kind" class="ex-months__kinds" aria-label="標的種類">
         <el-radio-button v-for="[value, label] in KINDS" :key="value" :value="value">{{ label }}</el-radio-button>
       </el-radio-group>
       <ol class="ex-heat" :aria-label="`${year} 年每個月有幾檔${kindWord}除權息`">
@@ -125,13 +150,40 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
       </p>
     </StockQuestionSection>
 
+    <!-- 手機才有：往下滑時黏在頁首下面，滑到清單哪裡都能換種類、換月；換月跳回清單開頭（#ex-months-list） -->
+    <div class="ex-bar">
+      <label class="ex-bar__kind">
+        <span class="visually-hidden">標的種類</span>
+        <select v-model="kind" class="app-select">
+          <option v-for="[value, label] in KINDS" :key="value" :value="value">{{ label }}</option>
+        </select>
+      </label>
+      <nav ref="monthStrip" class="ex-bar__months" aria-label="月份">
+        <template v-for="cell in cells" :key="cell.month">
+          <NuxtLink v-slot="{ href, navigate }" :to="{ query: { month: cell.month }, hash: '#ex-months-list' }" custom>
+            <a :href="href ?? undefined" class="ex-bar__month" :class="[`ex-heat__cell--${step(countOf(cell))}`, { 'is-estimated': cell.estimated }]" :aria-current="cell.month === data!.month ? 'true' : undefined" @click="navigate">
+              {{ monthNumber(cell.month) }}月 {{ countOf(cell) }}<span v-if="cell.estimated" aria-hidden="true">估</span><span class="visually-hidden"> 檔{{ cell.estimated ? '，用去年同月試算' : '' }}</span>
+            </a>
+          </NuxtLink>
+        </template>
+      </nav>
+    </div>
+
     <StockQuestionSection id="ex-months-list" :question="`${year} 年 ${monthNumber(selected.month)} 月有哪些除權息？`" :answer="monthAnswer">
       <p v-if="screenerLinks.length" class="hub-answer">
         在篩選器打開這個月除權息的標的，再加其他條件：<template v-for="(link, index) in screenerLinks" :key="link.key">{{ index ? '、' : '' }}<NuxtLink :to="link.to" class="hub-inline-link">{{ link.label }}</NuxtLink></template>。
       </p>
-      <ul v-if="rows.length" class="ex-days">
-        <li v-for="day in days" :key="day.date">
-          <details class="app-disclosure ex-day">
+      <div v-if="rows.length" class="ex-search">
+        <label class="ex-search__field">
+          <span class="visually-hidden">在 {{ monthNumber(selected.month) }} 月的除權息裡找代號或名稱</span>
+          <input v-model="query" type="search" class="ex-search__input" placeholder="找代號或名稱，例如 2330、台積" autocomplete="off" enterkeyhint="search">
+        </label>
+        <button v-if="query" type="button" class="ex-search__clear" @click="query = ''">清除</button>
+      </div>
+      <p class="ex-search__result" role="status">{{ searchResult }}</p>
+      <ul v-if="shownDays.length" class="ex-days">
+        <li v-for="day in shownDays" :key="day.date">
+          <details class="app-disclosure ex-day" :open="!!needle">
             <summary>
               <span class="ex-day__date">{{ dayLabel(day.date) }}</span>
               <span class="ex-day__count">{{ day.count }} 檔</span>
@@ -154,13 +206,13 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
                     <template v-else>{{ row.name }}</template>
                     <span class="ex-month-table__code">{{ row.symbol }}</span>
                   </td>
-                  <td>{{ row.exType }}<el-tag v-if="row.announced" size="small" effect="plain" class="ex-month-table__tag">預告</el-tag></td>
+                  <td class="ex-month-table__meta">{{ row.exType }}<el-tag v-if="row.announced" size="small" effect="plain" class="ex-month-table__tag">預告</el-tag></td>
                   <td class="seo-table__num" :class="{ 'is-empty': row.cash === null }">
                     <template v-if="row.cash !== null">{{ cashText(row.cash) }}<span class="ex-month-table__unit"> 元</span></template>
                     <template v-else>－</template>
                   </td>
-                  <td :class="{ 'is-empty': !row.stockPerShare && !row.rightsOffering }">{{ stockText(row) }}</td>
-                  <td class="ex-month-table__paid">{{ row.paymentDate ? row.paymentDate.slice(5).replace('-', '/') : '－' }}</td>
+                  <td class="ex-month-table__meta" :class="{ 'is-empty': !row.stockPerShare && !row.rightsOffering }"><span v-if="row.stockPerShare" class="ex-month-table__label">配股 </span>{{ stockText(row) }}</td>
+                  <td class="ex-month-table__meta" :class="{ 'is-empty': !row.paymentDate }"><span v-if="row.paymentDate" class="ex-month-table__label">發放 </span>{{ row.paymentDate ? row.paymentDate.slice(5).replace('-', '/') : '－' }}</td>
                 </tr>
               </tbody>
             </SharedTable>
@@ -186,7 +238,8 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
 /* 熱力表：寬螢幕一列 12 格、手機一個月一列。底色是主題色混進卡片底色的五階；格子裡的字在七種主題色、淺深兩種模式都過 4.5:1
   （淺色 12／25／40／60% 深字、100% 白字；深色 12／25／40% 淺字、75%／100% 深字） */
 .ex-heat,
-.ex-heat__legend {
+.ex-heat__legend,
+.ex-bar {
   --ex-heat-4: 60%;
   --ex-heat-ink-4: var(--el-text-color-primary);
   --ex-heat-ink-5: #fff;
@@ -202,7 +255,8 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
 }
 
 html.dark .ex-heat,
-html.dark .ex-heat__legend {
+html.dark .ex-heat__legend,
+html.dark .ex-bar {
   --ex-heat-4: 75%;
   --ex-heat-ink-4: #1a1a1a;
   --ex-heat-ink-5: #1a1a1a;
@@ -258,8 +312,124 @@ html.dark .ex-heat__legend {
 
 /* 試算的月份：虛線框＋「估」，不只靠顏色 */
 .ex-heat__cell.is-estimated,
-.ex-heat__swatch.is-estimated {
+.ex-heat__swatch.is-estimated,
+.ex-bar__month.is-estimated {
   border: 2px dashed var(--el-text-color-primary);
+}
+
+/* 手機的切換列（顯示在下面的手機媒體查詢裡）：種類＋月份，月份是熱力表同色的圓角鈕，橫向捲動 */
+.ex-bar {
+  display: none;
+}
+
+.ex-bar__kind {
+  flex: none;
+}
+
+.ex-bar__months {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  /* 上下 2px 留給焦點框，右邊 16px 讓最後一顆不貼邊 */
+  padding: 2px 16px 2px 2px;
+  scrollbar-width: none;
+}
+
+.ex-bar__month {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 22px;
+  text-decoration: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 字色放在 :where() 裡（權重 0）：要讓位給熱力五階的字色（第 4、5 階是深字／白字），寫在 .ex-bar__month 會蓋掉它們（axe 2.53:1） */
+:where(.ex-bar__month) {
+  color: var(--el-text-color-primary);
+}
+
+.ex-bar__month[aria-current='true'] {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px var(--el-text-color-primary), inset 0 0 0 4px var(--el-bg-color);
+}
+
+.ex-bar__month:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 0;
+}
+
+/* 搜尋框：跟 .app-select 同一個框（44px、內框線） */
+.ex-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 420px;
+  margin-top: 16px;
+}
+
+.ex-search__field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ex-search__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--el-border-radius-base);
+  background: var(--el-bg-color);
+  box-shadow: 0 0 0 1px var(--el-border-color) inset;
+  color: var(--el-text-color-primary);
+  font: inherit;
+}
+
+.ex-search__input::placeholder {
+  color: var(--el-text-color-placeholder);
+}
+
+/* 瀏覽器自帶的 ×：旁邊已經有 44px 的「清除」 */
+.ex-search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.ex-search__input:hover {
+  box-shadow: 0 0 0 1px var(--el-border-color-hover) inset;
+}
+
+.ex-search__input:focus-visible,
+.ex-search__clear:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+
+.ex-search__clear {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 一直留在畫面上（role="status" 要先在才唸得出來），沒在搜尋時是空的、不佔高度 */
+.ex-search__result {
+  margin: 8px 0 0;
+  color: var(--el-text-color-regular);
+}
+
+.ex-search__result:empty {
+  margin: 0;
 }
 
 .ex-heat__legend {
@@ -350,8 +520,9 @@ html.dark .ex-heat__legend {
   margin-left: 6px;
 }
 
-/* 寬螢幕的表頭已經寫「（元）」 */
-.ex-month-table__unit {
+/* 寬螢幕的表頭已經寫「（元）」「配股」「現金發放日」 */
+.ex-month-table__unit,
+.ex-month-table__label {
   display: none;
 }
 
@@ -364,25 +535,44 @@ html.dark .ex-heat__legend {
   color: var(--el-text-color-regular);
 }
 
-/* 手機：熱力表一個月一列；清單每一列是「名稱｜類型 金額」，空的欄與發放日不顯示 */
+/* 手機（2026-11-02，方案 A）：熱力表 6×2（原本一個月一列，約 600px 高，清單要滑過一個半畫面才開始）；種類搬進黏著的切換列；
+   清單每一檔兩行 */
 @media (max-width: 767px) {
   .ex-heat {
-    grid-template-columns: 1fr;
-  }
-
-  .ex-heat__link {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .ex-heat__month {
-    width: 3em;
-    text-align: right;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 8px;
   }
 
   .ex-heat__cell {
-    width: min(200px, 100%);
-    height: 40px;
+    height: 44px;
+  }
+
+  /* 「120估」在 320px 寬的格子裡會碰到虛線框 */
+  .ex-heat__cell > span {
+    font-size: 0.75em;
+  }
+
+  .ex-months__kinds {
+    display: none;
+  }
+
+  /* 貼齊畫面左右（版面的 16px 內距），不讓清單從兩側露出來；z-index 在頁首（10）底下 */
+  .ex-bar {
+    position: sticky;
+    top: calc(var(--app-header-height) + var(--app-banner-height));
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 -16px;
+    padding: 6px 0 6px 16px;
+    background: var(--el-bg-color-page);
+    border-block: 1px solid var(--app-divider);
+  }
+
+  /* 從切換列換月會跳到這裡：讓開頁首與切換列 */
+  #ex-months-list {
+    scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 64px);
   }
 
   .ex-month-table thead {
@@ -393,43 +583,56 @@ html.dark .ex-heat__legend {
     clip-path: inset(50%);
   }
 
-  /* 名稱太長就在自己那一格換行，類型與金額留在右邊 */
-  .ex-month-table tr {
-    display: flex;
-    gap: 12px;
-    align-items: baseline;
+  /* table 與 tbody 也改成 block：只把 tr 改成 flex 的話，列被包進匿名的表格格子、寬度照內容撐開，金額欄超出卡片被切掉（2026-11-02 截圖） */
+  :deep(.ex-month-table),
+  .ex-month-table tbody {
+    display: block;
   }
 
-  .ex-month-table td {
-    border: 0;
-  }
-
+  /* 每一檔兩行：名稱｜金額，下一行小字是類型、配股、發放日。::after 是全寬的換行（order 2），那三格排在它後面（order 3） */
   .ex-month-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 12px;
+    padding: 9px 16px;
     border-bottom: 1px solid var(--app-divider);
+  }
+
+  .ex-month-table tbody tr::after {
+    content: '';
+    flex-basis: 100%;
+    order: 2;
   }
 
   .ex-month-table tbody tr:last-child {
     border-bottom: 0;
   }
 
+  .ex-month-table tbody td {
+    padding: 0;
+    border: 0;
+  }
+
   .ex-month-table__name {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
     white-space: normal;
   }
 
-  .ex-month-table td.is-empty,
-  .ex-month-table__paid {
+  .ex-month-table__meta {
+    order: 3;
+    font-size: 0.875rem;
+    color: var(--el-text-color-secondary);
+  }
+
+  .ex-month-table td.is-empty {
     display: none;
   }
 
-  .ex-month-table__unit {
+  .ex-month-table__unit,
+  .ex-month-table__label {
     display: inline;
-  }
-
-  /* 金額欄固定寬，各列的「息」對齊 */
-  .ex-month-table td.seo-table__num {
-    min-width: 6em;
   }
 }
 </style>
