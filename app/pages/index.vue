@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // 首頁是公開的 SEO 落地頁（從儀表板拆出：即時資料的儀表板沒有可索引的東西，而最高權重的網址卻閒著）。2026-11-02 改版（使用者從兩輪、
-// 六個方案裡選了 B-1「讓資料自己說話、以月曆為首頁」，再套用使用者給的《網站首頁高質感設計架構論》）：
+// 六個方案裡選了「讓資料自己說話、以月曆為首頁」的 B-3——先做的 B-1 兩週週曆文字折行太亂——再套用使用者給的《網站首頁高質感設計架構論》）。
+// 首頁是用來說服第一次來的人，所以沒有登入後的個人化：
 //   首屏：H1（定案的 UVP，沒動）＋搜尋（唯一的主要動作）＋資料來源與資料涵蓋（信任條）＋唯一一條免責聲明
-//   這兩週的除權息與發放（LandingWeekCalendar）：伺服器輸出的真資料，每天不一樣
+//   接下來的除權息與發放（LandingUpcomingDividends）：伺服器輸出的真資料，每天不一樣
 //   你想做什麼？：大小不一的便當盒格，每格放真資料（今年每月除權息、篩選範本的符合檔數、排行數、類股數），連結取自 SITE_MAP
 //   依類股瀏覽（收合，爬蟲照樣走得到每個類股頁）→ 常見問題（FAQPage 結構化資料）
 // 刻意沒有的：精選股與排行清單（跟本站不給精選的規則衝突）、定價、AggregateRating、編出來的數字（YMYL 誤導）。原本的樹插圖
@@ -177,7 +178,7 @@ useHead({
           本站篩選結果與財報說明僅供投資輔助參考，不構成買賣建議或獲利保證。
         </p>
       </div>
-      <LandingWeekCalendar v-if="home?.weeks" :weeks="home.weeks" :today="home.today" class="landing-page__calendar" />
+      <LandingUpcomingDividends v-if="home?.upcoming" :ex="home.upcoming.ex" :pay="home.upcoming.pay" :today="home.today" class="landing-page__calendar" />
     </section>
 
     <section class="landing-page__section" aria-labelledby="landing-tasks-heading">
