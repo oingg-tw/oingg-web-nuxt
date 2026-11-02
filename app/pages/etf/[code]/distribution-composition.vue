@@ -40,7 +40,7 @@ const latestWarning = computed(() => events.value.find(event => event.distributi
         <tbody>
           <tr v-for="event in events" :key="event.exDividendDate">
             <th scope="row">{{ event.exDividendDate }}</th>
-            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '尚未公布' : etfYuan(event.distributionPerUnit) }}</td>
+            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '金額待更新' : etfYuan(event.distributionPerUnit) }}</td>
             <td v-if="!hasEtfComposition(event.composition)" :colspan="ETF_DISTRIBUTION_PARTS.length + 1">組成未公告</td>
             <template v-else>
               <td v-for="part in ETF_DISTRIBUTION_PARTS" :key="part.key" class="seo-table__num">{{ share(event.composition![part.key]) }}</td>

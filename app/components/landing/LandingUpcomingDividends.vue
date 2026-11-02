@@ -19,10 +19,10 @@ const shownTrack = ref('ex')
 // 'YYYY-MM-DD' 照 UTC 解析，伺服器與瀏覽器算出同一個星期
 const dayText = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}（${WEEKDAYS[new Date(date).getUTCDay()]}）`
 
-// 每股（ETF 每單位）現金，最多四位小數。只配股、沒有現金的寫「除權」；還沒公布的寫「未公布」
+// 每股（ETF 每單位）現金，最多四位小數。只配股、沒有現金的寫「除權」；沒有金額的寫「金額待更新」——資料缺金額不等於投信還沒公告（2026-11-02，00946 已公告 0.058 元，資料還沒進來）
 function amountText(item: HomeAgendaDay['items'][number], track: string) {
   if (item.cash !== null && item.cash > 0) return `${Number(item.cash.toFixed(4))} 元`
-  return track === 'ex' && item.exType !== '息' ? '除權' : '未公布'
+  return track === 'ex' && item.exType !== '息' ? '除權' : '金額待更新'
 }
 </script>
 

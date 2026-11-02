@@ -44,9 +44,9 @@ const slashDate = (date: string) => date.replaceAll('-', '/')
 function payTextOf(event: HoldingDividendEvent): string {
   const stock = event.stockDividendDistributionDate
   if (event.exType === '權') return stock ? slashDate(stock) : '新股上市日入帳'
-  if (event.exType === '息') return event.paymentDate ? slashDate(event.paymentDate) : '未公布'
+  if (event.exType === '息') return event.paymentDate ? slashDate(event.paymentDate) : '待更新'
   const parts = [event.paymentDate ? `${slashDate(event.paymentDate)}（現金）` : null, stock ? `${slashDate(stock)}（配股）` : null].filter(Boolean)
-  return parts.length ? parts.join('、') : '未公布'
+  return parts.length ? parts.join('、') : '待更新'
 }
 const money = (amount: number) => `${groupThousands(String(Math.round(amount)))} 元`
 
@@ -69,7 +69,7 @@ const events = computed(() => {
       payText: payTextOf(event),
       // 每股：現金（元，最多四位小數——上游浮點數帶雜訊，2330 是 7.00000137）＋配股（每股配幾股）
       perShareText: [
-        event.cashPerShare !== null ? `${Number(event.cashPerShare.toFixed(4))} 元` : event.exType === '權' ? null : '金額未公布',
+        event.cashPerShare !== null ? `${Number(event.cashPerShare.toFixed(4))} 元` : event.exType === '權' ? null : '金額待更新',
         event.stockRatio !== null ? `配股 ${Number(event.stockRatio.toFixed(6))} 股` : null
       ].filter(Boolean).join('、'),
       sharesText: `${groupThousands(event.sharesHeld)} 股${event.sharesHeldIsEstimate ? '（目前持股）' : ''}`,

@@ -34,7 +34,7 @@ const answer = computed(() => {
         <tbody>
           <tr v-for="event in events" :key="event.exDividendDate">
             <th scope="row">{{ event.exDividendDate }}</th>
-            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '尚未公布' : reitYuan(event.distributionPerUnit, 4) }}</td>
+            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '金額待更新' : reitYuan(event.distributionPerUnit, 4) }}</td>
             <td class="seo-table__num">{{ reitPct(event.yieldOnPreviousClose) }}</td>
             <td>{{ event.paymentDate ?? '－' }}</td>
           </tr>
