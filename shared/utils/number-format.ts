@@ -15,8 +15,16 @@
 // （見 financial-statement-rows.ts 的 formatStatementAmount 註解，那是一個修過的真 bug）。
 export function groupThousands(value: number | string): string {
   const [integer, fraction] = String(value).split('.')
-  const grouped = integer!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  // 負號是減號「−」（2026-11-03，使用者：「負號統一」，見 minusSign）。formatSignificantDigits、formatMoney 都經過這裡
+  const grouped = integer!.replace(/\B(?=(\d{3})+(?!\d))/g, ',').replace(/^-/, '−')
   return fraction ? `${grouped}.${fraction}` : grouped
+}
+
+// 文字裡的負號換成減號「−」（2026-11-03，使用者：「負號統一」；起因是利潤率拆解的結果列「-64.72%」跟加減列「−31.45%」並排）：
+// toFixed、String 與 ECharts 印出來的是連字號「-」。只換開頭、或接在空白括號標點後面而且緊接著數字的那個：日期（2026-09-30）、
+// 代號、公式（A1-5）裡的連字號不動，HTML 標籤裡的（style 的負值）也不動。複製到試算表時換回連字號（sheet-grid.ts 的 toTsv）
+export function minusSign(text: string): string {
+  return text.split(/(<[^>]*>)/).map(part => (part.startsWith('<') ? part : part.replace(/(^|[^\p{L}\p{N}.])-(?=\d)/gu, '$1−'))).join('')
 }
 
 // 對數軸的刻度標籤（河流圖的股價軸、/macro/[slug]；2026-10-24 從 app/utils/log-axis-tick.ts 搬來，check-number-format 測得到）。ECharts 的

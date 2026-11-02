@@ -63,11 +63,11 @@ const companyByCode = useCompanyLookup(() => report.value?.holdings.map(holding 
 
 function pct(value: string | null | undefined, digits = 1): string {
   if (value === null || value === undefined) return '－'
-  return `${(Number(value) * 100).toFixed(digits)}%`
+  return minusSign(`${(Number(value) * 100).toFixed(digits)}%`)
 }
 
 function plain(value: string | null | undefined, digits = 2): string {
-  return value === null || value === undefined ? '－' : Number(value).toFixed(digits)
+  return value === null || value === undefined ? '－' : minusSign(Number(value).toFixed(digits))
 }
 
 function drawdownText(drawdown: RiskDrawdown | null): string {

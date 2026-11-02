@@ -46,10 +46,13 @@ export function moveCell(cell: SheetCell, direction: SheetDirection, rows: numbe
 
 // Tab 分隔、\r\n 換列（Excel 自己複製出來就是這樣）。有 Tab、換行或雙引號的字串照 RFC 4180 用雙引號包起來、裡面的雙引號寫
 // 兩次，貼進 Excel 才不會被拆成好幾格
+// 畫面上的負號是減號「−」（minusSign），試算表只認連字號「-」：貼過去要是數字，複製時換回來
+const asciiMinus = (text: string) => text.replace(/−(?=\d)/g, '-')
+
 export function toTsv(matrix: SheetCopyValue[][]): string {
   const cell = (value: SheetCopyValue) => {
     if (value === null) return ''
-    const text = String(value)
+    const text = asciiMinus(String(value))
     return /[\t\n\r"]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
   }
   return matrix.map(row => row.map(cell).join('\t')).join('\r\n')
@@ -64,7 +67,7 @@ export function toHtmlTable(matrix: SheetCopyValue[][], formats: readonly (strin
   const body = matrix.map(row => `<tr>${row.map((value, c) => {
     if (value === null) return '<td></td>'
     const format = typeof value === 'number' && formats[c] ? ` style="mso-number-format:'${formats[c]}'"` : ''
-    return `<td${format}>${escapeHtml(String(value))}</td>`
+    return `<td${format}>${escapeHtml(asciiMinus(String(value)))}</td>`
   }).join('')}</tr>`).join('')
   return `<table>${head}${body}</table>`
 }

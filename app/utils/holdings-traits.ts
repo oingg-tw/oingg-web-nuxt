@@ -92,7 +92,8 @@ export function traitTags(result: HoldingsTraitsResult): string[] {
 export function traitText(value: string | null | undefined, unit: 'ratio' | 'pct'): string {
   const number = toNumber(value)
   if (number === null) return '－'
-  return unit === 'pct' ? `${number.toFixed(1)}%` : number.toFixed(2)
+  // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
+  return (unit === 'pct' ? `${number.toFixed(1)}%` : number.toFixed(2)).replace(/^-/, '−')
 }
 
 // 九宮格的一格：寫四捨五入的整數（不到 0.5% 寫「<1%」），底色深淺也照這個整數決定，同樣寫 10% 的兩格不會一深一淺

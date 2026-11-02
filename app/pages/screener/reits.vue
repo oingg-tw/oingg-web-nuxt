@@ -55,7 +55,7 @@ const COLUMNS: SortableColumn<Reit>[] = [
   { key: 'trustee', label: '受託機構', sortValue: row => row.trusteeName },
   { key: 'issue', label: '發行總額', num: true, sortValue: row => row.totalIssueAmountNtd }
 ]
-const num = (value: number | null, digits: number) => (value === null ? '—' : value.toFixed(digits))
+const num = (value: number | null, digits: number) => (value === null ? '—' : minusSign(value.toFixed(digits)))
 </script>
 
 <template>

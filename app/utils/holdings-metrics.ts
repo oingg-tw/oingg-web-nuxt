@@ -14,15 +14,18 @@ export const NO_RISK_FREE = '無風險利率暫時取不到'
 export const TAIL_MIN_DAYS = 100
 export const COVARIANCE_MIN_DAYS = 120
 
+// 負號是減號「−」（2026-11-03，使用者：「負號統一」；同 shared 的 minusSign，這個檔案不 import 所以自己換開頭那一個）
+const minus = (text: string) => text.replace(/^-/, '−')
+
 export function holdingsMetricText(value: string | null | undefined, format: HoldingsMetricFormat, missing = '－', digits?: number): string {
   if (value === null || value === undefined) return missing
   const number = Number(value)
   if (!Number.isFinite(number)) return missing
-  if (format === 'ratio') return number.toFixed(digits ?? 2)
-  if (format === 'money') return `${Math.round(number).toLocaleString('en-US')} 元`
+  if (format === 'ratio') return minus(number.toFixed(digits ?? 2))
+  if (format === 'money') return `${minus(Math.round(number).toLocaleString('en-US'))} 元`
   const percent = (number * 100).toFixed(digits ?? 1)
   if (format === 'signedPct' && Number(percent) > 0) return `+${percent}%`
-  return `${Number(percent) === 0 ? (0).toFixed(digits ?? 1) : percent}%`
+  return `${Number(percent) === 0 ? (0).toFixed(digits ?? 1) : minus(percent)}%`
 }
 
 export function sampleShortfall(days: number, required: number): string | null {

@@ -18,7 +18,8 @@ export function holdingsSignedPct(ratio: number | null): string {
   if (ratio === null || !Number.isFinite(ratio)) return '－'
   const fixed = (ratio * 100).toFixed(2)
   if (Number(fixed) === 0) return '0.00%'
-  return `${ratio > 0 ? '+' : ''}${fixed}%`
+  // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
+  return `${ratio > 0 ? '+' : ''}${fixed.replace(/^-/, '−')}%`
 }
 
 // ---- 持股頁的期間選擇（交易績效、風險共用） ----

@@ -14,7 +14,7 @@ const props = defineProps<{
 }>()
 
 // −100% 是那個月營收 0：對數刻度上沒有倍數，柱子畫到最底、灰色（growthLog），提示框寫出來
-const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%${value <= -100 ? '（營收 0）' : ''}`)
+const rateText = (value: number | null): string => (value === null ? '尚無資料' : `${minusSign(value.toFixed(2))}%${value <= -100 ? '（營收 0）' : ''}`)
 const priceText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)} 元`)
 
 const YOY_CODE = 'yoy'

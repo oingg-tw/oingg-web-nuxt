@@ -21,8 +21,8 @@ const hash = text => [...text].reduce((sum, char) => sum + char.charCodeAt(0), 0
 // 持股（第二階段）：一個帳戶、兩檔。公開資料分兩種：只分享比例（占比、報酬率）與連部位大小一起分享
 const TOKEN_H = 'Hq7x2VbN1mKp7RtY2wLc8B'
 const holdings = [
-  { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0' },
-  { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0' }
+  { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' },
+  { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' }
 ]
 // 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE、九宮格只涵蓋 60%（ETF 沒有財報、
 // 不分規模風格），2330 在大型混合；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀，

@@ -17,7 +17,7 @@ const SHARE_TOKEN = 'check-member-data-0001'
 const holdingsShare = key => ({ kind: 'holdings', displayName: '檢查用分享', columns: [{ key, label: '報酬率' }], asOf: '2026-10-29', holdings: [{ symbol: '2330', returnPct: '12.3456' }], traits: TRAITS })
 const STUBS = {
   '/api/core/portfolios': { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] },
-  '/api/core/holdings': { holdings: ['2330', '2317', '0056'].map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50', totalCost: '50000', realizedProfitLoss: '0' })) },
+  '/api/core/holdings': { holdings: ['2330', '2317', '0056'].map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50', totalCost: '50000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' })) },
   '/api/core/holdings/performance': performance,
   '/api/core/holdings/traits': TRAITS,
   '/api/core/holdings/dividends': {

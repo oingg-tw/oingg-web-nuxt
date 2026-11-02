@@ -15,6 +15,6 @@ export type ReitFacetKey = typeof REIT_FACETS[number]['key']
 
 export const reitFacetItems = (code: string) => REIT_FACETS.map(facet => ({ label: facet.label, to: `${reitPath(code)}${facet.suffix}` }))
 
-export const reitYuan = (value: number | null | undefined, digits = 2) => (value === null || value === undefined ? '－' : `${value.toFixed(digits)} 元`)
-export const reitPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${value.toFixed(2)}%`)
+export const reitYuan = (value: number | null | undefined, digits = 2) => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(digits)} 元`))
+export const reitPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)}%`))
 export const reitSignedPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2)}%`)

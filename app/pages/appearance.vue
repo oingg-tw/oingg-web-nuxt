@@ -114,7 +114,8 @@ const previewOption = computed(() => {
     },
     yAxis: {
       type: 'value',
-      axisLabel: { formatter: '{value}%' }
+      // 函式不用字串樣板：SharedChart 只換得到函式輸出的負號（−1%、−2%）
+      axisLabel: { formatter: (value: number) => `${value}%` }
     },
     series: [
       {

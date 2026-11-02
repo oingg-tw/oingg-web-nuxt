@@ -124,7 +124,7 @@ export function collectMetricSources(categories: MetricCategory[], codes: readon
 // Integers stay integers（7 年、8 分）, everything else gets two decimals; unit strings are the
 // catalog's literal suffixes（%／元／倍／分／年）,「無單位」means none.
 export function formatDigestValue(value: number, unit: string): string {
-  const number = Number.isInteger(value) ? String(value) : value.toFixed(2)
+  const number = minusSign(Number.isInteger(value) ? String(value) : value.toFixed(2))
   if (!unit || unit === '無單位') return number
   if (unit === '%') return `${number}%`
   return `${number} ${unit}`
@@ -213,7 +213,7 @@ function buildPercentile(code: 'peRatio' | 'pbRatio', label: string, history: Me
     percentile,
     windowLabel: window[1],
     bandLabel,
-    text: `${label} ${current.toFixed(2)} 倍，位於${window[1]}第${percentile}百分位（${bandLabel}）`
+    text: minusSign(`${label} ${current.toFixed(2)} 倍，位於${window[1]}第${percentile}百分位（${bandLabel}）`)
   }
 }
 

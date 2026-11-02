@@ -28,9 +28,9 @@ export function formatStockValue(stock: Stock, key: StockColumnKey) {
   if (value === null) return '－'
   if (key === 'change' || key === 'changePercent') {
     const sign = value > 0 ? '+' : ''
-    return `${sign}${value.toFixed(2)}`
+    return minusSign(`${sign}${value.toFixed(2)}`)
   }
-  return value.toFixed(2)
+  return minusSign(value.toFixed(2))
 }
 
 

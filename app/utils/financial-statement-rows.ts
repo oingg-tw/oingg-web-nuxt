@@ -189,5 +189,6 @@ export function statementChangePercent(current: string | null | undefined, prior
   const now = Number(current)
   const then = Number(prior)
   if (!Number.isFinite(now) || !Number.isFinite(then) || then === 0) return '－'
-  return `${(((now - then) / Math.abs(then)) * 100).toFixed(2)}%`
+  // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
+  return `${(((now - then) / Math.abs(then)) * 100).toFixed(2).replace(/^-/, '−')}%`
 }

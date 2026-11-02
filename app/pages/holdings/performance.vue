@@ -75,7 +75,7 @@ const chartLabel = computed(() => {
 })
 
 function pctAxis(value: number | null): string {
-  return value === null ? '－' : `${value.toFixed(2)}%`
+  return value === null ? '－' : minusSign(`${value.toFixed(2)}%`)
 }
 
 

@@ -44,7 +44,7 @@ if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類
 // 工業的中位數是 0（過半公司不配息），那個 0 是真的不是缺值。
 const MIN_SAMPLE = 5
 const yieldText = (value: number | null): string => (value === null ? '—' : `${value.toFixed(2)}%`)
-const growthText = (value: number | null): string => (value === null ? '—' : `${value.toFixed(1)}%`)
+const growthText = (value: number | null): string => (value === null ? '—' : minusSign(`${value.toFixed(1)}%`))
 
 const rows = computed(() => summary.value?.sectors ?? [])
 

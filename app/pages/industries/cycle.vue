@@ -47,9 +47,9 @@ const COLUMNS: SortableColumn<SectorCycleRow>[] = [
   { key: 'highest', label: '最高', num: true, sortValue: row => row.highest?.value }
 ]
 
-const pct = (value: number | null) => (value === null ? '－' : `${value > 0 ? '+' : ''}${value.toFixed(1)}%`)
+const pct = (value: number | null) => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(1)}%`))
 const points = (value: number | null) => (value === null ? '－' : `${value.toFixed(1)} 個百分點`)
-const corr = (value: number | null) => (value === null ? '－' : value.toFixed(2))
+const corr = (value: number | null) => (value === null ? '－' : minusSign(value.toFixed(2)))
 const yearsCovered = computed(() => {
   const first = summary.value?.firstMonth
   const last = summary.value?.lastMonth

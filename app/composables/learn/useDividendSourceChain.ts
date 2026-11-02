@@ -156,8 +156,8 @@ export async function useDividendSourceChain(code: Ref<string>, stockShortName: 
   }
 
 
-  const amount = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : `${value.toFixed(2)} 元`)
-  const percent = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : `${value.toFixed(2)}%`)
+  const amount = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)} 元`))
+  const percent = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)}%`))
 
   // One row per link of the chain, newest filing throughout. `from` states the arithmetic that
   // produces this row's own number out of the row BELOW it — the table is read downwards, which is

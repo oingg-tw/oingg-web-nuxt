@@ -156,7 +156,7 @@ function signedPct(value: number | null): string {
   if (value === null) return ''
   const fixed = value.toFixed(2)
   if (Number(fixed) === 0) return '0.00%'
-  return `${value > 0 ? '+' : ''}${fixed}%`
+  return minusSign(`${value > 0 ? '+' : ''}${fixed}%`)
 }
 
 function plainNumber(value: string | number): string {

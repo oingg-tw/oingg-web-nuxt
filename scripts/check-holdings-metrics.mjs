@@ -12,7 +12,7 @@ const fixture = name => JSON.parse(readFileSync(new URL(`./fixtures/holdings/${n
 
 console.log('格式')
 assert(holdingsMetricText('0.731248', 'signedPct', '－', 2) === '+73.12%', '報酬 +73.12%')
-assert(holdingsMetricText('-0.071633', 'signedPct') === '-7.2%', '負的 α 照實寫負號')
+assert(holdingsMetricText('-0.071633', 'signedPct') === '−7.2%', '負的 α 照實寫負號')
 assert(holdingsMetricText('0.000468', 'pct', '－', 2) === '0.05%', '成本率兩位小數')
 assert(holdingsMetricText('-0.0000001', 'pct') === '0.0%', '四捨五入到 0 不寫成 -0.0%')
 assert(holdingsMetricText('2.103793', 'ratio') === '2.10', '比值兩位小數')
@@ -98,7 +98,7 @@ console.log('(a) 已實現統計')
 {
   const t = fixture('a-normal-1y.realized').tradeStats
   assert(holdingsMetricText(t.winRate, 'pct') === '50.0%' && holdingsMetricText(t.profitFactor, 'ratio') === '4.04', '獲利筆數占比 50.0%、獲利因子 4.04')
-  assert(holdingsMetricText(t.averageWin, 'money') === '122,382 元' && holdingsMetricText(t.averageLoss, 'money') === '-30,267 元', '平均獲利／虧損是整數元')
+  assert(holdingsMetricText(t.averageWin, 'money') === '122,382 元' && holdingsMetricText(t.averageLoss, 'money') === '−30,267 元', '平均獲利／虧損是整數元')
 }
 
 console.log('用詞')

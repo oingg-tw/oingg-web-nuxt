@@ -66,7 +66,29 @@ function withStaticLegend(option: Record<string, unknown>): Record<string, unkno
   return { ...option, legend: Array.isArray(legend) ? legend.map(fix) : fix(legend) }
 }
 
-const scaledOption = computed(() => withStaticLegend(scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>))
+// 負號一律是減號「−」（2026-11-03，使用者：「負號統一」）：每個 formatter／valueFormatter 函式的輸出換掉連字號負號（minusSign 只換
+// 數字前面那個，日期與 HTML 標籤裡的不動）；數值軸沒給 formatter 的補一個 groupThousands——ECharts 預設的刻度印「-0.5」
+function withMinusSign(value: unknown, key = ''): unknown {
+  if (typeof value === 'function') {
+    if (key !== 'formatter' && key !== 'valueFormatter') return value
+    return (...args: unknown[]) => {
+      const out = (value as (...params: unknown[]) => unknown)(...args)
+      return typeof out === 'string' ? minusSign(out) : out
+    }
+  }
+  if (Array.isArray(value)) return value.map(item => withMinusSign(item, key))
+  if (value === null || typeof value !== 'object') return value
+  const result: Record<string, unknown> = {}
+  for (const [entryKey, entry] of Object.entries(value as Record<string, unknown>)) result[entryKey] = withMinusSign(entry, entryKey)
+  const axisType = result.type ?? (key === 'yAxis' ? 'value' : 'category')
+  if ((key === 'xAxis' || key === 'yAxis') && axisType === 'value') {
+    const axisLabel = (result.axisLabel ?? {}) as Record<string, unknown>
+    if (!axisLabel.formatter) result.axisLabel = { ...axisLabel, formatter: (tick: number) => groupThousands(tick) }
+  }
+  return result
+}
+
+const scaledOption = computed(() => withMinusSign(withStaticLegend(scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>)) as Record<string, unknown>)
 
 // 有東西蓋住頁面時收起提示框與指示線（hideChartTips，見 chart-palette.ts）。只發 hideTip 的話軸上的指示線還在
 const chartRef = ref<InstanceType<typeof VChart> | null>(null)

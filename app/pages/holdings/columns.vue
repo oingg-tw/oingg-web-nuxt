@@ -142,7 +142,7 @@ function formatValue(value: FormulaValue | undefined, column: HoldingColumn): st
   if (value === '#N/A') return '－'
   if (typeof value === 'string') return value
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
-  if (column.format === 'percent') return `${(value * 100).toFixed(column.decimals)}%`
+  if (column.format === 'percent') return minusSign(`${(value * 100).toFixed(column.decimals)}%`)
   const fixed = value.toFixed(column.decimals)
   return column.format === 'money' ? `${groupThousands(fixed)} 元` : groupThousands(fixed)
 }

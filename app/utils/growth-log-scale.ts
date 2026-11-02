@@ -50,5 +50,6 @@ export function growthLogLabel(tick: number): string {
   const change = Math.round((10 ** tick - 1) * 100)
   if (change === 0) return '0%'
   const digits = String(Math.abs(change)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return `${change > 0 ? '+' : '-'}${digits}%`
+  // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
+  return `${change > 0 ? '+' : '−'}${digits}%`
 }

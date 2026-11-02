@@ -39,7 +39,7 @@ const latest = computed(() => rowsDesc.value[0] ?? null)
 const unit = page.unit
 const seriesValueText = (row: { values: Record<string, number | null> }, spec: { key: string }): string => {
   const value = row.values[spec.key]
-  return value === null || value === undefined ? '尚無資料' : `${value.toFixed(2)}${unit}`
+  return value === null || value === undefined ? '尚無資料' : minusSign(`${value.toFixed(2)}${unit}`)
 }
 
 

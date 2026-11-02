@@ -5,7 +5,7 @@ const etfData = await useEtf()
 const { code, data, num, shortName } = etfData
 
 const months = computed(() => [...(data.value?.premium ?? [])].reverse())
-const signed = (value: number | null) => (value === null ? '－' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`)
+const signed = (value: number | null) => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(2)}%`))
 
 const answer = computed(() => {
   const latest = months.value[0]

@@ -11,7 +11,7 @@ const answer = computed(() => {
   const parts = [
     stats.peRatio.median !== null && `本益比中位數 ${stats.peRatio.median.toFixed(2)} 倍`,
     stats.dividendYield.median !== null && `殖利率中位數 ${stats.dividendYield.median.toFixed(2)}%`,
-    stats.roe.median !== null && `近四季 ROE 中位數 ${stats.roe.median.toFixed(2)}%`
+    stats.roe.median !== null && `近四季 ROE 中位數 ${minusSign(stats.roe.median.toFixed(2))}%`
   ].filter(Boolean)
   return parts.length ? `${sectorName}有指標資料的 ${rows.value.length} 家公司：${parts.join('、')}。` : null
 })

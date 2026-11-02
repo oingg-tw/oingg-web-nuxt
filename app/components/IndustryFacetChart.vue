@@ -90,7 +90,7 @@ const quadrants = computed(() =>
     ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 家）`,
-    rows: group.rows.map(row => ({ key: row.symbol, name: `${row.name} ${row.symbol}`, to: securityPath(row.symbol), cells: [`${row.dividendYield?.toFixed(2)}%`, `${row.dividendGrowthRate3y?.toFixed(1)}%`] }))
+    rows: group.rows.map(row => ({ key: row.symbol, name: `${row.name} ${row.symbol}`, to: securityPath(row.symbol), cells: [`${row.dividendYield?.toFixed(2)}%`, minusSign(`${row.dividendGrowthRate3y?.toFixed(1)}%`)] }))
   })))
 type ScatterRow = (typeof scatterRows)['value'][number]
 interface ScatterParam { data?: { row: ScatterRow } }

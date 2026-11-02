@@ -5,10 +5,10 @@ import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChar
 // 只陳述家數、中位數、分位數，不寫形容詞（合規用語）
 
 // Deterministic on both renders: toFixed only, null → '－'
-export const industryNum = (value: number | null, decimals = 2) => (value === null ? '－' : value.toFixed(decimals))
-export const industrySignedPct = (value: number | null) => (value === null ? '－' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`)
-export const industryPct = (value: number | null | undefined) => (value == null ? '－' : `${value.toFixed(2)}%`)
-export const industryStat = (value: number | null, unit: string) => (value === null ? '－' : `${value.toFixed(2)}${unit === '倍' ? ' 倍' : '%'}`)
+export const industryNum = (value: number | null, decimals = 2) => (value === null ? '－' : minusSign(value.toFixed(decimals)))
+export const industrySignedPct = (value: number | null) => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(2)}%`))
+export const industryPct = (value: number | null | undefined) => (value == null ? '－' : minusSign(`${value.toFixed(2)}%`))
+export const industryStat = (value: number | null, unit: string) => (value === null ? '－' : minusSign(`${value.toFixed(2)}${unit === '倍' ? ' 倍' : '%'}`))
 
 // 三率中位數（近四季）
 export const INDUSTRY_MARGIN_SERIES: LineSeriesSpec[] = [

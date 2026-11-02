@@ -34,6 +34,7 @@ const tsv = toTsv([[1085, 'a\tb', null], [0.487, 'say "hi"', 'x\ny']])
 assert(tsv === '1085\t"a\tb"\t\r\n0.487\t"say ""hi"""\t"x\ny"', 'Tab 分隔、\\r\\n 換列；有 Tab、換行、雙引號的照 RFC 4180 包起來')
 const html = toHtmlTable([[0.487, '<b>']], ['0.00%', undefined], ['殖利率', '名稱'])
 assert(html === `<table><tr><th>殖利率</th><th>名稱</th></tr><tr><td style="mso-number-format:'0.00%'">0.487</td><td>&lt;b&gt;</td></tr></table>`, 'HTML 版本：數字帶 mso-number-format、文字有跳脫、可加表頭')
+assert(toTsv([['−12.5%', '2026-09']]) === '-12.5%\t2026-09' && toHtmlTable([['−3']], [undefined]) === '<table><tr><td>-3</td></tr></table>', '畫面上的減號「−」複製出去換回連字號，試算表才認得是負數')
 
 console.log('數字放不下就整格顯示 #')
 assert(maskedText(50, 60, 9) === null, '放得下：照常顯示')

@@ -44,4 +44,4 @@ export function monthlyRevenueHundredMillion(thousands: string | null): number |
 }
 // formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本固定 toFixed(1) 億元，月營收 300 萬的公司印成「0.0 億元」
 export const monthlyRevenueAmountText = (hundredMillion: number | null): string => (hundredMillion === null ? '尚無資料' : formatMoney(hundredMillion * THOUSAND_TO_HUNDRED_MILLION * 1000))
-export const monthlyRevenueRateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
+export const monthlyRevenueRateText = (value: number | null): string => (value === null ? '尚無資料' : minusSign(`${value.toFixed(2)}%`))

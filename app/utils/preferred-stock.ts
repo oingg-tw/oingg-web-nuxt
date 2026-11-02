@@ -28,7 +28,7 @@ export const preferredFieldPath = (code: string, field: string): string | null =
 export const preferredFacetItems = (code: string) =>
   PREFERRED_FACETS.map(facet => ({ label: facet.label, to: `${preferredStockPath(code)}${facet.suffix}` }))
 
-export const preferredPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${value.toFixed(2)}%`)
+export const preferredPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)}%`))
 export const preferredYuan = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${groupThousands(Number(value.toFixed(4)))} 元`)
 // 上游 null ＝ 未知（條款表 2026-09-08 起是快照，之後新發行的整列都是 null）
 // 評等機構的簡稱（2026-10-31）：篩選表放不下 MOPS 的全名（「澳洲商惠譽國際信用評等股份有限公司臺灣分公司」）。惠譽有兩家：國際尺度的

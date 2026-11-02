@@ -72,4 +72,4 @@ export const ETF_FEE_FIELDS = [
 ] as const
 
 export const etfYuan = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${formatSignificantDigits(value, 4)} 元`)
-export const etfPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${value.toFixed(2)}%`)
+export const etfPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)}%`))
