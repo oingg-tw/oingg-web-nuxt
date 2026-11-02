@@ -57,6 +57,22 @@ const universeText = computed(() => (isEtf ? `有${label}資料的${fundType.val
 // 單位與換算照 RANK_PAGES（市值、ETF 規模回來是元，換成億元才讀得進句子；受益人數是整數要千分位）；其他照上游的單位
 const unit = computed(() => definition.unit ?? data.value?.unit ?? '')
 
+// 手機的名次清單（2026-11-02，使用者從三個方案選了 C）：長條的長度＝數值 ÷ 這份清單的最大值，負數不畫。每一列日期都一樣就在
+// 清單頂端寫一次，各家不同才寫在數值下面
+const maxValue = computed(() => Math.max(0, ...rows.value.map(row => row.value ?? 0)))
+const shareOf = (value: number | null) => (value !== null && value > 0 && maxValue.value > 0 ? value / maxValue.value : 0)
+const sharedDate = computed(() => {
+  const dates = new Set(rows.value.map(row => row.knowledgeDate))
+  return dates.size === 1 ? [...dates][0] ?? null : null
+})
+// 指標膠囊列：打開時把目前這一個捲到看得見的地方（同除權息月覽的月份列）
+const chipStrip = ref<HTMLElement | null>(null)
+onMounted(() => {
+  const strip = chipStrip.value
+  const current = strip?.querySelector<HTMLElement>('[aria-current="page"]')
+  if (strip && current) strip.scrollLeft = current.offsetLeft - (strip.clientWidth - current.offsetWidth) / 2
+})
+
 const valueText = (value: number | null) => rankValueText(definition, value)
 // 上游的 ETF 篩選結果不帶逐列日期（資料月份寫在標題與答句），沒有日期就不畫那一欄
 const hasRowDates = computed(() => rows.value.some(row => row.knowledgeDate))
@@ -95,9 +111,41 @@ const { breadcrumbs } = useHubPageSeo({
     <StockBreadcrumb :items="breadcrumbs" />
     <RankNav :etf="isEtf" />
 
+    <!-- 手機（2026-11-02，排行手機版方案 C）：指標膠囊列可以直接換排行，名次清單排在答句前面，第一屏就看得到名單；電腦版照舊是側欄＋
+         下面的表格（這兩塊在電腦版不畫） -->
+    <nav ref="chipStrip" class="rank-chips" aria-label="其他排行">
+      <NuxtLink v-for="page in RANK_PAGES" :key="page.slug" :to="rankPath(page.slug)" class="rank-chips__chip" :aria-current="page.slug === slug ? 'page' : undefined">
+        {{ page.universe === 'etf' ? `ETF ${page.label}` : page.label }}
+      </NuxtLink>
+    </nav>
+    <div v-if="allRows.length" class="rank-list-block">
+      <div v-if="groups.length > 1" class="rank-page__filter">
+        <span aria-hidden="true">基金類型</span>
+        <el-radio-group v-model="fundType" aria-label="基金類型">
+          <el-radio-button value="">全部</el-radio-button>
+          <el-radio-button v-for="group in groups" :key="group.name" :value="group.name">{{ group.name }}</el-radio-button>
+        </el-radio-group>
+      </div>
+      <section class="rank-list" :aria-label="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
+        <p class="rank-list__head">
+          <span class="rank-list__head-title">{{ label }}<template v-if="unit">（{{ unit }}）</template>{{ orderWord }}</span>
+          <span v-if="sharedDate">資料日期 {{ sharedDate }}</span>
+          <span v-else-if="hasRowDates">各家資料日期不同</span>
+        </p>
+        <ol class="rank-list__rows">
+          <li v-for="row in rows" :key="row.symbol" class="rank-list__row" :style="{ '--share': shareOf(row.value) }">
+            <span class="rank-list__rank">{{ row.rank }}</span>
+            <span class="rank-list__name"><NuxtLink :to="securityPath(row.symbol)">{{ row.name }}</NuxtLink><span class="rank-list__code">{{ row.symbol }}</span></span>
+            <span class="rank-list__value">{{ valueText(row.value) }}<span v-if="!sharedDate && row.knowledgeDate" class="rank-list__date">{{ row.knowledgeDate }}</span></span>
+            <span class="rank-list__bar" aria-hidden="true" />
+          </li>
+        </ol>
+      </section>
+    </div>
+
     <section class="stock-page-section" aria-labelledby="rank-table-heading">
       <h2 id="rank-table-heading" class="stock-page-section__title">{{ tableSubject.trim() }}{{ orderWord }}的前 {{ shownCount }} 檔是哪些？</h2>
-      <div v-if="groups.length > 1" class="rank-page__filter">
+      <div v-if="groups.length > 1" class="rank-page__filter rank-page__filter--wide">
         <span aria-hidden="true">基金類型</span>
         <el-radio-group v-model="fundType" aria-label="基金類型">
           <el-radio-button value="">全部</el-radio-button>
@@ -108,7 +156,7 @@ const { breadcrumbs } = useHubPageSeo({
 {{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
       </p>
       <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
-      <SharedTable v-if="rows.length" :label="`${tableSubject.trim()}排行`" :caption="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
+      <SharedTable v-if="rows.length" class="rank-page__table" :label="`${tableSubject.trim()}排行`" :caption="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
         <thead>
           <tr>
             <th scope="col" class="seo-table__num">名次</th>
@@ -196,6 +244,159 @@ const { breadcrumbs } = useHubPageSeo({
   /* 表頭的年度自己一行：「2025 年總費用率（%）」一行要 189px，表格多捲 69px */
   .rank-page__year {
     display: block;
+  }
+}
+
+/* 手機才有的指標膠囊列與名次清單（方案 C）；電腦版是側欄＋表格 */
+.rank-chips,
+.rank-list-block {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .rank-page__table,
+  .rank-page__filter--wide {
+    display: none;
+  }
+
+  /* 左右滑；貼齊畫面兩側，捲到底不會被頁面邊距切掉 */
+  .rank-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    margin: 0 -16px 16px;
+    padding: 0 16px 4px;
+    scrollbar-width: none;
+  }
+
+  .rank-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rank-chips__chip {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--el-color-primary-light-5);
+    border-radius: 999px;
+    background: var(--app-card-bg);
+    color: var(--el-color-primary-dark-2);
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  /* 字色用頁面底色：深色模式的主色是淺金，白字看不清 */
+  .rank-chips__chip[aria-current='page'] {
+    border-color: var(--el-color-primary);
+    background: var(--el-color-primary);
+    color: var(--el-bg-color);
+  }
+
+  .rank-list-block {
+    display: block;
+    margin-bottom: 32px;
+  }
+
+  .rank-list {
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-surface-border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .rank-list__head {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 8px;
+    padding: 12px 16px;
+    background: var(--app-table-head-bg);
+    color: var(--el-text-color-regular);
+  }
+
+  .rank-list__head-title {
+    font-weight: 600;
+  }
+
+  .rank-list__rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* 名次佔兩列；名稱、數值一列，長條在下面一列 */
+  .rank-list__row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--app-divider);
+  }
+
+  .rank-list__rank {
+    grid-row: 1 / span 2;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-align: right;
+    color: var(--el-text-color-regular);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rank-list__name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    a {
+      font-weight: 600;
+      color: var(--el-color-primary-dark-2);
+      text-underline-offset: 3px;
+    }
+  }
+
+  .rank-list__code {
+    margin-left: 8px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .rank-list__value {
+    text-align: right;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rank-list__date {
+    display: block;
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--el-text-color-secondary);
+  }
+
+  /* 長條：長度＝數值 ÷ 清單裡的最大值（--share 是 0～1） */
+  .rank-list__bar {
+    grid-column: 2 / span 2;
+    position: relative;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--el-color-primary-light-9);
+    overflow: hidden;
+  }
+
+  .rank-list__bar::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(var(--share) * 100%);
+    border-radius: 3px;
+    background: var(--el-color-primary);
   }
 }
 </style>
