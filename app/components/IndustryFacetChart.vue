@@ -79,6 +79,19 @@ const distributionOption = computed(() => {
 // 軸跟 /industries/dividend 的類股版一樣（X 股利 3 年成長率、Y 殖利率），從總覽點進來看到的是同一張圖換一個層級。兩軸都有值才畫。
 // 不標公司名：一個類股最多 200 多個點，標籤沒有任何排法不會糊掉；名字在提示框與公司名單裡
 const scatterRows = computed(() => industryScatterRows(props.data))
+// 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」：兩百多個點在手機上擠成一團）：殖利率以這些公司的
+// 中位數分高低，股利 3 年成長率以 0 分有沒有減少；表內照代號排
+const yieldSplit = computed(() => medianOf(scatterRows.value.map(row => row.dividendYield as number)) ?? 0)
+const quadrants = computed(() =>
+  quadrantGroups(
+    [...scatterRows.value].sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    row => [row.dividendGrowthRate3y as number, row.dividendYield as number],
+    [0, yieldSplit.value],
+    ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
+  ).map(group => ({
+    title: `${group.title}（${group.rows.length} 家）`,
+    rows: group.rows.map(row => ({ key: row.symbol, name: `${row.name} ${row.symbol}`, to: securityPath(row.symbol), cells: [`${row.dividendYield?.toFixed(2)}%`, `${row.dividendGrowthRate3y?.toFixed(1)}%`] }))
+  })))
 type ScatterRow = (typeof scatterRows)['value'][number]
 interface ScatterParam { data?: { row: ScatterRow } }
 const scatterOption = computed(() => ({
@@ -127,12 +140,19 @@ const scatterOption = computed(() => ({
     </template>
     <SharedChart class="industry-facet-chart__distribution" :option="distributionOption" autoresize :aria-label="`${sectorName}本益比、股價淨值比、殖利率與 ROE 的分布箱型圖`" />
   </SharedChartCard>
-  <SharedChartCard v-else-if="facet === 'dividend' && scatterRows.length > 1">
-    <template v-if="$slots.header" #header>
+  <template v-else-if="facet === 'dividend' && scatterRows.length > 1">
+    <SharedChartCard class="app-wide-only">
+      <template v-if="$slots.header" #header>
+        <slot name="header" />
+      </template>
+      <SharedChart class="app-chart" :option="scatterOption" autoresize :aria-label="`${sectorName}各公司殖利率與股利 3 年成長率的散佈圖`" />
+    </SharedChartCard>
+    <div class="industry-facet-chart__quadrants app-narrow-only">
       <slot name="header" />
-    </template>
-    <SharedChart class="app-chart" :option="scatterOption" autoresize :aria-label="`${sectorName}各公司殖利率與股利 3 年成長率的散佈圖`" />
-  </SharedChartCard>
+      <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，股利 3 年成長率以 0 分有沒有減少，分成四組。</p>
+      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率', '股利 3 年成長']" collapsed />
+    </div>
+  </template>
 </template>
 
 <style scoped>
@@ -140,5 +160,11 @@ const scatterOption = computed(() => ({
 .industry-facet-chart__distribution {
   width: 100%;
   height: 22rem;
+}
+
+.industry-facet-chart__quadrants {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>

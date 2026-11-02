@@ -144,6 +144,19 @@ body {
 
 /* 圖表高度跟著視窗走：手機 70vw（375 ≈ 262px）、桌機上限 420px、下限 15rem——原本 10 處寫死 320～640px，手機上一張圖佔掉
    大半個第一屏。 */
+/* 手機清單、電腦版圖（CLAUDE.md 的 Charts on the phone）：伺服器兩份都輸出，CSS 決定哪一份看得到；斷點同 useIsDesktop */
+@media (max-width: 767px) {
+  .app-wide-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-narrow-only {
+    display: none !important;
+  }
+}
+
 /* 手機至少 20rem（2026-11-02 手機掃描：原本 15rem／70vw，375px 寬只剩 262px，總經的圖比其他頁小一圈）；電腦版照舊到 420px */
 .app-chart {
   width: 100%;

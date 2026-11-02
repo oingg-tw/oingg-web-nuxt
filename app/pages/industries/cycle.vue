@@ -4,6 +4,7 @@ import { HeatmapChart } from 'echarts/charts'
 import { VisualMapContinuousComponent } from 'echarts/components'
 import type { SectorCycleRow, SectorCycleSummary } from '#shared/types/hub'
 import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
+import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // 類股營收與景氣（2026-10-10，「請設計圖表，讓用戶可以看出來那些公司或是產業屬於景氣循環股」；2026-10-24 從「景氣敏感度」改名，那個詞
 // 現在是股價版 /industries/sensitivity 的正式名稱）：兩個數字，近三個月累計營收年增率
 // 的起伏幅度（標準差）與它跟景氣同時指標（去趨勢）的相關係數——但頁面**不替任何一個類股下結論、不貼標籤、不排序**（conductor
@@ -99,17 +100,71 @@ const heatLayout = computed(() => {
 
 interface HeatmapParam { seriesType?: string; value?: [number, number, number] }
 
+// 景氣收縮期，夾在月份軸裡。擴張期同一天加過又拿掉（使用者：「原來是這樣認定 那還是把 擴張期拿掉吧」：收縮期以外都是擴張期）
+const contractionSpans = computed(() => {
+  const first = months.value[0] ?? ''
+  const last = months.value.at(-1) ?? ''
+  return (summary.value?.contractions ?? []).map(period => ({
+    from: period.from < first ? first : period.from,
+    to: period.to === null || period.to > last ? last : period.to
+  }))
+})
+
+// 手機上熱度圖換成一列一條小折線（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」：34 列擠在一張熱度圖，字小到看不清）。
+// 同一把尺：±40% 以外貼在邊上（同熱度圖的顏色上限）；零線上方塗漲色、下方塗跌色，跟熱度圖同一套；景氣收縮期是灰底，同類股月營收圖
+const SPARK_WIDTH = 300
+const SPARK_HEIGHT = 32
+const sparkX = (index: number) => (index / Math.max(1, months.value.length - 1)) * SPARK_WIDTH
+function sparkSegments(values: readonly (number | null)[], y: (value: number) => number) {
+  const segments: { line: string; area: string }[] = []
+  let points: string[] = []
+  let xs: number[] = []
+  const flush = () => {
+    if (points.length > 1) segments.push({ line: points.join(' '), area: `${xs[0]!.toFixed(1)},${SPARK_HEIGHT / 2} ${points.join(' ')} ${xs.at(-1)!.toFixed(1)},${SPARK_HEIGHT / 2}` })
+    points = []
+    xs = []
+  }
+  values.forEach((value, index) => {
+    if (value === null) return flush()
+    xs.push(sparkX(index))
+    points.push(`${sparkX(index).toFixed(1)},${y(value).toFixed(1)}`)
+  })
+  flush()
+  return segments
+}
+const growthY = (value: number) => SPARK_HEIGHT / 2 - (Math.max(-COLOR_LIMIT, Math.min(COLOR_LIMIT, value)) / COLOR_LIMIT) * (SPARK_HEIGHT / 2 - 1)
+const sparkRows = computed(() => heatRows.value.map(row => ({ code: row.code, name: row.name, segments: sparkSegments(row.yoy, growthY) })))
+// 景氣同時指標（去趨勢值）用自己的高低當上下緣
+const indicatorSpark = computed(() => {
+  const values = summary.value?.coincident ?? []
+  const known = values.filter((value): value is number => value !== null)
+  const low = Math.min(...known)
+  const span = Math.max(...known) - low || 1
+  return sparkSegments(values, value => SPARK_HEIGHT - 1 - ((value - low) / span) * (SPARK_HEIGHT - 2))
+})
+const sparkBands = computed(() => contractionSpans.value.map((span) => {
+  const from = sparkX(Math.max(0, months.value.indexOf(span.from)))
+  return { x: from, width: Math.max(1, sparkX(Math.max(0, months.value.indexOf(span.to))) - from) }
+}))
+// 年份刻度：手機上隔年寫一個，跟熱度圖的 yearOnly 一樣；靠近兩端的不置中，免得凸出卡片
+const sparkYears = computed(() => months.value.flatMap((month, index) => {
+  if (!month.endsWith('-01') || Number(month.slice(0, 4)) % 2) return []
+  const left = (index / Math.max(1, months.value.length - 1)) * 100
+  return [{ label: month.slice(0, 4), left, shift: left < 8 ? '0' : left > 92 ? '-100%' : '-50%' }]
+}))
+const sparkLegend = computed<ChartLegendGroup[]>(() => [{
+  items: [
+    { name: '比去年多', color: priceColors.value.up, kind: 'bar' },
+    { name: '比去年少', color: priceColors.value.down, kind: 'bar' },
+    { name: '景氣收縮期', color: chartInk.value.muted, kind: 'band' }
+  ]
+}])
+
 const heatOption = computed(() => {
   const layout = heatLayout.value
   const ink = chartInk.value
   const list = months.value
-  const first = list[0] ?? ''
-  const last = list.at(-1) ?? ''
-  // 景氣收縮期，夾在月份軸裡。擴張期同一天加過又拿掉（使用者：「原來是這樣認定 那還是把 擴張期拿掉吧」：收縮期以外都是擴張期）
-  const contractions = (summary.value?.contractions ?? []).map(period => ({
-    from: period.from < first ? first : period.from,
-    to: period.to === null || period.to > last ? last : period.to
-  }))
+  const contractions = contractionSpans.value
   const inContraction = (month: string) => contractions.some(period => month >= period.from && month <= period.to)
   const contractionAreas = contractions.map(period => [{ xAxis: period.from }, { xAxis: period.to }])
   const yearOnly = (value: string) => (value.endsWith('-01') && (isDesktop.value || Number(value.slice(0, 4)) % 2 === 0) ? value.slice(0, 4) : '')
@@ -209,7 +264,41 @@ const heatOption = computed(() => {
     <section class="stock-page-section" aria-labelledby="industries-cycle-heading">
       <h2 id="industries-cycle-heading" class="stock-page-section__title">各類股的營收跟著景氣起落的程度有多大？</h2>
       <p v-if="leadAnswer" class="hub-answer">{{ leadAnswer }}</p>
-      <el-card v-if="heatRows.length" shadow="never" class="industries-page__card">
+      <el-card v-if="heatRows.length" shadow="never" class="industries-page__card app-narrow-only">
+        <SharedChartLegend :groups="sparkLegend" />
+        <p class="cycle-spark__note">每一條是近三個月累計營收年增率，上下緣是 ±{{ COLOR_LIMIT }}%，超過的貼在邊上。</p>
+        <svg width="0" height="0" class="cycle-spark__defs" aria-hidden="true">
+          <defs>
+            <clipPath id="cycle-spark-above" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" :width="SPARK_WIDTH" :height="SPARK_HEIGHT / 2" /></clipPath>
+            <clipPath id="cycle-spark-below" clipPathUnits="userSpaceOnUse"><rect x="0" :y="SPARK_HEIGHT / 2" :width="SPARK_WIDTH" :height="SPARK_HEIGHT / 2" /></clipPath>
+          </defs>
+        </svg>
+        <ol class="cycle-spark" aria-label="各類股每個月的近三個月累計營收年增率，第一列是景氣同時指標">
+          <li class="cycle-spark__row">
+            <span>景氣同時指標</span>
+            <svg :viewBox="`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`" preserveAspectRatio="none" class="cycle-spark__svg" aria-hidden="true">
+              <rect v-for="band in sparkBands" :key="band.x" :x="band.x" y="0" :width="band.width" :height="SPARK_HEIGHT" :fill="chartInk.muted" fill-opacity="0.16" />
+              <polyline v-for="segment in indicatorSpark" :key="segment.line" :points="segment.line" fill="none" :stroke="chartInk.secondary" stroke-width="2" vector-effect="non-scaling-stroke" />
+            </svg>
+            <span class="cycle-spark__years" aria-hidden="true">
+              <span v-for="year in sparkYears" :key="year.label" :style="{ left: `${year.left}%`, transform: `translateX(${year.shift})` }">{{ year.label }}</span>
+            </span>
+          </li>
+          <li v-for="row in sparkRows" :key="row.code" class="cycle-spark__row">
+            <NuxtLink :to="sectorPath(row.code) ?? '/industries'">{{ row.name }}</NuxtLink>
+            <svg :viewBox="`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`" preserveAspectRatio="none" class="cycle-spark__svg" aria-hidden="true">
+              <rect v-for="band in sparkBands" :key="band.x" :x="band.x" y="0" :width="band.width" :height="SPARK_HEIGHT" :fill="chartInk.muted" fill-opacity="0.16" />
+              <template v-for="segment in row.segments" :key="segment.line">
+                <polygon :points="segment.area" :fill="priceColors.up" fill-opacity="0.45" clip-path="url(#cycle-spark-above)" />
+                <polygon :points="segment.area" :fill="priceColors.down" fill-opacity="0.45" clip-path="url(#cycle-spark-below)" />
+                <polyline :points="segment.line" fill="none" :stroke="chartInk.secondary" stroke-width="1.25" vector-effect="non-scaling-stroke" />
+              </template>
+              <line x1="0" :y1="SPARK_HEIGHT / 2" :x2="SPARK_WIDTH" :y2="SPARK_HEIGHT / 2" :stroke="chartInk.baseline" vector-effect="non-scaling-stroke" />
+            </svg>
+          </li>
+        </ol>
+      </el-card>
+      <el-card v-if="heatRows.length" shadow="never" class="industries-page__card app-wide-only">
         <SharedChart
           class="app-chart"
           :style="{ height: `${heatLayout.height}px` }"
@@ -257,6 +346,59 @@ const heatOption = computed(() => {
 <style scoped>
 .industries-page__title {
   font-weight: 600;
+}
+
+.cycle-spark__note {
+  margin: 4px 0 8px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.cycle-spark__defs {
+  position: absolute;
+}
+
+.cycle-spark {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cycle-spark__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid var(--app-divider);
+}
+
+.cycle-spark__row:first-child {
+  border-top: 0;
+}
+
+/* 同排行頁手機清單的名稱連結 */
+.cycle-spark__row a {
+  align-self: flex-start;
+  color: var(--el-color-primary-dark-2);
+  text-underline-offset: 3px;
+}
+
+.cycle-spark__svg {
+  display: block;
+  width: 100%;
+  height: 32px;
+}
+
+/* 年份寫在景氣同時指標那一列底下 */
+.cycle-spark__years {
+  position: relative;
+  height: 1.5em;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cycle-spark__years span {
+  position: absolute;
 }
 
 .industries-page__notes {

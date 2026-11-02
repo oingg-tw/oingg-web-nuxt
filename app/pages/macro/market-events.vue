@@ -318,8 +318,8 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
         </template>
         <!-- 急跌段在手機上畫成上緣的色塊（見 chartOption），說明照著換；用 CSS 切，伺服器輸出就是對的那一句 -->
         <p class="macro-phases-page__caveat">
-          <strong>實心陰影</strong>是用月平均算出的下跌段，<strong class="macro-phases-page__wide">虛線外框</strong><strong class="macro-phases-page__narrow">上緣的色塊</strong>是用每日收盤算出的急跌段，兩者算法不同、會重疊。
-          急跌的起訖是日期，而這張圖的橫軸是月份，所以<span class="macro-phases-page__wide">外框</span><span class="macro-phases-page__narrow">色塊</span>只能對到所在的月份——真正的日期與天數在下方的急跌表裡。
+          <strong>實心陰影</strong>是用月平均算出的下跌段，<strong class="app-wide-only">虛線外框</strong><strong class="app-narrow-only">上緣的色塊</strong>是用每日收盤算出的急跌段，兩者算法不同、會重疊。
+          急跌的起訖是日期，而這張圖的橫軸是月份，所以<span class="app-wide-only">外框</span><span class="app-narrow-only">色塊</span>只能對到所在的月份——真正的日期與天數在下方的急跌表裡。
           縱軸為對數刻度，這樣 1980 年代的一千多點和近年的四萬多點才能在同一張圖上看清楚。
         </p>
       </el-card>
@@ -448,19 +448,6 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 
 .macro-phases-page__card {
   border-radius: 12px;
-}
-
-/* 跟 useIsDesktop 同一個斷點 */
-@media (max-width: 767px) {
-  .macro-phases-page__wide {
-    display: none;
-  }
-}
-
-@media (min-width: 768px) {
-  .macro-phases-page__narrow {
-    display: none;
-  }
 }
 
 .macro-phases-page__line {

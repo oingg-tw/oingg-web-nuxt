@@ -185,14 +185,14 @@ const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ n
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <ol v-if="returnRows.length" class="etf-returns" aria-label="含息報酬率（累積）">
+    <ol v-if="returnRows.length" class="etf-returns app-narrow-only" aria-label="含息報酬率（累積）">
       <li v-for="row in returnRows" :key="row.label" class="etf-returns__row">
         <span>{{ row.label }}</span>
         <span class="etf-returns__track" aria-hidden="true"><span class="etf-returns__bar" :style="{ width: `${row.share * 100}%`, background: row.color }" /></span>
         <span class="etf-returns__value">{{ row.text }}</span>
       </li>
     </ol>
-    <StockMultiSeriesLineChart :class="{ 'etf-facet-chart__wide': returnRows.length }" :entries="lineSpec.perYear === null ? lineSpec.entries : shown" :series="lineSpec.series" palette="accent" :unit="lineSpec.unit" :unit-right="lineSpec.unitRight" :format="lineSpec.format" />
+    <StockMultiSeriesLineChart :class="{ 'app-wide-only': returnRows.length }" :entries="lineSpec.perYear === null ? lineSpec.entries : shown" :series="lineSpec.series" palette="accent" :unit="lineSpec.unit" :unit-right="lineSpec.unitRight" :format="lineSpec.format" />
   </SharedChartCard>
 </template>
 
@@ -233,18 +233,5 @@ const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ n
   min-width: 5.5em;
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-
-/* 跟 useIsDesktop 同一個斷點：手機清單、電腦版圖 */
-@media (min-width: 768px) {
-  .etf-returns {
-    display: none;
-  }
-}
-
-@media (max-width: 767px) {
-  .etf-facet-chart__wide {
-    display: none;
-  }
 }
 </style>

@@ -63,20 +63,40 @@ const plotted = computed(() =>
 )
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
 
+// 答句不提「圖」：手機上那個位置是四張表（下面的 quadrants），圖的讀法另外寫在 chartAnswer（電腦版）與 groupAnswer（手機）
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下圖每一個點是一個類股：縱軸是該類股殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入），橫軸是股利 3 年成長率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。每個類股看兩個數字：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入），以及股利 3 年成長率的中位數。`
+})
+
+const excludedText = computed(() => {
+  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、成長率 ${row.dividendGrowthRate3y.count} 家）`)
+  return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。它們的數字在產業索引的表格裡。` : ''
 })
 
 const chartAnswer = computed(() => {
   if (!rows.value.length) return null
-  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、成長率 ${row.dividendGrowthRate3y.count} 家）`)
-  const base = `點的大小代表該類股殖利率有值的公司數。兩個軸的家數不一樣，因為它們各自算各自有值的公司——殖利率通常整個類股都有值，成長率則要有連續三年的股利紀錄才算得出來。`
-  return names.length
-    ? `${base}任一軸少於 ${MIN_SAMPLE} 家的類股沒有畫進圖裡，共 ${names.length} 個：${names.join('、')}。它們的數字仍然在下面的表格裡。`
-    : base
+  return `圖上每一個點是一個類股：縱軸是殖利率，橫軸是股利 3 年成長率，點的大小代表該類股殖利率有值的公司數。兩個軸的家數不一樣，因為它們各自算各自有值的公司——殖利率通常整個類股都有值，成長率則要有連續三年的股利紀錄才算得出來。${excludedText.value}`
 })
+
+// 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：殖利率以列入的類股中位數的中位數分高低，
+// 股利 3 年成長率以 0 分有沒有減少；表內照類股代號排
+const yieldSplit = computed(() => medianOf(plotted.value.map(row => row.liveCashDividendYield.median as number)) ?? 0)
+const quadrants = computed(() =>
+  quadrantGroups(
+    [...plotted.value].sort((a, b) => a.sectorCode.localeCompare(b.sectorCode)),
+    row => [row.dividendGrowthRate3y.median as number, row.liveCashDividendYield.median as number],
+    [0, yieldSplit.value],
+    ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
+  ).map(group => ({
+    title: `${group.title}（${group.rows.length} 個類股）`,
+    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.dividendGrowthRate3y.median)] }))
+  })))
+const groupAnswer = computed(() =>
+  plotted.value.length
+    ? `下面把 ${plotted.value.length} 個類股分成四組：殖利率以這些類股的中位數 ${yieldText(yieldSplit.value)} 分高低，股利 3 年成長率以 0 分有沒有減少。${excludedText.value}`
+    : null)
 
 // 標籤只在寬畫面顯示。實測（2026-09-30，30 個點、圖高 640px）：1440px 有 8 組標籤互相重疊、
 // 375px 有 31 組——手機上的散佈圖標籤沒有解，字級又有 16px 下限不能縮。所以窄畫面只畫點，名字
@@ -161,10 +181,12 @@ const chartOption = computed(() => {
     <section class="stock-page-section" aria-labelledby="industries-overview-heading">
       <h2 id="industries-overview-heading" class="stock-page-section__title">各個類股的殖利率與股利成長長什麼樣？</h2>
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
-      <p v-if="chartAnswer" class="hub-answer">{{ chartAnswer }}</p>
-      <el-card v-if="plotted.length" shadow="never" class="industries-page__card">
+      <p v-if="chartAnswer" class="hub-answer app-wide-only">{{ chartAnswer }}</p>
+      <p v-if="groupAnswer" class="hub-answer app-narrow-only">{{ groupAnswer }}</p>
+      <el-card v-if="plotted.length" shadow="never" class="industries-page__card app-wide-only">
         <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與股利三年成長率中位數的散佈圖" />
       </el-card>
+      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率', '股利 3 年成長']" />
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">

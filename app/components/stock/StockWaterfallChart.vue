@@ -162,7 +162,7 @@ const chartOption = computed(() => {
 <template>
   <!-- 外殼在 SharedChartCard（個股頁的圖一律在卡片裡，2026-10-14） -->
   <SharedChartCard>
-    <ol class="stock-waterfall-list" :aria-label="chartLabel">
+    <ol class="stock-waterfall-list app-narrow-only" :aria-label="chartLabel">
       <li v-for="row in list.rows" :key="row.label" class="stock-waterfall-list__row" :class="{ 'stock-waterfall-list__row--anchor': row.anchor }">
         <span>{{ row.label }}</span>
         <span class="stock-waterfall-list__value">{{ row.text }}</span>
@@ -172,7 +172,7 @@ const chartOption = computed(() => {
         </span>
       </li>
     </ol>
-    <SharedChart class="stock-waterfall-chart" :option="chartOption" autoresize :aria-label="chartLabel" />
+    <SharedChart class="stock-waterfall-chart app-wide-only" :option="chartOption" autoresize :aria-label="chartLabel" />
   </SharedChartCard>
 </template>
 
@@ -223,19 +223,6 @@ const chartOption = computed(() => {
   top: -3px;
   bottom: -3px;
   border-left: 1px solid var(--el-text-color-secondary);
-}
-
-/* 跟 useIsDesktop 同一個斷點：手機清單、電腦版圖 */
-@media (min-width: 768px) {
-  .stock-waterfall-list {
-    display: none;
-  }
-}
-
-@media (max-width: 767px) {
-  .stock-waterfall-chart {
-    display: none;
-  }
 }
 
 /* Sized from the ROW COUNT rather than a fixed height — each step needs a full 16px label line

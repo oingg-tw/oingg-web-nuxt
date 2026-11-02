@@ -6,7 +6,8 @@ const { code, sectorName, data, rows, noindex } = industry
 
 const plotted = computed(() => (data.value ? industryScatterRows(data.value) : []))
 const answer = computed(() => (rows.value.length
-  ? `每一個點是一家公司：橫軸是股利 3 年成長率，縱軸是殖利率。${rows.value.length} 家裡有 ${plotted.value.length} 家兩個數字都有，其餘的沒有連續三年的股利紀錄，算不出成長率。沒有配息的公司殖利率計為 0%。`
+  // 不提「點」與「軸」：手機上那裡是四張表（IndustryFacetChart），電腦版的圖有軸名
+  ? `每家公司看兩個數字：殖利率與股利 3 年成長率。${rows.value.length} 家裡有 ${plotted.value.length} 家兩個數字都有，其餘的沒有連續三年的股利紀錄，算不出成長率。沒有配息的公司殖利率計為 0%。`
   : null))
 </script>
 
