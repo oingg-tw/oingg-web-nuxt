@@ -654,6 +654,11 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     },
     removePreset: (id: string) => removeTab(id),
     reorderTabs,
+    copyPreset: async (id: string, name: string) => {
+      const tab = findTab(id)
+      const copy = tab ? await copyTab(tab, name) : null
+      return copy ? String(copy.id) : null
+    },
     saveActiveTab: () => {
       if (activeTab.value) saveTab(activeTab.value)
     },

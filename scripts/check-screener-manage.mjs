@@ -4,6 +4,7 @@
 //   - 刪除留在原位寫「儲存後刪除」、可以復原、沒有倒數（11 秒後還在、沒送 DELETE）
 //   - Tab 不會跑出彈窗；axe 0
 //   - 取消什麼都不送；再打開是原本的清單
+//   - 複製：副本是草稿列（排在原本那一組下面、名稱可改、刪除直接拿掉），儲存時用原本那一組的條件建立、改名、排在它後面
 //   - 儲存照「改名 → 刪除 → 排序」一項做完才送下一項（假的排序跟 業務中台 一樣要全部已存的 id，刪除還沒做完就排會 400）
 //   - 名稱框按 Enter 就是儲存（2026-10-24，使用者：「管理我的篩選 連續按下enter 要視同儲存」）
 //   - 訪客那一組（未儲存）在彈窗裡只寫一句、不能改
@@ -28,6 +29,12 @@ const mock = async (ctx) => {
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
     if (p === '/api/core/screener/presets' && m === 'GET') return route.fulfill({ json: { presets } })
+    if (p === '/api/core/screener/presets' && m === 'POST') {
+      const body = JSON.parse(req.postData()); const id = `p-new-${presets.length}`
+      calls.push(`POST ${body.filters.map(filter => filter.field).join(',')}`)
+      presets = [...presets, { id, name: '未命名', filters: body.filters }]
+      return route.fulfill({ status: 201, json: { preset: presets.at(-1) } })
+    }
     const run = p.match(/^\/api\/core\/screener\/presets\/([^/]+)\/run$/)
     if (run && m === 'GET') {
       const preset = presets.find(item => item.id === run[1])
@@ -144,6 +151,26 @@ check(calls.join(' | ') === 'PATCH p-b 低 PE | DELETE p-a | REORDER p-c,p-b', '
 check(!(await page.locator('.el-message').allTextContents()).some(text => /失敗/.test(text)), '沒有失敗提示')
 const after = await options()
 check(after.join('、') === '成長、低 PE', '選單是新的名稱與順序', after.join('、'))
+
+// 複製（2026-11-02，使用者：「管理我的篩選 彈跳視窗 要多一個 複製 按鈕」）：副本是草稿列，按「儲存」才建立，排在原本那一組後面
+calls.length = 0
+await manage.click()
+await dialog.waitFor()
+await dialog.getByRole('button', { name: '複製「成長」' }).click()
+check((await names()).join('、') === '成長、成長 的副本、低 PE', '副本排在原本那一組下面', (await names()).join('、'))
+check(await page.evaluate(() => document.activeElement?.tagName) === 'INPUT' && (await dialog.textContent()).includes('儲存後建立'), '焦點在副本的名稱框、寫著儲存後建立')
+await dialog.getByRole('button', { name: '複製「低 PE」' }).click()
+await dialog.getByRole('button', { name: '刪除「低 PE 的副本」' }).click()
+check((await names()).join('、') === '成長、成長 的副本、低 PE' && await focused() === '複製「低 PE」', '副本的刪除直接拿掉那一列、焦點回到原本那一組的複製', await focused())
+check(!calls.length, '還沒儲存什麼都沒送', calls.join(' | '))
+await dialog.getByLabel('「成長 的副本」的名稱').fill('成長 2')
+await dialog.getByRole('button', { name: '儲存' }).click()
+await dialog.waitFor({ state: 'hidden' })
+for (const start = Date.now(); Date.now() - start < 15000 && !calls.some(call => call.startsWith('REORDER')); await page.waitForTimeout(200));
+await page.waitForTimeout(800)
+check(calls.join(' | ') === 'POST revenueYoy.M | PATCH p-new-2 成長 2 | REORDER p-c,p-new-2,p-b', '儲存：用原本那一組的條件建立、改名、排在它後面', calls.join(' | '))
+const copied = await options()
+check(copied.join('、') === '成長、成長 2、低 PE', '選單有副本、在原本那一組後面', copied.join('、'))
 check(!pageErrors.length, '沒有 page error', pageErrors.join(' | '))
 
 console.log('訪客')

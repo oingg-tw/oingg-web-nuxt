@@ -171,22 +171,23 @@ export function useScreenerTabCrud(ctx: {
     ctx.watchTabForAutoSearch(ctx.tabs.value[index]!)
   }
 
-  // 「新增篩選」對話框的「複製目前這組」
-  async function copyTab(tab: ScreenerTab) {
+  // 「新增篩選」對話框的「複製目前這組」，與管理彈窗的「複製」（名稱是在彈窗裡定的）。副本會變成目前這一組
+  async function copyTab(tab: ScreenerTab, name = `${tab.name} 的副本`.slice(0, 20)): Promise<ScreenerTab | null> {
     if (!currentUser.value) {
       openLogin()
-      return
+      return null
     }
     const created = await create(ctx.filtersOf(tab), scopeFor(tab))
     if (!created) {
       if (lastErrorCode.value === 'quota_exceeded') showQuotaReached('screenerPresets')
       else showErrorMessage(lastErrorMessage.value ?? '複製失敗，請稍後再試')
-      return
+      return null
     }
-    const updated = await update(created.id, { name: `${tab.name} 的副本`.slice(0, 20), ...scopeFor(tab), ...sortPatchOf(tab) })
+    const updated = await update(created.id, { name, ...scopeFor(tab), ...sortPatchOf(tab) })
     const copy = registerTab(ctx.presetToTab(updated ?? created))
     copy.columnPresetId = tab.columnPresetId ?? copy.columnPresetId
     await ctx.runSearch(copy)
+    return copy
   }
 
   async function addTab() {

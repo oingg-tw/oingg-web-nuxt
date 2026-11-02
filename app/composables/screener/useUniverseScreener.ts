@@ -383,13 +383,22 @@ export function useUniverseScreener(source: UniverseSource) {
     if (created) selectTab(created.id)
   }
 
-  async function copyActiveTab() {
-    const tab = activeTab.value
-    if (!tab) return
-    const created = await createPreset(filtersOf(tab), `${tab.name} 的副本`.slice(0, 20))
-    if (!created) return
+  // 「新增篩選」的「複製目前這組」與管理彈窗的「複製」（名稱是在彈窗裡定的）。副本會變成目前這一組
+  async function copyTab(tab: UniverseTab, name = `${tab.name} 的副本`.slice(0, 20)): Promise<string | null> {
+    const created = await createPreset(filtersOf(tab), name)
+    if (!created) return null
     adoptResults(created, tab)
     selectTab(created.id)
+    return created.id
+  }
+
+  function copyActiveTab() {
+    if (activeTab.value) copyTab(activeTab.value)
+  }
+
+  function copyPreset(id: string, name: string): Promise<string | null> {
+    const tab = tabs.value.find(item => item.id === id)
+    return tab ? copyTab(tab, name) : Promise.resolve(null)
   }
 
   // 改名與排序：篩選（tabs／presetsApi）與欄位組合（columnSets／columnsApi）同一套——先改畫面，上游失敗再改回來
@@ -664,6 +673,7 @@ export function useUniverseScreener(source: UniverseSource) {
     renamePreset: (id: string, name: string) => renameSaved(tabs, presetsApi, id, name),
     removePreset,
     reorderTabs: (ids: string[]) => reorderSaved(tabs, presetsApi, ids),
+    copyPreset,
     saveActiveTab,
     columnSetItems,
     activeColumnSetId,

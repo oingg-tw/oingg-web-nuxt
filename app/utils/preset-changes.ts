@@ -9,22 +9,28 @@ export interface PresetDraftRow {
   editable: boolean
   // 按了刪除、還沒儲存：那一列留在原位寫「儲存後刪除」
   removed: boolean
+  // 按了「複製」、還沒儲存的那一列：複製哪一組（id 是暫時的，儲存時才建立）
+  copyOf?: string
 }
 
 export interface PresetChanges {
   renames: [id: string, name: string][]
+  // 要建立的副本：id 是草稿裡的暫時 id，order 裡也是它，建好之後換成真的 id
+  copies: { id: string, from: string, name: string }[]
   removals: string[]
-  // 留下來的那幾組的新順序；沒動是 null（業務中台 的排序要全部已存的 id，刪除做完才排）
+  // 留下來的那幾組的新順序；沒動是 null（業務中台 的排序要全部已存的 id，刪除做完才排）。有副本就一定排：副本要排在原本那一組後面
   order: string[] | null
 }
 
 export function presetChanges(originalIds: string[], rows: PresetDraftRow[]): PresetChanges {
   const kept = rows.filter(row => !row.removed)
   const order = kept.map(row => row.id)
+  const copies = kept.filter(row => row.copyOf).map(row => ({ id: row.id, from: row.copyOf!, name: row.name.trim() }))
   const before = originalIds.filter(id => order.includes(id))
-  const moved = order.some((id, index) => id !== before[index])
+  const moved = copies.length > 0 || order.some((id, index) => id !== before[index])
   return {
-    renames: kept.filter(row => row.editable && row.name.trim() !== row.original).map(row => [row.id, row.name.trim()]),
+    renames: kept.filter(row => row.editable && !row.copyOf && row.name.trim() !== row.original).map(row => [row.id, row.name.trim()]),
+    copies,
     removals: rows.filter(row => row.removed).map(row => row.id),
     order: moved ? order : null
   }

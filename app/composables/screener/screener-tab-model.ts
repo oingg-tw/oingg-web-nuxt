@@ -90,6 +90,8 @@ export interface ScreenerWorkspace {
   renamePreset(id: string, name: string): Promise<void> | void
   removePreset(id: string): Promise<void> | void
   reorderTabs(ids: string[]): Promise<void> | void
+  // 管理彈窗的「複製」：用 id 那一組的條件建立新的一組、取這個名稱，回傳新的 id（失敗是 null，提示由它自己出）
+  copyPreset(id: string, name: string): Promise<string | null>
   saveActiveTab(): void
 
   // 顯示欄位
