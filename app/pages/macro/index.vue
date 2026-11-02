@@ -117,7 +117,8 @@ const chartOption = computed(() => {
     if (row.period === peak) return '（高峰）'
     return row.period === cycle.troughEnd ? '（終點）' : '（最新）'
   }
-  const pointLabel = (row: ClockRow) => ({ show: true, position: row.change >= 0 ? 'bottom' : 'top', fontSize: 16, color: ink.primary, formatter: `${monthText(row.period)}${role(row)}` })
+  // 字外面一圈卡片底色（2026-11-02 手機掃描：上下只看這個月的增減，軌跡常從字中間穿過，「2024 年 10 月」壓在線上讀不清）
+  const pointLabel = (row: ClockRow) => ({ show: true, position: row.change >= 0 ? 'bottom' : 'top', fontSize: 16, color: ink.primary, textBorderColor: CARD_SURFACE[resolvedMode.value], textBorderWidth: 4, formatter: `${monthText(row.period)}${role(row)}` })
   // 四區只標名字（手機）或名字加定義（桌機），不填色：區域是圖的定義，不是好壞
   const zoneLabel = (zone: ClockZone, position: string) => ({
     position,
@@ -128,7 +129,8 @@ const chartOption = computed(() => {
   const area = (zone: ClockZone, from: [number, number], to: [number, number], position: string) =>
     [{ coord: from, label: zoneLabel(zone, position) }, { coord: to }]
   return {
-    grid: { left: 8, right: 16, top: 40, bottom: 28, containLabel: true },
+    // 手機上橫軸名稱折兩行（下面 xAxis 的 nameTextStyle），底下多留一行
+    grid: { left: 8, right: 16, top: 40, bottom: isDesktop.value ? 28 : 48, containLabel: true },
     tooltip: {
       trigger: 'item',
       formatter: (param: ClockParam) => {
@@ -139,7 +141,8 @@ const chartOption = computed(() => {
           + `<div>${CLOCK_ZONES[row.zone].definition}（${CLOCK_ZONES[row.zone].name}）</div></div>`
       }
     },
-    xAxis: { type: 'value', name: `${indicatorName.value}去趨勢值（100＝長期趨勢）`, nameLocation: 'middle', nameGap: 28, min: xMin, max: xMax, interval: xInterval },
+    // 名稱一行大約 360px，320px 寬的手機右半截被切掉（2026-11-02）：手機上括號那段換到第二行（nameTextStyle 的 width／overflow 對軸名沒有作用，量過）
+    xAxis: { type: 'value', name: `${indicatorName.value}去趨勢值${isDesktop.value ? '' : '\n'}（100＝長期趨勢）`, nameLocation: 'middle', nameGap: 28, nameTextStyle: { lineHeight: 20 }, min: xMin, max: xMax, interval: xInterval },
     yAxis: { type: 'value', name: '比上個月增減（點）', nameTextStyle: { align: 'left' }, min: -yHalf, max: yHalf, interval: yInterval },
     series: [
       {

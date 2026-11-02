@@ -26,6 +26,7 @@ const props = defineProps<{
 const TOP = 6
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
+const isDesktop = useIsDesktop()
 
 const slices = computed(() => {
   const positive = props.items.filter(item => item.value > 0)
@@ -47,11 +48,14 @@ const chartOption = computed(() => {
     },
     series: [{
       type: 'pie',
-      radius: ['38%', '68%'],
+      // 手機上圓環小一點、標籤貼齊左右兩邊排（2026-11-02 手機掃描：外徑 68% 時左右只剩 70px，「金融保險業」截成「金融…」、連
+      // 「半導體業」都變「半導…」）。外徑 50% 時兩邊各有約 95px，五個字的產業名與百分比寫得完整；骨架的圓環照著縮（下面的 CSS）
+      radius: isDesktop.value ? ['38%', '68%'] : ['30%', '50%'],
       center: ['50%', '50%'],
       itemStyle: { borderColor: resolvedMode.value === 'DARK' ? '#1e1e1e' : '#ffffff', borderWidth: 2 },
-      label: { color: ink.primary, fontSize: 16, formatter: '{b}\n{d}%' },
-      labelLine: { lineStyle: { color: ink.muted } },
+      // 貼邊時靠近圓環下緣的那幾個字可用的寬度比較少（「其他電子業」截成「其他電…」），太長的折行不截斷
+      label: { color: ink.primary, fontSize: 16, formatter: '{b}\n{d}%', ...(isDesktop.value ? {} : { alignTo: 'edge', edgeDistance: 4, minMargin: 4, lineHeight: 20, overflow: 'break' }) },
+      labelLine: { lineStyle: { color: ink.muted }, ...(isDesktop.value ? {} : { length: 8 }) },
       data: slices.value.map(item => ({ name: item.label, value: item.value }))
     }]
   }
@@ -87,5 +91,13 @@ const chartOption = computed(() => {
   aspect-ratio: 1;
   border-radius: 50%;
   mask: radial-gradient(circle closest-side, transparent 55.9%, #000 56%);
+}
+
+/* 手機的圓環：外徑 50%、內徑 30%（30 ÷ 50 ＝ 0.6），同 series 的 radius；斷點同 useIsDesktop */
+@media (max-width: 767px) {
+  .holdings-allocation-chart__ring {
+    height: 50%;
+    mask: radial-gradient(circle closest-side, transparent 59.9%, #000 60%);
+  }
 }
 </style>

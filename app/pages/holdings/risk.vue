@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PerformanceOutcome, RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
+import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // 持股的風險指標（2026-10-05）：使用者在 業務中台 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，業務中台 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。
@@ -138,8 +139,9 @@ const contributionRows = computed(() => {
 // 2026-10-19：圖例改叫「市值占比／波動占比」，不必再配一句說明；橫條上已有數字，數值軸拿掉（375 寬時刻度字會疊在一起）
 const { resolvedMode, color: accentColorName } = useAppTheme()
 const hasContribution = computed(() => contributionHoldings.value.some(holding => holding.riskContribution !== null))
-// 一檔一列兩根橫條：高度跟著檔數。讀的時候照上次的檔數畫同樣高的骨架（useLayoutHint）
-const chartHeightFor = (count: number) => `${Math.max(200, count * 44 + 80)}px`
+// 一檔一列兩根橫條：高度跟著檔數。讀的時候照上次的檔數畫同樣高的骨架（useLayoutHint）。圖例在圖外（contributionLegend，
+// 讀的時候也畫），所以比原本少 28px
+const chartHeightFor = (count: number) => `${Math.max(172, count * 44 + 52)}px`
 const contributionChartHeight = computed(() => chartHeightFor(contributionHoldings.value.length))
 const contributionCountHint = useLayoutHint('holdings-risk-holdings', 5)
 watch(contributionHoldings, (list) => {
@@ -154,8 +156,7 @@ const contributionOption = computed(() => {
   const label = (color: string) => ({ show: true, position: 'right', color, fontSize: 16, formatter: ({ value }: { value: number | null }) => (value === null ? '' : `${value.toFixed(1)}%`) })
   return {
     color: [ink.muted, getAccentColor(resolvedMode.value, accentColorName.value)],
-    legend: { top: 0, textStyle: { color: ink.primary } },
-    grid: { left: 8, right: 56, top: 40, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 56, top: 8, bottom: 8, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -170,6 +171,14 @@ const contributionOption = computed(() => {
     ]
   }
 })
+
+// 圖例畫在圖外（SharedChartLegend，全站同一種）；名字與顏色是固定的，讀的時候也畫，骨架與圖才一樣高
+const contributionLegend = computed<ChartLegendGroup[]>(() => [{
+  items: [
+    { name: '市值占比', color: getChartInk(resolvedMode.value).muted, kind: 'bar' },
+    { name: '波動占比', color: getAccentColor(resolvedMode.value, accentColorName.value), kind: 'bar' }
+  ]
+}])
 
 // 統計天數不足時照實說，不下結論
 const fewDays = computed(() => (report.value ? report.value.tradingDays : 0))
@@ -221,6 +230,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
           <section v-if="loading ? contributionCountHint : contributionRows.length" aria-labelledby="risk-contribution-title">
             <h2 id="risk-contribution-title" class="risk-page__section-title">哪幾檔占了大部分的波動？</h2>
             <!-- 先圖後表（2026-10-07「risk 先圖表 再表格」，同站上指標頁的規矩） -->
+            <SharedChartLegend v-if="loading || hasContribution" :groups="contributionLegend" />
             <div v-if="loading" class="risk-contribution-chart app-skeleton" :style="{ height: chartHeightFor(contributionCountHint) }" aria-hidden="true" />
             <ClientOnly v-else>
               <SharedChart

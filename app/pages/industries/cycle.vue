@@ -146,11 +146,10 @@ const sparkBands = computed(() => contractionSpans.value.map((span) => {
   const from = sparkX(Math.max(0, months.value.indexOf(span.from)))
   return { x: from, width: Math.max(1, sparkX(Math.max(0, months.value.indexOf(span.to))) - from) }
 }))
-// 年份刻度：手機上隔年寫一個，跟熱度圖的 yearOnly 一樣；靠近兩端的不置中，免得凸出卡片
+// 年份刻度：手機上隔年寫一個（同熱度圖的 yearOnly），置中在一月上；太靠兩端的不寫（320px 寬時 2026 會壓到 2024、也會凸出卡片）
 const sparkYears = computed(() => months.value.flatMap((month, index) => {
-  if (!month.endsWith('-01') || Number(month.slice(0, 4)) % 2) return []
   const left = (index / Math.max(1, months.value.length - 1)) * 100
-  return [{ label: month.slice(0, 4), left, shift: left < 8 ? '0' : left > 92 ? '-100%' : '-50%' }]
+  return month.endsWith('-01') && Number(month.slice(0, 4)) % 2 === 0 && left > 7 && left < 93 ? [{ label: month.slice(0, 4), left }] : []
 }))
 const sparkLegend = computed<ChartLegendGroup[]>(() => [{
   items: [
@@ -281,7 +280,7 @@ const heatOption = computed(() => {
               <polyline v-for="segment in indicatorSpark" :key="segment.line" :points="segment.line" fill="none" :stroke="chartInk.secondary" stroke-width="2" vector-effect="non-scaling-stroke" />
             </svg>
             <span class="cycle-spark__years" aria-hidden="true">
-              <span v-for="year in sparkYears" :key="year.label" :style="{ left: `${year.left}%`, transform: `translateX(${year.shift})` }">{{ year.label }}</span>
+              <span v-for="year in sparkYears" :key="year.label" :style="{ left: `${year.left}%` }">{{ year.label }}</span>
             </span>
           </li>
           <li v-for="row in sparkRows" :key="row.code" class="cycle-spark__row">
@@ -399,6 +398,7 @@ const heatOption = computed(() => {
 
 .cycle-spark__years span {
   position: absolute;
+  transform: translateX(-50%);
 }
 
 .industries-page__notes {

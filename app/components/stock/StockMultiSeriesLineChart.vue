@@ -225,9 +225,10 @@ const chartOption = computed(() => {
       : {}
   })
   return {
-    // 圖例和單位在圖外（legendGroups），上緣只留最上面那個刻度的半格。左右貼齊：刻度的邊緣跟上面那列單位對齊；單軸圖右邊留一點，
-    // 最後一個 X 軸標籤置中在最後一期上，會凸出去
-    grid: { left: 0, right: props.unitRight ? 0 : 12, top: 12, bottom: 28, containLabel: true },
+    // 圖例和單位在圖外（legendGroups），上緣只留最上面那個刻度的半格。左右貼齊：刻度的邊緣跟上面那列單位對齊。單軸圖右邊留 24px：
+    // X 軸標籤置中在每一期上，月資料一格只有 4～5px，倒數兩三期的標籤有半個凸出圖外（00679B 折溢價的「2026-09」切成「2026-0」，
+    // containLabel 沒算到）；雙軸圖凸出去的落在右軸刻度那一欄，不會被切
+    grid: { left: 0, right: props.unitRight ? 0 : 24, top: 12, bottom: 28, containLabel: true },
     tooltip: {
       trigger: 'axis',
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
@@ -246,6 +247,8 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: list.map(entry => periodLabel(entry)),
+      // 最後一期的標籤靠右對齊在它的刻度上，整個標籤都在圖裡（倒數第二、三期的由上面 grid.right 的 24px 接住）
+      axisLabel: { alignMaxLabel: 'right' }
     },
     // The right axis draws no gridlines of its own — two interleaved sets of horizontal lines
     // read as a grid that belongs to neither series.

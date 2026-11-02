@@ -1,7 +1,7 @@
 // 數字格式化的自我檢查（shared/utils/number-format.ts，2026-10-12）。例子取自使用者回報的 7711 與台積電的真實量級。
 //   node scripts/check-number-format.mjs
 import assert from 'node:assert/strict'
-import { formatLogAxisTick, formatMoney, formatSignificantDigits, groupThousands } from '../shared/utils/number-format.ts'
+import { fixedRateText, fixedSignedRateText, formatLogAxisTick, formatMoney, formatSignificantDigits, groupThousands } from '../shared/utils/number-format.ts'
 import { cellPeriodText } from '../app/utils/screener-value.ts'
 
 assert.equal(groupThousands(2446), '2,446')
@@ -32,4 +32,9 @@ assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalPeriod: '2025' 
 assert.equal(cellPeriodText({ knowledgeDate: '2026-10-10', fiscalPeriod: '2026-09' }), '2026-09')
 assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22', fiscalPeriod: null }), '2026-10-22')
 assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22' }), '2026-10-22')
+// 兩位小數的百分比：負號跟加減那一列（fixedSignedRateText）同一個減號，6589 營業利益率
+assert.equal(fixedRateText(-64.72), '−64.72%')
+assert.equal(fixedSignedRateText(-31.45), '−31.45%')
+assert.equal(fixedRateText(-0.004), '0.00%')
+assert.equal(fixedRateText(55.64), '55.64%')
 console.log('number format: ok')

@@ -14,7 +14,7 @@ defineProps<{ groups: QuadrantTable[]; columns: readonly string[]; collapsed?: b
     <template v-for="group in groups" :key="group.title">
       <component :is="collapsed ? 'details' : 'div'" v-if="group.rows.length" :class="{ 'app-disclosure': collapsed }">
         <summary v-if="collapsed">{{ group.title }}</summary>
-        <SharedTable :label="group.title" :caption-visible="!collapsed">
+        <SharedTable :label="group.title" :caption-visible="!collapsed" table-class="industry-quadrant-table">
           <thead>
             <tr>
               <th v-for="(column, index) in columns" :key="column" scope="col" :class="{ 'seo-table__num': index > 0 }">{{ column }}</th>
@@ -23,8 +23,10 @@ defineProps<{ groups: QuadrantTable[]; columns: readonly string[]; collapsed?: b
           <tbody>
             <tr v-for="row in group.rows" :key="row.key">
               <th scope="row">
-                <NuxtLink v-if="row.to" :to="row.to">{{ row.name }}</NuxtLink>
-                <template v-else>{{ row.name }}</template>
+                <span class="industry-quadrant-tables__name">
+                  <NuxtLink v-if="row.to" :to="row.to">{{ row.name }}</NuxtLink>
+                  <template v-else>{{ row.name }}</template>
+                </span>
               </th>
               <td v-for="(cell, index) in row.cells" :key="index" class="seo-table__num">{{ cell }}</td>
             </tr>
@@ -40,5 +42,23 @@ defineProps<{ groups: QuadrantTable[]; columns: readonly string[]; collapsed?: b
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 全站表格預設不換行、太寬就左右捲；這三欄要在 320px 寬放得下：表頭只在空格換行（「股利 3 年成長」折成「股利」「3 年成長」，「殖利率」
+   不從中間斷），名稱可以折（只有「電腦及週邊設備業」這種長的會折），數字不折 */
+.industry-quadrant-tables :deep(.industry-quadrant-table thead th) {
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.industry-quadrant-tables :deep(.industry-quadrant-table tbody th) {
+  white-space: normal;
+}
+
+/* 表格自動排版會先壓能折的那一欄，五個字的類股名被折成「建材營造／業」。表格的格子不吃 min-width，所以撐在裡面這一層：
+   五個字一行，三欄在 320px 仍放得下，更長的（電腦及週邊設備業）才折 */
+.industry-quadrant-tables__name {
+  display: inline-block;
+  min-width: 5em;
 }
 </style>

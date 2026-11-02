@@ -47,7 +47,13 @@ export function formatMoney(yuan: number): string {
 
 // 固定兩位小數的百分比，不用上面的有效位數（三率、償債能力、杜邦、殖利率）：這幾頁的拆解表要逐項加減對得起來，3 位有效數字會把
 // 64.23 印成「64.2」、56.10 印成「56.1」，讀者自己算 64.2 − 2.24 − 6.07 得 55.89，跟頁面的 56.1 對不上（2330 量過）。申報值本來就是兩位
-export const fixedRateText = (value: number | null): string => (value === null ? '尚無資料' : `${value.toFixed(2)}%`)
+// 負號是減號「−」，同下面的 fixedSignedRateText（2026-11-02：利潤率拆解的結果列寫「-64.72%」、旁邊加減那一列寫「−31.45%」，
+// 同一張表兩種負號）；四捨五入到 0.00 的負數不寫負號
+export const fixedRateText = (value: number | null): string => {
+  if (value === null) return '尚無資料'
+  const text = Math.abs(value).toFixed(2)
+  return `${value < 0 && text !== '0.00' ? '−' : ''}${text}%`
+}
 
 // 帶正負號：拆解表「加減」那一列只寫「5.72%」，有一半的時候會讀反（業外損益與所得稅兩個方向都有：2330 −5.72、2454 +1.15）。
 // 這一列的值定義成「要加到上一列的量」，整欄可以直接往下加
