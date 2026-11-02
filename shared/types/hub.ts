@@ -444,6 +444,28 @@ export interface ExDividendMonthCell {
   counts: Record<'all' | ExDividendKind, number>
 }
 
+// 首頁（GET /api/hub/home，2026-11-02 改版 B-1）。每一塊讀不到就是 null，首頁不畫那一塊
+export interface HomeCalendarEvents {
+  // 不重複代號數；first 是照代號排的前兩檔
+  count: number
+  first: { symbol: string; name: string }[]
+}
+
+export interface HomeCalendarDay {
+  date: string
+  ex: HomeCalendarEvents
+  pay: HomeCalendarEvents
+}
+
+export interface HomePageData {
+  // 台北時間的今天（伺服器決定，瀏覽器不自己算）
+  today: string
+  weeks: { label: string; days: HomeCalendarDay[] }[] | null
+  cells: ExDividendMonthCell[] | null
+  templates: { slug: string; name: string; rule: string; count: number | null }[] | null
+  coverage: { common: number; etf: number; preferred: number; metrics: number } | null
+}
+
 export interface ExDividendMonthsPageData {
   year: number
   current: string

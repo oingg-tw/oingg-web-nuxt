@@ -64,6 +64,8 @@ export interface SiteMapLink {
 }
 
 export interface SiteMapGroup {
+  // 首頁的便當盒格用它找自己那一組（2026-11-02）
+  key: 'learn' | 'find' | 'dividends' | 'mine' | 'site'
   label: string
   links: SiteMapLink[]
 }
@@ -83,6 +85,7 @@ export const ABOUT_SITE_LINKS: SiteMapLink[] = [HOME_LINK, SITEMAP, APPEARANCE_L
 // 會變孤兒頁（2026-09-22 總經特區、09-23 產業索引就是這樣補上的；那時入口直接放頁尾）。學習排第一（使用者：「sitemap 學習 順序往上面放」）
 export const SITE_MAP: SiteMapGroup[] = [
   {
+    key: 'learn',
     label: '我想學會看這些數字',
     links: [
       { label: '新手專區', to: '/learn', description: '用一家真實公司的數字，一步一步看懂從營收到股利的每一個指標' },
@@ -92,6 +95,7 @@ export const SITE_MAP: SiteMapGroup[] = [
     ]
   },
   {
+    key: 'find',
     label: '我想找符合條件的股票',
     links: [
       { label: '普通股篩選', to: SCREENER_PATHS.common, description: '用 ROE、負債比率、殖利率等條件，篩出符合的上市櫃公司' },
@@ -103,6 +107,7 @@ export const SITE_MAP: SiteMapGroup[] = [
     ]
   },
   {
+    key: 'dividends',
     label: '我想知道什麼時候配息',
     links: [
       { ...CALENDAR, description: '每一天有哪些股票除權息、哪天發放' },
@@ -110,11 +115,12 @@ export const SITE_MAP: SiteMapGroup[] = [
     ]
   },
   {
+    key: 'mine',
     label: '我想記下自己的股票',
     links: [
       { ...WATCHLIST, description: '追蹤關心的股票，欄位自己選', requiresLogin: true },
       { ...HOLDINGS, description: '記下買賣，看持股、配息、報酬與風險', requiresLogin: true }
     ]
   },
-  { label: '我想調整網站或了解本站', links: [APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK, CHANGELOG_LINK, HOME_LINK] }
+  { key: 'site', label: '我想調整網站或了解本站', links: [APPEARANCE_LINK, PROFILE_LINK, ACCESSIBILITY_LINK, CHANGELOG_LINK, HOME_LINK] }
 ]

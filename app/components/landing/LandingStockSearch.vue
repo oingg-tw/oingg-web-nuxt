@@ -122,7 +122,8 @@ function handleSubmit() {
          to a plain dark input read as too bright/glaring ("太亮了點"). plain keeps the same
          accent color as a border + tinted text instead of a solid block, same visual weight
          reduction Element Plus's own plain variant is meant for. -->
-    <el-button type="primary" plain class="landing-stock-search__submit" @click="handleSubmit">
+    <!-- 實心（2026-11-02 首頁改版）：首屏唯一的主要動作 -->
+    <el-button type="primary" class="landing-stock-search__submit" @click="handleSubmit">
       立即查詢
     </el-button>
   </div>

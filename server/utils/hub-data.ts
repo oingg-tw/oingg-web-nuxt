@@ -759,3 +759,24 @@ export async function getExDividendMonthCells(current: string): Promise<ExDivide
     return { month, source, estimated, counts: { all: common + preferred + etf + unclassified, common, preferred, etf } }
   })
 }
+
+// 普通股、ETF、特別股各幾檔（首頁的資料涵蓋，2026-11-02）：GET /securities 一次 1,000 筆翻完，跟瀏覽器搜尋（useCompanyIndex）同一份名單
+export const getSecurityCounts = defineCachedFunction(
+  async (): Promise<Record<ExDividendKind, number>> => {
+    const counts: Record<ExDividendKind, number> = { common: 0, preferred: 0, etf: 0 }
+    let offset = 0
+    let total = Infinity
+    while (offset < total) {
+      const response = await businessFetch<{ count: number; entries: { type: string }[] }>('/securities', { query: { limit: STOCKS_PAGE_LIMIT, offset } })
+      total = response.count
+      if (!response.entries.length) break
+      for (const entry of response.entries) {
+        const kind = EX_DIVIDEND_KINDS[entry.type]
+        if (kind) counts[kind]++
+      }
+      offset += response.entries.length
+    }
+    return counts
+  },
+  { name: 'hub-security-counts', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+)

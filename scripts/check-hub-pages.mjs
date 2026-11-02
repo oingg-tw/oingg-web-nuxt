@@ -31,8 +31,8 @@ const width = Number(process.env.HUB_PAGES_WIDTH ?? 1440)
 const BACKEND_OWNED = []
 // 普通股篩選的兩個進入點（2026-10-15 起在 /screener/common 底下）；景氣時鐘循環表的「在景氣時鐘上看」（?cycle=N，2026-10-18，canonical 不帶參數；
 // 景氣時鐘 2026-10-21 起是 /macro）
-// 除權息月覽的熱力格是那個月清單的連結（?month=，2026-10-21，canonical 不帶參數）
-const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/screener\/(common|etf|preferred)\?f=exDividendMonths(\.EOD)?(:|%3A)\d{1,2}$/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}$/]
+// 除權息月覽的熱力格是那個月清單的連結（?month=，2026-10-21，canonical 不帶參數）；手機的月份列多帶 #ex-months-list，換月後停在清單
+const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/screener\/(common|etf|preferred)\?f=exDividendMonths(\.EOD)?(:|%3A)\d{1,2}$/, /^\/macro\?cycle=\d+/, /^\/calendar\/months\?month=\d{4}-\d{2}(#ex-months-list)?$/]
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
@@ -51,7 +51,9 @@ const ROUTES = [
   // Goes back to 8 with that page, ~2027 Q1.
   // 8 → 13 on 2026-10-21: five ETF rankings（RANK_PAGES 的 universe: 'etf'）。
   { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 13 },
-  { path: '/calendar/months', stockLinksMin: 10, industryLinksMin: 0, tablesMin: 1 },
+  // 個股連結 ≥ 1（2026-11-02，原本 10）：預設是這個月，淡季（11 月只有 3 檔普通股除權息）到不了 10 個；要確認的是伺服器輸出的清單有連到個股頁。
+  // 不改看 ?month=07：這一頁的 canonical 刻意不帶參數，帶了就過不了 self canonical
+  { path: '/calendar/months', stockLinksMin: 1, industryLinksMin: 0, tablesMin: 1 },
   { path: '/rank/dividend-yield', stockLinksMin: 50, industryLinksMin: 0, tablesMin: 1, disclaimer: true },
   // ETF 排行的列連到 /etf/{code}，連到 /stock/{code} 會被 301 轉走（securityPath）
   { path: '/rank/etf-aum', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
