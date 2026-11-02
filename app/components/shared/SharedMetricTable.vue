@@ -755,7 +755,7 @@ watch(() => props.loading, (loading, wasLoading) => {
             <div v-for="column in orderedColumns" :key="column.field" class="smt-card__value">
               <dt>{{ displayLabel(column) }}</dt>
               <dd>
-                <component :is="cellHref(row, column) ? NuxtLink : 'span'" :to="cellHref(row, column) ?? undefined" :class="{ 'screener-result-table__cell--link': cellHref(row, column) }">
+                <component :is="cellHref(row, column) ? NuxtLink : 'span'" :to="cellHref(row, column) ?? undefined" class="smt-card__cell" :class="{ 'screener-result-table__cell--link': cellHref(row, column) }">
                 <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
                   <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
                 </span>
@@ -945,6 +945,18 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin: 0;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* 數值一行、資料時間另起一行（同表格的格子）。原本是行內的 span，「顯示資料時間」一開，日期直接黏在數字後面：38.1 跟
+   2026-11-02 連成「38.12026-11-02」（2026-11-02，使用者：「打開資料時間以後整個悲劇跑版」） */
+.smt-card__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  .screener-result-table__cell-date {
+    font-weight: 400;
+  }
 }
 
 .smt-cards__empty {
