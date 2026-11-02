@@ -29,7 +29,7 @@ export interface ScreenerResultColumn {
 // 2026-10-23（analysis-ts 789ba5e1、業務中台 a52f7b5）：fiscalPeriod——數字屬於哪一期（"2026Q2"／"2025"／"2026-09"），逐日、窗口型、
 // 即時屬性與業務中台自己補的欄位是 null。畫面上的資料時間用它（cellPeriodText），沒有才寫 knowledgeDate
 export interface ScreenerFieldValue {
-  value: string | null
+  value: string | number | null
   knowledgeDate: string
   nullReason: string | null
   fiscalPeriod?: string | null

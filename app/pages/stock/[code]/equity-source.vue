@@ -61,6 +61,8 @@ const footerLinks = computed(() => [
 watchLoadFailure(() => `stock-book-value-breakdown:${code.value}`, () => breakdownError.value, refreshBreakdown)
 
 const flowEntries = computed(() => breakdown.value?.entries ?? [])
+// 元／股，精確到分（上游的恆等式就是到分）：一律兩位小數、負號是「−」（2026-11-03，原本直接印數字：「-3.5」「12.123」沒對齊）
+const perShare = (value: number) => minusSign(value.toFixed(2))
 
 const flowQuestion = computed(() => `${stockShortName.value}（${code.value}）的每股淨值這幾年為什麼變多或變少？`)
 
@@ -75,9 +77,9 @@ const flowAnswer = computed(() => {
     .map(layer => ({ name: layer.name, value: layer.values.at(-1) ?? 0 }))
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
     .slice(0, 2)
-    .map(item => `${item.name} ${item.value} 元`)
+    .map(item => `${item.name} ${perShare(item.value)} 元`)
     .join('與')
-  return `${last.fiscalYear} 年每股淨值從 ${last.openingBvps} 元變成 ${last.closingBvps} 元、${sign} ${Math.abs(change).toFixed(2)} 元。變動最大的兩項是${top}。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。`
+  return `${last.fiscalYear} 年每股淨值從 ${perShare(last.openingBvps)} 元變成 ${perShare(last.closingBvps)} 元、${sign} ${Math.abs(change).toFixed(2)} 元。變動最大的兩項是${top}。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。`
 })
 
 const { breadcrumbs } = useStockPageSeo({
@@ -125,14 +127,14 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in flowEntries" :key="entry.fiscalYear">
             <th scope="row">{{ entry.fiscalYear }}</th>
-            <td>{{ entry.openingBvps }}</td>
-            <td>{{ entry.netIncome }}</td>
-            <td>{{ entry.cashDividends }}</td>
-            <td>{{ entry.otherComprehensiveIncome }}</td>
-            <td>{{ entry.capitalIssued }}</td>
-            <td>{{ entry.shareCountEffect }}</td>
-            <td>{{ entry.other }}</td>
-            <td>{{ entry.closingBvps }}</td>
+            <td>{{ perShare(entry.openingBvps) }}</td>
+            <td>{{ perShare(entry.netIncome) }}</td>
+            <td>{{ perShare(entry.cashDividends) }}</td>
+            <td>{{ perShare(entry.otherComprehensiveIncome) }}</td>
+            <td>{{ perShare(entry.capitalIssued) }}</td>
+            <td>{{ perShare(entry.shareCountEffect) }}</td>
+            <td>{{ perShare(entry.other) }}</td>
+            <td>{{ perShare(entry.closingBvps) }}</td>
           </tr>
         </tbody>
       </SharedTable>

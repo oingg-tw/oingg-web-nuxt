@@ -5,7 +5,7 @@ import type { HoldingMarket, HoldingMarketFields } from '~/composables/holdings/
 //     用的樣子。原本這裡自己打 POST /screener/values、每檔 ETF 一支配息、整份特別股清單，再合併三種股利；合併規則現在在數據中台
 //   - 已實現損益的代號（出清的不在 GET /holdings）：loadQuotes 只補收盤價
 //   - 大盤殖利率
-interface ScreenerValue { value: string | null; knowledgeDate: string | null }
+interface ScreenerValue { value: string | number | null; knowledgeDate: string | null }
 
 // ponytail: /screener/values 一次最多 200 檔；超過的不會有報價，頁面會照實算進「沒有報價」。
 // 真的有人出清過 200 檔以上再分批。

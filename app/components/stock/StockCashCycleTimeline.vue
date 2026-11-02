@@ -54,7 +54,8 @@ const pct = (value: number): string => `${Math.max((value / span.value) * 100, 0
 // 第 57.5 天才付給供應商，所以那 19.4 天是「已經收到錢、還沒付出去」，它在付現那條線的**裡面**。
 const headDays = computed(() => Math.min(pay.value, cycle.value))
 
-const days = (value: number | null): string => (value === null ? '－' : `${value.toFixed(1)} 天`)
+// 現金轉換循環可以是負的，負號是「−」（這段也進 aria-label，螢幕閱讀器讀得出「負」）
+const days = (value: number | null): string => (value === null ? '－' : minusSign(`${value.toFixed(1)} 天`))
 
 interface Step { title: string; explain: string }
 const steps = computed<Step[]>(() => {
@@ -153,10 +154,10 @@ const chartLabel = computed(() => {
           </div>
           <div class="cctl__seg cctl__seg--cash" :class="{ 'is-negative': cash < 0 }" :style="{ '--w': pct(Math.abs(cash)) }">
             <span class="cctl__seg-name">{{ cash < 0 ? '還沒付' : '自己墊' }}</span>
-            <span class="cctl__seg-days">{{ cash.toFixed(1) }}</span>
+            <span class="cctl__seg-days">{{ minusSign(cash.toFixed(1)) }}</span>
           </div>
         </div>
-        <p class="cctl__track-label cctl__track-label--pay">現金轉換循環 {{ cash.toFixed(1) }} 天</p>
+        <p class="cctl__track-label cctl__track-label--pay">現金轉換循環 {{ minusSign(cash.toFixed(1)) }} 天</p>
       </div>
 
       <div class="cctl__note cctl__note--step">

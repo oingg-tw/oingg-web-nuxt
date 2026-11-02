@@ -107,7 +107,7 @@ export const getMarketDirectory = defineCachedFunction(
 )
 
 interface ScreenerFieldValue {
-  value: string | null
+  value: string | number | null
   knowledgeDate: string
   nullReason: string | null
 }
@@ -521,7 +521,8 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
   //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
   const leader = (definition.monthlyReport || definition.fullYear) && rows[0] ? await businessFetch<{ yearMonth?: string; values?: Record<string, unknown> }>(`/etfs/${rows[0].symbol}`) : null
-  const reportMonth = definition.monthlyReport ? String(leader?.yearMonth ?? '') : ''
+  // yearMonth："202609"（舊）或 "2026-09"（新，2026-11-03 起），normalizeYearMonth 兩種都收
+  const reportMonth = definition.monthlyReport ? normalizeYearMonth(leader?.yearMonth) : null
   // 全年數字（總費用率）：第一名有值的最近一年（上游：「expenseRatio 只用最新一個完整年度」），跟排行用的值對得上才標，不猜
   const leaderValues = leader?.values ?? {}
   const latestYear = Math.max(0, ...Object.keys(leaderValues)
@@ -534,7 +535,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     rows,
     groups,
     valueYear,
-    asOf: /^\d{6}$/.test(reportMonth) ? `${reportMonth.slice(0, 4)}-${reportMonth.slice(4)}` : null
+    asOf: reportMonth
   }
 }
 
@@ -560,9 +561,10 @@ export const getRanking = defineCachedFunction(
     // 基期太小」，不是剔除「不知道基期」——後者會讓一個缺欄位的上游問題靜靜地改變榜單內容。
     const kept = floor
       ? response.results.filter(result => {
-          const growth = Number(parseDecimal(result.values[definition.field]?.value))
-          const current = Number(parseDecimal(result.values[floor.valueField]?.value))
-          if (!Number.isFinite(growth) || !Number.isFinite(current)) return true
+          // 缺值保留（上面那段的規則）：parseDecimal 的 null 不能先 Number()——Number(null) 是 0，沒有基期的列會被當成基期 0 剔掉（2026-11-03 查到）
+          const growth = parseDecimal(result.values[definition.field]?.value)
+          const current = parseDecimal(result.values[floor.valueField]?.value)
+          if (growth === null || current === null) return true
           const divisor = 1 + growth / 100
           if (divisor === 0) return true
           // **帶正負號比，不要用絕對值**（2026-10-01 修）。上游的年增率分母是 |基期|（型錄的

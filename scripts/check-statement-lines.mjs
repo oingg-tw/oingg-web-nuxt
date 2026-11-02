@@ -55,10 +55,10 @@ console.log('資產負債表，預設精簡（≥2% 總資產）')
   const { lines, hidden } = buildStatementLines(columns, 'balanceSheet', balance, null, false)
   assert(same(keys(lines), ['cash', 'receivables', 'orphan', 'current_assets__other', 'current_assets', 'ppe', 'misc_big', 'misc_negative', 'misc_total', 'noncurrent_assets__other', 'noncurrent_assets', 'assets']),
     `明細在前、合計在後，依 GL 排（實得 ${keys(lines).join(',')}）`)
-  assert(lines.find(line => line.key === 'current_assets__other')?.current === '5', '「其他」＝流動資產 600 −（300＋250＋45），小科目 tiny 併進去')
+  assert(lines.find(line => line.key === 'current_assets__other')?.current === 5, '「其他」＝流動資產 600 −（300＋250＋45），小科目 tiny 併進去')
   assert(lines.find(line => line.key === 'orphan') !== undefined, '父欄位沒有數字的科目掛到最近有數字的祖先')
   assert(lines.find(line => line.key === 'misc_total')?.total === true, '合計本身低於門檻，但底下有列出的科目：照樣列、而且是合計')
-  assert(lines.find(line => line.key === 'noncurrent_assets__other')?.current === '15', '非流動資產的「其他」＝400 −（380＋5），沒收錄的子科目都在這裡')
+  assert(lines.find(line => line.key === 'noncurrent_assets__other')?.current === 15, '非流動資產的「其他」＝400 −（380＋5），沒收錄的子科目都在這裡')
   assert(!keys(lines).includes('misc_total__other'), '50 + (−45) = 5：雜項合計沒有「其他」')
   assert(!keys(lines).includes('never_filed') && !keys(lines).includes('zero_line'), '沒申報、是 0 的科目不列')
   assert(!keys(lines).includes('share_count'), '股數不是金額，精簡模式不列')
@@ -81,7 +81,7 @@ console.log('損益表：營業成本是減項')
   assert(!keys(exact).includes('gross_profit__other'), '100 − 60 = 40：沒有「其他」')
   const off = buildStatementLines(columns, 'incomeStatement', { gross_profit: '41', revenue: '100', operating_costs: '60' }, { gross_profit: '30', revenue: '90', operating_costs: '60' }, false).lines
   const other = off.find(line => line.key === 'gross_profit__other')
-  assert(other?.current === '1' && other?.prior === '0', '「其他」兩期各自算：當期 1、去年同期 0')
+  assert(other?.current === 1 && other?.prior === 0, '「其他」兩期各自算：當期 1、去年同期 0')
 }
 
 console.log('現金流量表的段落順序（GL 有字母也有數字）')

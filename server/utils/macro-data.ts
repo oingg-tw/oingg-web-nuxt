@@ -13,15 +13,17 @@ import type { EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRisk
 // 8000：上游上限 2026-09-22 起（analysis-ts 113dd818 → 業務中台 91f5aec），月線用不到、日線 1999 起約 6,900 列也裝得下。
 const TAIEX_LIMIT = 8000
 
-// close 是字串（業務中台 市場資料的 Decimal 慣例），在這裡轉一次；轉不成的丟掉而不是留 NaN
+// close：業務中台原本送十進位字串，2026-11-03 起照標準送數字；parseDecimal 兩種都收，缺值是 null（Number(null) 會變成 0）。
+// tradeDate 缺的時候原本是 ""，之後是 null。缺值的點丟掉，不留 0 或 NaN
 const cachedTaiexMonthly = defineCachedFunction(
   async (): Promise<TaiexPoint[]> => {
-    const taiex = await businessFetch<{ entries: { tradeDate: string; close: string | number }[] }>(
+    const taiex = await businessFetch<{ entries: { tradeDate: string | null; close: string | number | null }[] }>(
       `/market/taiex-daily-price?interval=monthly&limit=${TAIEX_LIMIT}`
     )
-    return taiex.entries
-      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
-      .filter(point => Number.isFinite(point.close))
+    return taiex.entries.flatMap((entry) => {
+      const close = parseDecimal(entry.close)
+      return entry.tradeDate && close !== null ? [{ tradeDate: entry.tradeDate, close }] : []
+    })
   },
   { name: 'hub-taiex-monthly', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
 )
@@ -110,14 +112,20 @@ export const getMarketEvents = defineCachedFunction(
       // Daily alongside the monthly average — a different series with a different sensitivity, and
       // the page keeps them in separate lists. Fetched here rather than by the page so both halves
       // come from one cached call, same as every other page in this zone.
-      businessFetch<{ entries: { tradeDate: string; close: string | number }[] }>(`/market/taiex-daily-price?interval=daily&limit=${TAIEX_LIMIT}`)
+      businessFetch<{ entries: { tradeDate: string | null; close: string | number | null }[] }>(`/market/taiex-daily-price?interval=daily&limit=${TAIEX_LIMIT}`)
     ])
+    // parseDecimal：字串、數字都收，缺值是 null。原本 Number(null) 是 0，缺值的月份會畫成加權指數 0、被算成一段 −100% 的下跌（2026-11-03 查到）
     const months: MarketEventMonth[] = summary.entries
-      .map(entry => ({ period: entry.yearMonth, avgTaiex: Number(entry.avgTaiex) }))
-      .filter(month => month.period && Number.isFinite(month.avgTaiex))
+      .flatMap((entry) => {
+        const avgTaiex = parseDecimal(entry.avgTaiex)
+        return entry.yearMonth && avgTaiex !== null ? [{ period: entry.yearMonth, avgTaiex }] : []
+      })
+    // tradeDate：業務中台缺日期原本給 ""，2026-11-03 起給 null，兩種都略過
     const days: MarketEventDay[] = daily.entries
-      .map(entry => ({ tradeDate: entry.tradeDate, close: Number(entry.close) }))
-      .filter(day => Number.isFinite(day.close))
+      .flatMap((entry) => {
+        const close = parseDecimal(entry.close)
+        return entry.tradeDate && close !== null ? [{ tradeDate: entry.tradeDate, close }] : []
+      })
     return { months, days }
   },
   { name: 'hub-market-events', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }

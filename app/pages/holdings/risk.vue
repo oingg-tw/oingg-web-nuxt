@@ -61,12 +61,12 @@ watch(drawdownRows, (rows) => {
 const report = computed(() => (outcome.value?.ok ? outcome.value.result : null))
 const companyByCode = useCompanyLookup(() => report.value?.holdings.map(holding => holding.symbol) ?? [])
 
-function pct(value: string | null | undefined, digits = 1): string {
+function pct(value: string | number | null | undefined, digits = 1): string {
   if (value === null || value === undefined) return '－'
   return minusSign(`${(Number(value) * 100).toFixed(digits)}%`)
 }
 
-function plain(value: string | null | undefined, digits = 2): string {
+function plain(value: string | number | null | undefined, digits = 2): string {
   return value === null || value === undefined ? '－' : minusSign(Number(value).toFixed(digits))
 }
 
@@ -96,7 +96,8 @@ const metricRows = computed(() => {
 function metricRowsOf(r: RiskReport) {
   const tailMissing = firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS))
   // 以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
-  const loss = (value: string | null | undefined) => (r.marketValue && value != null ? holdingsMetricText(String(Math.abs(Number(value))), 'money') : null)
+  // 市值明確比 null（2026-11-03：業務中台改送數字後，0 用 r.marketValue && … 會被當成沒有）
+  const loss = (value: string | number | null | undefined) => (r.marketValue != null && value != null ? holdingsMetricText(Math.abs(Number(value)), 'money') : null)
   const varLoss = loss(r.portfolio.valueAtRisk95Amount)
   const esLoss = loss(r.portfolio.expectedShortfall95Amount)
   return [
@@ -151,7 +152,7 @@ const contributionOption = computed(() => {
   const ink = getChartInk(resolvedMode.value)
   // ECharts 的類別軸由下往上排，反過來才是最大的在最上面
   const holdings = [...contributionHoldings.value].reverse()
-  const toPct = (value: string | null) => (value === null ? null : Number((Number(value) * 100).toFixed(1)))
+  const toPct = (value: string | number | null) => (value === null ? null : Number((Number(value) * 100).toFixed(1)))
   // 一律一位小數：「{c}%」會把 54.0 印成「54%」，跟旁邊的「53.3%」對不齊
   const label = (color: string) => ({ show: true, position: 'right', color, fontSize: 16, formatter: ({ value }: { value: number | null }) => (value === null ? '' : `${value.toFixed(1)}%`) })
   return {

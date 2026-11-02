@@ -15,7 +15,8 @@ export default defineEventHandler(async (event): Promise<PreferredPageResponse> 
     dividendsByYear = {}
     for (const year of history.entries ?? []) {
       for (const dividend of year.events ?? []) {
-        if (!dividend.exDividendDate || !dividend.cashDividend) continue
+        // 0 元的事件不算配了息（停發的年度照樣寫沒配）；明確比 null 與 ≤ 0，不用 !cashDividend 混在一起（2026-11-03）
+        if (!dividend.exDividendDate || dividend.cashDividend == null || dividend.cashDividend <= 0) continue
         const key = dividend.exDividendDate.slice(0, 4)
         dividendsByYear[key] = Number(((dividendsByYear[key] ?? 0) + dividend.cashDividend).toFixed(6))
       }

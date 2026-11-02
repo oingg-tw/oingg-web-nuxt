@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict'
 import { fixedRateText, fixedSignedRateText, formatLogAxisTick, formatMoney, formatSignificantDigits, groupThousands, minusSign } from '../shared/utils/number-format.ts'
 import { cellPeriodText } from '../app/utils/screener-value.ts'
+import { normalizeYearMonth } from '../shared/utils/year-month.ts'
 
 assert.equal(groupThousands(2446), '2,446')
 assert.equal(groupThousands('-1234567.89'), '−1,234,567.89')
@@ -43,4 +44,10 @@ assert.equal(minusSign('營收 -3.1%（2026-09）'), '營收 −3.1%（2026-09�
 assert.equal(minusSign('1.21～-0.18'), '1.21～−0.18')
 assert.equal(minusSign('A1-5、00679B-1'), 'A1-5、00679B-1')
 assert.equal(minusSign('<div style="margin:-4px">-2</div>'), '<div style="margin:-4px">−2</div>')
+// 年月（shared/utils/year-month.ts）：舊的 "202609" 與新的 "2026-09" 都收成 "2026-09"，認不得的是 null
+assert.equal(normalizeYearMonth('202609'), '2026-09')
+assert.equal(normalizeYearMonth('2026-09'), '2026-09')
+assert.equal(normalizeYearMonth('202613'), null)
+assert.equal(normalizeYearMonth(''), null)
+assert.equal(normalizeYearMonth(null), null)
 console.log('number format: ok')

@@ -9,8 +9,8 @@ import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 // endpoint has no `/summary` suffix, no marketCap section at all, and price only ever carries
 // `close` — no volume, no change amount/percent (stock/[code].vue derives those for real from
 // useDailyPriceHistory's last two entries instead of assuming this endpoint has them). 業務中台's
-// own numbers also come back as strings (its Zod schema: `z.string().nullable()`), not numbers —
-// toNumber() below is the one place that conversion happens, so every caller gets real numbers.
+// own numbers came back as strings (its Zod schema: `z.string().nullable()`); 業務中台 sends JSON numbers from 2026-11-03 —
+// toNumber() below takes either and is the one place that conversion happens, so every caller gets real numbers.
 export interface StockSummaryPrice {
   tradeDate: string
   close: number
@@ -36,15 +36,15 @@ export interface StockSummary {
 
 interface RawStockQuote {
   symbol: string
-  price: { tradeDate: string; close: string | null } | null
+  price: { tradeDate: string; close: string | number | null } | null
   // liveCashDividendYield／…TradeDate：analysis-ts 4532d48e 的 quote 加、業務中台照轉
-  valuation: { tradeDate: string; peRatio: string | null; pbRatio: string | null; liveCashDividendYield?: string | null; liveCashDividendYieldTradeDate?: string | null } | null
+  valuation: { tradeDate: string; peRatio: string | number | null; pbRatio: string | number | null; liveCashDividendYield?: string | number | null; liveCashDividendYieldTradeDate?: string | null } | null
   tradingHalt?: TradingHalt | null
   delisting?: Delisting | null
 }
 
-function toNumber(value: string | null | undefined): number | null {
-  if (value === null || value === undefined) return null
+function toNumber(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
 }

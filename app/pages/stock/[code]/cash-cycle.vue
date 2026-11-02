@@ -74,7 +74,8 @@ const newestPeriod = computed(() => {
 })
 const isStale = computed(() => hasCycle.value && newestPeriod.value !== null && periodLabel.value !== newestPeriod.value)
 
-const days = (value: number | null): string => (value === null ? '－' : `${value.toFixed(1)} 天`)
+// 現金轉換循環可以是負的（收款比付款快），負號是「−」
+const days = (value: number | null): string => (value === null ? '－' : minusSign(`${value.toFixed(1)} 天`))
 
 // 恆等式自己驗一次再宣稱。容許值取 ±0.05 天：三個子項各自四捨五入到小數點後兩位，相加的誤差不會超過
 // 這個量級。對不起來就不印算式——跟 /dividend-source 的 reconciles() 同一條原則：不宣稱，不是不顯示。
@@ -216,7 +217,7 @@ const { breadcrumbs } = useStockPageSeo({
             <td class="seo-table__num">{{ row.receivables.toFixed(1) }}</td>
             <td class="seo-table__num">{{ row.cycle.toFixed(1) }}</td>
             <td class="seo-table__num">{{ row.payables.toFixed(1) }}</td>
-            <td class="seo-table__num">{{ row.cash.toFixed(1) }}</td>
+            <td class="seo-table__num">{{ minusSign(row.cash.toFixed(1)) }}</td>
           </tr>
         </tbody>
       </SharedTable>

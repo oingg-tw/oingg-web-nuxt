@@ -107,14 +107,14 @@ function displayLabel(field: EtfFilterField): string {
   return LABEL_OVERRIDES[field.field] ?? field.label
 }
 
-function formatValue(field: EtfFilterField | undefined, raw: string | null | undefined): string {
+function formatValue(field: EtfFilterField | undefined, raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
   if (field?.kind === 'categorical') return labelEachValue(raw, value => valueLabel(field.field, value))
   const value = Number(raw)
-  if (!Number.isFinite(value)) return raw
+  if (!Number.isFinite(value)) return String(raw)
   // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
   if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(value.toFixed(2)) : formatMoney(value)
-  if (field?.unit === '%') return `${raw}%`
+  if (field?.unit === '%') return minusSign(`${raw}%`)
   return field?.unit && field.unit !== '無單位' ? `${groupThousands(raw)} ${field.unit}` : groupThousands(raw)
 }
 
@@ -160,7 +160,7 @@ export function useEtfSource(): UniverseSource {
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
     // 業務中台 不能排這一欄，只排已載入的列（同普通股）；欄名同普通股的回應
-    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => raw ?? '—', sortable: 'client' }
+    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '—' : String(raw)), sortable: 'client' }
     const year = EXPENSE_RATIO_YEAR.exec(field)?.[1]
     const meta = fieldsByKey.value.get(field)
     return {
@@ -192,7 +192,8 @@ export function useEtfSource(): UniverseSource {
       name: row.companyName,
       values: Object.fromEntries(Object.entries(row.values).map(([field, value]) => [
         snapshotFieldId(field),
-        { value: value === null ? null : String(value), knowledgeDate: '', nullReason: null }
+        // 數字照數字放（2026-11-03，原本 String() 存成字串、顯示時再 Number() 回來）；布林、陣列（業務中台改成保留陣列）寫成文字
+        { value: value === null || typeof value === 'number' || typeof value === 'string' ? value : Array.isArray(value) ? (value as unknown[]).join('、') || null : String(value), knowledgeDate: '', nullReason: null }
       ]))
     }
   }

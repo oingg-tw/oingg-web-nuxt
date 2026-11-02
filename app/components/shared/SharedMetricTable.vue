@@ -12,7 +12,7 @@ export interface ScreenerResultTableColumn {
   label: string
   // ---- 2026-10-15 三組篩選（普通股、特別股、ETF）共用這張表 ----
   // 這一欄自己的格式；不給就照型錄的單位（formatScreenerValue）。ETF 的規模、特別股的發行價這類要自己決定
-  format?: (raw: string | null | undefined) => string
+  format?: (raw: string | number | null | undefined) => string
   // 這一欄怎麼排：'server' 交給父層打後端、'client' 只排已載入的列、false 不能排。不給就照原本的規則（見 sortableFor）
   sortable?: 'server' | 'client' | false
   // 第一下由小到大（溢價率、費用率這類「越小越符合多數人要找的」）；不給就照 ASCENDING_FIRST_METRICS
@@ -110,7 +110,7 @@ function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
 // price or ratio like "23.10" should keep showing exactly what the backend returned, not get its
 // trailing zero silently trimmed by toPrecision for no benefit (nothing that size ever overflows
 // this column to begin with).
-function formatValue(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
+function formatValue(column: ScreenerResultTableColumn, raw: string | number | null | undefined): string {
   if (column.format) return column.format(raw)
   // 上面三段理由（市值有效數字、千分位、尾零保留）的實作在 app/utils/screener-value.ts，觀察清單共用
   const located = locateFieldInSchema(props.categories, column.field)
@@ -127,7 +127,7 @@ const riverPalette = computed(() => {
   const colors = getPriceColors(resolvedMode.value, market.value)
   return riverColors(colors.up, colors.down, RIVER_ZONE_NAMES.length - 2)
 })
-function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | undefined): { zone: number; color: string; textClass: string } | null {
+function riverZoneOf(column: ScreenerResultTableColumn, raw: string | number | null | undefined): { zone: number; color: string; textClass: string } | null {
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   if (raw == null || metric?.kind !== 'categorical' || !metric.key.endsWith('RiverBand')) return null
   const zone = Number(raw)
@@ -144,7 +144,7 @@ function riverZoneOf(column: ScreenerResultTableColumn, raw: string | null | und
 // 年增率、年減率的格子用漲跌色（2026-10-22，使用者：「篩選 表格 舉凡 年增率 年減率 數字 都用 漲跌色」）：指標名稱以年增率／年減率結尾
 // （可以再接「變化」）才算。「營收年增率波動」是標準差、永遠是正的，不是增減，所以不上色
 const YOY_NAME = /(年增率|年減率)(變化)?$/
-function directionClassOf(column: ScreenerResultTableColumn, raw: string | null | undefined): string {
+function directionClassOf(column: ScreenerResultTableColumn, raw: string | number | null | undefined): string {
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(raw) : ''
 }

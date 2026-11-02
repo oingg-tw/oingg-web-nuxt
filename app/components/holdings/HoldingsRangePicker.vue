@@ -64,7 +64,7 @@ const status = computed(() => (props.pending ? '' : `已顯示 ${range.value[0]}
       <label class="holdings-range__field">到 <input v-model.lazy="to" type="date" class="holdings-range__input" :min="range[0]" :max="today"></label>
     </span>
     <span v-else class="holdings-range__text">{{ slash(range[0]) }}～{{ slash(range[1]) }}</span>
-    <span v-if="days" class="holdings-range__text">共 {{ days }} 個交易日</span>
+    <span v-if="days != null" class="holdings-range__text">共 {{ days }} 個交易日</span>
     <span v-else-if="daysPending" class="holdings-range__text"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">共 240 個交易日</span></span>
     <p class="visually-hidden" role="status">{{ status }}</p>
   </div>

@@ -158,8 +158,8 @@ export function buildStatementLines(columns: StatementColumn[], statementType: S
           total: false,
           other: true,
           unit: column.unit,
-          current: otherCurrent === null ? null : String(Math.round(otherCurrent)),
-          prior: otherPrior === null ? null : String(Math.round(otherPrior))
+          current: otherCurrent === null ? null : Math.round(otherCurrent),
+          prior: otherPrior === null ? null : Math.round(otherPrior)
         })
       }
     }

@@ -9,7 +9,7 @@
 export const NO_DIVIDEND_TEXT = '不配息'
 
 // 多值的類別欄位（除權息月份，上游寫成「1、7、11」，2026-10-22）逐項換成選項的名稱：「1 月、7 月、11 月」。三組篩選共用
-export const labelEachValue = (raw: string, labelOf: (value: string) => string | undefined) => raw.split('、').map(value => labelOf(value) ?? value).join('、')
+export const labelEachValue = (raw: string | number, labelOf: (value: string) => string | undefined) => String(raw).split('、').map(value => labelOf(value) ?? value).join('、')
 
 // 一格數字的資料時間（2026-10-23，使用者：「顯示資料時間 那邊 近四季的資料可以一律用 26Q1 26Q2這種表示方式嗎? 這才是用戶真正關心的」）：
 // 有財報期別就寫期別——單季、累計、近四季是最後那一季（"2026Q2" 寫成 26Q2，同「最新財報季別」的選項），年度是年份（"2025"），月頻是
@@ -27,23 +27,24 @@ export type ScreenerOption = { value: string | number; label: string; fiscalPeri
 export const findScreenerOption = (options: readonly ScreenerOption[] | null | undefined, raw: string | number): ScreenerOption | null =>
   options?.find(option => String(option.value) === String(raw) || (option.fiscalPeriod != null && option.fiscalPeriod === String(raw))) ?? null
 
-// options：類別型欄位（型錄的 kind categorical，例如河道位置）的選項。上游的值一律是十進位字串（"0"），選項的 value 是數字，
-// 所以用字串比對後顯示中文（破底…破頂）；對不到的照原值（2026-10-21）
-export function formatScreenerValue(raw: string | null | undefined, unit: string | undefined, field?: string, options?: readonly ScreenerOption[] | null): string {
+// options：類別型欄位（型錄的 kind categorical，例如河道位置）的選項，選項的 value 是數字，用字串比對後顯示中文（破底…破頂）；
+// 對不到的照原值（2026-10-21）。值：業務中台原本把數字轉成十進位字串（"0"、"23.1"），2026-11-03 起照標準改送 JSON 數字（文字欄位
+// 照舊是字串），兩種都收
+export function formatScreenerValue(raw: string | number | null | undefined, unit: string | undefined, field?: string, options?: readonly ScreenerOption[] | null): string {
   if (raw === null || raw === undefined) return '—'
   if (options?.length) return labelEachValue(raw, value => findScreenerOption(options, value)?.label)
   if (field === 'dividendYield.EOD' && Number(raw) === 0) return NO_DIVIDEND_TEXT
-  if (unit === '%') return `${raw}%`
+  if (unit === '%') return minusSign(`${raw}%`)
   const value = Number(raw)
-  if (!Number.isFinite(value)) return raw
+  if (!Number.isFinite(value)) return String(raw)
   if (Math.abs(value) >= 1e6) return formatSignificantDigits(value, 4)
   return groupThousands(raw)
 }
 
 // 兩個欄位值的升冪比較：數字比數字；讀不出數字的（例如日期字串）照字串比。null 由呼叫端決定放哪裡。
 // 觀察清單的表格（el-table 的 sort-method）與手機卡片的排序選單共用（2026-10-08）。
-export function compareFieldValues(x: string, y: string): number {
+export function compareFieldValues(x: string | number, y: string | number): number {
   const nx = Number(x)
   const ny = Number(y)
-  return Number.isFinite(nx) && Number.isFinite(ny) ? nx - ny : x.localeCompare(y)
+  return Number.isFinite(nx) && Number.isFinite(ny) ? nx - ny : String(x).localeCompare(String(y))
 }

@@ -24,7 +24,7 @@ export const styleBoxKey = (row: StyleBoxRow, column: StyleBoxColumn): StyleBoxK
 export type TraitKey = 'peRatio' | 'pbRatio' | 'dividendYield' | 'roe' | 'revenueGrowth' | 'beta' | 'revenueYoyVolatility' | 'top3HoldingsPct' | 'largeCapPct' | StyleBoxKey
 // 數字字串（beta 6 位、其餘 2 位小數）；dividendYield、roe、revenueGrowth、revenueYoyVolatility 與 *Pct 的單位是 %（"30.80" ＝ 30.8%）。
 // coverage ＝ 參與計算的持股占的權重（0～1）。全是 ETF 時 top3HoldingsPct 是真的 "0"，不是沒有資料
-export interface TraitValue { value: string | null; coverage: string | null }
+export interface TraitValue { value: string | number | null; coverage: string | number | null }
 export type Traits = Record<TraitKey, TraitValue>
 // benchmark：大盤（業務中台詞彙表）
 export interface HoldingsTraitsResult { asOf: string | null; portfolio: Traits; benchmark: Traits | null }
@@ -62,7 +62,7 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   { keys: ['top3HoldingsPct'], label: '持股集中', rule: '前三大持股（ETF 除外）占比 ≥ 50%', needsMarket: false, test: own => own >= 50 }
 ]
 
-function toNumber(value: string | null | undefined): number | null {
+function toNumber(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined) return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
@@ -89,7 +89,7 @@ export function traitTags(result: HoldingsTraitsResult): string[] {
   })
 }
 
-export function traitText(value: string | null | undefined, unit: 'ratio' | 'pct'): string {
+export function traitText(value: string | number | null | undefined, unit: 'ratio' | 'pct'): string {
   const number = toNumber(value)
   if (number === null) return '－'
   // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
@@ -97,7 +97,7 @@ export function traitText(value: string | null | undefined, unit: 'ratio' | 'pct
 }
 
 // 九宮格的一格：寫四捨五入的整數（不到 0.5% 寫「<1%」），底色深淺也照這個整數決定，同樣寫 10% 的兩格不會一深一淺
-export function boxCell(value: string | null | undefined): { text: string; level: 0 | 1 | 2 | 3 } {
+export function boxCell(value: string | number | null | undefined): { text: string; level: 0 | 1 | 2 | 3 } {
   const number = toNumber(value)
   if (number === null) return { text: '－', level: 0 }
   const rounded = Math.round(number)

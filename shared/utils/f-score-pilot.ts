@@ -9,8 +9,9 @@
 //
 // Lives in shared/utils (auto-imported on both sides) because the sitemap Nitro handler and the
 // page itself must agree on the same rule — two copies would drift.
-export const F_SCORE_PILOT_MAX_CODE = 1600
+export const F_SCORE_PILOT_MAX_CODE = '1600'
 
+// 代碼是字串，不轉成數字（2026-11-03 格式統一）：同樣四位數字時，字串比大小跟數字一樣
 export function isFScorePilotSymbol(symbol: string): boolean {
-  return /^\d{4}$/.test(symbol) && Number(symbol) < F_SCORE_PILOT_MAX_CODE
+  return /^\d{4}$/.test(symbol) && symbol < F_SCORE_PILOT_MAX_CODE
 }

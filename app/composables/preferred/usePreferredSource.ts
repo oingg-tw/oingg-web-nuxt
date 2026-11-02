@@ -82,12 +82,12 @@ const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   { key: 'call-risk', name: '收回資訊', description: '發行日、公司可收回、溢價率', fieldKeys: ['issueDate', 'redeemable', 'premiumRatePct'].map(snapshotFieldId) }
 ]
 
-function formatValue(field: string, raw: string | null | undefined): string {
+function formatValue(field: string, raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
   const metric = METRICS.get(field)
   if (metric?.kind === 'categorical') return labelEachValue(raw, value => metric.options?.find(option => option.value === value)?.label)
   const value = Number(raw)
-  if (!metric || !Number.isFinite(value)) return raw
+  if (!metric || !Number.isFinite(value)) return String(raw)
   return metric.unit === '%' ? minusSign(`${value.toFixed(2)}%`) : groupThousands(value.toFixed(2))
 }
 
@@ -127,7 +127,8 @@ function toRow(entry: PreferredStockEntry): ScreenerResultRow {
     // 陣列寫成跟 ETF、普通股上游一樣的「6、7」，空的是 null
     values: Object.fromEntries(Object.entries(entry).map(([field, value]) => [
       snapshotFieldId(field),
-      { value: Array.isArray(value) ? value.join('、') || null : value === null ? null : String(value), knowledgeDate: '', nullReason: null }
+      // 數字照數字放（2026-11-03，原本 String() 存成字串、顯示時再 Number() 回來）
+      { value: Array.isArray(value) ? value.join('、') || null : value === null || typeof value === 'number' || typeof value === 'string' ? value : String(value), knowledgeDate: '', nullReason: null }
     ]))
   }
 }
@@ -155,7 +156,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
 
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
-    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => raw ?? '—', sortable: 'client' }
+    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '—' : String(raw)), sortable: 'client' }
     return {
       field: fieldId,
       label: METRICS.get(field)?.name ?? field,

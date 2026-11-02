@@ -17,7 +17,7 @@ export const COVARIANCE_MIN_DAYS = 120
 // 負號是減號「−」（2026-11-03，使用者：「負號統一」；同 shared 的 minusSign，這個檔案不 import 所以自己換開頭那一個）
 const minus = (text: string) => text.replace(/^-/, '−')
 
-export function holdingsMetricText(value: string | null | undefined, format: HoldingsMetricFormat, missing = '－', digits?: number): string {
+export function holdingsMetricText(value: string | number | null | undefined, format: HoldingsMetricFormat, missing = '－', digits?: number): string {
   if (value === null || value === undefined) return missing
   const number = Number(value)
   if (!Number.isFinite(number)) return missing

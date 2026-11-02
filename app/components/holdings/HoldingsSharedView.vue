@@ -9,11 +9,12 @@ import type { HoldingMarketFields } from '~/composables/holdings/holdings-model'
 // （HoldingsSymbolTable），只讀：沒有展開明細。
 export interface PublicHolding extends HoldingMarketFields {
   symbol: string
-  weight?: string | null
-  // 報酬率：百分比字串，4 位小數（"12.3456"＝12.3456%）；成本不明時 null
-  returnPct?: string | null
+  // 數量欄位是字串（舊）或數字（業務中台 2026-11-03 起），兩種都收
+  weight?: string | number | null
+  // 報酬率：百分比，4 位小數（12.3456＝12.3456%）；成本不明時 null
+  returnPct?: string | number | null
   quantity?: number
-  averageCost?: string | null
+  averageCost?: string | number | null
   costUnknownQuantity?: number
 }
 
@@ -52,7 +53,7 @@ type SharedRow = (typeof rows.value)[number]
 
 const tone = (value: number | null, digits: number) => (value === null ? null : Number(value.toFixed(digits)))
 const DEFINITIONS: Record<string, (label: string) => HoldingsSymbolColumn<SharedRow>> = {
-  weight: label => ({ key: 'weight', label, minWidth: 100, card: 'summary', sortLabel: `${label}（大到小）`, text: row => holdingsMetricText(row.weight === null ? null : String(row.weight), 'pct'), sortValue: row => row.weight }),
+  weight: label => ({ key: 'weight', label, minWidth: 100, card: 'summary', sortLabel: `${label}（大到小）`, text: row => holdingsMetricText(row.weight, 'pct'), sortValue: row => row.weight }),
   returnPct: label => ({ key: 'returnPct', label, minWidth: 110, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.returnRatio), sortValue: row => row.returnRatio, tone: row => tone(row.returnRatio === null ? null : row.returnRatio * 100, 2) }),
   dayChange: label => ({ key: 'dayChange', label, minWidth: 120, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.dayPct === null ? null : row.dayPct / 100), sortValue: row => row.dayPct, tone: row => tone(row.dayPct, 2) }),
   quantity: label => ({ key: 'quantity', label, minWidth: 100, card: 'summary', sortLabel: `${label}（多到少）`, text: row => (row.quantity === null ? '－' : groupThousands(row.quantity)), sortValue: row => row.quantity }),

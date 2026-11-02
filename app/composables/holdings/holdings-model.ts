@@ -5,18 +5,18 @@
 // 三個來源（收盤價、殖利率、每股股利）同時抓，取不到的那一個只有它那幾欄是 null。頁面用 useHoldingsMarket 的 marketOf 換成 HoldingMarket
 export interface HoldingMarketFields {
   // 最近一筆有成交的收盤與日期（算市值）
-  close?: string | null
+  close?: string | number | null
   tradeDate?: string | null
   // 最新交易日當天的收盤與日期，那天沒成交是 null（今日漲跌＝dayClose − previousClose）
-  dayClose?: string | null
+  dayClose?: string | number | null
   dayCloseTradeDate?: string | null
-  previousClose?: string | null
+  previousClose?: string | number | null
   // 普通股：近 12 個月的現金股利；特別股：發行條件約定的年股息；ETF：近 12 個月的配息
-  dividendPerShare?: string | null
+  dividendPerShare?: string | number | null
   // 只有 ETF 有
   trailing12MonthWindow?: { start: string, end: string } | null
   // 交易所公布的殖利率（%）與日期；ETF 沒有
-  dividendYield?: string | null
+  dividendYield?: string | number | null
   dividendYieldTradeDate?: string | null
 }
 
@@ -26,12 +26,12 @@ export interface Holding extends HoldingMarketFields {
   // 其中成本不明的股數（業務中台 a742fff）。成本不明的股數先賣。
   costUnknownQuantity: number
   // Decimal 以字串送來。**只算成本已知的股數**；全部成本不明時是 null
-  averageCost: string | null
-  totalCost: string
-  realizedProfitLoss: string
+  averageCost: string | number | null
+  totalCost: string | number
+  realizedProfitLoss: string | number
   // 這批持股領過的現金股利（元，4 位小數字串；業務中台 1074647，2026-10-23）：除息日計入、股數用除息前一天收盤的持股（ETF 每單位配息），
   // 各帳戶各自算，部位歸零後重新買進從 0 算；沒扣匯費與二代健保補充保費。沒領過是 "0.0000"，只有匯入預覽是 null
-  dividendsReceived?: string | null
+  dividendsReceived?: string | number | null
   // 證交所／櫃買類股名稱（業務中台 3078dcf，2026-11-02，跟 /holdings/risk 同一份對照）：上游沒分類、類股目錄暫時取不到、匯入預覽時是 null
   sectorName?: string | null
 }
@@ -44,9 +44,9 @@ export interface Transaction {
   // REDUCE：依官方減資公告自動算的減資列（業務中台 8224dff，2026-10-23），source "capital-reduction"；quantity 是減資後股數，價格與費稅都是 "0"
   action: 'BUY' | 'SELL' | 'REDUCE'
   quantity: number
-  price: string
-  fee: string
-  tax: string
+  price: string | number
+  fee: string | number
+  tax: string | number
   tradeDate: string
   note: string | null
   // 匯入的列才有（業務中台 f3388fd）；手動輸入三個都是 null。期初部位是 source "opening"；
@@ -59,7 +59,7 @@ export interface Transaction {
   costUnknown: boolean
   // 減資列才有：減資前後股數、退還股款（4 位小數字串；彌補虧損是 "0.0000"，金額不明的混合式是 null）、每仟股換發股數、
   // 種類（cash_refund／loss_offset／mixed／other，開放的列舉）。note 另有一句中文說明
-  capitalReduction?: { heldBefore: number; heldAfter: number; refund: string | null; newSharesPerThousand: string; kind: string } | null
+  capitalReduction?: { heldBefore: number; heldAfter: number; refund: string | number | null; newSharesPerThousand: string | number; kind: string } | null
 }
 
 export interface TransactionInput {
@@ -114,21 +114,21 @@ export interface RealizedResult {
   to: string | null
   // 只有區間內至少有一筆賣出的代號。excluded* ＝ 賣到成本不明股數、因此不計入損益的部分。
   // costBasis（業務中台 96b55c5，2026-10-21，算報酬率的分母）＝ 賣掉那幾批成本已知股數的先進先出成本（含買進手續費，配股那一批是 0）
-  symbols: { symbol: string; realizedProfitLoss: string; costBasis: string; excludedSellCount: number; excludedShares: number }[]
+  symbols: { symbol: string; realizedProfitLoss: string | number; costBasis: string | number; excludedSellCount: number; excludedShares: number }[]
   // 2026-10-07（業務中台 9d691cd）：期間內賣出的統計。sellCount 0 時其他都是 null；金額是元的小數字串、可為負
   tradeStats: {
     sellCount: number
     winCount: number
     lossCount: number
-    winRate: string | null
-    averageWin: string | null
-    averageLoss: string | null
-    profitFactor: string | null
-    averageHoldingDays: string | null
+    winRate: string | number | null
+    averageWin: string | number | null
+    averageLoss: string | number | null
+    profitFactor: string | number | null
+    averageHoldingDays: string | number | null
   }
   // 各列四捨五入後的加總，所以畫面上的列一定加得起來
-  totalRealizedProfitLoss: string
-  totalCostBasis: string
+  totalRealizedProfitLoss: string | number
+  totalCostBasis: string | number
   excludedSellCount: number
   excludedShares: number
 }
@@ -174,50 +174,50 @@ export interface PerformanceResult {
   // 價格型加權指數。判斷與名稱在 utils/holdings-summary.ts 的 isTotalReturn／benchmarkName
   returnBasis?: 'total' | 'price'
   // 期間時間加權報酬（小數字串，6 位）；整段沒有持股時是 null
-  twr: string | null
+  twr: string | number | null
   // 同一段期間的大盤報酬（＝最後一點的 benchmarkCumulative，業務中台 3078dcf）
-  benchmarkReturn?: string | null
+  benchmarkReturn?: string | number | null
   // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）。
   // benchmarkCumulative 是大盤（加權報酬指數）從同一天起算的累積報酬：基準是持股第一天的前一個指數交易日收盤，持股第一天之前是 null
-  series: { tradeDate: string; cumulative: string | null; benchmarkCumulative?: string | null }[]
+  series: { tradeDate: string; cumulative: string | number | null; benchmarkCumulative?: string | number | null }[]
   // 沒成交、沿用前一個收盤價的天數。刻意不顯示（使用者 2026-10-05：「不用特別寫出來」）——逐檔列出
   // 讀起來像錯誤清單。2026-10-05 量到的大多是上櫃日線停在 9/24 的資料延遲，不是真的沒成交（已回報上游）。
   missingPrices: { symbol: string; dates: number }[]
   // ---- 2026-10-07 加的實際績效指標（業務中台 c4c5b5a／ddb5023；欄位意義見 業務中台 holdings.types.ts 的
   // PortfolioPerformanceReport）。全部是 6 位小數字串或 null；null 的原因由 utils/holdings-metrics.ts 分開命名。
   // 資金加權報酬，跟 twr 同一個尺度（整段期間）
-  mwr: string | null
+  mwr: string | number | null
   // 期間不滿 365 天時兩個都是 null
-  annualized: { twr: string | null; mwr: string | null }
+  annualized: { twr: string | number | null; mwr: string | number | null }
   // 金額是元的整數字串；turnover、costRatio 是整段期間的值、不年化，沒有曝險時是 null
-  trading: { buyAmount: string; sellAmount: string; fees: string; taxes: string; averageMarketValue: string | null; turnover: string | null; costRatio: string | null }
+  trading: { buyAmount: string | number; sellAmount: string | number; fees: string | number; taxes: string | number; averageMarketValue: string | number | null; turnover: string | number | null; costRatio: string | number | null }
   // sampleDays 少於 120 時三個值都是 null
-  benchmarkComparison: { sampleDays: number; upCapture: string | null; downCapture: string | null; omega: string | null }
+  benchmarkComparison: { sampleDays: number; upCapture: string | number | null; downCapture: string | number | null; omega: string | number | null }
   // 全部年化；sampleDays 少於 120、或 riskFree 是 null 時全部是 null；calmar 期間不滿一年也是 null
   riskAdjusted: {
     sampleDays: number
-    sharpe: string | null
-    sortino: string | null
-    calmar: string | null
-    m2: string | null
-    beta: string | null
-    jensenAlpha: string | null
-    trackingError: string | null
-    informationRatio: string | null
+    sharpe: string | number | null
+    sortino: string | number | null
+    calmar: string | number | null
+    m2: string | number | null
+    beta: string | number | null
+    jensenAlpha: string | number | null
+    trackingError: string | number | null
+    informationRatio: string | number | null
   }
   // 五大銀行一年期定存；sourceYearMonth ≠ yearMonth 表示那個月還沒有資料、沿用較早的月份
   riskFree: { source: string; latestYearMonth: string | null; rates: { yearMonth: string; ratePct: number; sourceYearMonth: string }[] } | null
   // 2026-10-07（業務中台 9d691cd）：逐年／逐月報酬（頭尾可能不滿一整期，tradingDays 看得出來）
   periodReturns: {
-    yearly: { period: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
-    monthly: { yearMonth: string; portfolio: string | null; benchmark: string | null; tradingDays: number }[]
+    yearly: { period: string; portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }[]
+    monthly: { yearMonth: string; portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }[]
   }
   // 實際帳本的跌幅：underwaterDays ＝ 期間內低於前高的交易日數，longestUnderwaterDays ＝ 最長連續那一段
-  drawdown: { maxDrawdown: string; peakDate: string | null; troughDate: string | null; recoveryDate: string | null; underwaterDays: number; longestUnderwaterDays: number; currentDrawdown: string }
+  drawdown: { maxDrawdown: string | number; peakDate: string | null; troughDate: string | null; recoveryDate: string | null; underwaterDays: number; longestUnderwaterDays: number; currentDrawdown: string | number }
   // 2026-10-16（業務中台 5afaf57）：同樣的現金流（算 mwr 的那一串）改在同樣的日子買賣加權指數。指數不扣交易成本、兩邊都不含現金股利。
   // 整個是 null：期間內沒有曝險，或第一筆現金流之前加權指數沒有收盤。endValue 可以是負的（影子組合賣超），那時 mwr 一律 null，
   // difference（portfolioEndValue − endValue，元）照算。舊版 image 沒有這個欄位，讀的時候當 null
-  sameFlowsBenchmark?: { endValue: string; portfolioEndValue: string; difference: string; mwr: string | null } | null
+  sameFlowsBenchmark?: { endValue: string | number; portfolioEndValue: string | number; difference: string | number; mwr: string | number | null } | null
 }
 
 // error：讀取失敗（交給全站彈窗，2026-10-11）；沒有 error 的失敗是可行動的 4xx（例如開始日期早於個股歷史價格），留在頁面上提示
@@ -236,8 +236,8 @@ export interface HoldingColumn {
 export type SaveColumnsResult = { ok: true } | { ok: false; reason: 'quota' | 'failed'; message: string | null }
 
 export interface RiskDrawdown {
-  // ≤ 0 的小數；期間內沒跌過是 "0.000000"
-  depth: string
+  // ≤ 0 的小數；期間內沒跌過是 0。業務中台 2026-11-03 起改送數字，沒有持股或總市值 ≤ 0（算不出來）時是 null，不再是 "0.000000"
+  depth: string | number | null
   peakDate: string | null
   troughDate: string | null
   // 回到前高的那一天；期間結束時還沒回到是 null
@@ -247,10 +247,10 @@ export interface RiskDrawdown {
 // 2026-10-07 加的分佈型風險：下行標準差（年化、門檻 0）、潰瘍指數、單日 95% VaR／ES（報酬，通常 ≤ 0）。
 // 樣本少於 100 個交易日時 VaR／ES 是 null。
 export interface RiskDistribution {
-  downsideDeviation: string | null
-  ulcerIndex: string | null
-  valueAtRisk95: string | null
-  expectedShortfall95: string | null
+  downsideDeviation: string | number | null
+  ulcerIndex: string | number | null
+  valueAtRisk95: string | number | null
+  expectedShortfall95: string | number | null
 }
 
 export interface RiskReport {
@@ -259,20 +259,20 @@ export interface RiskReport {
   tradingDays: number
   weightsAsOf: string | null
   // 現在持股的總市值（元，整數字串）；VaR／ES 的金額就是拿它乘的
-  marketValue: string | null
-  portfolio: { annualizedVolatility: string | null; beta: string | null; correlation: string | null; maxDrawdown: RiskDrawdown | null; valueAtRisk95Amount: string | null; expectedShortfall95Amount: string | null } & RiskDistribution
-  benchmark: { annualizedVolatility: string | null; maxDrawdown: RiskDrawdown | null } & RiskDistribution
+  marketValue: string | number | null
+  portfolio: { annualizedVolatility: string | number | null; beta: string | number | null; correlation: string | number | null; maxDrawdown: RiskDrawdown | null; valueAtRisk95Amount: string | number | null; expectedShortfall95Amount: string | number | null } & RiskDistribution
+  benchmark: { annualizedVolatility: string | number | null; maxDrawdown: RiskDrawdown | null } & RiskDistribution
   // 只看現在的市值權重，所以除非沒有持股都有值。effectiveHoldings ＝ 1 ÷ HHI
-  concentration: { hhi: string; effectiveHoldings: string; topThreeWeight: string } | null
+  concentration: { hhi: string | number; effectiveHoldings: string | number; topThreeWeight: string | number } | null
   // Σ wᵢσᵢ ÷ σₚ（≥ 1）；樣本少於 120 個交易日是 null
-  diversificationRatio: string | null
+  diversificationRatio: string | number | null
   // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與。riskContribution 是佔組合變異數的
   // 比例（加總約 1）；樣本少於 120 天、或這一檔沒參與時是 null
-  holdings: { symbol: string; weight: string | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: string | null }[]
+  holdings: { symbol: string; weight: string | number | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: string | number | null }[]
   // 2026-10-07（業務中台 9d691cd）。上游失敗時整個是 null。effectiveSectors ＝ 1 ÷ 產業 HHI
-  sectors: { effectiveSectors: string; groups: { sectorCode: string | null; sectorName: string | null; weight: string; symbols: string[] }[] } | null
+  sectors: { effectiveSectors: string | number; groups: { sectorCode: string | null; sectorName: string | null; weight: string | number; symbols: string[] }[] } | null
   // 組合本益比／股價淨值比是調和平均；*Coverage ＝ 有這個數字的持股佔市值的比例（虧損公司與 ETF 沒有本益比）
-  fundamentals: { dividendIncome: string | null; dividendYield: string | null; dividendCoverage: string | null; peRatio: string | null; peCoverage: string | null; pbRatio: string | null; pbCoverage: string | null } | null
+  fundamentals: { dividendIncome: string | number | null; dividendYield: string | number | null; dividendCoverage: string | number | null; peRatio: string | number | null; peCoverage: string | number | null; pbRatio: string | number | null; pbCoverage: string | number | null } | null
 }
 
 
@@ -281,13 +281,13 @@ export interface RiskReport {
 export type RiskOutcome = { ok: true; result: RiskReport } | { ok: false; message: string; error?: unknown }
 
 export interface HoldingMarket {
-  price: string | null
+  price: string | number | null
   priceDate: string | null
   // 今日漲跌用（2026-10-15）：最近一個交易日的收盤（stock.price，那天沒成交是 null）與前一個有成交日的收盤（stock.previousClose）。
   // 跟上面的 price（最近一筆有成交的收盤，算市值用）不同：市值要有價格就好，今日漲跌要的是「那一天」的變動
-  dayPrice: string | null
+  dayPrice: string | number | null
   dayPriceDate: string | null
-  previousClose: string | null
+  previousClose: string | number | null
   dividendPerShare: string | number | null
   // 交易所公布的殖利率（%，screener 的 dividendYield.EOD）；ETF 沒有這個欄位
   dividendYield: number | null

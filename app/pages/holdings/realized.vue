@@ -52,7 +52,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
 // 報酬率（2026-10-21，使用者：「holdings/realized 要加上獲利比率 比如 +50% 之類的」）＝ 已實現損益 ÷ 賣掉那幾股的買進成本（costBasis）。
 // 成本是 0（只賣到配股或成本不明的股數）時是 null
-const returnOf = (profitLoss: string, cost: string) => (Number(cost) > 0 ? Number(profitLoss) / Number(cost) : null)
+const returnOf = (profitLoss: string | number, cost: string | number) => (Number(cost) > 0 ? Number(profitLoss) / Number(cost) : null)
 
 const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
   const entry = companyByCode.value.get(row.symbol)

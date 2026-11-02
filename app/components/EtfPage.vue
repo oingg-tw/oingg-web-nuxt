@@ -39,9 +39,11 @@ const overviewNodes: StockNavNode[] = [{ label: '指標速覽', icon: Odometer, 
 const facetNodes = computed<StockNavNode[]>(() => facets.value.map(facet => ({ label: facet.label, to: () => etfFacetPath(code.value, facet.key) })))
 const navLabel = computed(() => `${shortName.value} ${code.value}`)
 
+// yearMonth："202609"（舊）或 "2026-09"（新，2026-11-03 起），normalizeYearMonth 兩種都收
+const reportMonth = computed(() => normalizeYearMonth(etf.value?.yearMonth))
 const footer = computed(() => ({
   sources: ['證交所、櫃買中心（股價、成交量）', '投信投顧公會基金月報', '投信公告的配息與配息組成'],
-  freshness: etf.value?.yearMonth ? `基金月報 ${etf.value.yearMonth.slice(0, 4)} 年 ${Number(etf.value.yearMonth.slice(4))} 月` : null,
+  freshness: reportMonth.value ? `基金月報 ${reportMonth.value.slice(0, 4)} 年 ${Number(reportMonth.value.slice(5))} 月` : null,
   links: [{ to: SCREENER_PATHS.etf, label: 'ETF 篩選' }]
 }))
 </script>

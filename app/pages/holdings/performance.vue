@@ -45,7 +45,7 @@ const indexName = computed(() => benchmarkName(totalReturn.value))
 
 // 大盤的累積報酬由 業務中台 對齊好（3078dcf，2026-11-02，原本這頁下載 2,100 天加權指數自己算）：兩條線從持股第一天起算，
 // 基準是它前一個指數交易日的收盤。持股第一天之前的點兩邊都是 null，走勢圖從持股第一天畫起
-const percentOf = (value: string | null | undefined) => (value == null ? null : Number(value) * 100)
+const percentOf = (value: string | number | null | undefined) => (value == null ? null : Number(value) * 100)
 const comparison = computed(() => {
   const outcome = performance.value
   if (!outcome?.ok) return null
@@ -108,7 +108,7 @@ const annualizedText = computed(() => {
 })
 
 // 逐年的座標叫 period（年份）、逐月的叫 yearMonth（業務中台詞彙表）
-const periodRow = (name: string, row: { portfolio: string | null; benchmark: string | null; tradingDays: number }) => ({
+const periodRow = (name: string, row: { portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }) => ({
   name,
   value: holdingsMetricText(row.portfolio, 'signedPct', '－', 2),
   market: holdingsMetricText(row.benchmark, 'signedPct', '－', 2),

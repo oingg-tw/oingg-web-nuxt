@@ -50,8 +50,9 @@ function normalizeScale(value: string): TextScale {
 // refresh until hydration re-applied the real value, which is a much more jarring layout jump
 // for a text-SIZE setting than it ever was for a color change.
 export function useTextScale() {
-  const rawScale = useCookie<string>('text-scale', { default: () => DEFAULT_SCALE, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
-  const scale = computed<TextScale>(() => normalizeScale(rawScale.value))
+  // 舊版 Nuxt 寫的 cookie 沒有引號（text-scale=110），讀回來是數字 110：沒轉成字串時 110％、120％ 重新整理後會掉回 100％
+  const rawScale = useCookie<string | number>('text-scale', { default: () => DEFAULT_SCALE, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
+  const scale = computed<TextScale>(() => normalizeScale(String(rawScale.value)))
   const elSize = computed(() => SCALE_TO_EL_SIZE[scale.value])
 
   useHead({

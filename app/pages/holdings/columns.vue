@@ -359,13 +359,13 @@ async function loadMetrics() {
     return
   }
   try {
-    const response = await fetchScreenerValues<{ value: string | null }>(symbols, fields)
+    const response = await fetchScreenerValues<{ value: string | number | null }>(symbols, fields)
     if (key !== metricsKey.value) return
     const percent = new Set(fields.filter(field => fieldOf(field)?.unit === '%'))
     metricValues.value = new Map(response.results.map(result => [result.symbol, new Map(fields.map((field) => {
-      // 空字串不當 0
+      // 缺值與空字串不當 0；0 照樣是 0（2026-11-03：業務中台改送 JSON 數字後，原本的 raw ? … 會把 0 當成沒有值）
       const raw = result.values[field]?.value
-      const value = raw ? Number(raw) : Number.NaN
+      const value = raw === null || raw === undefined || raw === '' ? Number.NaN : Number(raw)
       return [field, Number.isFinite(value) ? (percent.has(field) ? value / 100 : value) : null] as const
     }))]))
     metricsFailed.value = false

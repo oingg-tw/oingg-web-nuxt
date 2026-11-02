@@ -91,13 +91,13 @@ const ALWAYS_FIELDS = ['stock.price', 'stock.previousClose']
 const QUOTE_MAX = 200
 const NOTICE_MAX = 100
 
-function toNumber(value: string | null | undefined): number | null {
+function toNumber(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const synthetic = (value: string | null): ScreenerFieldValue => ({ value, knowledgeDate: '', nullReason: null })
+const synthetic = (value: string | number | null): ScreenerFieldValue => ({ value, knowledgeDate: '', nullReason: null })
 
 // fields：表格上的型錄欄位（固定的與使用者加的）。全部擠在同一次 /screener/values，多一欄不多一個請求。
 export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) {
@@ -156,7 +156,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
       next[code] = {
         values: {
           ...Object.fromEntries(Object.entries(raw).map(([field, cell]) => [field, cell ?? null])),
-          [WATCHLIST_CHANGE]: synthetic(changePercent === null ? null : String(changePercent)),
+          [WATCHLIST_CHANGE]: synthetic(changePercent),
           [WATCHLIST_EX_DIVIDEND]: synthetic(nextDividendEvent?.date ?? null)
         },
         change,

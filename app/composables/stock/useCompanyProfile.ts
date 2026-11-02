@@ -17,15 +17,13 @@ export interface NormalizedCompanyProfile {
   shortName: string | null
   foreignRegistrationCountry: string | null
   // 證交所類股（生態系詞彙表：代碼一律叫 sectorCode、名稱 sectorName，中文「類股」；2026-10-11 內部名稱也跟著改）。
-  // 上游 2026-10-10 起上櫃公司的 sectorName 也有值（原本一律 null）。listedDate／preferredStockShares 讀的是上游的
-  // listingDate／numberOfPreferenceShares。
-  sectorCode: string
+  // 上游 2026-10-10 起上櫃公司的 sectorName 也有值（原本一律 null）。listedDate 讀的是上游的 listingDate。
+  // 實收資本、股數那四個欄位與 auditingFirm 2026-11-03 拿掉：沒有地方讀，卻用 BigInt()／String() 轉了一遍（String(null) 還會變成 "null"）
+  // 沒有類股是 null（原本 String(null) 會變成字面上的 "null"）
+  sectorCode: string | null
   sectorName: string | null
   establishedDate: Date | null
   listedDate: Date | null
-  paidInCapital: bigint | null
-  privatePlacementShares: bigint | null
-  preferredStockShares: bigint | null
   // financialReportType／financialReportTypeName 2026-10-10 刪掉：從來沒有地方讀它們，而上游同日改名成 declaredDataType 時
   // 編碼方向也反了（舊的交易所代碼 "1"＝合併，新的 MOPS 編號 "2"＝合併，跟 metricDataType 同向）。要顯示「合併／個別」時
   // 讀 raw.declaredDataType，"2"＝合併、"1"＝個別——別照舊欄位的方向寫。
@@ -39,10 +37,8 @@ export interface NormalizedCompanyProfile {
   // here — 20 symbols sampled the day it shipped were all "2", with their backfill still running,
   // so treat a "1" as expected-but-unseen rather than confirmed.
   metricDataType: string | null
-  auditingFirm: string
-  issuedShares: bigint | null
   // 每股面額（元）。不是 10 元的公司，證交所、櫃買中心會在簡稱後面加 *（強生* 是 5 元），摘要卡寫出實際面額（2026-10-22）。
-  // 上游給字串（"5"），沒有資料是 null（創新板的幾家）
+  // 上游給字串（"5"）或數字（2026-11-03 起），沒有資料是 null（創新板的幾家）
   parValue: number | null
 }
 
@@ -52,17 +48,8 @@ function toDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-function toBigInt(value: unknown): bigint | null {
-  if (value === null || value === undefined || value === '') return null
-  try {
-    return BigInt(value as string | number)
-  } catch {
-    return null
-  }
-}
-
-// Real backend responses can't carry Date/bigint over JSON, so the raw payload arrives
-// as ISO date strings and stringified numbers — hydrate it into the typed shape here.
+// Real backend responses can't carry Date over JSON, so the raw payload arrives
+// as ISO date strings — hydrate it into the typed shape here.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
   // 全名 companyFullName、簡稱 companyName；興櫃看 market 的 TYPEK（rotc），market 是 null 時照樣三態的 null
   const name = raw.companyFullName
@@ -74,16 +61,11 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     name: typeof name === 'string' ? name : null,
     shortName: typeof shortName === 'string' ? shortName : null,
     foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
-    sectorCode: String(raw.sectorCode),
+    sectorCode: typeof raw.sectorCode === 'string' && raw.sectorCode ? raw.sectorCode : null,
     sectorName: (raw.sectorName as string | null) ?? null,
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
-    paidInCapital: toBigInt(raw.paidInCapitalNtd),
-    privatePlacementShares: toBigInt(raw.privatePlacementShares),
-    preferredStockShares: toBigInt(raw.numberOfPreferenceShares),
     metricDataType: (raw.metricDataType as string | null) ?? null,
-    auditingFirm: String(raw.auditingFirm),
-    issuedShares: toBigInt(raw.issuedShares),
     parValue: raw.parValue != null && raw.parValue !== '' && Number.isFinite(Number(raw.parValue)) ? Number(raw.parValue) : null
   }
 }
