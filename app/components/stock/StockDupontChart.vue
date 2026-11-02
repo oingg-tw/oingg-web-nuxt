@@ -14,8 +14,9 @@ const basis = defineModel<'TTM' | 'Q'>('basis', { default: 'TTM' })
 //（WCAG 1.4.1），也看得出哪條線屬於哪個軸。仍然不把 ROE 的變動歸因給某個因子。
 // 名稱帶單位：權益乘數在右軸 1.5 附近，卻會穿過左軸 54 那條格線，圖例不寫「（倍）」就會被讀成 54%。
 const ROE_SERIES = [
-  { code: 'roe', name: 'ROE（%）', lineType: 'solid', symbol: 'circle' },
-  { code: 'netProfitMargin', name: '稅後淨利率（%）', lineType: 'dashed', symbol: 'triangle' },
+  // 左軸的單位寫在圖例那一列的最左邊；右軸兩條單位不同，名字裡各自寫
+  { code: 'roe', name: 'ROE', lineType: 'solid', symbol: 'circle' },
+  { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dashed', symbol: 'triangle' },
   { code: 'assetTurnover', name: '資產週轉率（次）', lineType: 'dotted', symbol: 'rect', axis: 'right', format: dupontTimesText },
   { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'solid', symbol: 'diamond', axis: 'right', format: dupontMultipleText }
 ] as const satisfies readonly LineSeriesSpec[]

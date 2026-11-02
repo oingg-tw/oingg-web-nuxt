@@ -2,6 +2,7 @@
 import type { MarketEventsPageData } from '#shared/types/hub'
 import type { MarketPhase } from '#shared/utils/market-phases'
 import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue'
+import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // /macro/market-events — 大事件年表（2026-09-22）: the重大事件 timeline and what the index itself
 // did, on one page.
 //
@@ -32,6 +33,7 @@ const { data, error } = await useFetch<MarketEventsPageData>('/api/hub/macro-mar
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '大盤指數資料暫時無法取得', fatal: true })
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
+const isDesktop = useIsDesktop()
 const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 const months = computed(() => (data.value?.months ?? []).map(month => ({ period: month.period, value: month.avgTaiex })))
@@ -126,18 +128,8 @@ const chartOption = computed(() => {
   const extent = indexExtent.value
   const monthLabels = labels.value
   return {
-    grid: { left: 8, right: 16, top: 72, bottom: 28, containLabel: true },
-    // A real legend, on the chart rather than only in the caption below it（2026-09-22,「圖表上請
-    // 標示兩者差異」）. markArea carries no legend entry of its own, so the two treatments are
-    // declared by two empty line series below whose symbols mirror them — a filled square for the
-    // monthly bands, a hollow dashed one for the daily outlines. `selectedMode: false` because
-    // these entries are a key, not a toggle: clicking one would hide a series that has no data.
-    legend: {
-      top: 8,
-      left: 'center',
-      selectedMode: false,
-      data: ['月平均下跌段', '日收盤急跌段']
-    },
+    // 圖例與單位在圖外（legendGroups，SharedChartLegend），上緣只留最上面那個刻度的半格
+    grid: { left: 0, right: 12, top: 12, bottom: 28, containLabel: true },
     tooltip: {
       trigger: 'axis',
       // Hovering a month answers both questions the chart raises（2026-09-22,「Hover 過去就要能看出
@@ -200,7 +192,6 @@ const chartOption = computed(() => {
     yAxis: {
       type: 'log',
       logBase: 10,
-      name: '指數',
       ...(extent ? { min: extent.min, max: extent.max } : {}),
       axisLabel: { formatter: formatAxisIndex }
     },
@@ -243,44 +234,42 @@ const chartOption = computed(() => {
               // further）— dropped rather than clamped, since clamping would draw a box whose right
               // edge is a rendering artefact rather than a date.
               .filter(({ from, to }) => from >= 0 && to >= 0)
-              .map(({ from, to }) => [
-                {
-                  xAxis: from,
-                  itemStyle: {
-                    color: 'transparent',
-                    borderColor: getAccentColor(resolvedMode.value, accentColorName.value),
-                    borderWidth: 1,
-                    borderType: 'dashed' as const
-                  }
-                },
-                { xAxis: to }
-              ])
+              // 手機上幾十個窄外框擠成一排虛線、蓋過指數本身（2026-11-02 手機掃描），改成貼在上緣、至少一個月寬的實心色塊。
+              // 跟月平均下跌段的整條陰影仍是兩種畫法，不只靠顏色分
+              .map(({ from, to }) => isDesktop.value || !extent
+                ? [
+                    {
+                      xAxis: from,
+                      itemStyle: {
+                        color: 'transparent',
+                        borderColor: accent,
+                        borderWidth: 1,
+                        borderType: 'dashed' as const
+                      }
+                    },
+                    { xAxis: to }
+                  ]
+                : [
+                    { xAxis: from - 0.5, yAxis: extent.max / (extent.max / extent.min) ** 0.06, itemStyle: { color: accent, opacity: 1 } },
+                    { xAxis: to + 0.5, yAxis: extent.max }
+                  ])
           ]
         }
-      },
-      // Legend carriers only — no data, so they draw nothing in the plot. Each one's symbol is the
-      // treatment it stands for, which is what lets the legend distinguish two markArea styles that
-      // ECharts otherwise gives no legend entry at all.
-      {
-        name: '月平均下跌段',
-        type: 'line',
-        data: [],
-        symbol: 'rect',
-        symbolSize: 14,
-        itemStyle: { color: chartInk.value.primary, opacity: 0.35 },
-        lineStyle: { opacity: 0 }
-      },
-      {
-        name: '日收盤急跌段',
-        type: 'line',
-        data: [],
-        symbol: 'rect',
-        symbolSize: 14,
-        itemStyle: { color: 'transparent', borderColor: getAccentColor(resolvedMode.value, accentColorName.value), borderWidth: 1, borderType: 'dashed' as const },
-        lineStyle: { opacity: 0 }
       }
     ]
   }
+})
+
+// 圖例畫在圖外（SharedChartLegend；2026-09-22「圖表上請標示兩者差異」）：兩種下跌段各一項，小圖示就是圖上的畫法
+const legendGroups = computed<ChartLegendGroup[]>(() => {
+  const accent = getAccentColor(resolvedMode.value, accentColorName.value)
+  return [{
+    unit: '指數',
+    items: [
+      { name: '月平均下跌段', color: chartInk.value.primary, kind: 'band' },
+      { name: '日收盤急跌段', color: accent, kind: isDesktop.value ? 'outline' : 'bar' }
+    ]
+  }]
 })
 
 const overviewAnswer = computed(() => {
@@ -323,16 +312,14 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 
     <StockQuestionSection id="macro-phases-chart" question="大盤有過哪幾段明顯的下跌？" :answer="overviewAnswer">
       <el-card shadow="never" class="macro-phases-page__card">
-        <SharedChart
-          v-if="months.length > 1"
-          class="app-chart macro-phases-page__chart"
-          :option="chartOption"
-         
-          autoresize
-        />
+        <template v-if="months.length > 1">
+          <SharedChartLegend :groups="legendGroups" />
+          <SharedChart class="app-chart macro-phases-page__chart" :option="chartOption" autoresize />
+        </template>
+        <!-- 急跌段在手機上畫成上緣的色塊（見 chartOption），說明照著換；用 CSS 切，伺服器輸出就是對的那一句 -->
         <p class="macro-phases-page__caveat">
-          <strong>實心陰影</strong>是用月平均算出的下跌段，<strong>虛線外框</strong>是用每日收盤算出的急跌段，兩者算法不同、會重疊。
-          急跌的起訖是日期，而這張圖的橫軸是月份，所以外框只能對到所在的月份——真正的日期與天數在下方的急跌表裡。
+          <strong>實心陰影</strong>是用月平均算出的下跌段，<strong class="macro-phases-page__wide">虛線外框</strong><strong class="macro-phases-page__narrow">上緣的色塊</strong>是用每日收盤算出的急跌段，兩者算法不同、會重疊。
+          急跌的起訖是日期，而這張圖的橫軸是月份，所以<span class="macro-phases-page__wide">外框</span><span class="macro-phases-page__narrow">色塊</span>只能對到所在的月份——真正的日期與天數在下方的急跌表裡。
           縱軸為對數刻度，這樣 1980 年代的一千多點和近年的四萬多點才能在同一張圖上看清楚。
         </p>
       </el-card>
@@ -461,6 +448,19 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 
 .macro-phases-page__card {
   border-radius: 12px;
+}
+
+/* 跟 useIsDesktop 同一個斷點 */
+@media (max-width: 767px) {
+  .macro-phases-page__wide {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .macro-phases-page__narrow {
+    display: none;
+  }
 }
 
 .macro-phases-page__line {

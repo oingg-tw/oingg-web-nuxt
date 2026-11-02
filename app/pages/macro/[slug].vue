@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MacroPageData } from '#shared/types/hub'
+import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // /macro/{slug} — 總經特區's shared template（2026-09-22,「Sidebar 就放不同指標跟大盤比較」）.
 //
 // One template driven by MACRO_PAGES in shared/utils/macro-pages.ts（this series, against the index,
@@ -94,15 +95,23 @@ const chartInk = computed(() => getChartInk(resolvedMode.value))
 
 interface AxisTooltipParam { dataIndex?: number }
 
+const seriesColors = computed(() => [chartInk.value.primary, getChartAccentGold(resolvedMode.value)])
+
+// 圖例與單位畫在圖外（SharedChartLegend）：左邊是這一頁的序列，右邊是加權指數（ECharts 線的預設點是空心圓）
+const legendGroups = computed<ChartLegendGroup[]>(() => [
+  { unit, items: page.series.map((spec, index) => ({ name: spec.name, color: seriesColors.value[index] ?? chartInk.value.primary, kind: 'line', dash: spec.lineType, symbol: spec.symbol })) },
+  { unit: '指數', items: [{ name: '加權股價指數', color: getAccentColor(resolvedMode.value, accentColorName.value), kind: 'line', symbol: 'emptyCircle' }], right: true }
+])
+
 const chartOption = computed(() => {
   const list = rows.value
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  const macroColors = [chartInk.value.primary, getChartAccentGold(resolvedMode.value)]
+  const macroColors = seriesColors.value
   const closes = list.map(row => row.close).filter(close => close > 0)
   const indexExtent = closes.length ? { min: Math.min(...closes), max: Math.max(...closes) } : null
   return {
-    grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0 },
+    // 圖例與單位在圖外（SharedChartLegend），上緣只留最上面那個刻度的半格
+    grid: { left: 0, right: 0, top: 12, bottom: 28, containLabel: true },
     tooltip: {
       trigger: 'axis',
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
@@ -120,12 +129,10 @@ const chartOption = computed(() => {
     yAxis: [
       {
         type: 'value',
-        name: unit,
       },
       {
         type: 'log',
         logBase: 10,
-        name: '指數',
         ...(indexExtent ? { min: indexExtent.min, max: indexExtent.max } : {}),
         splitLine: { show: false },
         axisLabel: { formatter: formatLogAxisTick }
@@ -179,7 +186,10 @@ const chartOption = computed(() => {
       <h2 id="macro-chart-heading" class="stock-page-section__title">{{ page.topic }}與大盤走勢如何對照？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
       <el-card shadow="never" class="macro-page__card">
-        <SharedChart v-if="rows.length > 1" class="app-chart macro-page__chart" :option="chartOption" autoresize />
+        <template v-if="rows.length > 1">
+          <SharedChartLegend :groups="legendGroups" />
+          <SharedChart class="app-chart macro-page__chart" :option="chartOption" autoresize />
+        </template>
       </el-card>
     </section>
 

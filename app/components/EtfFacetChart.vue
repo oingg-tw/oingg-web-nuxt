@@ -9,6 +9,7 @@ const props = defineProps<{
   facet: Exclude<EtfFacetKey, 'overview' | 'fill'>
 }>()
 
+const isDesktop = useIsDesktop()
 const yuan = (value: number | null) => etfYuan(value)
 const pct = (value: number | null) => etfPct(value)
 const hundredMillion = (value: number | null) => (value === null ? '－' : `${formatSignificantDigits(value, 4)} 億元`)
@@ -42,7 +43,9 @@ const lineSpec = computed<LineSpec | null>(() => {
       for (let month = first; month <= (windowEnd > lastEvent ? windowEnd : lastEvent); month = nextMonth(month)) {
         entries.push({ label: month, values: { value: { value: byMonth.get(month) ?? null } } })
       }
-      return { entries, series: [{ code: 'value', name: '每單位配息', type: 'bar', lineType: 'solid', symbol: 'rect', format: yuan }], unit: '元', format: yuan, perYear: 12 }
+      // 配息的月份不到一半（半年配、季配）時柱子至少 8px：近 5 年 60 格，每格只剩 3px
+      const barMinWidth = byMonth.size * 2 < entries.length ? 8 : undefined
+      return { entries, series: [{ code: 'value', name: '每單位配息', type: 'bar', lineType: 'solid', symbol: 'rect', format: yuan, barMinWidth }], unit: '元', format: yuan, perYear: 12 }
     }
     case 'expenses': {
       const entries = Object.keys(values)
@@ -92,10 +95,15 @@ const lineSpec = computed<LineSpec | null>(() => {
       return entries.length
         ? {
             entries,
+            // 手機上最高、最低換成一條淡色帶（2026-11-02 手機掃描：三條鋸齒線擠成一團），圖上只剩月平均一條線
             series: [
               { code: 'average', name: '月平均', lineType: 'solid', symbol: 'circle', format: pct, baseline: true },
-              { code: 'highest', name: '當月最高', lineType: 'dashed', symbol: 'triangle', format: pct },
-              { code: 'lowest', name: '當月最低', lineType: 'dotted', symbol: 'diamond', format: pct }
+              ...(isDesktop.value
+                ? [
+                    { code: 'highest', name: '當月最高', lineType: 'dashed', symbol: 'triangle', format: pct },
+                    { code: 'lowest', name: '當月最低', lineType: 'dotted', symbol: 'diamond', format: pct }
+                  ] as const
+                : [{ code: 'lowest', rangeTo: 'highest', name: '當月最低～最高', type: 'range', lineType: 'solid', symbol: 'rect', format: pct }] as const)
             ],
             unit: '%',
             format: pct,
@@ -107,6 +115,20 @@ const lineSpec = computed<LineSpec | null>(() => {
       return null
   }
 })
+// 報酬期間在手機上是橫條清單（2026-11-02，使用者選「要比很多項目的圖，手機改成清單或橫條」：八根柱子只寫得出三個期間名）；
+// 長度照絕對值、顏色照正負（使用者的漲跌色慣例），數字帶正負號，不只靠顏色
+const { resolvedMode, market } = useAppTheme()
+const returnRows = computed(() => {
+  if (props.facet !== 'returns' || !lineSpec.value) return []
+  const values = lineSpec.value.entries.map(entry => entry.values.value?.value ?? 0)
+  const max = Math.max(0, ...values.map(Math.abs))
+  const colors = getPriceColors(resolvedMode.value, market.value)
+  return lineSpec.value.entries.map((entry, index) => {
+    const value = values[index]!
+    return { label: entry.label ?? '', share: max ? Math.abs(value) / max : 0, color: value < 0 ? colors.down : colors.up, text: fixedSignedRateText(value) }
+  })
+})
+
 const lineEntries = computed(() => lineSpec.value?.entries ?? [])
 const { period, shown } = useChartPeriod({ all: lineEntries, keyOf: entry => entry.label ?? '', perYear: () => lineSpec.value?.perYear ?? 1 })
 
@@ -163,6 +185,66 @@ const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ n
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <StockMultiSeriesLineChart :entries="lineSpec.perYear === null ? lineSpec.entries : shown" :series="lineSpec.series" palette="accent" :unit="lineSpec.unit" :unit-right="lineSpec.unitRight" :format="lineSpec.format" />
+    <ol v-if="returnRows.length" class="etf-returns" aria-label="含息報酬率（累積）">
+      <li v-for="row in returnRows" :key="row.label" class="etf-returns__row">
+        <span>{{ row.label }}</span>
+        <span class="etf-returns__track" aria-hidden="true"><span class="etf-returns__bar" :style="{ width: `${row.share * 100}%`, background: row.color }" /></span>
+        <span class="etf-returns__value">{{ row.text }}</span>
+      </li>
+    </ol>
+    <StockMultiSeriesLineChart :class="{ 'etf-facet-chart__wide': returnRows.length }" :entries="lineSpec.perYear === null ? lineSpec.entries : shown" :series="lineSpec.series" palette="accent" :unit="lineSpec.unit" :unit-right="lineSpec.unitRight" :format="lineSpec.format" />
   </SharedChartCard>
 </template>
+
+<style scoped>
+.etf-returns {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.etf-returns__row {
+  display: grid;
+  grid-template-columns: 4.5em 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--app-divider);
+}
+
+.etf-returns__row:first-child {
+  border-top: 0;
+}
+
+.etf-returns__track {
+  height: 12px;
+}
+
+.etf-returns__bar {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.etf-returns__value {
+  min-width: 5.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 跟 useIsDesktop 同一個斷點：手機清單、電腦版圖 */
+@media (min-width: 768px) {
+  .etf-returns {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .etf-facet-chart__wide {
+    display: none;
+  }
+}
+</style>

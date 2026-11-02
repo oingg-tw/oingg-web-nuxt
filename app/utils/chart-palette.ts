@@ -326,13 +326,15 @@ export function chartTheme(mode: 'LIGHT' | 'DARK', ratio: number) {
     nameTextStyle: { color: ink.muted, fontSize },
     splitLine: { lineStyle: { color: ink.gridline } }
   }
+  // 數值軸的刻度放不下就略過（2026-11-02 手機掃描：瀑布圖的 0 10 20…60、散佈圖的 −90%…60% 擠成一串）
+  const numericAxis = { ...valueLike, axisLabel: { ...valueLike.axisLabel, hideOverlap: true } }
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
     tooltip: { appendTo: 'body', backgroundColor: CHART_TOOLTIP.backgroundColor, borderColor: CHART_TOOLTIP.borderColor, textStyle: { color: CHART_TOOLTIP_INK.primary } },
     legend: { textStyle: { color: ink.muted, fontSize } },
     categoryAxis: { ...valueLike, axisTick: { show: false } },
-    valueAxis: valueLike,
-    logAxis: valueLike,
-    timeAxis: valueLike
+    valueAxis: numericAxis,
+    logAxis: numericAxis,
+    timeAxis: numericAxis
   }
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EquityRiskPremiumPageData } from '#shared/types/hub'
+import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // /macro/equity-risk-premium — 股票風險溢酬（2026-09-29, analysis-ts 轉達的需求）.
 //
 // 這一頁不給一個數字，給的是**同一個問題的幾種算法擺在一起**（2026-10-11 起三種，加了殖利率法），因為那個差距才是內容。上游建議做成
@@ -71,8 +72,8 @@ const chartOption = computed(() => {
   const list = windows.value
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
   return {
-    grid: { left: 8, right: 8, top: 48, bottom: 28, containLabel: true },
-    legend: { top: 0 },
+    // 圖例在圖外（legendGroups），上緣只留最上面那個刻度的半格；刻度本身寫了 %，不另寫單位
+    grid: { left: 0, right: 0, top: 12, bottom: 28, containLabel: true },
     tooltip: {
       trigger: 'axis',
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
@@ -94,7 +95,6 @@ const chartOption = computed(() => {
     },
     yAxis: {
       type: 'value',
-      name: '%',
       axisLabel: { formatter: (value: number) => `${value}%` }
     },
     series: [
@@ -119,6 +119,9 @@ const chartOption = computed(() => {
     ]
   }
 })
+
+// 圖例畫在圖外（SharedChartLegend），名字與顏色直接取圖上的三組柱子
+const legendGroups = computed<ChartLegendGroup[]>(() => [{ items: chartOption.value.series.map(series => ({ name: series.name, color: series.itemStyle.color, kind: 'bar' })) }])
 </script>
 
 <template>
@@ -137,7 +140,10 @@ const chartOption = computed(() => {
       <h2 id="macro-erp-window-heading" class="stock-page-section__title">為什麼窗口長度會改變答案？</h2>
       <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
       <el-card shadow="never" class="macro-erp-page__card">
-        <SharedChart v-if="windows.length > 1" class="app-chart macro-erp-page__chart" :option="chartOption" autoresize />
+        <template v-if="windows.length > 1">
+          <SharedChartLegend :groups="legendGroups" />
+          <SharedChart class="app-chart macro-erp-page__chart" :option="chartOption" autoresize />
+        </template>
       </el-card>
       <SharedTable caption-visible label="四個窗口長度的股票風險溢酬" caption="四個窗口長度的股票風險溢酬（窗口終點相同，起點不同）">
         <thead>

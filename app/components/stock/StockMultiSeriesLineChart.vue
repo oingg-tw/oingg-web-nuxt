@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ChartLegendGroup, ChartLegendItem } from '~/components/shared/SharedChartLegend.vue'
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
 // 安全韌性 page needed the identical chart for its own three ratios.
@@ -24,7 +25,13 @@ export interface LineSeriesSpec {
   // change is a relationship between two of them. Drawing both as lines would invite reading the
   // gap between them as meaningful when the two axes are unrelated. Omitted = line, so no existing
   // caller changed.
-  type?: 'line' | 'bar'
+  //
+  // 'range'＝淡色帶，從這條的 code 畫到 rangeTo 那條（2026-11-02 手機掃描：ETF 折溢價的當月最高、最低兩條鋸齒虛線擠成一團，
+  // 手機上換成一條帶子，圖上只剩一條線）
+  type?: 'line' | 'bar' | 'range'
+  rangeTo?: string
+  // 柱子至少幾 px 寬：每月一格、只有少數月份有值的圖（ETF 配息一年兩次，近 5 年 60 格，柱子只剩 3px 的細針）
+  barMinWidth?: number
   // 在這條線自己的軸上畫一條零基準線（2026-09-28「希望要加上一條 baseline，讓人容易看出哪幾季
   // 年增率大於零」）。掛在 series 上而不是 yAxis 上，所以雙軸圖會落在正確的那一軸——月營收那一頁
   // 的年增率走右軸，左軸是月均價，零對左軸沒有意義。
@@ -124,10 +131,11 @@ const seriesColors = computed(() => {
     // 第一條是使用者選的強調色，其餘接墨色。三個墨色都量過 ≥3:1（primary 12.37/14.89、
     // secondary 5.80/7.95、muted 5.30/4.70）。超過四條線就繞回去，但這個色盤本來就是給兩三條
     // 不同量綱的線用的——要分得開的多條線走預設的 category。
-    return props.series.map((_, i) =>
+    // 跟線同框的柱子拿最淡的墨色（2026-11-02 手機掃描：殖利率圖的現金股利黑柱比殖利率線還搶眼），線才是主角
+    return props.series.map((series, i) =>
       i === 0
         ? getAccentColor(resolvedMode.value, accentColorName.value)
-        : ink[ACCENT_FOLLOWERS[(i - 1) % ACCENT_FOLLOWERS.length]!])
+        : series.type === 'bar' ? ink.muted : ink[ACCENT_FOLLOWERS[(i - 1) % ACCENT_FOLLOWERS.length]!])
   }
   return getSeriesColors(resolvedMode.value, accentColorName.value, props.series.length)
 })
@@ -175,9 +183,37 @@ interface AxisTooltipParam { dataIndex?: number }
 
 const axisIndexOf = (series: LineSeriesSpec) => (series.axis === 'right' ? 1 : 0)
 
+// 圖例與單位畫在圖外（SharedChartLegend）：單軸一組；雙軸左右各一組，各帶自己那一軸的單位
+const legendGroups = computed<ChartLegendGroup[]>(() => {
+  const items: ChartLegendItem[] = props.series.map((series, index) => series.type === 'bar'
+    ? { name: series.name, color: series.signColored ? priceColors.value.up : seriesColors.value[index]!, kind: 'bar' }
+    : series.type === 'range'
+      ? { name: series.name, color: seriesColors.value[index]!, kind: 'band' }
+      : { name: series.name, color: seriesColors.value[index]!, kind: 'line', dash: series.lineType, symbol: series.symbol })
+  const periods: ChartLegendItem[] = periodNames.value.map(name => ({ name, color: periodFill.value.color, kind: 'band' }))
+  const onAxis = (axis: number) => items.filter((_, index) => axisIndexOf(props.series[index]!) === axis)
+  return props.unitRight
+    ? [{ unit: props.unit, items: [...onAxis(0), ...periods] }, { unit: props.unitRight, items: onAxis(1), right: true }]
+    : [{ unit: props.unit, items: [...items, ...periods] }]
+})
+
+// 區間帶：一條透明的下緣，上面疊「上緣 − 下緣」塗淡色。stackStrategy 'all'：下緣是負的（折價）時照樣往上疊，預設只疊同號的
+function rangeSeries(series: LineSeriesSpec, index: number) {
+  const lower = props.entries.map(entry => entry.values[series.code]?.value ?? null)
+  const upper = props.entries.map(entry => entry.values[series.rangeTo ?? '']?.value ?? null)
+  const common = { type: 'line', stack: `range-${series.code}`, stackStrategy: 'all', yAxisIndex: axisIndexOf(series), symbol: 'none', silent: true, lineStyle: { opacity: 0 }, emphasis: { disabled: true } }
+  return [
+    // 不給名字：SharedChart 用各 series 的名字組 aria-label，下緣不是資料
+    { ...common, name: '', tooltip: { show: false }, data: lower },
+    { ...common, name: series.name, areaStyle: { color: seriesColors.value[index], opacity: 0.2 }, data: lower.map((low, i) => (low === null || upper[i] == null ? null : upper[i]! - low)) }
+  ]
+}
+
+// 刻度：百萬以上縮成萬（ETF 受益人數 4,000,000 → 400萬，右軸窄一半）；加權指數 48,000 這種照舊寫千分位
+const axisNumber = (value: number) => (Math.abs(value) >= 1e6 ? formatSignificantDigits(value, 3) : groupThousands(value))
+
 const chartOption = computed(() => {
   const list = props.entries
-  const legendCount = props.series.length + periodNames.value.length
   // 有 growthLog 序列的軸：刻度從這段畫得到的值算（左軸、右軸各自）
   const logAxis = [0, 1].map((axisIndex) => {
     const growth = props.series.filter(series => series.growthLog && axisIndexOf(series) === axisIndex)
@@ -189,27 +225,20 @@ const chartOption = computed(() => {
       : {}
   })
   return {
-    // Top space reserved for the LEGEND, which wraps. 48 was a constant tuned when both consumers
-    // had three short names（two rows at 375px）; 杜邦's four names with units take five rows there
-    // and were measured drawing straight over the lines. One extra row per series past the second
-    // covers the worst case — phone width, one entry per row — and at desktop, where the legend is
-    // a single row, the surplus reads as spacing rather than as a defect.
-    grid: { left: 8, right: 16, top: 48 + Math.max(0, legendCount - 2) * 24, bottom: 28, containLabel: true },
-    legend: {
-      top: 0,
-      data: [
-        ...props.series.map(series => series.name),
-        // 圖例的小圖示也是灰底，跟圖上的一樣
-        ...periodNames.value.map(name => ({ name, icon: 'rect', itemStyle: periodFill.value }))
-      ]
-    },
+    // 圖例和單位在圖外（legendGroups），上緣只留最上面那個刻度的半格。左右貼齊：刻度的邊緣跟上面那列單位對齊；單軸圖右邊留一點，
+    // 最後一個 X 軸標籤置中在最後一期上，會凸出去
+    grid: { left: 0, right: props.unitRight ? 0 : 12, top: 12, bottom: 28, containLabel: true },
     tooltip: {
       trigger: 'axis',
       formatter: (params: AxisTooltipParam | AxisTooltipParam[]) => {
         const index = (Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0
         const entry = list[index]
         if (!entry) return ''
-        const rows = props.series.map(series => `<div>${series.name}：${(series.format ?? props.format)(entry.values[series.code]?.value ?? null)}</div>`).join('')
+        const valueText = (series: LineSeriesSpec) => {
+          const text = (code: string) => (series.format ?? props.format)(entry.values[code]?.value ?? null)
+          return series.type === 'range' && series.rangeTo ? `${text(series.code)}～${text(series.rangeTo)}` : text(series.code)
+        }
+        const rows = props.series.map(series => `<div>${series.name}：${valueText(series)}</div>`).join('')
         const inPeriod = periodRanges.value.find(range => index >= range.from && index <= range.to)
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry)}${inPeriod ? `（${inPeriod.label}）` : ''}</div>${rows}</div>`
       }
@@ -223,19 +252,19 @@ const chartOption = computed(() => {
     yAxis: [
       {
         type: 'value',
-        name: props.unit,
+        axisLabel: { formatter: axisNumber },
         ...logAxis[0]
       },
       ...(props.unitRight
         ? [{
             type: 'value',
-            name: props.unitRight,
             splitLine: { show: false },
+            axisLabel: { formatter: axisNumber },
             ...logAxis[1]
           }]
         : [])
     ],
-    series: [...props.series.flatMap((series, index) => [
+    series: [...props.series.flatMap<Record<string, unknown>>((series, index) => series.type === 'range' ? rangeSeries(series, index) : [
       ...(hasBars.value && series.type !== 'bar'
         ? [{
             // 不給名字：SharedChart 用各 series 的名字組圖表的 aria-label，外框不是資料
@@ -274,7 +303,7 @@ const chartOption = computed(() => {
           }
         : {}),
       ...(series.type === 'bar'
-        ? { barMaxWidth: 18, itemStyle: { color: series.signColored ? priceColors.value.up : seriesColors.value[index] } }
+        ? { barMaxWidth: 18, barMinWidth: series.barMinWidth, itemStyle: { color: series.signColored ? priceColors.value.up : seriesColors.value[index] } }
         : {
             symbol: series.symbol,
             // 高齡友善介面的線條規格（2026-09-30 直接指示）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點
@@ -327,21 +356,31 @@ const chartOption = computed(() => {
 
 <template>
   <div v-if="loading" class="stock-multi-line-chart app-skeleton" aria-hidden="true" />
-  <SharedChart v-else-if="entries.length > 1" class="stock-multi-line-chart" :option="chartOption" autoresize />
+  <div v-else-if="entries.length > 1" class="stock-multi-line-chart">
+    <SharedChartLegend :groups="legendGroups" />
+    <SharedChart class="stock-multi-line-chart__plot" :option="chartOption" autoresize />
+  </div>
 </template>
 
 <style scoped>
+/* 總高不變（骨架同高、載入不跳）：圖例占幾列，圖就少幾列的高度。手機加高是因為圖例在窄的時候會折成兩列 */
 .stock-multi-line-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   width: 100%;
   height: 320px;
 }
 
-/* The reserved legend space above comes out of the same 320px, so at phone width — where the
-   legend actually wraps — the plot would be squeezed to pay for it. Give the height back instead
-   of shrinking the lines. */
 @media (max-width: 600px) {
   .stock-multi-line-chart {
     height: 400px;
   }
+}
+
+.stock-multi-line-chart__plot {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 </style>

@@ -64,6 +64,19 @@ const totals = computed(() => props.categories.map((_, index) => props.layers.re
 const showTotal = computed(() => props.layers.some(layer => layer.values.some(value => value < 0)))
 const totalColor = computed(() => getChartInk(resolvedMode.value).primary)
 
+// 日期類別（ETF 配息組成、持有人結構）寫短（2026-11-02 手機掃描：六根柱子只標得出兩個日期）：同一年只寫「月/日」，跨年時年份換行
+// 寫在上面。其他類別（2026 Q2、年度）照原樣
+const DATE_CATEGORY = /^(\d{4})-(\d{2})-(\d{2})$/
+const dateLabel = computed(() => {
+  const dates = props.categories.map(category => DATE_CATEGORY.exec(category))
+  if (!dates.length || dates.some(match => !match)) return null
+  const oneYear = new Set(dates.map(match => match![1])).size === 1
+  return (value: string) => {
+    const [, year, month, day] = DATE_CATEGORY.exec(value) ?? []
+    return year ? `${oneYear ? '' : `${year}\n`}${Number(month)}/${Number(day)}` : value
+  }
+})
+
 const chartOption = computed(() => {
   const { categories, layers } = props
   return {
@@ -87,6 +100,7 @@ const chartOption = computed(() => {
     xAxis: {
       type: 'category',
       data: categories,
+      ...(dateLabel.value ? { axisLabel: { formatter: dateLabel.value } } : {}),
       // 刻意不設 interval: 0（瀑布圖那邊有設，理由不能照搬）。375 寬六個類別會擠在一起，而這裡讓
       // ECharts 自己藏掉撞到的標籤是安全的：兩個使用者的圖正上方都是同樣列數的 SSR 表格，少一個
       // 刻度標籤不會有任何數字消失。瀑布圖沒有那張表，所以它必須每根都標。
@@ -139,7 +153,7 @@ const chartOption = computed(() => {
   <div class="stock-stacked-bar-chart">
     <!-- 高度寫在 style 上而不是 CSS 的 v-bind()（2026-10-14）：v-bind() 的變數要等這個元件 onMounted 才寫上去，而 SharedChart 在那之前就
          初始化了——只在瀏覽器渲染的地方（指標速覽）ECharts 會量到 0 高、印「Can't get DOM width or height」。SSR 的頁面變數已在 HTML 裡，所以沒事 -->
-    <SharedChart class="stock-stacked-bar-chart__canvas" :style="{ height: `clamp(15rem, 70vw, ${height ?? 380}px)` }" :option="chartOption" autoresize />
+    <SharedChart class="stock-stacked-bar-chart__canvas" :style="{ height: `clamp(20rem, 85vw, ${height ?? 380}px)` }" :option="chartOption" autoresize />
     <ul class="stock-stacked-bar-chart__legend" aria-label="圖例">
       <li v-for="(layer, index) in layers" :key="layer.name" class="stock-stacked-bar-chart__legend-item">
         <span class="stock-stacked-bar-chart__swatch" :style="{ background: layerColors[index] }" aria-hidden="true" />{{ layer.name }}
@@ -152,7 +166,7 @@ const chartOption = computed(() => {
 </template>
 
 <style scoped>
-/* 高度：手機 70vw（375 ≈ 262px），桌機到 props.height；同 main.css 的 .app-chart（2026-10-08）。寫在模板的 style 上，見那裡的註解 */
+/* 高度：手機至少 20rem，桌機到 props.height；同 main.css 的 .app-chart（2026-11-02 從 15rem／70vw 加高）。寫在模板的 style 上，見那裡的註解 */
 .stock-stacked-bar-chart__canvas {
   width: 100%;
 }
