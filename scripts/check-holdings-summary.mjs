@@ -2,7 +2,7 @@
 // maths could silently produce a wrong number on the holdings page. Pure, no network.
 //
 // Run: node scripts/check-holdings-summary.mjs
-import { compareWithBenchmark, dayChange, groupByLabel, holdingRowFigures, sectorOfSymbol, summarizeDayChange, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
+import { dayChange, groupByLabel, holdingRowFigures, sectorOfHolding, summarizeDayChange, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
 import { holdingsMonthsBefore } from '../app/utils/holdings-format.ts'
 
 let failures = 0
@@ -106,37 +106,10 @@ console.log('\n組合殖利率（市值加權）')
   assert(weightedDividendYield([{ marketValue: 1, yieldPct: null }]).value === null, '沒有任何一檔有值時是 null，不是 0')
 }
 
-console.log('\n與大盤比較')
-{
-  // 加權指數：起點前一天 1000、之後 1100、1210（＝+10%、+21%）
-  const index = new Map([['2026-03-30', 900], ['2026-03-31', 1000], ['2026-04-01', 1100], ['2026-04-02', 1210]])
-  const c = compareWithBenchmark([
-    { tradeDate: '2026-04-01', cumulative: '0.050000' },
-    { tradeDate: '2026-04-02', cumulative: '0.080000' }
-  ], index)
-  assert(close(c.benchmark, 0.21), '指數基準＝起點的前一個交易日收盤（1000），不是起點當天（1100 → 會算成 +10%）也不是更早（900）')
-  assert(close(c.points[0].benchmark, 0.1) && close(c.points[1].portfolio, 0.08), '逐日對齊：起點當天指數 +10%、持股照 業務中台 給的累積值')
-}
-{
-  const index = new Map([['2026-03-31', 1000], ['2026-04-01', 1100], ['2026-04-02', 1210]])
-  const c = compareWithBenchmark([
-    { tradeDate: '2026-03-31', cumulative: null },
-    { tradeDate: '2026-04-01', cumulative: null },
-    { tradeDate: '2026-04-02', cumulative: '0.010000' }
-  ], index)
-  assert(c.start === '2026-04-02' && c.points.length === 1 && close(c.benchmark, 0.1), '期間中才開始持股：兩條線都從持股第一天起算（指數 1210÷1100），不把之前那段算進指數')
-}
-{
-  const c = compareWithBenchmark([{ tradeDate: '2026-04-01', cumulative: null }], new Map([['2026-03-31', 1000], ['2026-04-01', 1100]]))
-  assert(c.start === null && c.benchmark === null && c.points.length === 0, '整段沒有持股：沒有起點、沒有比較')
-}
-
 console.log('\n產業占比')
 {
-  const map = new Map([['2330', '半導體業'], ['1312', '塑膠工業'], ['2454', '半導體業']])
-  assert(sectorOfSymbol('2330', map) === '半導體業' && sectorOfSymbol('0056', map) === 'ETF' && sectorOfSymbol('00878', map) === 'ETF', '普通股照目錄的類股；ETF 自成一類')
-  assert(sectorOfSymbol('1312A', map) === '塑膠工業', '特別股歸到發行公司的產業（1312A → 1312）')
-  assert(sectorOfSymbol('9999', map) === '其他', '目錄裡沒有的歸「其他」')
+  assert(sectorOfHolding('2330', '半導體業') === '半導體業' && sectorOfHolding('0056', null) === 'ETF' && sectorOfHolding('00878', '其他') === 'ETF', '普通股照 業務中台 的類股；ETF 自成一類')
+  assert(sectorOfHolding('9999', null) === '其他' && sectorOfHolding('9999', undefined) === '其他', '沒有分類（或舊版沒有這個欄位）的歸「其他」')
   const groups = groupByLabel([{ label: '半導體業', value: 300 }, { label: 'ETF', value: 500 }, { label: '半導體業', value: 400 }, { label: '塑膠工業', value: null }])
   assert(groups.length === 2 && groups[0].label === '半導體業' && groups[0].value === 700 && groups[0].count === 2 && groups[1].label === 'ETF', '同產業加總、由大到小；沒有市值的不計入')
 }

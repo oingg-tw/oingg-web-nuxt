@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { MarketDirectory } from '#shared/types/hub'
 import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 
 // 持股分析（2026-10-05）。使用者：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比。持股總覽那邊就可以
@@ -9,7 +8,7 @@ import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 // （投信投顧法）。同日稍晚加回第二段「這組持股有什麼特色？」（加權的本益比、Beta、ROE…加大盤對照與標籤，分享時可以一起帶出去），
 // 那一段的畫法在 HoldingsTraits、規則在 utils/holdings-traits.ts。
 //
-// 產業用證交所類股，資料是全市場目錄 /api/hub/directory（Nitro 每天快取一次，個股總表用同一份）。
+// 產業用證交所類股，業務中台 在 GET /holdings 每一列給 sectorName（3078dcf，2026-11-02；原本下載整份 /api/hub/directory，261KB）。
 //
 // Personal page: out of the index and the sitemap (/holdings/**).
 useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
@@ -18,32 +17,17 @@ const authResolved = useAuthResolved()
 const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchTraits } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
-// 產業分類整個 session 留著（2026-10-20）：Nuxt 4 在最後一個用到它的元件卸載時清掉 useFetch 的資料，側欄切回來要等重抓，先轉圈兩個畫面
-//（check-reload-flash 量到的）。有自訂 getCachedData 就不清，回來直接用手上那份。key 不跟個股總表共用：它用預設的 getCachedData，
-// 同一個 key 兩種選項 Nuxt 會警告（而且被清掉的資料本來就共用不到）
-const { data: directory, status: directoryStatus } = useFetch<MarketDirectory>('/api/hub/directory', {
-  key: 'holdings-directory',
-  lazy: true,
-  server: false,
-  getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key]
-})
-
-const sectorBySymbol = computed(() => {
-  const map = new Map<string, string>()
-  for (const sector of directory.value?.sectors ?? []) for (const company of sector.companies) map.set(company.symbol, sector.name)
-  return map
-})
 
 const rows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const figures = holdingRowFigures({ quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare })
-  return { sector: directory.value ? sectorOfSymbol(holding.symbol, sectorBySymbol.value) : null, marketValue: figures.marketValue }
+  return { sector: sectorOfHolding(holding.symbol, holding.sectorName), marketValue: figures.marketValue }
 }))
 
 const totalValue = computed(() => rows.value.reduce((sum, row) => sum + (row.marketValue ?? 0), 0))
 const unpricedCount = computed(() => rows.value.filter(row => row.marketValue === null).length)
 
-const sectors = computed(() => groupByLabel(rows.value.map(row => ({ label: row.sector ?? '其他', value: row.marketValue }))))
+const sectors = computed(() => groupByLabel(rows.value.map(row => ({ label: row.sector, value: row.marketValue }))))
 
 // 表格用 HoldingsMetricTable（2026-10-07 a11y／mobile 盤點：el-table 在手機上把「市值」「占比」推到畫面外，
 // 而那兩欄正是這頁的重點）。窄的時候每一列是一張小卡片，寬的時候是表格。
@@ -89,11 +73,10 @@ async function loadTraits() {
   traitsFailed.value = result === null
 }
 watchLoadFailure('holdings-traits', () => traitsFailed.value, () => loadTraits(), { scope: 'section' })
-// 持股、產業分類、特色到齊才一起畫（2026-10-20，使用者：「卡片的部分顯示閃動」）：特色晚到的話，產業那段先畫好、特色的面板才從下面
-// 長出來；產業分類晚到（DEV 縮到 0 之後的冷快取）則是先寫「產業分類載入中…」，圖表再把特色往下推。讀不到的不等，交給全站彈窗。
-// 產業分類只等「還沒有」：側欄切過來時 useFetch 會重抓（status 是 pending），手上那份照用
+// 持股與特色到齊才一起畫（2026-10-20，使用者：「卡片的部分顯示閃動」）：特色晚到的話，產業那段先畫好、特色的面板才從下面
+// 長出來。讀不到的不等，交給全站彈窗
 const firstPaintPending = computed(() => (pending.value && !holdings.value.length)
-  || (holdings.value.length > 0 && ((!traits.value && !traitsFailed.value) || (!directory.value && directoryStatus.value === 'pending'))))
+  || (holdings.value.length > 0 && !traits.value && !traitsFailed.value))
 watch(sectorTableRows, (rows) => {
   if (rows.length && !firstPaintPending.value) sectorCountHint.value = rows.length
 })
@@ -133,7 +116,6 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
             <HoldingsAllocationChart title="產業占比" :items="[]" loading />
             <HoldingsMetricTable caption="各產業的市值與占比" :rows="skeletonSectorRows" name-label="產業" value-label="占比" market-label="市值" meaning-label="檔數" :widths="SECTOR_COLUMN_WIDTHS" loading />
           </template>
-          <p v-else-if="!directory" class="analysis-page__note">產業分類載入中…</p>
           <template v-else>
             <p v-if="answer" class="analysis-page__answer">{{ answer }}<template v-if="effectiveSectorsText">{{ effectiveSectorsText }}</template></p>
             <p v-if="unpricedCount" class="analysis-page__note">{{ unpricedCount }} 檔目前沒有報價，未計入占比。</p>

@@ -137,45 +137,6 @@ export function summarizeHoldings(rows: HoldingFigures[]): HoldingsTotals {
 export const isTotalReturn = (outcome: { ok: true; result: { returnBasis?: string } } | { ok: false } | null | undefined): boolean => !outcome?.ok || outcome.result.returnBasis === 'total'
 export const benchmarkName = (totalReturn: boolean): string => (totalReturn ? '加權報酬指數' : '加權指數')
 
-// ---- 與大盤比較：把加權指數對齊到持股的累積報酬 ----
-//
-// 兩條線從**同一天**起算：持股第一次有值的那一天（期間中才開始投資的人，前面那段沒有報酬可比）。
-// 指數的基準是那天的**前一個交易日**收盤——業務中台 的累積報酬也是從起點前最後一個收盤算起（它用 2330
-// 驗過：2480 ÷ 1760 − 1，1760 是起點前一天的收盤）。回傳的累積值都是小數（0.1 ＝ 10%）。
-
-export interface BenchmarkPoint {
-  date: string
-  portfolio: number | null
-  benchmark: number | null
-}
-
-export interface BenchmarkComparison {
-  // 持股第一次有值的日期；整段沒有持股時是 null
-  start: string | null
-  points: BenchmarkPoint[]
-  // 指數在整段（從 start 到最後一天）的報酬；缺基準或缺最後一天的收盤時是 null
-  benchmark: number | null
-}
-
-export function compareWithBenchmark(series: { tradeDate: string; cumulative: string | null }[], index: Map<string, number>): BenchmarkComparison {
-  const first = series.findIndex(point => point.cumulative !== null)
-  if (first === -1) return { start: null, points: [], benchmark: null }
-  const start = series[first]!.tradeDate
-  let baseDay: string | null = null
-  for (const day of index.keys()) if (day < start && (baseDay === null || day > baseDay)) baseDay = day
-  const base = baseDay === null ? null : index.get(baseDay)!
-  const relative = (date: string) => {
-    const close = index.get(date)
-    return base && close !== undefined ? close / base - 1 : null
-  }
-  const points = series.slice(first).map(point => ({
-    date: point.tradeDate,
-    portfolio: point.cumulative === null ? null : Number(point.cumulative),
-    benchmark: relative(point.tradeDate)
-  }))
-  return { start, points, benchmark: relative(series.at(-1)!.tradeDate) }
-}
-
 // ---- 組合殖利率（市值加權） ----
 //
 // 使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」。口徑要跟大盤一樣（業務中台 指出）：個股用交易所每天公布的
@@ -254,14 +215,10 @@ export function weightedDividendYield(rows: { marketValue: number | null; yieldP
 
 // ---- 產業占比（持股分析頁） ----
 //
-// 使用者 2026-10-05：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比」。產業用證交所類股（全市場目錄
-// /api/hub/directory，個股總表同一份）。ETF 自成一類（台股 ETF 代號都以 00 開頭）；特別股歸到發行公司的產業
-// （1312A → 1312）；目錄裡找不到的歸「其他」。
-export function sectorOfSymbol(symbol: string, sectorBySymbol: Map<string, string>): string {
-  if (symbol.startsWith('00')) return 'ETF'
-  const issuer = /^\d{4}/.exec(symbol)?.[0]
-  return (issuer && sectorBySymbol.get(issuer)) ?? '其他'
-}
+// 使用者 2026-10-05：「希望持股分析獨立出來一個 sidebar，這樣就可以評估產業占比」。產業用證交所類股，業務中台 在 GET /holdings
+// 每一列給 sectorName（3078dcf，2026-11-02，取代整份 /api/hub/directory）。ETF 自成一類（台股 ETF 代號都以 00 開頭）；沒有分類的歸「其他」。
+export const sectorOfHolding = (symbol: string, sectorName: string | null | undefined): string =>
+  symbol.startsWith('00') ? 'ETF' : sectorName ?? '其他'
 
 // 依標籤加總市值，由大到小。沒有市值（沒報價）的不計入。
 export function groupByLabel(items: { label: string; value: number | null }[]): { label: string; value: number; count: number }[] {

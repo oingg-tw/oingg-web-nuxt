@@ -12,6 +12,8 @@ export interface Holding {
   // 這批持股領過的現金股利（元，4 位小數字串；業務中台 1074647，2026-10-23）：除息日計入、股數用除息前一天收盤的持股（ETF 每單位配息），
   // 各帳戶各自算，部位歸零後重新買進從 0 算；沒扣匯費與二代健保補充保費。沒領過是 "0.0000"，只有匯入預覽是 null
   dividendsReceived?: string | null
+  // 證交所／櫃買類股名稱（業務中台 3078dcf，2026-11-02，跟 /holdings/risk 同一份對照）：上游沒分類、類股目錄暫時取不到、匯入預覽時是 null
+  sectorName?: string | null
 }
 
 export interface Transaction {
@@ -153,8 +155,11 @@ export interface PerformanceResult {
   returnBasis?: 'total' | 'price'
   // 期間時間加權報酬（小數字串，6 位）；整段沒有持股時是 null
   twr: string | null
-  // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）
-  series: { tradeDate: string; cumulative: string | null }[]
+  // 同一段期間的大盤報酬（＝最後一點的 benchmarkCumulative，業務中台 3078dcf）
+  benchmarkReturn?: string | null
+  // 每個加權指數交易日的累積報酬；第一次有持股之前是 null（不是 0——那會被讀成「那段時間持平」）。
+  // benchmarkCumulative 是大盤（加權報酬指數）從同一天起算的累積報酬：基準是持股第一天的前一個指數交易日收盤，持股第一天之前是 null
+  series: { tradeDate: string; cumulative: string | null; benchmarkCumulative?: string | null }[]
   // 沒成交、沿用前一個收盤價的天數。刻意不顯示（使用者 2026-10-05：「不用特別寫出來」）——逐檔列出
   // 讀起來像錯誤清單。2026-10-05 量到的大多是上櫃日線停在 9/24 的資料延遲，不是真的沒成交（已回報上游）。
   missingPrices: { symbol: string; dates: number }[]

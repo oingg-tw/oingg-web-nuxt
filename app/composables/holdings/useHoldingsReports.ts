@@ -42,7 +42,7 @@ export function useHoldingsReports() {
   //
   // 時間加權報酬、不含息。每日報酬是「流入算開盤前、流出算收盤後」：分母包含當天投入的錢，所以大筆加碼
   // 的隔天不會算出 −2041% 這種爆掉的單日報酬（業務中台 對原規格的更正）。series 的日期就是加權指數的交易日，
-  // 跟 /market/taiex-daily-price 逐日對得上。
+  // 每一點也帶著大盤從同一天起算的累積報酬（benchmarkCumulative）。
   const fetchPerformance = (from: string, to: string): Promise<PerformanceOutcome> => periodReport<PerformanceResult>('performance', '期間報酬率', from, to)
 
   // ---- 風險指標（GET /holdings/risk，業務中台 23b7b09） ----

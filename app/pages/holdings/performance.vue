@@ -21,40 +21,15 @@ const { fetchPerformance } = useHoldings()
 const range = useHoldingsRange()
 const performance = ref<PerformanceOutcome | null>(null)
 const performancePending = ref(false)
-// 加權指數日收盤（公開資料、這一頁抓一次）。2,100 筆約 8 年，等於個股日線的深度上限——
-// 比那更早的期間 業務中台 本來就會回 400。價格型（close）與報酬指數（totalReturnClose，含息）兩條都留，照業務中台的 returnBasis 用
-const taiex = ref<{ price: Map<string, number>; total: Map<string, number> } | null>(null)
-const TAIEX_ROWS = 2100
-const taiexError = ref<unknown>(null)
 
 // 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框
 watchLoadFailure('holdings-performance', () => (performance.value && !performance.value.ok ? performance.value.error ?? null : null), () => loadPerformance())
 
 async function loadPerformance() {
   performancePending.value = true
-  const [outcome] = await Promise.all([
-    fetchPerformance(range.value[0], range.value[1]),
-    taiex.value
-      ? null
-      : apiFetch<{ entries: { tradeDate: string; close: string | number; totalReturnClose?: string | number | null }[] }>('/market/taiex-daily-price', { query: { interval: 'daily', limit: TAIEX_ROWS } })
-          .then((response) => {
-            taiexError.value = null
-            // null 不能變成 0（Number(null)）：沒有值的那天整天不列
-            const series = (pick: (entry: typeof response.entries[number]) => string | number | null | undefined) =>
-              new Map(response.entries.map(entry => [entry.tradeDate, pick(entry) == null ? Number.NaN : Number(pick(entry))] as const).filter(([, close]) => Number.isFinite(close)))
-            taiex.value = { price: series(entry => entry.close), total: series(entry => entry.totalReturnClose) }
-          })
-          .catch((error) => {
-            taiexError.value = error
-            devWarn('holdings', 'GET /market/taiex-daily-price unavailable', error)
-          })
-  ])
-  performance.value = outcome
+  performance.value = await fetchPerformance(range.value[0], range.value[1])
   performancePending.value = false
 }
-
-// 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
-watchLoadFailure('holdings-taiex', () => taiexError.value, () => loadPerformance(), { scope: 'section' })
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
@@ -64,23 +39,24 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   else performance.value = null
 }, { immediate: true })
 
-// 含息（returnBasis total）時大盤是加權報酬指數：走勢線與「時間加權報酬」那格是這一頁自己用指數日收盤算的，跟著換
+// 含息（returnBasis total）時大盤是加權報酬指數
 const totalReturn = computed(() => isTotalReturn(performance.value))
 const indexName = computed(() => benchmarkName(totalReturn.value))
 
-// 對齊規則與它的檢查在 utils/holdings-summary.ts 的 compareWithBenchmark。
+// 大盤的累積報酬由 業務中台 對齊好（3078dcf，2026-11-02，原本這頁下載 2,100 天加權指數自己算）：兩條線從持股第一天起算，
+// 基準是它前一個指數交易日的收盤。持股第一天之前的點兩邊都是 null，走勢圖從持股第一天畫起
+const percentOf = (value: string | null | undefined) => (value == null ? null : Number(value) * 100)
 const comparison = computed(() => {
   const outcome = performance.value
-  if (!outcome?.ok || !taiex.value) return null
-  const result = compareWithBenchmark(outcome.result.series, totalReturn.value ? taiex.value.total : taiex.value.price)
-  const entries: LineChartEntry[] = result.points.map(point => ({
-    label: point.date,
-    values: {
-      portfolio: { value: point.portfolio === null ? null : point.portfolio * 100 },
-      taiex: { value: point.benchmark === null ? null : point.benchmark * 100 }
-    }
+  if (!outcome?.ok) return null
+  const { series, benchmarkReturn } = outcome.result
+  const first = series.findIndex(point => point.cumulative !== null)
+  if (first === -1) return { start: null, entries: [], benchmark: null }
+  const entries: LineChartEntry[] = series.slice(first).map(point => ({
+    label: point.tradeDate,
+    values: { portfolio: { value: percentOf(point.cumulative) }, taiex: { value: percentOf(point.benchmarkCumulative) } }
   }))
-  return { start: result.start, entries, benchmark: result.benchmark }
+  return { start: series[first]!.tradeDate, entries, benchmark: benchmarkReturn == null ? null : Number(benchmarkReturn) }
 })
 
 const comparisonSeries = computed<LineSeriesSpec[]>(() => [
