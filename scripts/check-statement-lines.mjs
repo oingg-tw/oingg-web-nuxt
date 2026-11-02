@@ -4,7 +4,7 @@
 // dropped. Pure, no network.
 //
 // Run: node scripts/check-statement-lines.mjs
-import { buildStatementLines } from '../app/utils/financial-statement-rows.ts'
+import { buildStatementLines, statementChangePercent } from '../app/utils/financial-statement-rows.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -99,6 +99,11 @@ console.log('合計底下只有一個一樣的子科目')
   const differs = keys(buildStatementLines(columns, 'balanceSheet', { assets: '1000', profit: '700', continuing_profit: '700' }, { assets: '1000', profit: '400', continuing_profit: '390' }, false).lines)
   assert(differs.includes('continuing_profit') && differs.includes('profit__other'), `去年同期不一樣：子科目與「其他」都要列（實得 ${differs.join(',')}）`)
 }
+
+console.log('增減%：數據中台改送 JSON 數字（2026-11-03），字串與數字都收，0 是有值')
+assert(statementChangePercent('120', '100') === '20.00%' && statementChangePercent(120, 100) === '20.00%', '字串與數字算出一樣的增減%')
+assert(statementChangePercent(0, 100) === '−100.00%', `當期是 0：算得出（實得 ${statementChangePercent(0, 100)}）`)
+assert(statementChangePercent(null, 100) === '－' && statementChangePercent(100, 0) === '－', '缺值、或去年同期是 0：寫「－」')
 
 if (failures) {
   console.log(`\n${failures} 項失敗`)

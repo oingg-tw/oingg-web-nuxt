@@ -36,8 +36,8 @@ export interface StatementLine {
   // 「其他」那一行（算出來的，不是申報的欄位）
   other: boolean
   unit: StatementColumn['unit']
-  current: string | null
-  prior: string | null
+  current: string | number | null
+  prior: string | number | null
 }
 
 export const STATEMENT_DEFINITIONS: { key: StatementType; label: string }[] = [
@@ -53,7 +53,7 @@ const CONCISE_RULES: Record<StatementType, { share: number; base: string[] }> = 
   cashFlowStatement: { share: 0.05, base: ['cash_flows_from_used_in_operating_activities', 'net_cash_flows_from_used_in_investing_activities', 'cash_flows_from_used_in_financing_activities'] }
 }
 
-type Values = Record<string, string | null> | null | undefined
+type Values = Record<string, string | number | null> | null | undefined
 
 // columns：STATEMENT_COLUMNS（參數而不是直接 import，檢查腳本可以餵小的測資）。回傳要畫的列，以及精簡模式藏了幾個有數字的科目。
 export function buildStatementLines(columns: StatementColumn[], statementType: StatementType, current: Values, prior: Values, showAll: boolean): { lines: StatementLine[]; hidden: number } {
@@ -178,14 +178,15 @@ export function buildStatementLines(columns: StatementColumn[], statementType: S
 export const PER_SHARE_KEYS = new Set(['basic_earnings_loss_per_share', 'diluted_earnings_loss_per_share'])
 
 // Deterministic thousands grouping for the bigint-precise strings 業務中台 sends（no toLocaleString）.
-export function formatStatementAmount(raw: string | null | undefined): string {
+export function formatStatementAmount(raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined || raw === '') return '－'
   return groupThousands(raw)
 }
 
 // 增減%（當期 vs 去年同期）, two decimals; null when either side is missing or the base is zero.
-export function statementChangePercent(current: string | null | undefined, prior: string | null | undefined): string {
-  if (!current || !prior) return '－'
+export function statementChangePercent(current: string | number | null | undefined, prior: string | number | null | undefined): string {
+  // 明確比 null／空字串，不用 !current：數據中台改送 JSON 數字後，0 是有值（2026-11-03）
+  if (current === null || current === undefined || current === '' || prior === null || prior === undefined || prior === '') return '－'
   const now = Number(current)
   const then = Number(prior)
   if (!Number.isFinite(now) || !Number.isFinite(then) || then === 0) return '－'

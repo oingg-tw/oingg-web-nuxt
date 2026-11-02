@@ -13,8 +13,9 @@ export interface FinancialStatementResponse {
   fiscalQuarter: number | null
   fiscalPeriodEndDate: string | null
   found: boolean
-  // Values are bigint-precise strings (新台幣千元 for the statement lines; EPS in 元).
-  statement: Record<string, string | null> | null
+  // Values are bigint-precise strings (新台幣千元 for the statement lines; EPS in 元). 數據中台 is switching them to JSON
+  // numbers（2026-11-03，使用者「數字不該用字串送」）: both are accepted; read through Number(), never as text.
+  statement: Record<string, string | number | null> | null
 }
 
 // server/api/stock/[code]/statements.get.ts — the latest filing of each statement plus the same

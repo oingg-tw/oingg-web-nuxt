@@ -200,8 +200,8 @@ export interface SectorMetricHistory {
 // （analysis-ts 40058581／業務中台 dcda99b；舊名 revenue／lastYearRevenue／yoyChangePercent 已棄用）。
 export interface SectorMonthlyRevenueEntry {
   yearMonth: string
-  currentMonthRevenue: string
-  lastYearSameMonthRevenue: string
+  currentMonthRevenue: string | number
+  lastYearSameMonthRevenue: string | number
   yoyChangePct: number | null
   companyCount: number
 }

@@ -20,7 +20,7 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}/revenue-growth`, label: '營收成長年增率（季報）' }
 ])
 
-const amount = (thousands: string | null) => monthlyRevenueAmountText(monthlyRevenueHundredMillion(thousands))
+const amount = (thousands: string | number | null) => monthlyRevenueAmountText(monthlyRevenueHundredMillion(thousands))
 const tableText = computed(() => historyTableText({ shortName: stockShortName.value, code: code.value, topic: '月營收', count: ascending.value.length, countUnit: '個月', from: ascending.value[0]?.yearMonth ?? '', to: latest.value?.yearMonth ?? '' }))
 
 // 最近一個月賣多少、今年到這個月累計多少；年增率在另一頁，這裡不寫

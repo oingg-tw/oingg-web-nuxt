@@ -37,7 +37,7 @@ export async function useMonthlyRevenuePage(code: Ref<string>) {
 // 申報的千元換成億元。只在前端這一層換：analysis-ts 照約定原樣轉千元，換單位的那一層也要寫單位。
 // null 要先擋：Number(null) 是 0，缺值會變成「0 元」而不是「尚無資料」（業務中台 f750e92 起營收欄位可能是 null）
 const THOUSAND_TO_HUNDRED_MILLION = 100_000
-export function monthlyRevenueHundredMillion(thousands: string | null): number | null {
+export function monthlyRevenueHundredMillion(thousands: string | number | null): number | null {
   if (thousands === null) return null
   const parsed = Number(thousands)
   return Number.isFinite(parsed) ? parsed / THOUSAND_TO_HUNDRED_MILLION : null

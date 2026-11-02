@@ -54,14 +54,14 @@ export interface AssetComposition {
   noncurrent: Record<NonCurrentAssetPart, number>
 }
 
-const num = (value: string | null | undefined): number => {
+const num = (value: string | number | null | undefined): number => {
   const parsed = Number(value)
   return value == null || !Number.isFinite(parsed) ? 0 : parsed
 }
 
 // 拆不開就回 null：沒有總資產、沒有流動／非流動合計（銀行、保險、證券、金控不分流動與非流動），流動＋非流動≠總資產，或殘差是負的
 // （列出的科目加起來超過合計，代表科目歸類有誤，畫出來會是一根騙人的柱子）。容差 1 千元：上游每個科目本來就是整數千元。
-export function assetCompositionOf(statement: Record<string, string | null> | null | undefined): AssetComposition | null {
+export function assetCompositionOf(statement: Record<string, string | number | null> | null | undefined): AssetComposition | null {
   if (!statement) return null
   const totalAssets = num(statement.assets)
   const currentAssets = num(statement.current_assets)
@@ -120,7 +120,7 @@ export interface DebtComposition {
 }
 
 // 拆不開回 null：金融業不分流動與非流動、流動＋非流動≠負債總計、殘差為負（歸類錯）。容差 1 千元。
-export function debtCompositionOf(statement: Record<string, string | null> | null | undefined): DebtComposition | null {
+export function debtCompositionOf(statement: Record<string, string | number | null> | null | undefined): DebtComposition | null {
   if (!statement) return null
   const liabilities = num(statement.liabilities)
   const current = num(statement.current_liabilities)
@@ -156,7 +156,7 @@ export interface EquityComposition {
   parts: Record<EquityPart, number>
 }
 
-export function equityCompositionOf(statement: Record<string, string | null> | null | undefined): EquityComposition | null {
+export function equityCompositionOf(statement: Record<string, string | number | null> | null | undefined): EquityComposition | null {
   if (!statement) return null
   const equity = num(statement.equity_attributable_to_owners_of_parent) || num(statement.equity)
   if (!equity) return null
