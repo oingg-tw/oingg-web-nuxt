@@ -103,6 +103,8 @@ export interface ScreenerWorkspace {
   renameColumnSet(id: string, name: string): Promise<void> | void
   removeColumnSet(id: string): Promise<void> | void
   reorderColumnSets(ids: string[]): Promise<void> | void
+  // 同 copyPreset，複製的是欄位
+  copyColumnSet(id: string, name: string): Promise<string | null>
   saveColumnSet(): void
   // 欄位設定彈窗按「儲存」：整份欄位一次換掉（多了欄位要重查；排序的那一欄不在了就清掉排序）
   applyColumnChoices(tab: WorkspaceTab, columns: ResultColumnChoice[]): Promise<void> | void

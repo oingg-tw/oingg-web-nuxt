@@ -10,7 +10,7 @@ import type { PresetSelectItem } from './ScreenerPresetSelect.vue'
 //   - 內建、未儲存的那幾組固定在最前面、不能改；最後一組不能刪
 //   - 名稱框按 Enter 就是「儲存」（2026-10-24，使用者：「管理我的篩選 連續按下enter 要視同儲存」）：清單是一個表單，「儲存」是它的送出鈕，
 //     交給瀏覽器的隱式送出——注音、倉頡選字確認的那一下 Enter 瀏覽器不會拿來送出，選完再按一次才存
-//   - 「複製」（copyable，只有我的篩選；2026-11-02，使用者：「管理我的篩選 彈跳視窗 要多一個 複製 按鈕」）：原本那一組下面多一列副本、
+//   - 「複製」（2026-11-02，使用者：「管理我的篩選 彈跳視窗 要多一個 複製 按鈕」，同日顯示欄位的管理也加）：原本那一組下面多一列副本、
 //     名稱可以先改，同樣按「儲存」才建立；副本的「刪除」直接拿掉那一列（還沒建立，沒有東西要復原）
 // 套用順序（改名 → 複製 → 刪除 → 排序）由 ScreenerPageShell 負責
 // 手機從下延展、桌機置中（2026-11-02，.condition-panel）：手機置中的彈窗裡有名稱框，鍵盤一彈起就把彈窗往上擠
@@ -18,7 +18,7 @@ interface Row extends PresetDraftRow {
   unsaved: boolean
 }
 
-const props = defineProps<{ label: string, items: PresetSelectItem[], copyable?: boolean }>()
+const props = defineProps<{ label: string, items: PresetSelectItem[] }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ save: [changes: PresetChanges] }>()
 
@@ -142,7 +142,7 @@ function save() {
           <div class="preset-manage__actions">
             <el-button link data-action="up" :disabled="!canMove(index, -1)" :aria-label="`把「${row.original}」上移`" @click="move(index, -1)">上移</el-button>
             <el-button link data-action="down" :disabled="!canMove(index, 1)" :aria-label="`把「${row.original}」下移`" @click="move(index, 1)">下移</el-button>
-            <el-button v-if="copyable && !row.copyOf" link data-action="copy" :aria-label="`複製「${row.original}」`" @click="copy(index)">複製</el-button>
+            <el-button v-if="!row.copyOf" link data-action="copy" :aria-label="`複製「${row.original}」`" @click="copy(index)">複製</el-button>
             <el-button link type="danger" data-action="remove" :disabled="standing <= 1" :aria-label="`刪除「${row.original}」`" @click="row.copyOf ? dropCopy(row) : setRemoved(row, true)">刪除</el-button>
           </div>
           <p v-if="row.copyOf" class="preset-manage__hint">儲存後建立</p>

@@ -27,8 +27,6 @@ const props = defineProps<{
   // 外框（container）窄於 720px 時標籤收進選單框裡當前綴、「＋新增」只留「＋」、「存成…」換到下一行：結果區的「顯示欄位」用「欄位」
   //（2026-10-22 操作區方案 A），設定區的「我的篩選」用「篩選」（同日設定區方案 B）
   compactLabel?: string
-  // 管理彈窗的每一組有「複製」（2026-11-02，使用者：「管理我的篩選 彈跳視窗 要多一個 複製 按鈕」）；只有「我的篩選」有
-  copyable?: boolean
 }>()
 
 const activeId = defineModel<string>('activeId', { required: true })
@@ -67,7 +65,7 @@ function optionLabel(item: PresetSelectItem) {
     <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button screener-preset-select__save" @click="emit('save')">{{ saveLabel }}</el-button>
     <el-button class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
     <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
-    <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" :copyable="copyable" @save="changes => emit('manage', changes)" />
+    <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
   </div>
 </template>
 

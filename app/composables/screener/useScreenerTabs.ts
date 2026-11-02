@@ -199,6 +199,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     removeColumnPresetOption,
     renameColumnPreset,
     reorderColumnPresets,
+    copyColumnPreset,
     handleReorderColumns,
     handleRemoveColumn,
     applyColumnChoices
@@ -673,6 +674,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       if (activeTab.value) await removeColumnPresetOption(activeTab.value, id)
     },
     reorderColumnSets: reorderColumnPresets,
+    copyColumnSet: (id: string, name: string) => copyColumnPreset(activeTab.value, id, name),
     // 普通股的欄位組合改了就存（登入的人一定在某一組已存的上面），沒有「未儲存」的欄位組合
     saveColumnSet: () => {},
     ...conditionEditor,

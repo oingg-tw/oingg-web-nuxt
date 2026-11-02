@@ -531,6 +531,14 @@ export function useUniverseScreener(source: UniverseSource) {
   }
 
 
+  // 「顯示欄位」管理彈窗的「複製」：同樣的欄位、彈窗裡定的名稱；副本會變成目前這一組
+  async function copyColumnSet(id: string, name: string): Promise<string | null> {
+    const set = columnSets.value.find(item => item.id === id)
+    const created = set ? await createColumnSet(name, set.fields) : null
+    if (created) selectColumnSet(created.id)
+    return created?.id ?? null
+  }
+
   async function removeColumnSet(id: string) {
     const ok = await columnsApi.remove(id)
     if (!ok) {
@@ -682,6 +690,7 @@ export function useUniverseScreener(source: UniverseSource) {
     renameColumnSet: (id: string, name: string) => renameSaved(columnSets, columnsApi, id, name),
     removeColumnSet,
     reorderColumnSets: (ids: string[]) => reorderSaved(columnSets, columnsApi, ids),
+    copyColumnSet,
     saveColumnSet,
     ...editor,
     loadMoreResults,

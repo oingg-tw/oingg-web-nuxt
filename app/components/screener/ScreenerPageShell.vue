@@ -72,12 +72,12 @@ interface GroupOps {
   rename(id: string, name: string): Promise<void> | void
   remove(id: string): Promise<void> | void
   reorder(ids: string[]): Promise<void> | void
-  copy?(id: string, name: string): Promise<string | null>
+  copy(id: string, name: string): Promise<string | null>
 }
 async function applyChanges({ renames, copies, removals, order }: PresetChanges, ops: GroupOps) {
   for (const [id, name] of renames) await ops.rename(id, name)
   const created = new Map<string, string | null>()
-  for (const { id, from, name } of copies) created.set(id, (await ops.copy?.(from, name)) ?? null)
+  for (const { id, from, name } of copies) created.set(id, await ops.copy(from, name))
   for (const id of removals) await ops.remove(id)
   if (order) await ops.reorder(order.flatMap(id => (created.has(id) ? created.get(id) ?? [] : [id])))
 }
@@ -91,7 +91,8 @@ const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
 const applyColumnSetChanges = (changes: PresetChanges) => applyChanges(changes, {
   rename: props.screener.renameColumnSet,
   remove: props.screener.removeColumnSet,
-  reorder: props.screener.reorderColumnSets
+  reorder: props.screener.reorderColumnSets,
+  copy: props.screener.copyColumnSet
 })
 
 function openRow(symbol: string) {
@@ -126,7 +127,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             compact-label="篩選"
             add-label="新增篩選"
             save-label="存成我的篩選"
-            copyable
             :items="screener.presetItems"
             :active-id="screener.activeTabId"
             @update:active-id="screener.selectTab"

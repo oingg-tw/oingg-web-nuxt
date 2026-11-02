@@ -271,6 +271,21 @@ export function useScreenerTabColumnPresets(ctx: {
     await switchColumnPreset(tab, applied.id)
   }
 
+  // 「顯示欄位」管理彈窗的「複製」：同樣的欄位、彈窗裡定的名稱，回傳新的 id；副本會變成目前這一組（同我的篩選的複製）
+  async function copyColumnPreset(tab: ScreenerTab | null, id: string, name: string): Promise<string | null> {
+    const source = columnPresetOptions.value.find(option => option.id === id)
+    if (!source) return null
+    const created = await createColumnPreset(name, source.fields)
+    if (!created) {
+      if (columnLastErrorCode.value === 'quota_exceeded') showQuotaReached('columnPresets')
+      else showErrorMessage(columnLastErrorMessage.value ?? '複製欄位組合失敗')
+      return null
+    }
+    columnPresetOptions.value.push(toColumnPresetOption(created))
+    if (tab) await switchColumnPreset(tab, created.id)
+    return created.id
+  }
+
   async function renameColumnPreset(id: string, name: string) {
     // Applied optimistically before the request resolves — PresetFolder.vue already exits
     // its inline-rename input the instant Enter is pressed, so without this the tab visibly
@@ -402,6 +417,7 @@ export function useScreenerTabColumnPresets(ctx: {
     removeColumnPresetOption,
     renameColumnPreset,
     reorderColumnPresets,
+    copyColumnPreset,
     handleReorderColumns,
     handleRemoveColumn,
     applyColumnChoices
