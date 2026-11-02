@@ -30,13 +30,13 @@ const currentUser = useCurrentUser()
 const authResolved = useAuthResolved()
 const {
   holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-  load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
+  load, ensureLoaded, clear, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll
 } = useHoldings()
 const importVisible = ref(false)
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
-// 報價：整批重讀（loadQuotes 只補還沒有價格的代號，失敗時一個都沒寫進去）
-watchLoadFailure('holdings-quotes', () => quotesFailed.value, () => loadQuotes(holdings.value.map(holding => holding.symbol)), { scope: 'section' })
+// 報價跟著 GET /holdings 回來（業務中台 136e5d6）：收盤價整批讀不到時重讀持股
+watchLoadFailure('holdings-quotes', () => quotesFailed.value, load, { scope: 'section' })
 usePostLoginLoader().registerPending(pending)
 
 // ---- 交易紀錄（一次看一檔） ----
@@ -134,7 +134,7 @@ const yieldDates = computed(() => {
 })
 
 // 各檔的報價日期可能不同（暫停交易的那一檔停在舊日期）；註腳寫最新的那一天。
-// 那一天沒有收盤價、改用較早一筆的持股（見 useHoldings 的 loadQuotes），照實寫出用的是哪一天
+// 那一天沒有收盤價、改用較早一筆的持股（持股列的 close／tradeDate 是最近一筆有成交的），照實寫出用的是哪一天
 const olderPriceText = computed(() => {
   const latest = priceDates.value.at(-1)
   if (!latest) return ''

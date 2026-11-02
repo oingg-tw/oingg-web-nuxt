@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 import type { ShareColumn } from '~/composables/share/useShares'
+import type { HoldingMarketFields } from '~/composables/holdings/holdings-model'
 
 // 分享出去的持股（2026-10-19，分享連結第二階段）。業務中台 的公開資料只有「勾選的欄位推得出來」的東西：占比、報酬率它算好；
-// 股數要勾了股數／市值／未實現損益／預估年股利才有，平均成本要勾了未實現損益才有。其餘用公開報價算，跟持股總覽同一套
-// （holdingRowFigures、dayChange、useHoldingsMarket），所以兩邊的數字一樣。表格是持股總覽那一張（HoldingsSymbolTable），
-// 只讀：沒有展開明細。
-export interface PublicHolding {
+// 股數要勾了股數／市值／未實現損益／預估年股利才有，平均成本要勾了未實現損益才有。其餘用每一列附的報價算（業務中台 136e5d6，不管勾了
+// 哪些欄位都附），跟持股總覽同一套（holdingRowFigures、dayChange、marketOf），所以兩邊的數字一樣。表格是持股總覽那一張
+// （HoldingsSymbolTable），只讀：沒有展開明細。
+export interface PublicHolding extends HoldingMarketFields {
   symbol: string
   weight?: string | null
   // 報酬率：百分比字串，4 位小數（"12.3456"＝12.3456%）；成本不明時 null
@@ -21,21 +22,13 @@ const props = defineProps<{
   holdings: PublicHolding[]
 }>()
 
-// 這幾欄要公開報價（收盤、前一日收盤、每股股利）；只勾了占比、報酬率就不必抓
-const QUOTE_COLUMNS = ['dayChange', 'marketValue', 'unrealizedPnl', 'annualDividend']
-const { market, loadQuotes, loadReferenceData } = useHoldingsMarket()
 const symbols = computed(() => props.holdings.map(holding => holding.symbol))
-onMounted(async () => {
-  if (!props.columns.some(column => QUOTE_COLUMNS.includes(column.key))) return
-  await loadReferenceData()
-  await loadQuotes(symbols.value)
-})
 
 const companyByCode = useCompanyLookup(() => symbols.value)
 const { routeFor } = useStockSearch()
 
 const rows = computed(() => props.holdings.map((holding) => {
-  const quote = market.value[holding.symbol]
+  const quote = marketOf(holding)
   const entry = companyByCode.value.get(holding.symbol)
   const quantity = holding.quantity ?? null
   return {
@@ -50,9 +43,9 @@ const rows = computed(() => props.holdings.map((holding) => {
     quantity,
     figures: quantity === null
       ? null
-      : holdingRowFigures({ quantity, costUnknownQuantity: holding.costUnknownQuantity ?? 0, averageCost: holding.averageCost ?? null, price: quote?.price, dividendPerShare: quote?.dividendPerShare }),
+      : holdingRowFigures({ quantity, costUnknownQuantity: holding.costUnknownQuantity ?? 0, averageCost: holding.averageCost ?? null, price: quote.price, dividendPerShare: quote.dividendPerShare }),
     // 只顯示漲跌幅：金額要乘股數，會透露部位大小
-    dayPct: dayChange({ quantity: 0, price: quote?.dayPrice, previousClose: quote?.previousClose, date: quote?.dayPriceDate }).pct
+    dayPct: dayChange({ quantity: 0, price: quote.dayPrice, previousClose: quote.previousClose, date: quote.dayPriceDate }).pct
   }
 }))
 type SharedRow = (typeof rows.value)[number]

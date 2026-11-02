@@ -17,7 +17,7 @@ export function useHoldings() {
   const pending = useState('holdings-pending', () => false)
   const loadFailed = useState('holdings-load-failed', () => false)
   const loadedFor = useState<string | null>('holdings-loaded-for', () => null)
-  const { market, quotesFailed, etfWindow, marketYield, loadQuotes, loadReferenceData, loadMarketYield } = useHoldingsMarket()
+  const { market, quotesFailed, etfWindow, marketYield, applyHoldingMarket, loadQuotes, loadMarketYield } = useHoldingsMarket()
   const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache } = useHoldingsReports()
   // 帳戶（2026-10-19）：讀取帶 scopeQuery（全部帳戶就不帶），loadedFor 記的是「誰＋哪個帳戶」，寫入一定帶 portfolioId
   const { portfolios, selected, scopeQuery, holdingsScope, writeTarget, ensurePortfolio } = useHoldingsPortfolios()
@@ -31,8 +31,8 @@ export function useHoldings() {
     pending.value = true
     loadFailed.value = false
     try {
-      // 特別股清單跟持股無關，跟 GET /holdings 同時發出
-      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings', { query: scopeQuery.value }), loadReferenceData(), loadMarketYield()])
+      // 大盤殖利率跟持股無關，同時發出。每一列的報價、股利跟著持股一起回來（業務中台 136e5d6）
+      const [response] = await Promise.all([request<{ holdings: Holding[] }>('/holdings', { query: scopeQuery.value }), loadMarketYield()])
       // undefined（問不到）與 []（真的沒有）分開：前者是 loadFailed，後者是一份可以直接套用的答案。
       const next = pendingDeletes.has(CLEAR_ALL_KEY)
         ? []
@@ -40,9 +40,8 @@ export function useHoldings() {
       // loadedFor 照舊在拿到持股時就標：載入中又被 ensureLoaded() 叫一次的話，看到同一個帳戶就不會清掉重來（移到報價之後時量到
       // 整段多載一輪、慢約 1 秒）
       loadedFor.value = holdingsScope.value ?? null
-      // 報價到了才放上畫面（2026-10-20，使用者：「holdings/analysis 重新整理的時候會閃動」）：原本先放持股再等報價，各頁會先畫一次
-      // 「N 檔目前沒有報價」、空的答句與圖，報價一到整段重畫（量到位移 0.097）。loadQuotes 讀不到只會標 quotesFailed、不會丟錯
-      await loadQuotes(next.map(holding => holding.symbol))
+      // 報價先寫進 market 再放持股（2026-10-20，使用者：「holdings/analysis 重新整理的時候會閃動」）：各頁不會先畫一次「N 檔目前沒有報價」
+      applyHoldingMarket(next)
       holdings.value = next
     } catch (error) {
       loadFailed.value = true

@@ -1,6 +1,26 @@
 // 持股管理的型別、錯誤代碼與訊息（2026-10-08 從 useHoldings 拆出）：useHoldings（帳本與自訂欄位）、useHoldingsMarket（市場資料）、
 // useHoldingsReports（期間報表）三支共用。
-export interface Holding {
+
+// 持股列附的市場資料（業務中台 136e5d6，2026-11-02；GET /holdings 與分享頁的持股列都有，匯入預覽一律 null）。都是字串或 null：
+// 三個來源（收盤價、殖利率、每股股利）同時抓，取不到的那一個只有它那幾欄是 null。頁面用 useHoldingsMarket 的 marketOf 換成 HoldingMarket
+export interface HoldingMarketFields {
+  // 最近一筆有成交的收盤與日期（算市值）
+  close?: string | null
+  tradeDate?: string | null
+  // 最新交易日當天的收盤與日期，那天沒成交是 null（今日漲跌＝dayClose − previousClose）
+  dayClose?: string | null
+  dayCloseTradeDate?: string | null
+  previousClose?: string | null
+  // 普通股：近 12 個月的現金股利；特別股：發行條件約定的年股息；ETF：近 12 個月的配息
+  dividendPerShare?: string | null
+  // 只有 ETF 有
+  trailing12MonthWindow?: { start: string, end: string } | null
+  // 交易所公布的殖利率（%）與日期；ETF 沒有
+  dividendYield?: string | null
+  dividendYieldTradeDate?: string | null
+}
+
+export interface Holding extends HoldingMarketFields {
   symbol: string
   quantity: number
   // 其中成本不明的股數（業務中台 a742fff）。成本不明的股數先賣。
