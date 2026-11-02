@@ -7,12 +7,14 @@
 // 走 businessFetch（2026-10-14）：部署後業務中台有 IAM 鎖，身分只在那一個入口加。
 //
 // 輪詢共用 15 秒（2026-10-16）：每個分頁每 30 秒、切回分頁時都會來問，原本每次都打上游，還佔用伺服器渲染也在用的 6 個上游同時連線名額
-// （server/utils/business.ts），排隊超過 5 秒就會誤報故障。同一台機器 15 秒內共用一次結果，過期就重問（不用 SWR）。請求失敗後的那一次
+// （server/utils/business.ts），排隊超過逾時就會誤報故障。同一台機器 15 秒內共用一次結果，過期就重問（不用 SWR）。請求失敗後的那一次
 // （useSystemHealth 的 reportFailure，帶 ?fresh=1）不走快取，故障一開始就看得到，跟原本一樣
+// 逾時 7 秒（2026-11-02，業務中台的建議）：業務中台每個依賴最多等 6 秒，DEV 資料庫喚醒要 3～6 秒，5 秒會把喚醒中的正常判成故障。
+// 瀏覽器那邊（useSystemHealth 的 CHECK_TIMEOUT_MS）要比這裡長
 const probeUpstream = defineCachedFunction(
   async (_fresh: boolean) => {
     try {
-      const response = await businessFetch<{ status: string }>('/system/health', { timeout: 5000 })
+      const response = await businessFetch<{ status: string }>('/system/health', { timeout: 7000 })
       return { ok: response.status === 'ok' }
     } catch {
       return { ok: false }
