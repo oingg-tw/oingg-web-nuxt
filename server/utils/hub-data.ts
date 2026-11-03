@@ -503,7 +503,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
     const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
       method: 'POST',
-      body: { columns: [{ field: definition.field }, { field: 'fundType' }], sortField: definition.field, order: definition.direction, page, pageSize: ETF_PAGE_SIZE }
+      body: { columns: [{ field: definition.field }, { field: 'fundType' }, ...(definition.dateField ? [{ field: definition.dateField }] : [])], sortField: definition.field, order: definition.direction, page, pageSize: ETF_PAGE_SIZE }
     })
     results.push(...response.results)
     totalPages = response.totalPages
@@ -511,8 +511,13 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   const ranked = results
     .map(result => ({ result, value: numericValue(result.values[definition.field]) }))
     .filter((entry): entry is { result: EtfResult; value: number } => entry.value !== null)
+  // 逐列日期只有給了 dateField 的排行才有（折溢價率的 tradeDate）；基金月報的數字用月報月份，寫在 asOf
+  const dateOf = (result: EtfResult) => {
+    const date = definition.dateField ? result.values[definition.dateField] : null
+    return typeof date === 'string' ? date : null
+  }
   const toRows = (entries: typeof ranked): RankingRow[] => entries.slice(0, RANKING_LIMIT)
-    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName || entry.result.symbol, value: entry.value, knowledgeDate: null }))
+    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName || entry.result.symbol, value: entry.value, knowledgeDate: dateOf(entry.result) }))
   const rows = toRows(ranked)
   const typeOrder = (name: string) => (ETF_FUND_TYPE_ORDER.includes(name) ? ETF_FUND_TYPE_ORDER.indexOf(name) : ETF_FUND_TYPE_ORDER.length)
   const groups = [...new Set(ranked.map(entry => entry.result.values.fundType).filter((name): name is string => typeof name === 'string'))]
@@ -534,7 +539,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     rows,
     groups,
     valueYear,
-    asOf: reportMonth
+    asOf: reportMonth ?? maxIsoDate(rows.map(row => row.knowledgeDate))
   }
 }
 
@@ -548,7 +553,8 @@ export const getRanking = defineCachedFunction(
     const floor = definition.growthBaseFloor
     const response = await businessFetch<RankingResponse>('/screener/ranking', {
       // `columns` 讓同一次呼叫多帶一個欄位（實測 2026-10-01 可用），所以基期門檻不需要第二次往返。
-      query: { field: definition.field, order: definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
+      // negate 排的是相反數，向上游要反方向（52 週股價跌幅：漲跌幅由低到高）
+      query: { field: definition.field, order: definition.negate ? (definition.direction === 'desc' ? 'asc' : 'desc') : definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
     })
     const column = response.columns.find(item => item.field === definition.field) ?? response.columns[0]
     // 基期太小的列剔掉（見 RANK_PAGES 的 growthBaseFloor 註解）。**`limit` 上限是 50**（實測，送 120
@@ -578,7 +584,8 @@ export const getRanking = defineCachedFunction(
       : response.results
     const rows: RankingRow[] = kept.map((result, index) => {
       const cell = result.values[definition.field] ?? null
-      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value: numericValue(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
+      const value = numericValue(cell?.value)
+      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value: definition.negate && value !== null ? -value : value, knowledgeDate: cell?.knowledgeDate ?? null }
     })
     return {
       direction: definition.direction,

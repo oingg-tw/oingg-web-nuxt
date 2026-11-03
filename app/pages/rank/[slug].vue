@@ -57,14 +57,6 @@ const universeText = computed(() => (isEtf ? `有${label}資料的${fundType.val
 // 單位與換算照 RANK_PAGES（市值、ETF 規模回來是元，換成億元才讀得進句子；受益人數是整數要千分位）；其他照上游的單位
 const unit = computed(() => definition.unit ?? data.value?.unit ?? '')
 
-// 手機的名次清單（2026-11-02，使用者從三個方案選了 C）：長條的長度＝數值 ÷ 這份清單的最大值，負數不畫。每一列日期都一樣就在
-// 清單頂端寫一次，各家不同才寫在數值下面
-const maxValue = computed(() => Math.max(0, ...rows.value.map(row => row.value ?? 0)))
-const shareOf = (value: number | null) => (value !== null && value > 0 && maxValue.value > 0 ? value / maxValue.value : 0)
-const sharedDate = computed(() => {
-  const dates = new Set(rows.value.map(row => row.knowledgeDate))
-  return dates.size === 1 ? [...dates][0] ?? null : null
-})
 // 指標膠囊列：打開時把目前這一個捲到看得見的地方（同除權息月覽的月份列）
 const chipStrip = ref<HTMLElement | null>(null)
 onMounted(() => {
@@ -127,19 +119,15 @@ const { breadcrumbs } = useHubPageSeo({
         </el-radio-group>
       </div>
       <section class="rank-list" :aria-label="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
-        <p class="rank-list__head">
-          <span class="rank-list__head-title">{{ label }}<template v-if="unit">（{{ unit }}）</template>{{ orderWord }}</span>
-          <span v-if="sharedDate">資料日期 {{ sharedDate }}</span>
-          <span v-else-if="hasRowDates">各家資料日期不同</span>
-        </p>
-        <ol class="rank-list__rows">
-          <li v-for="row in rows" :key="row.symbol" class="rank-list__row" :style="{ '--share': shareOf(row.value) }">
-            <span class="rank-list__rank">{{ row.rank }}</span>
-            <span class="rank-list__name"><NuxtLink :to="securityPath(row.symbol)">{{ row.name }}</NuxtLink><span class="rank-list__code">{{ row.symbol }}</span></span>
-            <span class="rank-list__value">{{ valueText(row.value) }}<span v-if="!sharedDate && row.knowledgeDate" class="rank-list__date">{{ row.knowledgeDate }}</span></span>
-            <span class="rank-list__bar" aria-hidden="true" />
-          </li>
-        </ol>
+        <RankList :rows="rows" :page="definition">
+          <template #head="{ sharedDate }">
+            <p class="rank-list__head">
+              <span class="rank-list__head-title">{{ label }}<template v-if="unit">（{{ unit }}）</template>{{ orderWord }}</span>
+              <span v-if="sharedDate">資料日期 {{ sharedDate }}</span>
+              <span v-else-if="hasRowDates">各家資料日期不同</span>
+            </p>
+          </template>
+        </RankList>
       </section>
     </div>
 
@@ -320,83 +308,6 @@ const { breadcrumbs } = useHubPageSeo({
 
   .rank-list__head-title {
     font-weight: 600;
-  }
-
-  .rank-list__rows {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* 名次佔兩列；名稱、數值一列，長條在下面一列 */
-  .rank-list__row {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px 12px;
-    padding: 12px 16px;
-    border-top: 1px solid var(--app-divider);
-  }
-
-  .rank-list__rank {
-    grid-row: 1 / span 2;
-    font-size: 1.25rem;
-    font-weight: 700;
-    text-align: right;
-    color: var(--el-text-color-regular);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .rank-list__name {
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-
-    a {
-      font-weight: 600;
-      color: var(--el-color-primary-dark-2);
-      text-underline-offset: 3px;
-    }
-  }
-
-  .rank-list__code {
-    margin-left: 8px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .rank-list__value {
-    text-align: right;
-    font-size: 1.125rem;
-    font-weight: 700;
-    line-height: 1.35;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .rank-list__date {
-    display: block;
-    font-size: 1rem;
-    font-weight: 400;
-    color: var(--el-text-color-secondary);
-  }
-
-  /* 長條：長度＝數值 ÷ 清單裡的最大值（--share 是 0～1） */
-  .rank-list__bar {
-    grid-column: 2 / span 2;
-    position: relative;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--el-color-primary-light-9);
-    overflow: hidden;
-  }
-
-  .rank-list__bar::after {
-    content: '';
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: calc(var(--share) * 100%);
-    border-radius: 3px;
-    background: var(--el-color-primary);
   }
 }
 </style>

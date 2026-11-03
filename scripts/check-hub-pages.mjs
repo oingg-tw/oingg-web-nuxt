@@ -50,7 +50,8 @@ const ROUTES = [
   // 8 → 7 on 2026-09-22, when consecutive-dividend-years was pulled（RANK_PAGES has the reason）.
   // Goes back to 8 with that page, ~2027 Q1.
   // 8 → 13 on 2026-10-21: five ETF rankings（RANK_PAGES 的 universe: 'etf'）。
-  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 13 },
+  // 13 → 20 on 2026-11-03: the /rank cards（方案 B）added seven rankings; every card's lists are in the HTML, so all 20 links are there.
+  { path: '/rank', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, rankLinksMin: 20 },
   // 個股連結 ≥ 1（2026-11-02，原本 10）：預設是這個月，淡季（11 月只有 3 檔普通股除權息）到不了 10 個；要確認的是伺服器輸出的清單有連到個股頁。
   // 不改看 ?month=07：這一頁的 canonical 刻意不帶參數，帶了就過不了 self canonical
   { path: '/calendar/months', stockLinksMin: 1, industryLinksMin: 0, tablesMin: 1 },

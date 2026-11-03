@@ -98,6 +98,9 @@ export interface RankPageDefinition {
   direction: 'asc' | 'desc'
   // 「殖利率」— the metric noun used in title/h1（「台股殖利率排行：由高到低前 50 檔」）.
   label: string
+  // 排行首頁的分類卡片（RANK_CATEGORIES）與卡片裡分段鈕的短名（沒給就用 label）
+  category: RankCategory
+  short?: string
   // The catalog metricCode behind the field (for the「{指標}是什麼？」link when a /metrics page exists).
   // ETF 的排行沒有：ETF 篩選的欄位不在 /metrics 型錄裡
   metricCode?: string
@@ -107,11 +110,17 @@ export interface RankPageDefinition {
   // 顯示單位與換算（2026-10-21 由頁面寫死的「市值換成億元」一般化）：value / valueScale，單位寫 unit
   unit?: string
   valueScale?: number
+  // 換算後留幾位小數（沒給就取整數）：淨申購、定期定額小到 0.3 億元，取整數會變成 0
+  valueDigits?: number
   // ETF 的排行：值是投信投顧公會基金月報的月底數字，資料日期用月報月份（上游的 ETF 篩選結果不帶日期）
   monthlyReport?: boolean
   // ETF 的排行：值是最近一個完整年度的全年數字（上游另有 {field}2025 這種各年一欄），表頭標出是哪一年（2026-10-21，使用者問
   //「總費用率 只有 0.3% 嗎? 這是過去12個月 或是 年化過了的結果嗎」）
   fullYear?: boolean
+  // ETF 的排行：逐列的資料日期讀這一欄（折溢價率是每天的數字，讀 tradeDate）；沒給就沒有逐列日期
+  dateField?: string
+  // 排的是欄位的相反數（52 週股價跌幅：漲跌幅由低到高取前 50，數值轉成正的跌幅、由高到低寫）。direction 是畫面上的方向
+  negate?: true
   // 這個欄位的說明（「是什麼？怎麼算？」與「要注意什麼」）。普通股的排行讀 /metrics 型錄自己的說明，ETF 的型錄沒有，寫在這裡
   note?: string
   // 年增率排行的基期門檻（2026-10-01，使用者選加門檻而不是撤頁）：/rank/revenue-growth 前 50 名全部 ≥100%、榜首 24852%，
@@ -139,21 +148,40 @@ export interface RankPageDefinition {
   }
 }
 
+// 排行首頁的分類（2026-11-03，使用者選了方案 B「預覽卡片」）：一類一張卡，卡內用分段鈕切換同類的排行，先列前 5 名。這裡的順序就是
+// 首頁卡片的順序；卡片裡的排行照 RANK_PAGES 的順序
+export const RANK_CATEGORIES = [
+  { key: 'valuation', title: '估值與股利' },
+  { key: 'profit', title: '獲利' },
+  { key: 'growth', title: '成長' },
+  { key: 'size', title: '規模與股價' },
+  { key: 'etf-size', title: '規模與資金' },
+  { key: 'etf-return', title: '報酬與成本' }
+] as const
+export type RankCategory = (typeof RANK_CATEGORIES)[number]['key']
+
 export const RANK_PAGES: RankPageDefinition[] = [
   // 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者選「全站改自算」，理由見 app/utils/replaced-metrics.ts）
-  { slug: 'dividend-yield', field: 'liveCashDividendYield.EOD', direction: 'desc', label: '殖利率', metricCode: 'liveCashDividendYield' },
-  { slug: 'pe-ratio-low', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
+  { slug: 'dividend-yield', category: 'valuation', field: 'liveCashDividendYield.EOD', direction: 'desc', label: '殖利率', metricCode: 'liveCashDividendYield' },
+  { slug: 'pe-ratio-low', category: 'valuation', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
   // 股價淨值比讀即時版（2026-11-01，使用者核准，理由見 app/utils/replaced-metrics.ts）：即時版沒有 ≤ 0 的值，由小排到大不會先排到淨值為負的
-  { slug: 'pb-ratio-low', field: 'livePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'livePbRatio' },
-  { slug: 'roe', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
+  { slug: 'pb-ratio-low', category: 'valuation', field: 'livePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'livePbRatio' },
+  { slug: 'roe', category: 'profit', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
+  // 以下七份（五年加權平均 ROE、52 週股價漲幅／跌幅、ETF 淨申購、定期定額金額、今年以來報酬率、折溢價率）是 2026-11-03 排行首頁
+  // 改版時加的（使用者：「新增的 7 份品項 都做」），資料都是業務中台已經有的欄位
+  { slug: 'roe-5y', category: 'profit', field: 'roeWeighted5y.FY', direction: 'desc', label: '五年加權平均ROE', short: '五年平均 ROE', metricCode: 'roeWeighted5y' },
   // /rank/eps 撤掉（2026-10-01 使用者：「eps 由高到低前 50 檔沒有意義，EPS 成長排行才有意義」）：EPS 高低幾乎只反映股本大小與
   // 面額。換成成長率之後成了下面的 eps-growth／eps-turnaround 兩頁。
   // /rank/consecutive-dividend-years 撤掉（2026-09-22）：欄位目前排不出東西——>=5 有 890 家、>=6 只有 1 家，889 家並列 5（2330 是 7），
   // 前 50 會是台積電加 49 個代號最小的公司。原因是結構性的（analysis-ts）：指標讀現金流量表判斷有沒有配息，mops 的 XBRL 從
   // 109Q3 才有，所以「5」是「至少 5」。FY115 結算（約 2027 Q1）後上限變 6 才會開始拆開——還原前先重量分布，前 50 跨過一個以上
   // 的值才放回來；指標本身在個股頁與篩選器照常。
-  { slug: 'market-cap', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap', unit: '億元', valueScale: 1e8 },
-  { slug: 'revenue-growth', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
+  { slug: 'market-cap', category: 'size', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap', unit: '億元', valueScale: 1e8 },
+  // 52 週股價漲幅／跌幅：同一個欄位排兩頭。跌幅那頁排相反數（negate），數值寫成正的跌幅、由高到低；不寫「跌幅由低到高」，
+  // 那會被讀成跌最少的排前面
+  { slug: 'price-return-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', label: '52週股價漲幅', short: '52週漲幅', metricCode: 'priceReturn52w' },
+  { slug: 'price-drop-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', negate: true, label: '52週股價跌幅', short: '52週跌幅', metricCode: 'priceReturn52w' },
+  { slug: 'revenue-growth', category: 'growth', short: '營收年增率', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
   // EPS 的兩頁（2026-10-01）。使用者：「eps 可以分成兩個版本阿 一個說明成長 一個說明由虧轉盈的
   // 幅度就好了」——而那個拆法解掉的正是 /rank/eps 被撤掉之後剩下的那個數學問題。
   //
@@ -166,7 +194,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   //
   // 先前做不出來是因為基期的**符號不可還原**（|分母| 讓兩個反推分支都符號自洽，見 growthBaseFloor
   // 的註解）。analysis-ts 2026-10-01 補了 `epsPriorYear.Q`——就是那個分母但不取絕對值——族群才分得開。
-  { slug: 'eps-growth', field: 'epsGrowthRate.Q', direction: 'desc', label: '單季每股盈餘成長年增率', metricCode: 'epsGrowthRate', screener: {
+  { slug: 'eps-growth', category: 'growth', short: 'EPS 年增率', field: 'epsGrowthRate.Q', direction: 'desc', label: '單季每股盈餘成長年增率', metricCode: 'epsGrowthRate', screener: {
     // 去年同季 ≥ 0.5 元：門檻用誤差預算推的，不是挑觀測值。EPS 只報到分（小數兩位），所以基期的
     // 四捨五入誤差是 ±0.005，而年增率對基期的相對誤差就是 0.005/基期；要壓到 1% 以內，基期要 ≥ 0.5。
     // 這一道同時把「由虧轉盈」與「虧損縮小」擋在外面（基期必須是正的），所以這一頁只有真成長。
@@ -194,7 +222,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   //
   // 上游沒有做 epsChange 欄位（他們的判斷：符合的公司只有幾百家，前端相減就好），所以這一頁靠
   // derivedMinus，而那表示要把符合的頁數全抓回來再排序。實測 442 家、9 頁、每頁約 0.9 秒。
-  { slug: 'eps-turnaround', field: 'eps.Q', direction: 'desc', label: '單季每股盈餘由虧轉盈幅度', metricCode: 'eps', screener: {
+  { slug: 'eps-turnaround', category: 'growth', short: '由虧轉盈', field: 'eps.Q', direction: 'desc', label: '單季每股盈餘由虧轉盈幅度', metricCode: 'eps', screener: {
     // −0.0001／0.0001 而不是 0：上游的 filter 是閉區間，用 0 會把剛好 0.00 的公司兩邊都算進去。
     filters: [{ field: 'epsPriorYear.Q', max: -0.0001 }, { field: 'eps.Q', min: 0.0001 }],
     columns: ['eps.Q', 'epsPriorYear.Q'],
@@ -203,11 +231,15 @@ export const RANK_PAGES: RankPageDefinition[] = [
     population: '只收去年同季虧損、本季獲利的公司，排的是兩者相差幾元。這不是獲利高低的排行：轉盈幅度大不代表現在賺得多。'
   } },
   // ETF 的排行（2026-10-21）。一樣只依一個欄位排序取前 50；說明的事實照 ETF 個別頁已有的寫法（基金月報、估算與完整年度）。
-  { slug: 'etf-aum', universe: 'etf', field: 'aum', direction: 'desc', label: '規模', unit: '億元', valueScale: 1e8, monthlyReport: true, note: '規模是投信投顧公會基金月報公布的月底淨資產，每月更新一次；規模跌破法定門檻、而且一段時間沒有回升的 ETF 可能依規定下市清算（以發行投信的公告為準）。' },
-  { slug: 'etf-holders', universe: 'etf', field: 'holders', direction: 'desc', label: '受益人數', unit: '人', monthlyReport: true, note: '受益人數是投信投顧公會基金月報公布的月底人數，每月更新一次。' },
-  { slug: 'etf-distribution-yield', universe: 'etf', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
-  { slug: 'etf-return-1y', universe: 'etf', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
-  { slug: 'etf-expense-ratio-low', universe: 'etf', field: 'expenseRatio', direction: 'asc', label: '總費用率', unit: '%', fullYear: true, note: '總費用率是投信投顧公會公布的最近完整年度全年數字，從淨值裡扣、不另外收；它含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。今年才成立的 ETF 還沒有完整年度，不在列（近 12 個月的估算看各檔的「費用」頁）。' }
+  { slug: 'etf-aum', universe: 'etf', category: 'etf-size', field: 'aum', direction: 'desc', label: '規模', unit: '億元', valueScale: 1e8, monthlyReport: true, note: '規模是投信投顧公會基金月報公布的月底淨資產，每月更新一次；規模跌破法定門檻、而且一段時間沒有回升的 ETF 可能依規定下市清算（以發行投信的公告為準）。' },
+  { slug: 'etf-holders', universe: 'etf', category: 'etf-size', field: 'holders', direction: 'desc', label: '受益人數', unit: '人', monthlyReport: true, note: '受益人數是投信投顧公會基金月報公布的月底人數，每月更新一次。' },
+  { slug: 'etf-net-flow', universe: 'etf', category: 'etf-size', field: 'netFlow', direction: 'desc', label: '淨申購', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '淨申購是投信投顧公會基金月報公布的當月申購金額減去贖回金額，每月更新一次；贖回多於申購時是負數。' },
+  { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
+  { slug: 'etf-distribution-yield', universe: 'etf', category: 'etf-return', short: '配息率', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
+  { slug: 'etf-return-1y', universe: 'etf', category: 'etf-return', short: '近1年報酬', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
+  { slug: 'etf-return-ytd', universe: 'etf', category: 'etf-return', field: 'returnYtd', direction: 'desc', label: '今年以來報酬率', short: '今年以來', unit: '%', monthlyReport: true, note: '今年以來報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
+  { slug: 'etf-expense-ratio-low', universe: 'etf', category: 'etf-return', field: 'expenseRatio', direction: 'asc', label: '總費用率', unit: '%', fullYear: true, note: '總費用率是投信投顧公會公布的最近完整年度全年數字，從淨值裡扣、不另外收；它含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。今年才成立的 ETF 還沒有完整年度，不在列（近 12 個月的估算看各檔的「費用」頁）。' },
+  { slug: 'etf-premium', universe: 'etf', category: 'etf-return', field: 'premiumDiscountPct', direction: 'desc', label: '折溢價率', short: '折溢價', unit: '%', dateField: 'tradeDate', note: '折溢價率是收盤價相對每單位淨值高或低多少：正數是溢價（收盤價高於淨值），負數是折價；以各檔最近一個交易日為準，每個交易日更新。' }
 ]
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
@@ -215,6 +247,10 @@ export const RANK_PAGES: RankPageDefinition[] = [
 //（這個檔案要保持零 import：腳本用 Node 直接載入）
 export function rankValueText(definition: RankPageDefinition, value: number | null): string {
   if (value === null) return '－'
+  if (definition.valueDigits !== undefined) {
+    const [whole, fraction] = Math.abs(value / (definition.valueScale ?? 1)).toFixed(definition.valueDigits).split('.')
+    return `${value < 0 ? '−' : ''}${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction ? `.${fraction}` : ''}`
+  }
   const scaled = definition.valueScale ? Math.round(value / definition.valueScale) : value
   const text = Number.isInteger(scaled) ? String(Math.abs(scaled)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : Math.abs(scaled).toFixed(2)
   return scaled < 0 ? `−${text}` : text

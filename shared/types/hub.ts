@@ -238,6 +238,16 @@ export interface RankingRow {
   knowledgeDate: string | null
 }
 
+// /api/hub/rank-leaders — /rank 首頁每份排行的前 5 名；count 是那份排行的總列數（「看前 50 檔」，營收年增率只有 29）
+export interface RankPreview {
+  slug: string
+  rows: RankingRow[]
+  count: number
+  asOf: string | null
+  valueYear: number | null
+  unit: string | null
+}
+
 // /api/hub/rank/:slug — GET /screener/ranking (limit ≤ 50) for one RANK_PAGES entry.
 export interface RankingPageData {
   direction: 'asc' | 'desc'
