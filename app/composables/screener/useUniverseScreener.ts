@@ -162,7 +162,9 @@ export function useUniverseScreener(source: UniverseSource) {
         min: typeof filter.min === 'number' ? filter.min : null,
         max: typeof filter.max === 'number' ? filter.max : null,
         exclude: filter.exclude ?? false,
-        values: filter.values?.length ? [...filter.values] : undefined
+        // 類別值換成選項的型別（同普通股的 currentValues）：ETF 的除權息月份選項 2026-11-03 起是整數，存檔、網址裡是 "7"；
+        // 不換的話條件標籤寫「7」不寫「7 月」、勾選框不打勾
+        values: filter.values?.length ? filter.values.map(value => findScreenerOption(locateFieldInSchema(source.categories.value, fieldId)?.metric.options, value)?.value ?? value) : undefined
       }
     })
   }

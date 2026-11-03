@@ -1,6 +1,6 @@
 import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
-import type { ScreenerFieldValue } from '~/composables/screener/useFilterSearch'
+import type { ScreenerFieldValue, UpstreamFieldValue } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 
 // 觀察清單每一列的資料（2026-10-06 重寫，「設計觀察清單頁面」）。
@@ -129,7 +129,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     }
     pending.value = true
     const [screener, notices] = await Promise.all([
-      fetchScreenerValues<ScreenerFieldValue>(missing.slice(0, QUOTE_MAX), requested).catch((error: unknown) => {
+      fetchScreenerValues<UpstreamFieldValue>(missing.slice(0, QUOTE_MAX), requested).catch((error: unknown) => {
         devWarn('watchlist', 'POST /screener/values unavailable', error)
         return null
       }),
@@ -147,7 +147,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
     const next = { ...quotes.value }
     for (const code of missing) {
-      const raw = bySymbol.get(code) ?? {}
+      const raw = Object.fromEntries(Object.entries(bySymbol.get(code) ?? {}).map(([field, cell]) => [field, joinedCell(cell)]))
       const price = toNumber(raw['stock.price']?.value)
       const previous = toNumber(raw['stock.previousClose']?.value)
       const change = price !== null && previous !== null && previous !== 0 ? price - previous : null
@@ -155,7 +155,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
       const nextDividendEvent = nextEventOf(notices?.notices[code] ?? [], today)
       next[code] = {
         values: {
-          ...Object.fromEntries(Object.entries(raw).map(([field, cell]) => [field, cell ?? null])),
+          ...raw,
           [WATCHLIST_CHANGE]: synthetic(changePercent),
           [WATCHLIST_EX_DIVIDEND]: synthetic(nextDividendEvent?.date ?? null)
         },

@@ -14,7 +14,8 @@ interface EtfFilterField {
   label: string
   // date（成立日）這一版的條件面板還不能設，不放進型錄；「成立年數」數字欄位涵蓋同樣的需求（業務中台 045159d）
   kind: 'numeric' | 'categorical' | 'date'
-  values?: string[]
+  // 類別欄位的選項：原本全是字串（"true"、"7"），數據中台 2026-11-03 起照型別給（布林、整數）
+  values?: (string | number | boolean)[]
   unit?: string
 }
 
@@ -153,7 +154,8 @@ export function useEtfSource(): UniverseSource {
         name: displayLabel(field),
         unit: field.unit,
         kind: field.kind === 'categorical' ? 'categorical' as const : 'numeric' as const,
-        options: field.values?.map(value => ({ value, label: valueLabel(field.field, value) }))
+        // 布林選項寫成 "true"／"false"：Element Plus 的勾選框群組不收布林，範本與存檔也是字串；業務中台送上游前換回布林（2026-11-03）
+        options: field.values?.map(value => ({ value: typeof value === 'boolean' ? String(value) : value, label: valueLabel(field.field, String(value)) }))
       }))
   )))
   const categories = computed(() => (currentUser.value ? withHeldCondition(catalogCategories.value, heldPortfolios.value, snapshotFieldId(HELD_FIELD_ID)) : catalogCategories.value))

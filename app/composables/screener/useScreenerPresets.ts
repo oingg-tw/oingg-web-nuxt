@@ -1,4 +1,4 @@
-import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow } from '~/composables/screener/useFilterSearch'
+import type { FilterCriterion, ScreenerResultColumn, ScreenerResultRow, UpstreamFieldValue } from '~/composables/screener/useFilterSearch'
 import type { ScreenerUniverse } from '~/utils/screener-zone'
 
 // 使用者擁有的每種篩選器資源（這個、column-presets、觀察清單、持股、交易）的 id 都是 UUID 字串（業務中台 c40fa87：
@@ -51,9 +51,9 @@ interface ScreenerPagination {
 }
 
 // 結果列的公司名稱業務中台叫 companyName，站內的列叫 name（preset.name 是組合名稱，另一回事）
-type BusinessResultRow = Omit<ScreenerResultRow, 'name'> & { companyName: string | null }
+type BusinessResultRow = Omit<ScreenerResultRow, 'name' | 'values'> & { companyName: string | null; values: Record<string, UpstreamFieldValue | null> }
 const withName = (rows: BusinessResultRow[]): ScreenerResultRow[] =>
-  rows.map(({ companyName, ...row }) => ({ ...row, name: companyName ?? row.symbol }))
+  rows.map(({ companyName, values, ...row }) => ({ ...row, name: companyName ?? row.symbol, values: Object.fromEntries(Object.entries(values).map(([field, cell]) => [field, joinedCell(cell)])) }))
 
 // GET /screener/presets/{id}/run 的回應包在 `screener` 底下（不是平的）；run() 攤平成 ScreenerRunResult。
 interface ScreenerRunApiResponse {

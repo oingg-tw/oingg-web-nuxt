@@ -35,6 +35,12 @@ export interface ScreenerFieldValue {
   fiscalPeriod?: string | null
 }
 
+// 多值的格子（除權息月份）：上游原本寫成「7、8」，數據中台 2026-11-03 起改送整數陣列 [7, 8]。站內照舊連成「、」的文字（同 ETF、
+// 特別股的 toRow），顯示、排序、複製都只有一種。普通股的結果列（useScreenerPresets 的 withName）與觀察清單讀進來時各換一次
+export type UpstreamFieldValue = Omit<ScreenerFieldValue, 'value'> & { value: ScreenerFieldValue['value'] | (string | number)[] }
+export const joinedCell = (cell: UpstreamFieldValue | null | undefined): ScreenerFieldValue | null =>
+  cell ? { ...cell, value: Array.isArray(cell.value) ? cell.value.join('、') || null : cell.value } : null
+
 export interface ScreenerResultRow {
   symbol: string
   name: string
