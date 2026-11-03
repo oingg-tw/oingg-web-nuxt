@@ -35,7 +35,7 @@ interface ConditionRow {
 }
 
 function rangeText(filter: ScreenerTemplateWithSlug['filters'][number], unit: string): string {
-  const suffix = unit === '%' ? '%' : unit && unit !== '無單位' ? ` ${unit}` : ''
+  const suffix = unit === '%' ? '%' : unit ? ` ${unit}` : ''
   const min = filter.min !== null ? `${filter.min}${suffix}` : null
   const max = filter.max !== null ? `${filter.max}${suffix}` : null
   let text = min && max ? `${min} 到 ${max}` : min ? `≥ ${min}` : max ? `≤ ${max}` : '有值即可'

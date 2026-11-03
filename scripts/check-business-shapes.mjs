@@ -10,9 +10,16 @@ const bare = { symbol: '2330' }
 assert.equal(withExType(bare), bare)
 
 // 型錄：業務中台的名字換成篩選器用的那組
-const catalog = { categories: [{ categoryKey: 'profitability', categoryDisplayName: '獲利能力', sort: 1, metrics: [{ metricCode: 'roe', name: 'ROE', fields: [{ timeframe: 'TTM', unit: '%' }] }] }] }
+const catalog = { categories: [{ categoryKey: 'profitability', categoryDisplayName: '獲利能力', sort: 1, metrics: [{ metricCode: 'roe', name: 'ROE', unit: '%', fields: [{ timeframe: 'TTM', unit: '%' }] }] }] }
 assert.deepEqual(metricsCatalogFromBusiness(catalog), {
-  categories: [{ key: 'profitability', name: '獲利能力', sort: 1, metrics: [{ key: 'roe', path: 'roe', name: 'ROE', fields: [{ key: 'TTM', name: 'TTM', period: 'TTM', unit: '%' }] }] }]
+  categories: [{ key: 'profitability', name: '獲利能力', sort: 1, metrics: [{ key: 'roe', path: 'roe', name: 'ROE', unit: '%', fields: [{ key: 'TTM', name: 'TTM', period: 'TTM', unit: '%' }] }] }]
 })
+// 沒有單位：舊的「無單位」與新的 null 都變成 null
+const unitless = (unit) => metricsCatalogFromBusiness({ categories: [{ categoryKey: 'risk', categoryDisplayName: '風險', metrics: [{ metricCode: 'beta', unit, fields: [{ timeframe: '1Y_1D', unit }] }] }] }).categories[0].metrics[0]
+for (const unit of ['無單位', null]) {
+  const metric = unitless(unit)
+  assert.equal(metric.unit, null, `指標層級的 ${unit} → null`)
+  assert.equal(metric.fields[0].unit, null, `期別層級的 ${unit} → null`)
+}
 
 console.log('business-shapes: ok')

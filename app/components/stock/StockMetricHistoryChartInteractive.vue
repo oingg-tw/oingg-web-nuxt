@@ -227,11 +227,11 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
   ...(rightCode.value && props.rightMetric
     ? [{
         code: rightCode.value,
-        name: `${props.rightMetric.name}（${props.rightMetric.unit}）`,
+        name: props.rightMetric.unit ? `${props.rightMetric.name}（${props.rightMetric.unit}）` : props.rightMetric.name,
         lineType: 'dotted',
         symbol: 'diamond',
         axis: 'right',
-        format: (value: number | null) => (value === null ? '—' : `${formatSignificantDigits(value, 4)} ${props.rightMetric!.unit}`)
+        format: (value: number | null) => (value === null ? '—' : `${formatSignificantDigits(value, 4)}${props.rightMetric!.unit ? ` ${props.rightMetric!.unit}` : ''}`)
       } satisfies LineSeriesSpec]
     : [])
 ])

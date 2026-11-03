@@ -44,10 +44,7 @@ const { data: filterSchema } = useNuxtData<MetricCatalog>('filter-schema')
 const categories = computed(() => filterSchema.value?.categories ?? [])
 const metricOf = (code: string) => findMetricInSchema(categories.value, code)?.metric ?? null
 const nameOf = (code: string): string => metricOf(code)?.name ?? code
-const unit = computed(() => {
-  const raw = metricOf(props.parentCode)?.unit
-  return raw && raw !== '無單位' ? raw : ''
-})
+const unit = computed(() => metricOf(props.parentCode)?.unit ?? '')
 
 // 挑期別的規則住在 shared/utils/metric-composition.ts，因為它要有一個跑得起來的檢查
 // （scripts/check-metric-composition.mjs）——.vue 裡的 computed 沒辦法從 node 呼叫。

@@ -15,7 +15,8 @@ export interface MetricField {
   // values as "no special formatting" rather than an error. Percent is '%' (measured 2026-10-06;
   // the 2026-09-01 vocabulary said 'percent', and code that still compared against that stopped
   // adding the % suffix without any error). See app/utils/screener-value.ts.
-  unit: string
+  // 沒有單位是 null（business-shapes.ts 把舊的「無單位」也換成 null）；精簡版目錄不帶 null 的鍵，所以那裡是 undefined
+  unit?: string | null
   // 0-based, scoped to sibling fields under the same metric — confirmed live with 業務中台
   // 2026-08-31 (not new data, just newly exposing the `position` column they already order
   // the query by; the array was already correctly ordered before this existed). Use this
@@ -53,8 +54,8 @@ export interface Metric {
   columnOnly?: boolean
   // 精簡版目錄（/api/hub/filter-schema）不帶：沒有呼叫端在讀
   path?: string
-  // 指標層級的單位（實測 GET /metrics 與各 field 的 `unit` 相同，如 "無單位"／"%"／"元"）；2026-09-10 加，一個指標一個單位。
-  unit: string
+  // 指標層級的單位（實測 GET /metrics 與各 field 的 `unit` 相同，如 "%"／"元"）；2026-09-10 加，一個指標一個單位。沒有單位同上
+  unit?: string | null
   fields: MetricField[]
   // Same semantics as MetricField.sort, scoped to sibling metrics under the same category.
   sort: number

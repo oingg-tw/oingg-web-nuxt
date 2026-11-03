@@ -34,7 +34,8 @@ const guide = computed(() => metricGuideFrom(findMetricCopy(code), metric.value)
 const facts = computed(() => {
   if (!metric.value || !category.value) return null
   const periods = metric.value.fields.map(field => formatPeriodLabel(field.period) ?? field.period)
-  return `${name.value}屬於「${category.value.name}」類指標，單位${metric.value.unit}，本站提供${periods.join('、')}的數值。`
+  // 沒有單位（貝他係數、河道位置）就不寫單位那一段（原本寫出「單位無單位」，型錄改送 null 後變「單位null」）
+  return `${name.value}屬於「${category.value.name}」類指標${metric.value.unit ? `，單位${metric.value.unit}` : ''}，本站提供${periods.join('、')}的數值。`
 })
 const definition = computed(() => (topic ? topic.definition : [...guide.value.definition, ...(facts.value ? [facts.value] : [])]))
 const badge = computed(() => metric.value?.badge ?? null)

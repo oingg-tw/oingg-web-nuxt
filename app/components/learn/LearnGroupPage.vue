@@ -86,7 +86,7 @@ const { breadcrumbs } = useHubPageSeo({
             <tr v-for="metric in category.metrics" :key="metric.key">
               <th scope="row"><NuxtLink :to="metricPath(metric.key)" class="seo-table__link">{{ metricDisplayName(metric) }}</NuxtLink></th>
               <td>{{ metric.nameEn ?? '－' }}</td>
-              <td>{{ metric.unit }}</td>
+              <td>{{ metric.unit ?? '無單位' }}</td>
               <td>{{ periodsOf(metric) }}</td>
             </tr>
           </tbody>

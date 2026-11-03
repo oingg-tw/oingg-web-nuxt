@@ -596,7 +596,8 @@ export const getRanking = defineCachedFunction(
 // (useFilterSchema.ts) and the server never reads into it. 業務中台型錄的鍵在這裡換成篩選器用的那組（business-shapes.ts）
 export const getMetricsCatalog = defineCachedFunction(
   async () => metricsCatalogFromBusiness(await businessFetch<{ categories: unknown[] }>('/metrics')),
-  { name: 'hub-metrics-catalog', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：2026-11-03 沒有單位改成 null（business-shapes.ts），舊鍵裡還是「無單位」
+  { name: 'hub-metrics-catalog-v2', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // useFilterSchema 讀的精簡目錄（2026-10-16，/api/hub/filter-schema）。整份目錄序列化進頁面 payload 有 271 KB（個股頁 payload 的 92%），
@@ -632,7 +633,8 @@ export const getFilterSchemaCatalog = defineCachedFunction(
       }))
     }
   },
-  { name: 'hub-filter-schema', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）
+  { name: 'hub-filter-schema-v2', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，

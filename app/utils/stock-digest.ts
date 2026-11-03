@@ -49,7 +49,7 @@ export interface StockDigestFact {
   // 近四季 / 單季 / null for annual and daily figures whose name already carries its period.
   periodLabel: string | null
   value: number
-  unit: string
+  unit: string | null
   // "86.27 元" / "34.78%" / "7 年"
   valueText: string
   // "近四季 EPS 86.27 元" / "單季負債比率 30.94%" / "連續配息年數 7 年"
@@ -122,10 +122,10 @@ export function collectMetricSources(categories: MetricCategory[], codes: readon
 }
 
 // Integers stay integers（7 年、8 分）, everything else gets two decimals; unit strings are the
-// catalog's literal suffixes（%／元／倍／分／年）,「無單位」means none.
-export function formatDigestValue(value: number, unit: string): string {
+// catalog's literal suffixes（%／元／倍／分／年）; no unit is null（business-shapes.ts turns the old「無單位」into null）.
+export function formatDigestValue(value: number, unit: string | null | undefined): string {
   const number = minusSign(Number.isInteger(value) ? String(value) : value.toFixed(2))
-  if (!unit || unit === '無單位') return number
+  if (!unit) return number
   if (unit === '%') return `${number}%`
   return `${number} ${unit}`
 }
@@ -169,7 +169,7 @@ function buildFacts(input: StockDigestInput): StockDigestFact[] {
         label,
         periodLabel,
         value: point.value,
-        unit: located.metric.unit,
+        unit: located.metric.unit ?? null,
         valueText,
         text: `${joinPeriodAndLabel(periodLabel, label)} ${valueText}`,
         fiscalYear: entry.fiscalYear,

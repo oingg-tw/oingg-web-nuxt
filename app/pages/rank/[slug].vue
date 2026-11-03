@@ -183,7 +183,7 @@ const { breadcrumbs } = useHubPageSeo({
       <h2 id="rank-metric-heading" class="stock-page-section__title">{{ label }}是什麼？怎麼算？</h2>
       <p class="hub-answer">
         <template v-if="metric">
-          本站目錄中的指標名稱為「{{ metricDisplayName(metric) }}」<template v-if="metric.nameEn">（{{ metric.nameEn }}）</template>，單位{{ metric.unit }}<template v-if="metric.sources?.length">，資料來源：{{ metric.sources.join('、') }}</template>。
+          本站目錄中的指標名稱為「{{ metricDisplayName(metric) }}」<template v-if="metric.nameEn">（{{ metric.nameEn }}）</template><template v-if="metric.unit">，單位{{ metric.unit }}</template><template v-if="metric.sources?.length">，資料來源：{{ metric.sources.join('、') }}</template>。
           <template v-if="metric.description">{{ metric.description }}</template>
         </template>
         <template v-else>{{ definition.note ?? FIELD_NOTES[slug] }}</template>
