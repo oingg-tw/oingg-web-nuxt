@@ -2,17 +2,15 @@
 import type { ReitProperty } from '#shared/types/screener-detail'
 
 // REITs 面向：標的不動產（2026-10-30，數據中台 3a8fd18 的 properties）。一筆一列，不加總：各筆的估價日不一定相同。
-// 面積與估價 2026-11-03 起讀結構化欄位（業務中台 055b7f2：坪數、估價機構／金額／估價日）；上游還沒有時是 null，照舊顯示原文
+// 面積與估價是結構化欄位（業務中台 055b7f2：坪數、估價機構／金額／估價日）
 const reitData = await useReit()
 const { code, reit, shortName } = reitData
 
 const properties = computed(() => reit.value?.properties ?? [])
 const hasNote = computed(() => properties.value.some(property => property.note))
-const areaText = (property: ReitProperty) => (property.areaPing != null ? `${groupThousands(property.areaPing)} 坪` : property.area ?? '－')
+const areaText = (property: ReitProperty) => (property.areaPing == null ? '－' : `${groupThousands(property.areaPing)} 坪`)
 // 一個估價機構一行；沒有估價（[]）寫「－」
-const appraisalLines = (property: ReitProperty): string[] => (property.appraisals
-  ? property.appraisals.map(item => `${item.appraiser} ${formatMoney(item.appraisalValueNtd)}（${item.appraisalDate}）`)
-  : property.appraisalValue ? [property.appraisalValue] : [])
+const appraisalLines = (property: ReitProperty): string[] => property.appraisals.map(item => `${item.appraiser} ${formatMoney(item.appraisalValueNtd)}（${item.appraisalDate}）`)
 
 const answer = computed(() => {
   if (!reit.value) return null

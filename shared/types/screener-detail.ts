@@ -198,12 +198,9 @@ export interface ReitProperty {
   address: string | null
   propertyType: string | null
   floors: string | null
-  // 結構化（業務中台 055b7f2，2026-11-03）：面積換算成坪；估價一個機構一筆，沒有估價是 []。上游還沒有這兩個欄位時是 null，退回下面的原文
-  areaPing?: number | null
-  appraisals?: { appraiser: string; appraisalValueNtd: number; appraisalDate: string }[] | null
-  // 原文（"9,089.91坪"、「戴德梁行：4,515,900,000元，…」），業務中台已標 deprecated，各環境都有結構化欄位後拿掉
-  area?: string | null
-  appraisalValue?: string | null
+  // 面積換算成坪（沒有面積是 null）；估價一個機構一筆，沒有估價是 []（業務中台 055b7f2）
+  areaPing: number | null
+  appraisals: { appraiser: string; appraisalValueNtd: number; appraisalDate: string }[]
   note: string | null
 }
 
