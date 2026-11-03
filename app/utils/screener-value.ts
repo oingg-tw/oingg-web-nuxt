@@ -24,6 +24,14 @@ export const EX_DIVIDEND_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) =
 // 「26Q3」，fiscalPeriod 是實際季別（"2026Q3"，older 是 null）；每一格的值照舊是實際季別（或 "older"）。所以比對兩個都認：值等於選項的
 // value，或等於它的 fiscalPeriod。存檔與網址裡舊的實際季別也靠這個換成相對值（不換的話業務中台回 400，見 useScreenerTabs 的 buildSlots）
 export type ScreenerOption = { value: string | number; label: string; fiscalPeriod?: string | null }
+
+// 類別條件送給業務中台時照型別送（2026-11-03 格式統一）："true"／"false" 是布林、除權息月份是整數。畫面裡（勾選框、範本、存檔讀回、網址）
+// 照舊是字串：Element Plus 的勾選框群組不收布林，特別股在瀏覽器裡用字串比對。代碼（類股、季別）不轉，所以只認欄位名，不看長得像不像數字
+const MONTH_FIELD = /^exDividendMonths(\.|$)/
+export const wireValue = (field: string, value: string | number): string | number | boolean =>
+  value === 'true' ? true : value === 'false' ? false : MONTH_FIELD.test(field) && /^\d+$/.test(String(value)) ? Number(value) : value
+export const wireFilters = <T extends { field: string; values?: (string | number)[] }>(filters: T[]) =>
+  filters.map(filter => (filter.values ? { ...filter, values: filter.values.map(value => wireValue(filter.field, value)) } : filter))
 export const findScreenerOption = (options: readonly ScreenerOption[] | null | undefined, raw: string | number): ScreenerOption | null =>
   options?.find(option => String(option.value) === String(raw) || (option.fiscalPeriod != null && option.fiscalPeriod === String(raw))) ?? null
 

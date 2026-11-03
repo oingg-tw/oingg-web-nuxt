@@ -158,7 +158,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
     try {
       const response = await authedFetch<{ preset: ScreenerPreset }>('/screener/presets', {
         method: 'POST',
-        body: { universe, filters, ...nonEmptyScope(scope) }
+        body: { universe, filters: wireFilters(filters), ...nonEmptyScope(scope) }
       })
       return response.preset
     } catch (error) {
@@ -173,7 +173,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
   ): Promise<ScreenerPreset | null> {
     if (!currentUser.value) return null
     try {
-      const response = await authedFetch<{ preset: ScreenerPreset }>(`/screener/presets/${id}`, { method: 'PATCH', body: patch })
+      const response = await authedFetch<{ preset: ScreenerPreset }>(`/screener/presets/${id}`, { method: 'PATCH', body: patch.filters ? { ...patch, filters: wireFilters(patch.filters) } : patch })
       return response.preset
     } catch (error) {
       warn(`PATCH /screener/presets/${id}`, error)
@@ -201,7 +201,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
       const response = await (currentUser.value ? authedFetch : apiFetch)<StatelessScreenerRunApiResponse>('/screener', {
         method: 'POST',
         body: {
-          filters: params.filters,
+          filters: wireFilters(params.filters),
           ...(params.columns ? { columns: params.columns } : {}),
           ...nonEmptyScope(params),
           ...params.pagination,

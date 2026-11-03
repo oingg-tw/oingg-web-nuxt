@@ -1,7 +1,7 @@
 // 篩選狀態放進網址的編碼與解析（app/utils/screener-url.ts，2026-10-22）。網址是任何人都能改的輸入：格式不對的要略過，不能讓頁面拿去查
 import assert from 'node:assert/strict'
 import { decodeScreenerQuery, encodeScreenerQuery, sameFilters } from '../app/utils/screener-url.ts'
-import { findScreenerOption, formatScreenerValue } from '../app/utils/screener-value.ts'
+import { findScreenerOption, formatScreenerValue, wireFilters, wireValue } from '../app/utils/screener-value.ts'
 
 // 來回一趟不變
 const state = {
@@ -58,5 +58,14 @@ assert.equal(findScreenerOption(quarters, '2024Q1'), null)
 assert.equal(formatScreenerValue('2026Q2', undefined, 'latestReportedQuarter.EOD', quarters), '26Q2')
 assert.equal(formatScreenerValue('older', undefined, 'latestReportedQuarter.EOD', quarters), '更早')
 assert.equal(findScreenerOption([{ value: 3, label: '中軌' }], '3')?.label, '中軌') // 河道位置：值是數字、上游給字串
+
+// 送給業務中台時照型別送（wireValue）：布林、除權息月份是整數；代碼（類股 "24"、季別）不轉
+assert.equal(wireValue('isActive', 'true'), true)
+assert.equal(wireValue('isActive', 'false'), false)
+assert.equal(wireValue('exDividendMonths', '7'), 7)
+assert.equal(wireValue('exDividendMonths.EOD', 7), 7)
+assert.equal(wireValue('sector.code', '24'), '24')
+assert.equal(wireValue('latestReportedQuarter.EOD', 'latest-1'), 'latest-1')
+assert.deepEqual(wireFilters([{ field: 'exDividendMonths', values: ['1', '7'] }, { field: 'roe.TTM', min: 15, max: null }]), [{ field: 'exDividendMonths', values: [1, 7] }, { field: 'roe.TTM', min: 15, max: null }])
 
 console.log('PASS: screener url')
