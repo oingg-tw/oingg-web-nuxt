@@ -1,11 +1,18 @@
 <script setup lang="ts">
-// REITs 面向：標的不動產（2026-10-30，數據中台 3a8fd18 的 properties）。一筆一列，值照公開資訊觀測站原文（面積帶單位、估價金額含估價機構），
-// 不換算、不加總：原文的單位與估價基準日各筆不一定相同
+import type { ReitProperty } from '#shared/types/screener-detail'
+
+// REITs 面向：標的不動產（2026-10-30，數據中台 3a8fd18 的 properties）。一筆一列，不加總：各筆的估價日不一定相同。
+// 面積與估價 2026-11-03 起讀結構化欄位（業務中台 055b7f2：坪數、估價機構／金額／估價日）；上游還沒有時是 null，照舊顯示原文
 const reitData = await useReit()
 const { code, reit, shortName } = reitData
 
 const properties = computed(() => reit.value?.properties ?? [])
 const hasNote = computed(() => properties.value.some(property => property.note))
+const areaText = (property: ReitProperty) => (property.areaPing != null ? `${groupThousands(property.areaPing)} 坪` : property.area ?? '－')
+// 一個估價機構一行；沒有估價（[]）寫「－」
+const appraisalLines = (property: ReitProperty): string[] => (property.appraisals
+  ? property.appraisals.map(item => `${item.appraiser} ${formatMoney(item.appraisalValueNtd)}（${item.appraisalDate}）`)
+  : property.appraisalValue ? [property.appraisalValue] : [])
 
 const answer = computed(() => {
   if (!reit.value) return null
@@ -37,13 +44,16 @@ const answer = computed(() => {
             <td>{{ property.propertyType ?? '－' }}</td>
             <td>{{ property.address ?? '－' }}</td>
             <td>{{ property.floors ?? '－' }}</td>
-            <td>{{ property.area ?? '－' }}</td>
-            <td>{{ property.appraisalValue ?? '－' }}</td>
+            <td>{{ areaText(property) }}</td>
+            <td>
+              <span v-for="line in appraisalLines(property)" :key="line" class="reit-properties__line">{{ line }}</span>
+              <template v-if="!appraisalLines(property).length">－</template>
+            </td>
             <td v-if="hasNote">{{ property.note || '－' }}</td>
           </tr>
         </tbody>
       </SharedTable>
-      <p class="hub-answer">以上是公開資訊觀測站的公告原文，面積、估價金額與估價機構以受託機構的正式公告為準。</p>
+      <p class="hub-answer">以上整理自公開資訊觀測站的公告（面積換算成坪），面積、估價金額與估價機構以受託機構的正式公告為準。</p>
     </StockQuestionSection>
   </ReitPage>
 </template>
@@ -53,5 +63,9 @@ const answer = computed(() => {
 .reit-properties__row > * {
   white-space: normal;
   min-width: 6em;
+}
+/* 估價一個機構一行 */
+.reit-properties__line {
+  display: block;
 }
 </style>
