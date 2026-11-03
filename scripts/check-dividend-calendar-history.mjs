@@ -74,7 +74,7 @@ for (let i = 0; i < dayCells; i++) {
 check(sawPaid, '已實現的列顯示發放日')
 check(sawAnnounced, '預告的列顯示「尚未除息」')
 
-// --- one month back (2026-08): all realized, and the month with the most rows ---
+// --- one month back: all realized ---
 console.log('\n上個月（全部 realized）')
 await prev.click()
 await page.waitForTimeout(1500)
@@ -84,11 +84,15 @@ const augRows = await readBusiestDay()
 check(augRows.length > 0, '歷史月份的日期明細打得開', `${augRows.length} 列`)
 check(augRows.some((r) => r.includes('發放日')), '歷史月份顯示發放日', augRows[0])
 check(!augRows.some((r) => r.includes('尚未除息')), '歷史月份不應出現「尚未除息」')
-check(await note.count() === 0, '2026-08 不顯示涵蓋警語')
+// 月份從今天算（2026-11-04 起；原本寫死「上個月是 2026-08、再退 6 個月到 2026-02」，到了 11 月就停在 2026-04）
+const now = new Date()
+const monthsFromFeb = (now.getFullYear() * 12 + now.getMonth()) - (2026 * 12 + 1)
+const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+check(await note.count() === 0, `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')} 不顯示涵蓋警語`)
 
 // --- back past the coverage cliff (2026-02) ---
 console.log('\n涵蓋範圍之前（2026-02）')
-for (let i = 0; i < 6; i++) { await prev.click(); await page.waitForTimeout(400) }
+for (let i = 1; i < monthsFromFeb; i++) { await prev.click(); await page.waitForTimeout(400) }
 await page.waitForTimeout(1500)
 const noteCount = await note.count()
 check(noteCount === 1, '2026-02 顯示涵蓋警語')

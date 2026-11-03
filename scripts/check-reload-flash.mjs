@@ -33,21 +33,21 @@ const ROUTES = {
 }
 const INTERIM = ['還沒有記錄任何持股', '還沒有追蹤任何股票', '產業分類載入中', '目前沒有報價']
 
-const trait = value => ({ value, coverage: '1.000000' })
-const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait('14.2'), dividendYield: trait('5.1'), roe: trait('12.3'), beta: trait('0.7'), top3HoldingsPct: trait('60.00') }, benchmark: null }
+const trait = value => ({ value, coverage: 1 })
+const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait(14.2), dividendYield: trait(5.1), roe: trait(12.3), beta: trait(0.7), top3HoldingsPct: trait(60) }, benchmark: null }
 const SYMBOLS = ['2330', '2317', '2412', '2884', '1216', '0056']
 // 收盤價在持股列上（業務中台 136e5d6，web 97680de6 起不再另外問 /screener/values）：沒有的話持股分析寫「目前沒有報價」
-const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50', totalCost: '50000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' }))
+const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: 50, totalCost: 50000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98 }))
 // 風險指標要是上面那六檔的（2026-10-24）：真的端點讀空帳號回 0 個交易日，VaR 寫「樣本不足」折成兩行、「交易日少於 60 天」那句晚出現，
 // 量到的是有持股卻沒有股價歷史這種不會發生的組合。實際跌幅（/holdings/performance）照讀空帳號，驗「期間內沒有持股就不列」
-const drawdown = { depth: '-0.182300', peakDate: '2026-01-15', troughDate: '2026-04-09', recoveryDate: '2026-07-20' }
+const drawdown = { depth: -0.1823, peakDate: '2026-01-15', troughDate: '2026-04-09', recoveryDate: '2026-07-20' }
 const RISK = {
-  from: '2025-10-24', to: '2026-10-23', tradingDays: 245, weightsAsOf: '2026-10-23', marketValue: '3120000',
-  portfolio: { annualizedVolatility: '0.185', beta: '0.92', correlation: '0.88', maxDrawdown: drawdown, valueAtRisk95Amount: '-73320', expectedShortfall95Amount: '-98280', downsideDeviation: '0.132', ulcerIndex: '0.061', valueAtRisk95: '-0.0235', expectedShortfall95: '-0.0315' },
-  benchmark: { annualizedVolatility: '0.172', maxDrawdown: drawdown, downsideDeviation: '0.121', ulcerIndex: '0.055', valueAtRisk95: '-0.0218', expectedShortfall95: '-0.0297' },
+  from: '2025-10-24', to: '2026-10-23', tradingDays: 245, weightsAsOf: '2026-10-23', marketValue: 3120000,
+  portfolio: { annualizedVolatility: 0.185, beta: 0.92, correlation: 0.88, maxDrawdown: drawdown, valueAtRisk95Amount: -73320, expectedShortfall95Amount: -98280, downsideDeviation: 0.132, ulcerIndex: 0.061, valueAtRisk95: -0.0235, expectedShortfall95: -0.0315 },
+  benchmark: { annualizedVolatility: 0.172, maxDrawdown: drawdown, downsideDeviation: 0.121, ulcerIndex: 0.055, valueAtRisk95: -0.0218, expectedShortfall95: -0.0297 },
   concentration: null,
-  diversificationRatio: '1.31',
-  holdings: SYMBOLS.map((symbol, index) => ({ symbol, weight: ['0.40', '0.20', '0.15', '0.10', '0.10', '0.05'][index], coverage: 'full', firstPriceDate: null, riskContribution: ['0.48', '0.19', '0.10', '0.09', '0.08', '0.06'][index] })),
+  diversificationRatio: 1.31,
+  holdings: SYMBOLS.map((symbol, index) => ({ symbol, weight: [0.4, 0.2, 0.15, 0.1, 0.1, 0.05][index], coverage: 'full', firstPriceDate: null, riskContribution: [0.48, 0.19, 0.1, 0.09, 0.08, 0.06][index] })),
   sectors: null,
   fundamentals: null
 }

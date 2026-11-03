@@ -10,7 +10,7 @@
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-share-links.mjs（要 A11Y_TEST_EMAIL／PASSWORD；DIR＝截圖目錄，可省略）
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
-const base = 'http://localhost:3000'
+const base = process.env.BASE ?? 'http://localhost:3000'
 const dir = process.env.DIR
 const shot = async (page, name, fullPage = false) => { if (dir) await page.screenshot({ path: `${dir}/${name}.png`, fullPage }) }
 const browser = await chromium.launch()
@@ -21,25 +21,25 @@ const hash = text => [...text].reduce((sum, char) => sum + char.charCodeAt(0), 0
 // 持股（第二階段）：一個帳戶、兩檔。公開資料分兩種：只分享比例（占比、報酬率）與連部位大小一起分享
 const TOKEN_H = 'Hq7x2VbN1mKp7RtY2wLc8B'
 const holdings = [
-  { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '80.0000', totalCost: '80000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' },
-  { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '120.0000', totalCost: '240000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' }
+  { symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: 80, totalCost: 80000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98 },
+  { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: 120, totalCost: 240000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98 }
 ]
 // 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE、九宮格只涵蓋 60%（ETF 沒有財報、
 // 不分規模風格），2330 在大型混合；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀，
 // 大盤九宮格是 DEV 10/16 的實際數字
-const trait = (value, coverage = '1.000000') => ({ value, coverage })
+const trait = (value, coverage = 1) => ({ value, coverage })
 const BOX = ['large', 'mid', 'small'].flatMap(row => ['Value', 'Core', 'Growth'].map(column => `${row}${column}Pct`))
 const box = (values, coverage) => Object.fromEntries(BOX.map((key, index) => [key, trait(values[index], coverage)]))
 const TRAITS = {
   asOf: '2026-10-16',
-  portfolio: { peRatio: trait('14.200000', '0.600000'), pbRatio: trait('1.800000', '0.600000'), dividendYield: trait('5.100000', '0.600000'), roe: trait('12.300000', '0.600000'), revenueGrowth: trait('4.000000', '0.600000'), beta: trait('0.700000'), revenueYoyVolatility: trait(null, '0.000000'), top3HoldingsPct: trait('60.00', '1'), largeCapPct: trait('100.00', '0.6000'), ...box(['0.00', '100.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00'], '0.6000') },
-  market: null
+  portfolio: { peRatio: trait(14.2, 0.6), pbRatio: trait(1.8, 0.6), dividendYield: trait(5.1, 0.6), roe: trait(12.3, 0.6), revenueGrowth: trait(4, 0.6), beta: trait(0.7), revenueYoyVolatility: trait(null, 0), top3HoldingsPct: trait(60, 1), largeCapPct: trait(100, 0.6), ...box([0, 100, 0, 0, 0, 0, 0, 0, 0], 0.6) },
+  benchmark: null
 }
-const TRAITS_WITH_MARKET = { ...TRAITS, market: { peRatio: trait('21.500000'), pbRatio: trait('2.600000'), dividendYield: trait('3.000000'), roe: trait('11.800000'), revenueGrowth: trait('9.200000'), beta: trait('1.000000'), revenueYoyVolatility: trait(null, '0.000000'), top3HoldingsPct: trait('44.97'), largeCapPct: trait('70.04'), ...box(['10.96', '50.20', '9.28', '5.91', '7.57', '6.43', '3.30', '3.43', '2.93'], '0.9945') } }
+const TRAITS_WITH_MARKET = { ...TRAITS, benchmark: { peRatio: trait(21.5), pbRatio: trait(2.6), dividendYield: trait(3), roe: trait(11.8), revenueGrowth: trait(9.2), beta: trait(1), revenueYoyVolatility: trait(null, 0), top3HoldingsPct: trait(44.97), largeCapPct: trait(70.04), ...box([10.96, 50.2, 9.28, 5.91, 7.57, 6.43, 3.3, 3.43, 2.93], 0.9945) } }
 const HOLDINGS_PAYLOAD = {
-  ratios: { kind: 'holdings', displayName: null, asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'pnlPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: '0.400000', pnlPct: '-0.050000' }, { symbol: '2330', weight: '0.600000', pnlPct: '0.250000' }], traits: TRAITS },
-  market: { kind: 'holdings', displayName: '小明', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: '0.400000' }, { symbol: '2330', weight: '0.600000' }], traits: TRAITS_WITH_MARKET },
-  sizes: { kind: 'holdings', displayName: null, asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ symbol, quantity, averageCost, costUnknownQuantity }) => ({ symbol, quantity, averageCost, costUnknownQuantity })) }
+  ratios: { kind: 'holdings', displayName: null, asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'returnPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: 0.4, returnPct: -5 }, { symbol: '2330', weight: 0.6, returnPct: 25 }], traits: TRAITS },
+  market: { kind: 'holdings', displayName: '小明', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: 0.4 }, { symbol: '2330', weight: 0.6 }], traits: TRAITS_WITH_MARKET },
+  sizes: { kind: 'holdings', displayName: null, asOf: null, columns: [{ key: 'quantity', label: '股數' }, { key: 'marketValue', label: '市值' }, { key: 'unrealizedPnl', label: '未實現損益' }], holdings: holdings.map(({ realizedProfitLoss: _realized, totalCost: _cost, ...holding }) => holding) }
 }
 let storedShares = []
 const issued = { watchlist: 0, holdings: 0 }
@@ -299,7 +299,7 @@ console.log('持股：擁有者（1440）')
   check(await nameInput.getAttribute('maxlength') === '15' && (await dialog.locator('.share-dialog__name .el-input-group__append').innerText()).trim() === '分享的持股', '有「分享頁的標題」：名字最多 15 字，後面接著「分享的持股」')
   await nameInput.fill('  小明 ')
   await dialog.getByRole('button', { name: '建立連結' }).click(); await page.waitForTimeout(600)
-  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"pnlPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}],"displayName":"小明"}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄、名稱去掉前後空白')
+  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"returnPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}],"displayName":"小明"}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄、名稱去掉前後空白')
   check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}`, '網址就是這條連結')
   // 業務中台每次 PUT 整個換掉 displayName、沒帶就變 null：只改欄位也要帶著名稱
   await dialog.locator('.el-checkbox', { hasText: '今日漲跌' }).click(); await page.waitForTimeout(1200)

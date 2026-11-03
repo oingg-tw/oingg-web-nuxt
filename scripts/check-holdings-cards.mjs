@@ -10,7 +10,7 @@
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-holdings-cards.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
-const base = 'http://localhost:3000'
+const base = process.env.BASE ?? 'http://localhost:3000'
 const dir = process.env.DIR
 let failures = 0
 const check = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
