@@ -198,9 +198,9 @@ export interface ReitProperty {
   address: string | null
   propertyType: string | null
   floors: string | null
-  // 面積換算成坪（沒有面積是 null）；估價一個機構一筆，沒有估價是 []（業務中台 055b7f2）
+  // 面積換算成坪（沒有面積是 null）；估價一個機構一筆，沒有估價是 []，公告沒寫估價日是 null（01007T 全部都是）（業務中台 055b7f2）
   areaPing: number | null
-  appraisals: { appraiser: string; appraisalValueNtd: number; appraisalDate: string }[]
+  appraisals: { appraiser: string; appraisalValueNtd: number; appraisalDate: string | null }[]
   note: string | null
 }
 

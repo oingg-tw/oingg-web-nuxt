@@ -10,7 +10,7 @@ const properties = computed(() => reit.value?.properties ?? [])
 const hasNote = computed(() => properties.value.some(property => property.note))
 const areaText = (property: ReitProperty) => (property.areaPing == null ? '－' : `${groupThousands(property.areaPing)} 坪`)
 // 一個估價機構一行；沒有估價（[]）寫「－」
-const appraisalLines = (property: ReitProperty): string[] => property.appraisals.map(item => `${item.appraiser} ${formatMoney(item.appraisalValueNtd)}（${item.appraisalDate}）`)
+const appraisalLines = (property: ReitProperty): string[] => property.appraisals.map(item => `${item.appraiser} ${formatMoney(item.appraisalValueNtd)}${item.appraisalDate ? `（${item.appraisalDate}）` : ''}`)
 
 const answer = computed(() => {
   if (!reit.value) return null
