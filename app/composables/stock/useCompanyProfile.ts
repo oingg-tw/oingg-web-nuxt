@@ -38,7 +38,7 @@ export interface NormalizedCompanyProfile {
   // so treat a "1" as expected-but-unseen rather than confirmed.
   metricDataType: string | null
   // 每股面額（元）。不是 10 元的公司，證交所、櫃買中心會在簡稱後面加 *（強生* 是 5 元），摘要卡寫出實際面額（2026-10-22）。
-  // 上游給字串（"5"）或數字（2026-11-03 起），沒有資料是 null（創新板的幾家）
+  // 沒有資料是 null（創新板的幾家）
   parValue: number | null
 }
 
@@ -66,7 +66,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
     metricDataType: (raw.metricDataType as string | null) ?? null,
-    parValue: raw.parValue != null && raw.parValue !== '' && Number.isFinite(Number(raw.parValue)) ? Number(raw.parValue) : null
+    parValue: typeof raw.parValue === 'number' ? raw.parValue : null
   }
 }
 

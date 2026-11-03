@@ -6,8 +6,7 @@ const etfData = await useEtf()
 const { code, data, values, etf, shortName } = etfData
 
 const rows = computed(() => ETF_RETURN_FIELDS.map(({ field, label }) => ({ label, value: typeof values.value[field] === 'number' ? values.value[field] as number : null })))
-// yearMonth："202609"（舊）或 "2026-09"（新，2026-11-03 起），normalizeYearMonth 兩種都收
-const reportMonth = computed(() => normalizeYearMonth(etf.value?.yearMonth))
+const reportMonth = computed(() => etf.value?.yearMonth ?? null)
 const month = computed(() => (reportMonth.value ? `${reportMonth.value.slice(0, 4)} 年 ${Number(reportMonth.value.slice(5))} 月` : null))
 
 const answer = computed(() => {

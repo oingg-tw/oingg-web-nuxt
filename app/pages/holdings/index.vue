@@ -159,10 +159,6 @@ function signedPct(value: number | null): string {
   return minusSign(`${value > 0 ? '+' : ''}${fixed}%`)
 }
 
-function plainNumber(value: string | number): string {
-  return groupThousands(String(Number(value)))
-}
-
 // 報酬含息（2026-10-23，使用者 2026-10-05：「總覽要可以切換 含息 不含息 報酬率」；業務中台 1074647 每一列帶 dividendsReceived）：
 // 打開時總覽與明細的損益、報酬率加上這批持股領過的現金股利，欄名改成「含息損益」「含息報酬率」；關著是只看股價的未實現損益（跟券商
 // 對帳單一樣，預設）。這個瀏覽器記住選了哪一個（cookie：伺服器第一個畫面的欄名就是對的，不會先寫「未實現損益」再換字）
@@ -212,7 +208,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
 // 平均成本只算成本已知的股數；有成本不明的股數時照實寫出來，不讓人以為均價涵蓋全部股數
 function averageCostText(holding: Holding): string {
   if (holding.averageCost === null) return '成本不明'
-  const text = plainNumber(holding.averageCost)
+  const text = groupThousands(holding.averageCost)
   return holding.costUnknownQuantity > 0 ? `${text}（另 ${groupThousands(holding.costUnknownQuantity)} 股成本不明）` : text
 }
 
@@ -340,9 +336,9 @@ function openEditTransaction(transaction: Transaction) {
     action: transaction.action,
     tradeDate: transaction.tradeDate,
     quantity: transaction.quantity,
-    price: transaction.costUnknown ? undefined : Number(transaction.price),
-    fee: Number(transaction.fee),
-    tax: Number(transaction.tax),
+    price: transaction.costUnknown ? undefined : transaction.price,
+    fee: transaction.fee,
+    tax: transaction.tax,
     note: transaction.note ?? '',
     costUnknown: transaction.costUnknown
   })
@@ -496,7 +492,7 @@ async function submit() {
                 :variant="variant"
                 :holding="row.holding"
                 :average-cost="averageCostText(row.holding)"
-                :price="row.figures.marketValue === null ? '－' : plainNumber(row.input.price!)"
+                :price="row.figures.marketValue === null ? '－' : groupThousands(row.input.price!)"
                 :label="row.label"
                 :entries="transactions[row.symbol]"
                 :symbol-label="symbolLabel"

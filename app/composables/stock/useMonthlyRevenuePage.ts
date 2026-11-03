@@ -35,13 +35,9 @@ export async function useMonthlyRevenuePage(code: Ref<string>) {
 }
 
 // 申報的千元換成億元。只在前端這一層換：analysis-ts 照約定原樣轉千元，換單位的那一層也要寫單位。
-// null 要先擋：Number(null) 是 0，缺值會變成「0 元」而不是「尚無資料」（業務中台 f750e92 起營收欄位可能是 null）
+// 缺值是 null（業務中台 f750e92 起營收欄位可能是 null），寫「尚無資料」而不是「0 元」
 const THOUSAND_TO_HUNDRED_MILLION = 100_000
-export function monthlyRevenueHundredMillion(thousands: string | number | null): number | null {
-  if (thousands === null) return null
-  const parsed = Number(thousands)
-  return Number.isFinite(parsed) ? parsed / THOUSAND_TO_HUNDRED_MILLION : null
-}
+export const monthlyRevenueHundredMillion = (thousands: number | null): number | null => (thousands === null ? null : thousands / THOUSAND_TO_HUNDRED_MILLION)
 // formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本固定 toFixed(1) 億元，月營收 300 萬的公司印成「0.0 億元」
 export const monthlyRevenueAmountText = (hundredMillion: number | null): string => (hundredMillion === null ? '尚無資料' : formatMoney(hundredMillion * THOUSAND_TO_HUNDRED_MILLION * 1000))
 export const monthlyRevenueRateText = (value: number | null): string => (value === null ? '尚無資料' : minusSign(`${value.toFixed(2)}%`))

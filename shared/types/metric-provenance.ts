@@ -9,12 +9,8 @@ export interface MetricProvenanceEntry {
   fiscalYear: number
   // 2026-10-07 業務中台 f750e92：上游本來就可能是 null，業務中台 以前轉成 "null"／0／false，現在原樣傳 null
   fiscalQuarter: number | null
-  // No fixed type on the wire — 業務中台 confirmed live 2026-09-10: most entries are
-  // bigint-serialized strings (raw statement figures, e.g. "706561938"), but chowderNumber's
-  // cash-dividend-yield "market snapshot" entry comes back as a plain float (0.92) instead.
-  // Never assume string; formatProvenanceValue() in the consuming component checks the type.
   // null：那一期的財報沒有這個科目、或由它算出來的平均（2026-10-21 實測 6741 的存貨與應付帳款）
-  value: string | number | null
+  value: number | null
   type: 'statementField' | 'other'
   // Only present on `type: 'statementField'` — fieldKey exact-matches
   // GET /stocks/:symbol/financial-statement's own keys (analysis-ts's own guarantee, cross-

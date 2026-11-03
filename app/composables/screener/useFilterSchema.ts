@@ -15,7 +15,7 @@ export interface MetricField {
   // values as "no special formatting" rather than an error. Percent is '%' (measured 2026-10-06;
   // the 2026-09-01 vocabulary said 'percent', and code that still compared against that stopped
   // adding the % suffix without any error). See app/utils/screener-value.ts.
-  // 沒有單位是 null（business-shapes.ts 把舊的「無單位」也換成 null）；精簡版目錄不帶 null 的鍵，所以那裡是 undefined
+  // 沒有單位是 null；精簡版目錄不帶 null 的鍵，所以那裡是 undefined
   unit?: string | null
   // 0-based, scoped to sibling fields under the same metric — confirmed live with 業務中台
   // 2026-08-31 (not new data, just newly exposing the `position` column they already order

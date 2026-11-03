@@ -36,23 +36,19 @@ export const findScreenerOption = (options: readonly ScreenerOption[] | null | u
   options?.find(option => String(option.value) === String(raw) || (option.fiscalPeriod != null && option.fiscalPeriod === String(raw))) ?? null
 
 // options：類別型欄位（型錄的 kind categorical，例如河道位置）的選項，選項的 value 是數字，用字串比對後顯示中文（破底…破頂）；
-// 對不到的照原值（2026-10-21）。值：業務中台原本把數字轉成十進位字串（"0"、"23.1"），2026-11-03 起照標準改送 JSON 數字（文字欄位
-// 照舊是字串），兩種都收
+// 對不到的照原值（2026-10-21）。值：數值欄位是 JSON 數字，文字欄位是字串，照原樣顯示
 export function formatScreenerValue(raw: string | number | null | undefined, unit: string | null | undefined, field?: string, options?: readonly ScreenerOption[] | null): string {
   if (raw === null || raw === undefined) return '—'
   if (options?.length) return labelEachValue(raw, value => findScreenerOption(options, value)?.label)
-  if (field === 'dividendYield.EOD' && Number(raw) === 0) return NO_DIVIDEND_TEXT
+  if (typeof raw !== 'number') return raw
+  if (field === 'dividendYield.EOD' && raw === 0) return NO_DIVIDEND_TEXT
   if (unit === '%') return minusSign(`${raw}%`)
-  const value = Number(raw)
-  if (!Number.isFinite(value)) return String(raw)
-  if (Math.abs(value) >= 1e6) return formatSignificantDigits(value, 4)
+  if (Math.abs(raw) >= 1e6) return formatSignificantDigits(raw, 4)
   return groupThousands(raw)
 }
 
-// 兩個欄位值的升冪比較：數字比數字；讀不出數字的（例如日期字串）照字串比。null 由呼叫端決定放哪裡。
+// 兩個欄位值的升冪比較：數字比數字，文字（例如日期）照字串比。null 由呼叫端決定放哪裡。
 // 觀察清單的表格（el-table 的 sort-method）與手機卡片的排序選單共用（2026-10-08）。
 export function compareFieldValues(x: string | number, y: string | number): number {
-  const nx = Number(x)
-  const ny = Number(y)
-  return Number.isFinite(nx) && Number.isFinite(ny) ? nx - ny : String(x).localeCompare(String(y))
+  return typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))
 }

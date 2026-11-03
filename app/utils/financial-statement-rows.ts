@@ -36,8 +36,8 @@ export interface StatementLine {
   // 「其他」那一行（算出來的，不是申報的欄位）
   other: boolean
   unit: StatementColumn['unit']
-  current: string | number | null
-  prior: string | number | null
+  current: number | null
+  prior: number | null
 }
 
 export const STATEMENT_DEFINITIONS: { key: StatementType; label: string }[] = [
@@ -53,14 +53,11 @@ const CONCISE_RULES: Record<StatementType, { share: number; base: string[] }> = 
   cashFlowStatement: { share: 0.05, base: ['cash_flows_from_used_in_operating_activities', 'net_cash_flows_from_used_in_investing_activities', 'cash_flows_from_used_in_financing_activities'] }
 }
 
-type Values = Record<string, string | number | null> | null | undefined
+type Values = Record<string, number | null> | null | undefined
 
 // columns：STATEMENT_COLUMNS（參數而不是直接 import，檢查腳本可以餵小的測資）。回傳要畫的列，以及精簡模式藏了幾個有數字的科目。
 export function buildStatementLines(columns: StatementColumn[], statementType: StatementType, current: Values, prior: Values, showAll: boolean): { lines: StatementLine[]; hidden: number } {
-  const num = (values: Values, key: string) => {
-    const raw = values?.[key]
-    return raw === null || raw === undefined || raw === '' ? null : Number(raw)
-  }
+  const num = (values: Values, key: string) => values?.[key] ?? null
   const hasValue = (column: StatementColumn) => [num(current, column.key), num(prior, column.key)].some(value => value !== null && value !== 0)
   const all = columns.filter(column => column.statement === statementType)
   const byKey = new Map(all.map(column => [column.key, column]))
@@ -177,19 +174,15 @@ export function buildStatementLines(columns: StatementColumn[], statementType: S
 // 切換前的短名（purchase_of_ppe_investing）已經不存在，沒有並存期。
 export const PER_SHARE_KEYS = new Set(['basic_earnings_loss_per_share', 'diluted_earnings_loss_per_share'])
 
-// Deterministic thousands grouping for the bigint-precise strings 業務中台 sends（no toLocaleString）.
-export function formatStatementAmount(raw: string | number | null | undefined): string {
-  if (raw === null || raw === undefined || raw === '') return '－'
-  return groupThousands(raw)
+// Deterministic thousands grouping（no toLocaleString）.
+export function formatStatementAmount(raw: number | null | undefined): string {
+  return raw === null || raw === undefined ? '－' : groupThousands(raw)
 }
 
 // 增減%（當期 vs 去年同期）, two decimals; null when either side is missing or the base is zero.
-export function statementChangePercent(current: string | number | null | undefined, prior: string | number | null | undefined): string {
-  // 明確比 null／空字串，不用 !current：數據中台改送 JSON 數字後，0 是有值（2026-11-03）
-  if (current === null || current === undefined || current === '' || prior === null || prior === undefined || prior === '') return '－'
-  const now = Number(current)
-  const then = Number(prior)
-  if (!Number.isFinite(now) || !Number.isFinite(then) || then === 0) return '－'
+export function statementChangePercent(current: number | null | undefined, prior: number | null | undefined): string {
+  // 明確比 null，不用 !current：0 是有值
+  if (current == null || prior == null || prior === 0) return '－'
   // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
-  return `${(((now - then) / Math.abs(then)) * 100).toFixed(2).replace(/^-/, '−')}%`
+  return `${(((current - prior) / Math.abs(prior)) * 100).toFixed(2).replace(/^-/, '−')}%`
 }

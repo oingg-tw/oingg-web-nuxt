@@ -100,8 +100,8 @@ const statusText = computed(() => footerHint.value || (preview.value ? `試算�
 const previewRows = computed(() => (preview.value?.holdings ?? []).map(row => ({
   name: props.symbolLabel(row.symbol),
   value: groupThousands(row.quantity),
-  // 全部成本不明時是 null：原本 Number(null) 會寫成平均成本 0
-  market: row.averageCost == null ? '成本不明' : groupThousands(Number(row.averageCost))
+  // 全部成本不明時是 null
+  market: row.averageCost == null ? '成本不明' : groupThousands(row.averageCost)
 })))
 const openingRows = computed(() => openings.value.map(row => ({ name: props.symbolLabel(row.symbol), value: groupThousands(row.quantity), market: String(row.price) })))
 

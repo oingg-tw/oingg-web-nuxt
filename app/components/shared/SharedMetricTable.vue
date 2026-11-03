@@ -107,12 +107,11 @@ function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
 // before formatSignificantDigits was written for them (see that shared util's own history).
 // Reuses the same utility rather than a second one-off rounding scheme. Scoped to values whose
 // magnitude actually risks this (≥1,000,000) rather than every numeric column — a per-share
-// price or ratio like "23.10" should keep showing exactly what the backend returned, not get its
-// trailing zero silently trimmed by toPrecision for no benefit (nothing that size ever overflows
-// this column to begin with).
+// price or ratio keeps every digit the backend sent rather than being cut to 4 significant digits
+// (nothing that size ever overflows this column to begin with).
 function formatValue(column: ScreenerResultTableColumn, raw: string | number | null | undefined): string {
   if (column.format) return column.format(raw)
-  // 上面三段理由（市值有效數字、千分位、尾零保留）的實作在 app/utils/screener-value.ts，觀察清單共用
+  // 上面的理由（市值有效數字、千分位、其他數字不截位）的實作在 app/utils/screener-value.ts，觀察清單共用
   const located = locateFieldInSchema(props.categories, column.field)
   return formatScreenerValue(raw, located?.field.unit, column.field, located?.metric.options)
 }
@@ -130,7 +129,7 @@ const riverPalette = computed(() => {
 function riverZoneOf(column: ScreenerResultTableColumn, raw: string | number | null | undefined): { zone: number; color: string; textClass: string } | null {
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   if (raw == null || metric?.kind !== 'categorical' || !metric.key.endsWith('RiverBand')) return null
-  const zone = Number(raw)
+  const zone = typeof raw === 'number' ? raw : Number.NaN
   const last = RIVER_ZONE_NAMES.length - 1
   if (!Number.isInteger(zone) || zone < 0 || zone > last) return null
   const { lines, fills } = riverPalette.value
@@ -146,7 +145,7 @@ function riverZoneOf(column: ScreenerResultTableColumn, raw: string | number | n
 const YOY_NAME = /(年增率|年減率)(變化)?$/
 function directionClassOf(column: ScreenerResultTableColumn, raw: string | number | null | undefined): string {
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
-  return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(raw) : ''
+  return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(numericValue(raw)) : ''
 }
 
 // 有值、而且這一欄有頁才連（空格連過去也是空的）。格子整塊是連結：數字照原本的顏色（年增率的漲跌色、河道位置），只有滑過或聚焦時畫底線

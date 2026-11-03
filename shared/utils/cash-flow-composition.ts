@@ -42,14 +42,9 @@ export interface CashFlowComposition {
   parts: Record<CashFlowPart, number>
 }
 
-const value = (statement: Record<string, string | number | null>, key: string): number | null => {
-  const raw = statement[key]
-  if (raw === null || raw === undefined || raw === '') return null
-  const parsed = Number(raw)
-  return Number.isFinite(parsed) ? parsed : null
-}
+const value = (statement: Record<string, number | null>, key: string): number | null => statement[key] ?? null
 
-export function cashFlowCompositionOf(statement: Record<string, string | number | null> | null | undefined): CashFlowComposition | null {
+export function cashFlowCompositionOf(statement: Record<string, number | null> | null | undefined): CashFlowComposition | null {
   if (!statement) return null
   const operating = value(statement, 'cash_flows_from_used_in_operating_activities')
   const investing = value(statement, 'net_cash_flows_from_used_in_investing_activities')

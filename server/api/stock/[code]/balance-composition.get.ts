@@ -13,7 +13,7 @@ const QUARTERS = 32
 const toPeriod = (statement: FinancialStatementResponse | null): BalanceCompositionPeriod | null => {
   if (!statement?.found || statement.fiscalYear === null || statement.fiscalQuarter === null) return null
   const rows = statement.statement
-  const totalAssets = Number(rows?.assets ?? 0)
+  const totalAssets = rows?.assets ?? 0
   if (!rows || !(totalAssets > 0)) return null
   return {
     fiscalYear: statement.fiscalYear,
@@ -22,7 +22,7 @@ const toPeriod = (statement: FinancialStatementResponse | null): BalanceComposit
     assets: assetCompositionOf(rows),
     debt: debtCompositionOf(rows),
     equity: equityCompositionOf(rows),
-    intangibleAssets: rows.intangible_assets_and_goodwill == null ? null : Number(rows.intangible_assets_and_goodwill)
+    intangibleAssets: rows.intangible_assets_and_goodwill ?? null
   }
 }
 

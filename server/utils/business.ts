@@ -201,10 +201,3 @@ export function maxIsoDate(dates: (string | null | undefined)[]): string | null 
   return dates.reduce<string | null>((latest, date) => (date && (!latest || date > latest) ? date : latest), null)
 }
 
-// 業務中台 sends every metric value as a decimal string（"34.78"）; the pages want numbers, parsed
-// ONCE here on the server so both renders (SSR and hydration) read the identical JSON payload.
-export function parseDecimal(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const number = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(number) ? number : null
-}

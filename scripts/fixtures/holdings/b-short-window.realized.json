@@ -2,7 +2,7 @@
   "from": "2026-08-10",
   "to": null,
   "symbols": [],
-  "totalRealizedProfitLoss": "0.0000",
+  "totalRealizedProfitLoss": 0,
   "excludedSellCount": 0,
   "excludedShares": 0,
   "tradeStats": {

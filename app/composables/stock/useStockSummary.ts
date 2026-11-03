@@ -8,9 +8,7 @@ import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 // avoid (see the ecosystem reference guide's "don't invent field/metric keys, ever"). The real
 // endpoint has no `/summary` suffix, no marketCap section at all, and price only ever carries
 // `close` — no volume, no change amount/percent (stock/[code].vue derives those for real from
-// useDailyPriceHistory's last two entries instead of assuming this endpoint has them). 業務中台's
-// own numbers came back as strings (its Zod schema: `z.string().nullable()`); 業務中台 sends JSON numbers from 2026-11-03 —
-// toNumber() below takes either and is the one place that conversion happens, so every caller gets real numbers.
+// useDailyPriceHistory's last two entries instead of assuming this endpoint has them).
 export interface StockSummaryPrice {
   tradeDate: string
   close: number
@@ -36,17 +34,11 @@ export interface StockSummary {
 
 interface RawStockQuote {
   symbol: string
-  price: { tradeDate: string; close: string | number | null } | null
+  price: { tradeDate: string; close: number | null } | null
   // liveCashDividendYield／…TradeDate：analysis-ts 4532d48e 的 quote 加、業務中台照轉
-  valuation: { tradeDate: string; peRatio: string | number | null; pbRatio: string | number | null; liveCashDividendYield?: string | number | null; liveCashDividendYieldTradeDate?: string | null } | null
+  valuation: { tradeDate: string; peRatio: number | null; pbRatio: number | null; liveCashDividendYield?: number | null; liveCashDividendYieldTradeDate?: string | null } | null
   tradingHalt?: TradingHalt | null
   delisting?: Delisting | null
-}
-
-function toNumber(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
 }
 
 // Returns null on any failure (unreachable backend, 404 for a symbol with no quote data) rather
@@ -66,18 +58,18 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
 
       try {
         const raw = await apiFetch<RawStockQuote>(`/stocks/${current}`, { baseURL: BUSINESS_CACHED_BASE })
-        const close = toNumber(raw.price?.close)
+        const close = raw.price?.close ?? null
         return {
           symbol: raw.symbol,
           price: raw.price && close !== null ? { tradeDate: raw.price.tradeDate, close } : null,
           valuation: raw.valuation
             ? {
                 tradeDate: raw.valuation.tradeDate,
-                peRatio: toNumber(raw.valuation.peRatio),
-                pbRatio: toNumber(raw.valuation.pbRatio),
+                peRatio: raw.valuation.peRatio,
+                pbRatio: raw.valuation.pbRatio,
                 // 自算的現金殖利率（2026-10-25，同篩選、排行與配股配息頁的圖）。交易所的 dividendYield 不讀：股票股利按面額算進去，
                 // 3040 會寫 11.78%、圖上卻是 0。上游還沒帶這一欄時是 null，殖利率那半句就不出現，不拿交易所值補
-                dividendYield: toNumber(raw.valuation.liveCashDividendYield),
+                dividendYield: raw.valuation.liveCashDividendYield ?? null,
                 dividendYieldDate: raw.valuation.liveCashDividendYieldTradeDate ?? raw.valuation.tradeDate
               }
             : null,

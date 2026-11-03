@@ -22,9 +22,7 @@ function provenanceScale(item: MetricProvenanceEntry): number {
   return item.fieldKey && PER_SHARE_KEYS.has(item.fieldKey) ? 1 : 1000
 }
 
-// 沒有數值寫「－」（2026-10-21）：Number(null) 是 0，原本照樣格式化成「0」——6741 那幾季財報根本沒有存貨科目，計算過程卻寫存貨 0
+// 沒有數值寫「－」，不是 0（2026-10-21：6741 那幾季財報根本沒有存貨科目，計算過程原本寫存貨 0）
 export function formatProvenanceValue(item: MetricProvenanceEntry): string {
-  if (item.value === null) return '－'
-  const value = Number(item.value)
-  return Number.isFinite(value) ? formatSignificantDigits(value * provenanceScale(item), 4) : String(item.value)
+  return item.value === null ? '－' : formatSignificantDigits(item.value * provenanceScale(item), 4)
 }

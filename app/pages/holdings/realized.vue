@@ -52,7 +52,7 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
 
 // 報酬率（2026-10-21，使用者：「holdings/realized 要加上獲利比率 比如 +50% 之類的」）＝ 已實現損益 ÷ 賣掉那幾股的買進成本（costBasis）。
 // 成本是 0（只賣到配股或成本不明的股數）時是 null
-const returnOf = (profitLoss: string | number, cost: string | number) => (Number(cost) > 0 ? Number(profitLoss) / Number(cost) : null)
+const returnOf = (profitLoss: number, cost: number) => (cost > 0 ? profitLoss / cost : null)
 
 const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
   const entry = companyByCode.value.get(row.symbol)
@@ -63,9 +63,9 @@ const rows = computed(() => (realized.value?.symbols ?? []).map((row) => {
     name,
     label: `${name} ${row.symbol}`,
     link: entry ? routeFor(entry) : securityPath(row.symbol),
-    value: Number(row.realizedProfitLoss),
+    value: row.realizedProfitLoss,
     pct: returnOf(row.realizedProfitLoss, row.costBasis),
-    price: quote?.price == null ? null : Number(quote.price),
+    price: quote?.price ?? null,
     priceDate: quote?.priceDate ?? null,
     excluded: row.excludedSellCount > 0
   }
@@ -106,7 +106,7 @@ function rowLabelFor(row: RealizedRow) {
   return (symbol: string) => `${row.name} ${symbol}`
 }
 
-const total = computed(() => (realized.value ? Number(realized.value.totalRealizedProfitLoss) : null))
+const total = computed(() => realized.value?.totalRealizedProfitLoss ?? null)
 const totalPct = computed(() => (realized.value ? returnOf(realized.value.totalRealizedProfitLoss, realized.value.totalCostBasis) : null))
 
 // 成本不明、沒算進損益的賣出：寫出是哪幾檔（同持股總覽的「未計入：」，最多列 5 檔）
@@ -132,7 +132,7 @@ const tradeStatRows = computed(() => {
     { name: '平均每筆獲利', value: text(t?.averageWin, 'money', '沒有獲利的賣出'), meaning: '獲利的那幾筆，平均每筆的已實現損益' },
     { name: '平均每筆虧損', value: text(t?.averageLoss, 'money', '沒有虧損的賣出'), meaning: '虧損的那幾筆，平均每筆的已實現損益' },
     { name: '獲利因子', value: text(t?.profitFactor, 'ratio', '沒有虧損的賣出'), meaning: '獲利筆數的損益合計 ÷ 虧損筆數的損益合計（取絕對值）' },
-    { name: '平均持有天數', value: !t ? '' : t.averageHoldingDays === null ? '－' : `${Math.round(Number(t.averageHoldingDays))} 天`, meaning: '從買進到賣出的平均日曆天數' }
+    { name: '平均持有天數', value: !t ? '' : t.averageHoldingDays === null ? '－' : `${Math.round(t.averageHoldingDays)} 天`, meaning: '從買進到賣出的平均日曆天數' }
   ]
 })
 

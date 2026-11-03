@@ -11,12 +11,12 @@ const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${la
 const fixture = name => JSON.parse(readFileSync(new URL(`./fixtures/holdings/${name}.json`, import.meta.url), 'utf8'))
 
 console.log('格式')
-assert(holdingsMetricText('0.731248', 'signedPct', '－', 2) === '+73.12%', '報酬 +73.12%')
-assert(holdingsMetricText('-0.071633', 'signedPct') === '−7.2%', '負的 α 照實寫負號')
-assert(holdingsMetricText('0.000468', 'pct', '－', 2) === '0.05%', '成本率兩位小數')
-assert(holdingsMetricText('-0.0000001', 'pct') === '0.0%', '四捨五入到 0 不寫成 -0.0%')
-assert(holdingsMetricText('2.103793', 'ratio') === '2.10', '比值兩位小數')
-assert(holdingsMetricText('9696000', 'money') === '9,696,000 元', '金額千分位')
+assert(holdingsMetricText(0.731248, 'signedPct', '－', 2) === '+73.12%', '報酬 +73.12%')
+assert(holdingsMetricText(-0.071633, 'signedPct') === '−7.2%', '負的 α 照實寫負號')
+assert(holdingsMetricText(0.000468, 'pct', '－', 2) === '0.05%', '成本率兩位小數')
+assert(holdingsMetricText(-0.0000001, 'pct') === '0.0%', '四捨五入到 0 不寫成 -0.0%')
+assert(holdingsMetricText(2.103793, 'ratio') === '2.10', '比值兩位小數')
+assert(holdingsMetricText(9696000, 'money') === '9,696,000 元', '金額千分位')
 assert(holdingsMetricText(null, 'pct', '期間未滿一年') === '期間未滿一年', 'null 顯示給定的原因')
 
 console.log('門檻')
@@ -29,7 +29,7 @@ console.log('(a) 一年、全部有值')
   const p = fixture('a-normal-1y.performance')
   assert(riskFreeLine(p.riskFree) === '無風險利率：五大銀行一年期定存 1.70%（2026-08）', '利率日期寫 sourceYearMonth（最後一個月沿用 2026-08）')
   // 範例資料重新產生時數值會變（業務中台 用當天的市場資料），所以跟資料本身比，不寫死數字
-  assert(p.riskAdjusted.sharpe !== null && holdingsMetricText(p.riskAdjusted.sharpe, 'ratio') === Number(p.riskAdjusted.sharpe).toFixed(2), 'Sharpe 有值、兩位小數')
+  assert(p.riskAdjusted.sharpe !== null && holdingsMetricText(p.riskAdjusted.sharpe, 'ratio') === p.riskAdjusted.sharpe.toFixed(2), 'Sharpe 有值、兩位小數')
 }
 
 console.log('(b) 40 個交易日')
@@ -56,7 +56,7 @@ console.log('第二批（業務中台 9d691cd）')
 {
   const r = fixture('a-normal-1y.risk')
   assert(coverageText(r.fundamentals.peCoverage) === '涵蓋 88% 市值', '0056 沒有本益比：涵蓋 88%')
-  assert(coverageText('1.000000') === null, '全部涵蓋時不寫')
+  assert(coverageText(1) === null, '全部涵蓋時不寫')
   const b = fixture('b-short-window.realized')
   assert(b.tradeStats.sellCount === 0 && b.tradeStats.winRate === null, '沒有賣出的期間：統計全是 null（頁面改寫「這段期間沒有賣出」）')
 }

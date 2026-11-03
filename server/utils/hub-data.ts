@@ -189,7 +189,7 @@ export const getSectorCompanies = defineCachedFunction(
       totalPages = response.totalPages
       for (const result of response.results) {
         const cell = (field: string) => result.values[field] ?? null
-        const number = (field: string) => parseDecimal(cell(field)?.value)
+        const number = (field: string) => numericValue(cell(field)?.value)
         quoteDates.push(cell('stock.price')?.knowledgeDate, cell('exchangePeRatio.EOD')?.knowledgeDate, cell('liveCashDividendYield.EOD')?.knowledgeDate)
         fundamentalsDates.push(cell('roe.TTM')?.knowledgeDate, cell('debtRatio.Q')?.knowledgeDate)
         rows.push({
@@ -297,9 +297,8 @@ export const getSectorMonthlyRevenue = defineCachedFunction(
 // 機械性下滑（conductor 景氣對策信號文件 §2.2）——領先指標同樣含股價指數，景氣時鐘頁的注意事項有寫。
 export const getBusinessCycleIndicators = defineCachedFunction(
   async (): Promise<BusinessCycleIndicatorPoint[]> => {
-    const response = await businessFetch<{ entries: { yearMonth: string; leadingIndexDetrended: number | string | null; coincidentIndexDetrended: number | string | null }[] }>('/macro/business-cycle-indicator')
-    const num = (value: number | string | null) => (value === null ? null : Number.isFinite(Number(value)) ? Number(value) : null)
-    return response.entries.map(entry => ({ period: entry.yearMonth, leading: num(entry.leadingIndexDetrended), coincident: num(entry.coincidentIndexDetrended) }))
+    const response = await businessFetch<{ entries: { yearMonth: string; leadingIndexDetrended: number | null; coincidentIndexDetrended: number | null }[] }>('/macro/business-cycle-indicator')
+    return response.entries.map(entry => ({ period: entry.yearMonth, leading: entry.leadingIndexDetrended, coincident: entry.coincidentIndexDetrended }))
   },
   { name: 'hub-business-cycle-indicators', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
@@ -336,9 +335,9 @@ export function rollingThreeMonthYoy(entries: SectorMonthlyRevenue['entries']): 
   return entries.flatMap(entry => {
     const window = [0, 1, 2].map(back => byMonth.get(previousMonth(entry.yearMonth, back)))
     if (window.some(month => !month)) return []
-    const revenue = window.reduce((sum, month) => sum + Number(month!.currentMonthRevenue), 0)
-    const lastYear = window.reduce((sum, month) => sum + Number(month!.lastYearSameMonthRevenue), 0)
-    return lastYear > 0 && Number.isFinite(revenue) ? [{ yearMonth: entry.yearMonth, value: (revenue / lastYear - 1) * 100 }] : []
+    const revenue = window.reduce((sum, month) => sum + month!.currentMonthRevenue, 0)
+    const lastYear = window.reduce((sum, month) => sum + month!.lastYearSameMonthRevenue, 0)
+    return lastYear > 0 ? [{ yearMonth: entry.yearMonth, value: (revenue / lastYear - 1) * 100 }] : []
   })
 }
 
@@ -454,9 +453,9 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
   const valueField = spec.derivedMinus ? spec.derivedMinus[0] : definition.field
   const column = first.columns.find(item => item.field === valueField) ?? first.columns[0]
   const valueOf = (values: Record<string, ScreenerFieldValue | null>): number | null => {
-    if (!spec.derivedMinus) return parseDecimal(values[definition.field]?.value)
-    const minuend = parseDecimal(values[spec.derivedMinus[0]]?.value)
-    const subtrahend = parseDecimal(values[spec.derivedMinus[1]]?.value)
+    if (!spec.derivedMinus) return numericValue(values[definition.field]?.value)
+    const minuend = numericValue(values[spec.derivedMinus[0]]?.value)
+    const subtrahend = numericValue(values[spec.derivedMinus[1]]?.value)
     if (minuend === null || subtrahend === null) return null
     // 兩個運算元都只報到分（每股盈餘的精度），所以相減的**精確**答案也只到分——
     // 23.439999999999998 是二進位浮點的雜訊不是精度。四捨五入到分是還原正確值，不是修飾畫面：
@@ -510,7 +509,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     totalPages = response.totalPages
   }
   const ranked = results
-    .map(result => ({ result, value: parseDecimal(result.values[definition.field] as string | number | null) }))
+    .map(result => ({ result, value: numericValue(result.values[definition.field]) }))
     .filter((entry): entry is { result: EtfResult; value: number } => entry.value !== null)
   const toRows = (entries: typeof ranked): RankingRow[] => entries.slice(0, RANKING_LIMIT)
     .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName || entry.result.symbol, value: entry.value, knowledgeDate: null }))
@@ -522,8 +521,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
   //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
   const leader = (definition.monthlyReport || definition.fullYear) && rows[0] ? await businessFetch<{ yearMonth?: string; values?: Record<string, unknown> }>(`/etfs/${rows[0].symbol}`) : null
-  // yearMonth："202609"（舊）或 "2026-09"（新，2026-11-03 起），normalizeYearMonth 兩種都收
-  const reportMonth = definition.monthlyReport ? normalizeYearMonth(leader?.yearMonth) : null
+  const reportMonth = definition.monthlyReport ? leader?.yearMonth ?? null : null
   // 全年數字（總費用率）：第一名有值的最近一年（上游：「expenseRatio 只用最新一個完整年度」），跟排行用的值對得上才標，不猜
   const leaderValues = leader?.values ?? {}
   const latestYear = Math.max(0, ...Object.keys(leaderValues)
@@ -562,9 +560,9 @@ export const getRanking = defineCachedFunction(
     // 基期太小」，不是剔除「不知道基期」——後者會讓一個缺欄位的上游問題靜靜地改變榜單內容。
     const kept = floor
       ? response.results.filter(result => {
-          // 缺值保留（上面那段的規則）：parseDecimal 的 null 不能先 Number()——Number(null) 是 0，沒有基期的列會被當成基期 0 剔掉（2026-11-03 查到）
-          const growth = parseDecimal(result.values[definition.field]?.value)
-          const current = parseDecimal(result.values[floor.valueField]?.value)
+          // 缺值保留（上面那段的規則）：null 當成 0 的話，沒有基期的列會被當成基期 0 剔掉
+          const growth = numericValue(result.values[definition.field]?.value)
+          const current = numericValue(result.values[floor.valueField]?.value)
           if (growth === null || current === null) return true
           const divisor = 1 + growth / 100
           if (divisor === 0) return true
@@ -580,7 +578,7 @@ export const getRanking = defineCachedFunction(
       : response.results
     const rows: RankingRow[] = kept.map((result, index) => {
       const cell = result.values[definition.field] ?? null
-      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value: parseDecimal(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
+      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value: numericValue(cell?.value), knowledgeDate: cell?.knowledgeDate ?? null }
     })
     return {
       direction: definition.direction,
@@ -597,7 +595,7 @@ export const getRanking = defineCachedFunction(
 // (useFilterSchema.ts) and the server never reads into it. 業務中台型錄的鍵在這裡換成篩選器用的那組（business-shapes.ts）
 export const getMetricsCatalog = defineCachedFunction(
   async () => metricsCatalogFromBusiness(await businessFetch<{ categories: unknown[] }>('/metrics')),
-  // -v2：2026-11-03 沒有單位改成 null（business-shapes.ts），舊鍵裡還是「無單位」
+  // -v2：2026-11-03 沒有單位改成 null，舊鍵裡還是「無單位」
   { name: 'hub-metrics-catalog-v2', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 

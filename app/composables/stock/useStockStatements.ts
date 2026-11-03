@@ -100,8 +100,8 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     const now = current?.found ? current.statement?.[key] : null
     if (now === null || now === undefined) return null
     const then = prior?.found ? prior.statement?.[key] : null
-    // 明確比 null／空字串（2026-11-03）：數據中台改送 JSON 數字後，去年同期是 0 的科目（例如上半年還沒發的現金股利）用 then ? … 會被當成沒有
-    const hasThen = then !== null && then !== undefined && then !== ''
+    // 明確比 null：去年同期是 0 的科目（例如上半年還沒發的現金股利）用 then ? … 會被當成沒有
+    const hasThen = then !== null && then !== undefined
     const change = hasThen ? statementChangePercent(now, then) : '－'
     return `${label} ${formatStatementAmount(now)} ${unit}${hasThen ? `（去年同期 ${formatStatementAmount(then)} ${unit}${change !== '－' ? `，增減 ${change}` : ''}）` : ''}`
   }

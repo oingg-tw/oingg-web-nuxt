@@ -66,10 +66,6 @@ function label(transaction: Transaction): string {
   return `${transaction.tradeDate} ${actionWord(transaction)} ${props.symbolLabel(transaction.symbol)} ${groupThousands(transaction.quantity)} 股`
 }
 
-function plainNumber(value: string | number): string {
-  return groupThousands(String(Number(value)))
-}
-
 function quantityText(transaction: Transaction): string {
   const reduction = transaction.capitalReduction
   return reduction ? `${groupThousands(reduction.heldBefore)} → ${groupThousands(reduction.heldAfter)}` : groupThousands(transaction.quantity)
@@ -77,7 +73,7 @@ function quantityText(transaction: Transaction): string {
 
 function priceText(transaction: Transaction): string {
   if (transaction.action === 'REDUCE') return '－'
-  return transaction.costUnknown ? '不明' : plainNumber(transaction.price)
+  return transaction.costUnknown ? '不明' : groupThousands(transaction.price)
 }
 </script>
 
@@ -100,7 +96,7 @@ function priceText(transaction: Transaction): string {
       </el-table-column>
       <!-- 手續費與交易稅合成一欄（2026-10-05 展開版面改版：精簡交易表）。分開的數字在編輯對話框裡看得到。 -->
       <el-table-column label="費稅" align="right" min-width="80">
-        <template #default="{ row }">{{ plainNumber(Number(tableRow<Transaction>(row).fee) + Number(tableRow<Transaction>(row).tax)) }}</template>
+        <template #default="{ row }">{{ groupThousands(tableRow<Transaction>(row).fee + tableRow<Transaction>(row).tax) }}</template>
       </el-table-column>
       <el-table-column label="備註" min-width="120">
         <template #default="{ row }">{{ tableRow<Transaction>(row).note ?? '' }}</template>
@@ -124,7 +120,7 @@ function priceText(transaction: Transaction): string {
       <li v-for="transaction in sorted" :key="transaction.id" class="ledger__item">
         <span>{{ transaction.tradeDate }} <span class="ledger__action">{{ actionCell(transaction) }}</span></span>
         <span class="ledger__end">{{ quantityText(transaction) }} 股<template v-if="transaction.action !== 'REDUCE'"> @ {{ priceText(transaction) }}</template></span>
-        <span class="ledger__sub">費稅 {{ plainNumber(Number(transaction.fee) + Number(transaction.tax)) }}<template v-if="transaction.note">・{{ transaction.note }}</template></span>
+        <span class="ledger__sub">費稅 {{ groupThousands(transaction.fee + transaction.tax) }}<template v-if="transaction.note">・{{ transaction.note }}</template></span>
         <span v-if="!readonly && !isVirtual(transaction)" class="ledger__actions ledger__end">
           <el-button link type="primary" :aria-label="`編輯 ${label(transaction)}`" @click="emit('edit', transaction)">編輯</el-button>
           <el-button link type="danger" :aria-label="`刪除 ${label(transaction)}`" @click="emit('remove', transaction, label(transaction))">刪除</el-button>

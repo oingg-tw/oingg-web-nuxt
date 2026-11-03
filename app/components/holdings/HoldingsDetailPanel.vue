@@ -28,7 +28,6 @@ const emit = defineEmits<{
   removeTransaction: [transaction: Transaction, label: string]
 }>()
 
-const realized = computed(() => Number(props.holding.realizedProfitLoss))
 const count = computed(() => (Array.isArray(props.entries) ? props.entries.length : null))
 </script>
 
@@ -38,10 +37,10 @@ const count = computed(() => (Array.isArray(props.entries) ? props.entries.lengt
       <dl class="detail__facts">
         <div><dt>平均成本</dt><dd>{{ averageCost }}</dd></div>
         <div><dt>收盤價</dt><dd>{{ price }}</dd></div>
-        <div><dt>總成本</dt><dd>{{ holding.averageCost === null ? '成本不明' : `${holdingsMoney(Number(holding.totalCost))} 元` }}</dd></div>
+        <div><dt>總成本</dt><dd>{{ holding.averageCost === null ? '成本不明' : `${holdingsMoney(holding.totalCost)} 元` }}</dd></div>
         <div>
           <dt>已實現損益</dt>
-          <dd :class="priceDirectionClass(Math.round(realized))">{{ holdingsSignedMoney(realized) }}</dd>
+          <dd :class="priceDirectionClass(Math.round(holding.realizedProfitLoss))">{{ holdingsSignedMoney(holding.realizedProfitLoss) }}</dd>
         </div>
         <div v-if="holding.costUnknownQuantity > 0"><dt>成本不明</dt><dd>{{ groupThousands(holding.costUnknownQuantity) }} 股</dd></div>
       </dl>

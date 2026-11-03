@@ -1,37 +1,37 @@
 {
   "from": "2025-10-07",
   "to": "2026-10-07",
-  "twr": "0.712587",
-  "mwr": "0.710932",
+  "twr": 0.712587,
+  "mwr": 0.710932,
   "annualized": {
-    "twr": "0.705092",
-    "mwr": "0.703457"
+    "twr": 0.705092,
+    "mwr": 0.703457
   },
   "trading": {
-    "buyAmount": "1440000",
-    "sellAmount": "1030000",
-    "fees": "3518",
-    "taxes": "3090",
-    "averageMarketValue": "7292010",
-    "turnover": "0.141250",
-    "costRatio": "0.000906"
+    "buyAmount": 1440000,
+    "sellAmount": 1030000,
+    "fees": 3518,
+    "taxes": 3090,
+    "averageMarketValue": 7292010,
+    "turnover": 0.14125,
+    "costRatio": 0.000906
   },
   "benchmarkComparison": {
     "sampleDays": 242,
-    "upCapture": "0.941711",
-    "downCapture": "0.980529",
-    "omega": "1.441145"
+    "upCapture": 0.941711,
+    "downCapture": 0.980529,
+    "omega": 1.441145
   },
   "riskAdjusted": {
     "sampleDays": 242,
-    "sharpe": "2.080290",
-    "sortino": "3.340486",
-    "calmar": "4.576947",
-    "m2": "0.583479",
-    "beta": "0.988926",
-    "jensenAlpha": "-0.077733",
-    "trackingError": "0.077273",
-    "informationRatio": "-1.101692"
+    "sharpe": 2.08029,
+    "sortino": 3.340486,
+    "calmar": 4.576947,
+    "m2": 0.583479,
+    "beta": 0.988926,
+    "jensenAlpha": -0.077733,
+    "trackingError": 0.077273,
+    "informationRatio": -1.101692
   },
   "riskFree": {
     "source": "five-major-bank-1y-deposit",
@@ -108,1995 +108,1995 @@
     "monthly": [
       {
         "yearMonth": "2025-10",
-        "portfolio": "0.066387",
-        "benchmark": "0.055016",
+        "portfolio": 0.066387,
+        "benchmark": 0.055016,
         "tradingDays": 17
       },
       {
         "yearMonth": "2025-11",
-        "portfolio": "-0.055642",
-        "benchmark": "-0.021495",
+        "portfolio": -0.055642,
+        "benchmark": -0.021495,
         "tradingDays": 20
       },
       {
         "yearMonth": "2025-12",
-        "portfolio": "0.068834",
-        "benchmark": "0.048400",
+        "portfolio": 0.068834,
+        "benchmark": 0.0484,
         "tradingDays": 22
       },
       {
         "yearMonth": "2026-01",
-        "portfolio": "0.063499",
-        "benchmark": "0.107036",
+        "portfolio": 0.063499,
+        "benchmark": 0.107036,
         "tradingDays": 21
       },
       {
         "yearMonth": "2026-02",
-        "portfolio": "0.105148",
-        "benchmark": "0.104502",
+        "portfolio": 0.105148,
+        "benchmark": 0.104502,
         "tradingDays": 12
       },
       {
         "yearMonth": "2026-03",
-        "portfolio": "-0.126087",
-        "benchmark": "-0.104237",
+        "portfolio": -0.126087,
+        "benchmark": -0.104237,
         "tradingDays": 22
       },
       {
         "yearMonth": "2026-04",
-        "portfolio": "0.179157",
-        "benchmark": "0.227079",
+        "portfolio": 0.179157,
+        "benchmark": 0.227079,
         "tradingDays": 20
       },
       {
         "yearMonth": "2026-05",
-        "portfolio": "0.182946",
-        "benchmark": "0.149160",
+        "portfolio": 0.182946,
+        "benchmark": 0.14916,
         "tradingDays": 20
       },
       {
         "yearMonth": "2026-06",
-        "portfolio": "0.018726",
-        "benchmark": "0.031140",
+        "portfolio": 0.018726,
+        "benchmark": 0.03114,
         "tradingDays": 21
       },
       {
         "yearMonth": "2026-07",
-        "portfolio": "-0.024948",
-        "benchmark": "-0.065173",
+        "portfolio": -0.024948,
+        "benchmark": -0.065173,
         "tradingDays": 22
       },
       {
         "yearMonth": "2026-08",
-        "portfolio": "0.030199",
-        "benchmark": "0.069776",
+        "portfolio": 0.030199,
+        "benchmark": 0.069776,
         "tradingDays": 21
       },
       {
         "yearMonth": "2026-09",
-        "portfolio": "0.056522",
-        "benchmark": "0.039274",
+        "portfolio": 0.056522,
+        "benchmark": 0.039274,
         "tradingDays": 20
       },
       {
         "yearMonth": "2026-10",
-        "portfolio": "0.027173",
-        "benchmark": "0.039266",
+        "portfolio": 0.027173,
+        "benchmark": 0.039266,
         "tradingDays": 4
       }
     ],
     "yearly": [
       {
-        "period": "2025",
-        "portfolio": "0.076371",
-        "benchmark": "0.082304",
+        "period": 2025,
+        "portfolio": 0.076371,
+        "benchmark": 0.082304,
         "tradingDays": 59
       },
       {
-        "period": "2026",
-        "portfolio": "0.591075",
-        "benchmark": "0.720178",
+        "period": 2026,
+        "portfolio": 0.591075,
+        "benchmark": 0.720178,
         "tradingDays": 183
       }
     ]
   },
   "drawdown": {
-    "maxDrawdown": "-0.154053",
+    "maxDrawdown": -0.154053,
     "peakDate": "2026-06-22",
     "troughDate": "2026-07-29",
     "recoveryDate": "2026-09-07",
     "underwaterDays": 196,
     "longestUnderwaterDays": 53,
-    "currentDrawdown": "-0.003853"
+    "currentDrawdown": -0.003853
   },
   "rolling": {
     "windowDays": 60,
     "series": [
       {
         "tradeDate": "2026-01-02",
-        "volatility": "0.209144",
-        "beta": "1.089375"
+        "volatility": 0.209144,
+        "beta": 1.089375
       },
       {
         "tradeDate": "2026-01-05",
-        "volatility": "0.214600",
-        "beta": "1.096321"
+        "volatility": 0.2146,
+        "beta": 1.096321
       },
       {
         "tradeDate": "2026-01-06",
-        "volatility": "0.213900",
-        "beta": "1.083127"
+        "volatility": 0.2139,
+        "beta": 1.083127
       },
       {
         "tradeDate": "2026-01-07",
-        "volatility": "0.213886",
-        "beta": "1.083241"
+        "volatility": 0.213886,
+        "beta": 1.083241
       },
       {
         "tradeDate": "2026-01-08",
-        "volatility": "0.208926",
-        "beta": "1.072768"
+        "volatility": 0.208926,
+        "beta": 1.072768
       },
       {
         "tradeDate": "2026-01-09",
-        "volatility": "0.208703",
-        "beta": "1.073431"
+        "volatility": 0.208703,
+        "beta": 1.073431
       },
       {
         "tradeDate": "2026-01-12",
-        "volatility": "0.206230",
-        "beta": "1.071009"
+        "volatility": 0.20623,
+        "beta": 1.071009
       },
       {
         "tradeDate": "2026-01-13",
-        "volatility": "0.201463",
-        "beta": "1.057848"
+        "volatility": 0.201463,
+        "beta": 1.057848
       },
       {
         "tradeDate": "2026-01-14",
-        "volatility": "0.199728",
-        "beta": "1.058505"
+        "volatility": 0.199728,
+        "beta": 1.058505
       },
       {
         "tradeDate": "2026-01-15",
-        "volatility": "0.195024",
-        "beta": "1.044263"
+        "volatility": 0.195024,
+        "beta": 1.044263
       },
       {
         "tradeDate": "2026-01-16",
-        "volatility": "0.197234",
-        "beta": "1.035569"
+        "volatility": 0.197234,
+        "beta": 1.035569
       },
       {
         "tradeDate": "2026-01-19",
-        "volatility": "0.196941",
-        "beta": "1.033729"
+        "volatility": 0.196941,
+        "beta": 1.033729
       },
       {
         "tradeDate": "2026-01-20",
-        "volatility": "0.195386",
-        "beta": "1.028825"
+        "volatility": 0.195386,
+        "beta": 1.028825
       },
       {
         "tradeDate": "2026-01-21",
-        "volatility": "0.195274",
-        "beta": "1.020505"
+        "volatility": 0.195274,
+        "beta": 1.020505
       },
       {
         "tradeDate": "2026-01-22",
-        "volatility": "0.195774",
-        "beta": "1.009010"
+        "volatility": 0.195774,
+        "beta": 1.00901
       },
       {
         "tradeDate": "2026-01-23",
-        "volatility": "0.191574",
-        "beta": "0.994782"
+        "volatility": 0.191574,
+        "beta": 0.994782
       },
       {
         "tradeDate": "2026-01-26",
-        "volatility": "0.191619",
-        "beta": "0.995050"
+        "volatility": 0.191619,
+        "beta": 0.99505
       },
       {
         "tradeDate": "2026-01-27",
-        "volatility": "0.191290",
-        "beta": "0.993153"
+        "volatility": 0.19129,
+        "beta": 0.993153
       },
       {
         "tradeDate": "2026-01-28",
-        "volatility": "0.192905",
-        "beta": "0.994045"
+        "volatility": 0.192905,
+        "beta": 0.994045
       },
       {
         "tradeDate": "2026-01-29",
-        "volatility": "0.192112",
-        "beta": "0.988930"
+        "volatility": 0.192112,
+        "beta": 0.98893
       },
       {
         "tradeDate": "2026-01-30",
-        "volatility": "0.192813",
-        "beta": "0.992031"
+        "volatility": 0.192813,
+        "beta": 0.992031
       },
       {
         "tradeDate": "2026-02-02",
-        "volatility": "0.194561",
-        "beta": "0.987034"
+        "volatility": 0.194561,
+        "beta": 0.987034
       },
       {
         "tradeDate": "2026-02-03",
-        "volatility": "0.195416",
-        "beta": "0.984674"
+        "volatility": 0.195416,
+        "beta": 0.984674
       },
       {
         "tradeDate": "2026-02-04",
-        "volatility": "0.195041",
-        "beta": "0.984095"
+        "volatility": 0.195041,
+        "beta": 0.984095
       },
       {
         "tradeDate": "2026-02-05",
-        "volatility": "0.196058",
-        "beta": "0.972792"
+        "volatility": 0.196058,
+        "beta": 0.972792
       },
       {
         "tradeDate": "2026-02-06",
-        "volatility": "0.195289",
-        "beta": "0.969047"
+        "volatility": 0.195289,
+        "beta": 0.969047
       },
       {
         "tradeDate": "2026-02-09",
-        "volatility": "0.198190",
-        "beta": "0.969361"
+        "volatility": 0.19819,
+        "beta": 0.969361
       },
       {
         "tradeDate": "2026-02-10",
-        "volatility": "0.198002",
-        "beta": "0.973927"
+        "volatility": 0.198002,
+        "beta": 0.973927
       },
       {
         "tradeDate": "2026-02-11",
-        "volatility": "0.200104",
-        "beta": "0.977162"
+        "volatility": 0.200104,
+        "beta": 0.977162
       },
       {
         "tradeDate": "2026-02-23",
-        "volatility": "0.192927",
-        "beta": "0.983997"
+        "volatility": 0.192927,
+        "beta": 0.983997
       },
       {
         "tradeDate": "2026-02-24",
-        "volatility": "0.195724",
-        "beta": "0.974117"
+        "volatility": 0.195724,
+        "beta": 0.974117
       },
       {
         "tradeDate": "2026-02-25",
-        "volatility": "0.191783",
-        "beta": "0.979205"
+        "volatility": 0.191783,
+        "beta": 0.979205
       },
       {
         "tradeDate": "2026-02-26",
-        "volatility": "0.172085",
-        "beta": "0.970765"
+        "volatility": 0.172085,
+        "beta": 0.970765
       },
       {
         "tradeDate": "2026-03-02",
-        "volatility": "0.174757",
-        "beta": "0.976040"
+        "volatility": 0.174757,
+        "beta": 0.97604
       },
       {
         "tradeDate": "2026-03-03",
-        "volatility": "0.180869",
-        "beta": "0.973172"
+        "volatility": 0.180869,
+        "beta": 0.973172
       },
       {
         "tradeDate": "2026-03-04",
-        "volatility": "0.199248",
-        "beta": "0.958803"
+        "volatility": 0.199248,
+        "beta": 0.958803
       },
       {
         "tradeDate": "2026-03-05",
-        "volatility": "0.202000",
-        "beta": "0.946928"
+        "volatility": 0.202,
+        "beta": 0.946928
       },
       {
         "tradeDate": "2026-03-06",
-        "volatility": "0.201632",
-        "beta": "0.947369"
+        "volatility": 0.201632,
+        "beta": 0.947369
       },
       {
         "tradeDate": "2026-03-09",
-        "volatility": "0.219668",
-        "beta": "0.944046"
+        "volatility": 0.219668,
+        "beta": 0.944046
       },
       {
         "tradeDate": "2026-03-10",
-        "volatility": "0.220983",
-        "beta": "0.938971"
+        "volatility": 0.220983,
+        "beta": 0.938971
       },
       {
         "tradeDate": "2026-03-11",
-        "volatility": "0.232768",
-        "beta": "0.941328"
+        "volatility": 0.232768,
+        "beta": 0.941328
       },
       {
         "tradeDate": "2026-03-12",
-        "volatility": "0.237322",
-        "beta": "0.948280"
+        "volatility": 0.237322,
+        "beta": 0.94828
       },
       {
         "tradeDate": "2026-03-13",
-        "volatility": "0.238195",
-        "beta": "0.949633"
+        "volatility": 0.238195,
+        "beta": 0.949633
       },
       {
         "tradeDate": "2026-03-16",
-        "volatility": "0.237674",
-        "beta": "0.949213"
+        "volatility": 0.237674,
+        "beta": 0.949213
       },
       {
         "tradeDate": "2026-03-17",
-        "volatility": "0.237832",
-        "beta": "0.946303"
+        "volatility": 0.237832,
+        "beta": 0.946303
       },
       {
         "tradeDate": "2026-03-18",
-        "volatility": "0.238583",
-        "beta": "0.945323"
+        "volatility": 0.238583,
+        "beta": 0.945323
       },
       {
         "tradeDate": "2026-03-19",
-        "volatility": "0.242441",
-        "beta": "0.952301"
+        "volatility": 0.242441,
+        "beta": 0.952301
       },
       {
         "tradeDate": "2026-03-20",
-        "volatility": "0.242539",
-        "beta": "0.951374"
+        "volatility": 0.242539,
+        "beta": 0.951374
       },
       {
         "tradeDate": "2026-03-23",
-        "volatility": "0.243341",
-        "beta": "0.936269"
+        "volatility": 0.243341,
+        "beta": 0.936269
       },
       {
         "tradeDate": "2026-03-24",
-        "volatility": "0.242510",
-        "beta": "0.938731"
+        "volatility": 0.24251,
+        "beta": 0.938731
       },
       {
         "tradeDate": "2026-03-25",
-        "volatility": "0.244690",
-        "beta": "0.932371"
+        "volatility": 0.24469,
+        "beta": 0.932371
       },
       {
         "tradeDate": "2026-03-26",
-        "volatility": "0.244876",
-        "beta": "0.933166"
+        "volatility": 0.244876,
+        "beta": 0.933166
       },
       {
         "tradeDate": "2026-03-27",
-        "volatility": "0.245437",
-        "beta": "0.933238"
+        "volatility": 0.245437,
+        "beta": 0.933238
       },
       {
         "tradeDate": "2026-03-30",
-        "volatility": "0.247245",
-        "beta": "0.933112"
+        "volatility": 0.247245,
+        "beta": 0.933112
       },
       {
         "tradeDate": "2026-03-31",
-        "volatility": "0.248673",
-        "beta": "0.915399"
+        "volatility": 0.248673,
+        "beta": 0.915399
       },
       {
         "tradeDate": "2026-04-01",
-        "volatility": "0.265207",
-        "beta": "0.927033"
+        "volatility": 0.265207,
+        "beta": 0.927033
       },
       {
         "tradeDate": "2026-04-02",
-        "volatility": "0.268381",
-        "beta": "0.928184"
+        "volatility": 0.268381,
+        "beta": 0.928184
       },
       {
         "tradeDate": "2026-04-07",
-        "volatility": "0.269550",
-        "beta": "0.926580"
+        "volatility": 0.26955,
+        "beta": 0.92658
       },
       {
         "tradeDate": "2026-04-08",
-        "volatility": "0.282105",
-        "beta": "0.928160"
+        "volatility": 0.282105,
+        "beta": 0.92816
       },
       {
         "tradeDate": "2026-04-09",
-        "volatility": "0.281573",
-        "beta": "0.927295"
+        "volatility": 0.281573,
+        "beta": 0.927295
       },
       {
         "tradeDate": "2026-04-10",
-        "volatility": "0.281850",
-        "beta": "0.926995"
+        "volatility": 0.28185,
+        "beta": 0.926995
       },
       {
         "tradeDate": "2026-04-13",
-        "volatility": "0.276281",
-        "beta": "0.919922"
+        "volatility": 0.276281,
+        "beta": 0.919922
       },
       {
         "tradeDate": "2026-04-14",
-        "volatility": "0.280780",
-        "beta": "0.928275"
+        "volatility": 0.28078,
+        "beta": 0.928275
       },
       {
         "tradeDate": "2026-04-15",
-        "volatility": "0.280928",
-        "beta": "0.928534"
+        "volatility": 0.280928,
+        "beta": 0.928534
       },
       {
         "tradeDate": "2026-04-16",
-        "volatility": "0.280711",
-        "beta": "0.926787"
+        "volatility": 0.280711,
+        "beta": 0.926787
       },
       {
         "tradeDate": "2026-04-17",
-        "volatility": "0.283068",
-        "beta": "0.931218"
+        "volatility": 0.283068,
+        "beta": 0.931218
       },
       {
         "tradeDate": "2026-04-20",
-        "volatility": "0.283073",
-        "beta": "0.932165"
+        "volatility": 0.283073,
+        "beta": 0.932165
       },
       {
         "tradeDate": "2026-04-21",
-        "volatility": "0.283798",
-        "beta": "0.930455"
+        "volatility": 0.283798,
+        "beta": 0.930455
       },
       {
         "tradeDate": "2026-04-22",
-        "volatility": "0.284017",
-        "beta": "0.931512"
+        "volatility": 0.284017,
+        "beta": 0.931512
       },
       {
         "tradeDate": "2026-04-23",
-        "volatility": "0.283606",
-        "beta": "0.928153"
+        "volatility": 0.283606,
+        "beta": 0.928153
       },
       {
         "tradeDate": "2026-04-24",
-        "volatility": "0.288948",
-        "beta": "0.933496"
+        "volatility": 0.288948,
+        "beta": 0.933496
       },
       {
         "tradeDate": "2026-04-27",
-        "volatility": "0.293092",
-        "beta": "0.940859"
+        "volatility": 0.293092,
+        "beta": 0.940859
       },
       {
         "tradeDate": "2026-04-28",
-        "volatility": "0.295320",
-        "beta": "0.944256"
+        "volatility": 0.29532,
+        "beta": 0.944256
       },
       {
         "tradeDate": "2026-04-29",
-        "volatility": "0.293347",
-        "beta": "0.944460"
+        "volatility": 0.293347,
+        "beta": 0.94446
       },
       {
         "tradeDate": "2026-04-30",
-        "volatility": "0.296213",
-        "beta": "0.952689"
+        "volatility": 0.296213,
+        "beta": 0.952689
       },
       {
         "tradeDate": "2026-05-04",
-        "volatility": "0.307400",
-        "beta": "0.953115"
+        "volatility": 0.3074,
+        "beta": 0.953115
       },
       {
         "tradeDate": "2026-05-05",
-        "volatility": "0.307894",
-        "beta": "0.951638"
+        "volatility": 0.307894,
+        "beta": 0.951638
       },
       {
         "tradeDate": "2026-05-06",
-        "volatility": "0.309847",
-        "beta": "0.954258"
+        "volatility": 0.309847,
+        "beta": 0.954258
       },
       {
         "tradeDate": "2026-05-07",
-        "volatility": "0.310474",
-        "beta": "0.954041"
+        "volatility": 0.310474,
+        "beta": 0.954041
       },
       {
         "tradeDate": "2026-05-08",
-        "volatility": "0.309775",
-        "beta": "0.949186"
+        "volatility": 0.309775,
+        "beta": 0.949186
       },
       {
         "tradeDate": "2026-05-11",
-        "volatility": "0.307259",
-        "beta": "0.947258"
+        "volatility": 0.307259,
+        "beta": 0.947258
       },
       {
         "tradeDate": "2026-05-12",
-        "volatility": "0.306179",
-        "beta": "0.949538"
+        "volatility": 0.306179,
+        "beta": 0.949538
       },
       {
         "tradeDate": "2026-05-13",
-        "volatility": "0.307921",
-        "beta": "0.952750"
+        "volatility": 0.307921,
+        "beta": 0.95275
       },
       {
         "tradeDate": "2026-05-14",
-        "volatility": "0.307892",
-        "beta": "0.952221"
+        "volatility": 0.307892,
+        "beta": 0.952221
       },
       {
         "tradeDate": "2026-05-15",
-        "volatility": "0.307069",
-        "beta": "0.949303"
+        "volatility": 0.307069,
+        "beta": 0.949303
       },
       {
         "tradeDate": "2026-05-18",
-        "volatility": "0.307308",
-        "beta": "0.948037"
+        "volatility": 0.307308,
+        "beta": 0.948037
       },
       {
         "tradeDate": "2026-05-19",
-        "volatility": "0.309290",
-        "beta": "0.949809"
+        "volatility": 0.30929,
+        "beta": 0.949809
       },
       {
         "tradeDate": "2026-05-20",
-        "volatility": "0.306172",
-        "beta": "0.945164"
+        "volatility": 0.306172,
+        "beta": 0.945164
       },
       {
         "tradeDate": "2026-05-21",
-        "volatility": "0.310369",
-        "beta": "0.944005"
+        "volatility": 0.310369,
+        "beta": 0.944005
       },
       {
         "tradeDate": "2026-05-22",
-        "volatility": "0.312902",
-        "beta": "0.946242"
+        "volatility": 0.312902,
+        "beta": 0.946242
       },
       {
         "tradeDate": "2026-05-25",
-        "volatility": "0.319045",
-        "beta": "0.959545"
+        "volatility": 0.319045,
+        "beta": 0.959545
       },
       {
         "tradeDate": "2026-05-26",
-        "volatility": "0.316601",
-        "beta": "0.956661"
+        "volatility": 0.316601,
+        "beta": 0.956661
       },
       {
         "tradeDate": "2026-05-27",
-        "volatility": "0.320552",
-        "beta": "0.963081"
+        "volatility": 0.320552,
+        "beta": 0.963081
       },
       {
         "tradeDate": "2026-05-28",
-        "volatility": "0.320375",
-        "beta": "0.959680"
+        "volatility": 0.320375,
+        "beta": 0.95968
       },
       {
         "tradeDate": "2026-05-29",
-        "volatility": "0.319189",
-        "beta": "0.960851"
+        "volatility": 0.319189,
+        "beta": 0.960851
       },
       {
         "tradeDate": "2026-06-01",
-        "volatility": "0.306334",
-        "beta": "0.966221"
+        "volatility": 0.306334,
+        "beta": 0.966221
       },
       {
         "tradeDate": "2026-06-02",
-        "volatility": "0.305212",
-        "beta": "0.971617"
+        "volatility": 0.305212,
+        "beta": 0.971617
       },
       {
         "tradeDate": "2026-06-03",
-        "volatility": "0.305813",
-        "beta": "0.970383"
+        "volatility": 0.305813,
+        "beta": 0.970383
       },
       {
         "tradeDate": "2026-06-04",
-        "volatility": "0.293672",
-        "beta": "0.975221"
+        "volatility": 0.293672,
+        "beta": 0.975221
       },
       {
         "tradeDate": "2026-06-05",
-        "volatility": "0.293976",
-        "beta": "0.972173"
+        "volatility": 0.293976,
+        "beta": 0.972173
       },
       {
         "tradeDate": "2026-06-08",
-        "volatility": "0.299009",
-        "beta": "0.982987"
+        "volatility": 0.299009,
+        "beta": 0.982987
       },
       {
         "tradeDate": "2026-06-09",
-        "volatility": "0.301139",
-        "beta": "0.986801"
+        "volatility": 0.301139,
+        "beta": 0.986801
       },
       {
         "tradeDate": "2026-06-10",
-        "volatility": "0.311149",
-        "beta": "0.990257"
+        "volatility": 0.311149,
+        "beta": 0.990257
       },
       {
         "tradeDate": "2026-06-11",
-        "volatility": "0.311269",
-        "beta": "0.990554"
+        "volatility": 0.311269,
+        "beta": 0.990554
       },
       {
         "tradeDate": "2026-06-12",
-        "volatility": "0.312915",
-        "beta": "0.990889"
+        "volatility": 0.312915,
+        "beta": 0.990889
       },
       {
         "tradeDate": "2026-06-15",
-        "volatility": "0.318155",
-        "beta": "0.998516"
+        "volatility": 0.318155,
+        "beta": 0.998516
       },
       {
         "tradeDate": "2026-06-16",
-        "volatility": "0.312302",
-        "beta": "0.991862"
+        "volatility": 0.312302,
+        "beta": 0.991862
       },
       {
         "tradeDate": "2026-06-17",
-        "volatility": "0.311887",
-        "beta": "0.992158"
+        "volatility": 0.311887,
+        "beta": 0.992158
       },
       {
         "tradeDate": "2026-06-18",
-        "volatility": "0.308192",
-        "beta": "0.999875"
+        "volatility": 0.308192,
+        "beta": 0.999875
       },
       {
         "tradeDate": "2026-06-22",
-        "volatility": "0.309975",
-        "beta": "0.997344"
+        "volatility": 0.309975,
+        "beta": 0.997344
       },
       {
         "tradeDate": "2026-06-23",
-        "volatility": "0.309978",
-        "beta": "0.996696"
+        "volatility": 0.309978,
+        "beta": 0.996696
       },
       {
         "tradeDate": "2026-06-24",
-        "volatility": "0.320976",
-        "beta": "1.014014"
+        "volatility": 0.320976,
+        "beta": 1.014014
       },
       {
         "tradeDate": "2026-06-25",
-        "volatility": "0.319726",
-        "beta": "1.013307"
+        "volatility": 0.319726,
+        "beta": 1.013307
       },
       {
         "tradeDate": "2026-06-26",
-        "volatility": "0.328374",
-        "beta": "1.014834"
+        "volatility": 0.328374,
+        "beta": 1.014834
       },
       {
         "tradeDate": "2026-06-29",
-        "volatility": "0.326078",
-        "beta": "1.029975"
+        "volatility": 0.326078,
+        "beta": 1.029975
       },
       {
         "tradeDate": "2026-06-30",
-        "volatility": "0.317004",
-        "beta": "1.028154"
+        "volatility": 0.317004,
+        "beta": 1.028154
       },
       {
         "tradeDate": "2026-07-01",
-        "volatility": "0.314091",
-        "beta": "1.028067"
+        "volatility": 0.314091,
+        "beta": 1.028067
       },
       {
         "tradeDate": "2026-07-02",
-        "volatility": "0.315520",
-        "beta": "1.033605"
+        "volatility": 0.31552,
+        "beta": 1.033605
       },
       {
         "tradeDate": "2026-07-03",
-        "volatility": "0.306993",
-        "beta": "1.045260"
+        "volatility": 0.306993,
+        "beta": 1.04526
       },
       {
         "tradeDate": "2026-07-06",
-        "volatility": "0.306932",
-        "beta": "1.040846"
+        "volatility": 0.306932,
+        "beta": 1.040846
       },
       {
         "tradeDate": "2026-07-07",
-        "volatility": "0.307171",
-        "beta": "1.017072"
+        "volatility": 0.307171,
+        "beta": 1.017072
       },
       {
         "tradeDate": "2026-07-08",
-        "volatility": "0.306644",
-        "beta": "1.016158"
+        "volatility": 0.306644,
+        "beta": 1.016158
       },
       {
         "tradeDate": "2026-07-09",
-        "volatility": "0.305241",
-        "beta": "1.016354"
+        "volatility": 0.305241,
+        "beta": 1.016354
       },
       {
         "tradeDate": "2026-07-13",
-        "volatility": "0.305044",
-        "beta": "1.017157"
+        "volatility": 0.305044,
+        "beta": 1.017157
       },
       {
         "tradeDate": "2026-07-14",
-        "volatility": "0.306842",
-        "beta": "1.017942"
+        "volatility": 0.306842,
+        "beta": 1.017942
       },
       {
         "tradeDate": "2026-07-15",
-        "volatility": "0.304715",
-        "beta": "1.006471"
+        "volatility": 0.304715,
+        "beta": 1.006471
       },
       {
         "tradeDate": "2026-07-16",
-        "volatility": "0.304677",
-        "beta": "1.005209"
+        "volatility": 0.304677,
+        "beta": 1.005209
       },
       {
         "tradeDate": "2026-07-17",
-        "volatility": "0.333204",
-        "beta": "1.002216"
+        "volatility": 0.333204,
+        "beta": 1.002216
       },
       {
         "tradeDate": "2026-07-20",
-        "volatility": "0.333068",
-        "beta": "0.999464"
+        "volatility": 0.333068,
+        "beta": 0.999464
       },
       {
         "tradeDate": "2026-07-21",
-        "volatility": "0.341380",
-        "beta": "0.996332"
+        "volatility": 0.34138,
+        "beta": 0.996332
       },
       {
         "tradeDate": "2026-07-22",
-        "volatility": "0.336289",
-        "beta": "0.995031"
+        "volatility": 0.336289,
+        "beta": 0.995031
       },
       {
         "tradeDate": "2026-07-23",
-        "volatility": "0.332663",
-        "beta": "0.989249"
+        "volatility": 0.332663,
+        "beta": 0.989249
       },
       {
         "tradeDate": "2026-07-24",
-        "volatility": "0.333941",
-        "beta": "0.979885"
+        "volatility": 0.333941,
+        "beta": 0.979885
       },
       {
         "tradeDate": "2026-07-27",
-        "volatility": "0.333629",
-        "beta": "0.979845"
+        "volatility": 0.333629,
+        "beta": 0.979845
       },
       {
         "tradeDate": "2026-07-28",
-        "volatility": "0.343481",
-        "beta": "0.971057"
+        "volatility": 0.343481,
+        "beta": 0.971057
       },
       {
         "tradeDate": "2026-07-29",
-        "volatility": "0.339514",
-        "beta": "0.968831"
+        "volatility": 0.339514,
+        "beta": 0.968831
       },
       {
         "tradeDate": "2026-07-30",
-        "volatility": "0.338653",
-        "beta": "0.967831"
+        "volatility": 0.338653,
+        "beta": 0.967831
       },
       {
         "tradeDate": "2026-07-31",
-        "volatility": "0.384475",
-        "beta": "0.997464"
+        "volatility": 0.384475,
+        "beta": 0.997464
       },
       {
         "tradeDate": "2026-08-03",
-        "volatility": "0.383021",
-        "beta": "0.997566"
+        "volatility": 0.383021,
+        "beta": 0.997566
       },
       {
         "tradeDate": "2026-08-04",
-        "volatility": "0.384277",
-        "beta": "1.001055"
+        "volatility": 0.384277,
+        "beta": 1.001055
       },
       {
         "tradeDate": "2026-08-05",
-        "volatility": "0.389008",
-        "beta": "1.003482"
+        "volatility": 0.389008,
+        "beta": 1.003482
       },
       {
         "tradeDate": "2026-08-06",
-        "volatility": "0.389995",
-        "beta": "1.005475"
+        "volatility": 0.389995,
+        "beta": 1.005475
       },
       {
         "tradeDate": "2026-08-07",
-        "volatility": "0.388292",
-        "beta": "1.003272"
+        "volatility": 0.388292,
+        "beta": 1.003272
       },
       {
         "tradeDate": "2026-08-10",
-        "volatility": "0.388651",
-        "beta": "1.001734"
+        "volatility": 0.388651,
+        "beta": 1.001734
       },
       {
         "tradeDate": "2026-08-11",
-        "volatility": "0.388348",
-        "beta": "1.005415"
+        "volatility": 0.388348,
+        "beta": 1.005415
       },
       {
         "tradeDate": "2026-08-12",
-        "volatility": "0.388410",
-        "beta": "1.006292"
+        "volatility": 0.38841,
+        "beta": 1.006292
       },
       {
         "tradeDate": "2026-08-13",
-        "volatility": "0.386006",
-        "beta": "1.004521"
+        "volatility": 0.386006,
+        "beta": 1.004521
       },
       {
         "tradeDate": "2026-08-14",
-        "volatility": "0.386294",
-        "beta": "1.005056"
+        "volatility": 0.386294,
+        "beta": 1.005056
       },
       {
         "tradeDate": "2026-08-17",
-        "volatility": "0.382427",
-        "beta": "1.007743"
+        "volatility": 0.382427,
+        "beta": 1.007743
       },
       {
         "tradeDate": "2026-08-18",
-        "volatility": "0.381015",
-        "beta": "1.007210"
+        "volatility": 0.381015,
+        "beta": 1.00721
       },
       {
         "tradeDate": "2026-08-19",
-        "volatility": "0.373895",
-        "beta": "1.000478"
+        "volatility": 0.373895,
+        "beta": 1.000478
       },
       {
         "tradeDate": "2026-08-20",
-        "volatility": "0.373503",
-        "beta": "0.999397"
+        "volatility": 0.373503,
+        "beta": 0.999397
       },
       {
         "tradeDate": "2026-08-21",
-        "volatility": "0.370307",
-        "beta": "0.994906"
+        "volatility": 0.370307,
+        "beta": 0.994906
       },
       {
         "tradeDate": "2026-08-24",
-        "volatility": "0.370240",
-        "beta": "0.996353"
+        "volatility": 0.37024,
+        "beta": 0.996353
       },
       {
         "tradeDate": "2026-08-25",
-        "volatility": "0.367541",
-        "beta": "0.997386"
+        "volatility": 0.367541,
+        "beta": 0.997386
       },
       {
         "tradeDate": "2026-08-26",
-        "volatility": "0.366891",
-        "beta": "0.995122"
+        "volatility": 0.366891,
+        "beta": 0.995122
       },
       {
         "tradeDate": "2026-08-27",
-        "volatility": "0.366273",
-        "beta": "0.993871"
+        "volatility": 0.366273,
+        "beta": 0.993871
       },
       {
         "tradeDate": "2026-08-28",
-        "volatility": "0.364965",
-        "beta": "0.995357"
+        "volatility": 0.364965,
+        "beta": 0.995357
       },
       {
         "tradeDate": "2026-08-31",
-        "volatility": "0.363175",
-        "beta": "0.994208"
+        "volatility": 0.363175,
+        "beta": 0.994208
       },
       {
         "tradeDate": "2026-09-01",
-        "volatility": "0.366093",
-        "beta": "1.001006"
+        "volatility": 0.366093,
+        "beta": 1.001006
       },
       {
         "tradeDate": "2026-09-02",
-        "volatility": "0.358329",
-        "beta": "0.995251"
+        "volatility": 0.358329,
+        "beta": 0.995251
       },
       {
         "tradeDate": "2026-09-03",
-        "volatility": "0.351779",
-        "beta": "0.985662"
+        "volatility": 0.351779,
+        "beta": 0.985662
       },
       {
         "tradeDate": "2026-09-04",
-        "volatility": "0.344775",
-        "beta": "0.981944"
+        "volatility": 0.344775,
+        "beta": 0.981944
       },
       {
         "tradeDate": "2026-09-07",
-        "volatility": "0.347251",
-        "beta": "0.985060"
+        "volatility": 0.347251,
+        "beta": 0.98506
       },
       {
         "tradeDate": "2026-09-08",
-        "volatility": "0.345147",
-        "beta": "0.986970"
+        "volatility": 0.345147,
+        "beta": 0.98697
       },
       {
         "tradeDate": "2026-09-09",
-        "volatility": "0.338996",
-        "beta": "0.980510"
+        "volatility": 0.338996,
+        "beta": 0.98051
       },
       {
         "tradeDate": "2026-09-10",
-        "volatility": "0.337652",
-        "beta": "0.977372"
+        "volatility": 0.337652,
+        "beta": 0.977372
       },
       {
         "tradeDate": "2026-09-11",
-        "volatility": "0.339115",
-        "beta": "0.976831"
+        "volatility": 0.339115,
+        "beta": 0.976831
       },
       {
         "tradeDate": "2026-09-14",
-        "volatility": "0.339057",
-        "beta": "0.979477"
+        "volatility": 0.339057,
+        "beta": 0.979477
       },
       {
         "tradeDate": "2026-09-15",
-        "volatility": "0.335618",
-        "beta": "0.982572"
+        "volatility": 0.335618,
+        "beta": 0.982572
       },
       {
         "tradeDate": "2026-09-16",
-        "volatility": "0.335767",
-        "beta": "0.986387"
+        "volatility": 0.335767,
+        "beta": 0.986387
       },
       {
         "tradeDate": "2026-09-17",
-        "volatility": "0.328379",
-        "beta": "0.974623"
+        "volatility": 0.328379,
+        "beta": 0.974623
       },
       {
         "tradeDate": "2026-09-18",
-        "volatility": "0.329498",
-        "beta": "0.971077"
+        "volatility": 0.329498,
+        "beta": 0.971077
       },
       {
         "tradeDate": "2026-09-21",
-        "volatility": "0.320877",
-        "beta": "0.968377"
+        "volatility": 0.320877,
+        "beta": 0.968377
       },
       {
         "tradeDate": "2026-09-22",
-        "volatility": "0.320877",
-        "beta": "0.970776"
+        "volatility": 0.320877,
+        "beta": 0.970776
       },
       {
         "tradeDate": "2026-09-23",
-        "volatility": "0.318415",
-        "beta": "0.973950"
+        "volatility": 0.318415,
+        "beta": 0.97395
       },
       {
         "tradeDate": "2026-09-24",
-        "volatility": "0.316636",
-        "beta": "0.975025"
+        "volatility": 0.316636,
+        "beta": 0.975025
       },
       {
         "tradeDate": "2026-09-29",
-        "volatility": "0.316189",
-        "beta": "0.974051"
+        "volatility": 0.316189,
+        "beta": 0.974051
       },
       {
         "tradeDate": "2026-09-30",
-        "volatility": "0.315585",
-        "beta": "0.972871"
+        "volatility": 0.315585,
+        "beta": 0.972871
       },
       {
         "tradeDate": "2026-10-01",
-        "volatility": "0.315913",
-        "beta": "0.974149"
+        "volatility": 0.315913,
+        "beta": 0.974149
       },
       {
         "tradeDate": "2026-10-02",
-        "volatility": "0.315442",
-        "beta": "0.989417"
+        "volatility": 0.315442,
+        "beta": 0.989417
       },
       {
         "tradeDate": "2026-10-05",
-        "volatility": "0.319057",
-        "beta": "0.989115"
+        "volatility": 0.319057,
+        "beta": 0.989115
       },
       {
         "tradeDate": "2026-10-06",
-        "volatility": "0.317397",
-        "beta": "0.985938"
+        "volatility": 0.317397,
+        "beta": 0.985938
       }
     ]
   },
   "series": [
     {
       "tradeDate": "2025-10-07",
-      "cumulative": "0.016982"
+      "cumulative": 0.016982
     },
     {
       "tradeDate": "2025-10-08",
-      "cumulative": "0.006256"
+      "cumulative": 0.006256
     },
     {
       "tradeDate": "2025-10-09",
-      "cumulative": "0.014390"
+      "cumulative": 0.01439
     },
     {
       "tradeDate": "2025-10-13",
-      "cumulative": "-0.006857"
+      "cumulative": -0.006857
     },
     {
       "tradeDate": "2025-10-14",
-      "cumulative": "-0.010614"
+      "cumulative": -0.010614
     },
     {
       "tradeDate": "2025-10-15",
-      "cumulative": "0.006875"
+      "cumulative": 0.006875
     },
     {
       "tradeDate": "2025-10-16",
-      "cumulative": "0.030714"
+      "cumulative": 0.030714
     },
     {
       "tradeDate": "2025-10-17",
-      "cumulative": "0.019424"
+      "cumulative": 0.019424
     },
     {
       "tradeDate": "2025-10-20",
-      "cumulative": "0.043582"
+      "cumulative": 0.043582
     },
     {
       "tradeDate": "2025-10-21",
-      "cumulative": "0.045442"
+      "cumulative": 0.045442
     },
     {
       "tradeDate": "2025-10-22",
-      "cumulative": "0.041553"
+      "cumulative": 0.041553
     },
     {
       "tradeDate": "2025-10-23",
-      "cumulative": "0.030977"
+      "cumulative": 0.030977
     },
     {
       "tradeDate": "2025-10-27",
-      "cumulative": "0.050908"
+      "cumulative": 0.050908
     },
     {
       "tradeDate": "2025-10-28",
-      "cumulative": "0.050213"
+      "cumulative": 0.050213
     },
     {
       "tradeDate": "2025-10-29",
-      "cumulative": "0.072154"
+      "cumulative": 0.072154
     },
     {
       "tradeDate": "2025-10-30",
-      "cumulative": "0.073394"
+      "cumulative": 0.073394
     },
     {
       "tradeDate": "2025-10-31",
-      "cumulative": "0.066387"
+      "cumulative": 0.066387
     },
     {
       "tradeDate": "2025-11-03",
-      "cumulative": "0.063929"
+      "cumulative": 0.063929
     },
     {
       "tradeDate": "2025-11-04",
-      "cumulative": "0.053208"
+      "cumulative": 0.053208
     },
     {
       "tradeDate": "2025-11-05",
-      "cumulative": "0.037680"
+      "cumulative": 0.03768
     },
     {
       "tradeDate": "2025-11-06",
-      "cumulative": "0.043373"
+      "cumulative": 0.043373
     },
     {
       "tradeDate": "2025-11-07",
-      "cumulative": "0.034084"
+      "cumulative": 0.034084
     },
     {
       "tradeDate": "2025-11-10",
-      "cumulative": "0.042163"
+      "cumulative": 0.042163
     },
     {
       "tradeDate": "2025-11-11",
-      "cumulative": "0.036078"
+      "cumulative": 0.036078
     },
     {
       "tradeDate": "2025-11-12",
-      "cumulative": "0.046731"
+      "cumulative": 0.046731
     },
     {
       "tradeDate": "2025-11-13",
-      "cumulative": "0.045112"
+      "cumulative": 0.045112
     },
     {
       "tradeDate": "2025-11-14",
-      "cumulative": "0.023363"
+      "cumulative": 0.023363
     },
     {
       "tradeDate": "2025-11-17",
-      "cumulative": "0.019818"
+      "cumulative": 0.019818
     },
     {
       "tradeDate": "2025-11-18",
-      "cumulative": "-0.003499"
+      "cumulative": -0.003499
     },
     {
       "tradeDate": "2025-11-19",
-      "cumulative": "-0.009669"
+      "cumulative": -0.009669
     },
     {
       "tradeDate": "2025-11-20",
-      "cumulative": "0.022153"
+      "cumulative": 0.022153
     },
     {
       "tradeDate": "2025-11-21",
-      "cumulative": "-0.016367"
+      "cumulative": -0.016367
     },
     {
       "tradeDate": "2025-11-24",
-      "cumulative": "-0.020799"
+      "cumulative": -0.020799
     },
     {
       "tradeDate": "2025-11-25",
-      "cumulative": "-0.007930"
+      "cumulative": -0.00793
     },
     {
       "tradeDate": "2025-11-26",
-      "cumulative": "0.011210"
+      "cumulative": 0.01121
     },
     {
       "tradeDate": "2025-11-27",
-      "cumulative": "0.013648"
+      "cumulative": 0.013648
     },
     {
       "tradeDate": "2025-11-28",
-      "cumulative": "0.007052"
+      "cumulative": 0.007052
     },
     {
       "tradeDate": "2025-12-01",
-      "cumulative": "-0.004181"
+      "cumulative": -0.004181
     },
     {
       "tradeDate": "2025-12-02",
-      "cumulative": "0.006080"
+      "cumulative": 0.00608
     },
     {
       "tradeDate": "2025-12-03",
-      "cumulative": "0.020056"
+      "cumulative": 0.020056
     },
     {
       "tradeDate": "2025-12-04",
-      "cumulative": "0.023346"
+      "cumulative": 0.023346
     },
     {
       "tradeDate": "2025-12-05",
-      "cumulative": "0.029823"
+      "cumulative": 0.029823
     },
     {
       "tradeDate": "2025-12-08",
-      "cumulative": "0.041822"
+      "cumulative": 0.041822
     },
     {
       "tradeDate": "2025-12-09",
-      "cumulative": "0.038703"
+      "cumulative": 0.038703
     },
     {
       "tradeDate": "2025-12-10",
-      "cumulative": "0.045044"
+      "cumulative": 0.045044
     },
     {
       "tradeDate": "2025-12-11",
-      "cumulative": "0.027795"
+      "cumulative": 0.027795
     },
     {
       "tradeDate": "2025-12-12",
-      "cumulative": "0.035311"
+      "cumulative": 0.035311
     },
     {
       "tradeDate": "2025-12-15",
-      "cumulative": "0.020039"
+      "cumulative": 0.020039
     },
     {
       "tradeDate": "2025-12-16",
-      "cumulative": "0.011398"
+      "cumulative": 0.011398
     },
     {
       "tradeDate": "2025-12-17",
-      "cumulative": "0.014227"
+      "cumulative": 0.014227
     },
     {
       "tradeDate": "2025-12-18",
-      "cumulative": "0.015028"
+      "cumulative": 0.015028
     },
     {
       "tradeDate": "2025-12-19",
-      "cumulative": "0.023789"
+      "cumulative": 0.023789
     },
     {
       "tradeDate": "2025-12-22",
-      "cumulative": "0.040970"
+      "cumulative": 0.04097
     },
     {
       "tradeDate": "2025-12-23",
-      "cumulative": "0.049219"
+      "cumulative": 0.049219
     },
     {
       "tradeDate": "2025-12-24",
-      "cumulative": "0.050873"
+      "cumulative": 0.050873
     },
     {
       "tradeDate": "2025-12-26",
-      "cumulative": "0.056872"
+      "cumulative": 0.056872
     },
     {
       "tradeDate": "2025-12-29",
-      "cumulative": "0.070576"
+      "cumulative": 0.070576
     },
     {
       "tradeDate": "2025-12-30",
-      "cumulative": "0.065071"
+      "cumulative": 0.065071
     },
     {
       "tradeDate": "2025-12-31",
-      "cumulative": "0.076371"
+      "cumulative": 0.076371
     },
     {
       "tradeDate": "2026-01-02",
-      "cumulative": "0.091046"
+      "cumulative": 0.091046
     },
     {
       "tradeDate": "2026-01-05",
-      "cumulative": "0.123243"
+      "cumulative": 0.123243
     },
     {
       "tradeDate": "2026-01-06",
-      "cumulative": "0.135788"
+      "cumulative": 0.135788
     },
     {
       "tradeDate": "2026-01-07",
-      "cumulative": "0.131305"
+      "cumulative": 0.131305
     },
     {
       "tradeDate": "2026-01-08",
-      "cumulative": "0.126669"
+      "cumulative": 0.126669
     },
     {
       "tradeDate": "2026-01-09",
-      "cumulative": "0.124931"
+      "cumulative": 0.124931
     },
     {
       "tradeDate": "2026-01-12",
-      "cumulative": "0.128919"
+      "cumulative": 0.128919
     },
     {
       "tradeDate": "2026-01-13",
-      "cumulative": "0.136231"
+      "cumulative": 0.136231
     },
     {
       "tradeDate": "2026-01-14",
-      "cumulative": "0.138685"
+      "cumulative": 0.138685
     },
     {
       "tradeDate": "2026-01-15",
-      "cumulative": "0.132550"
+      "cumulative": 0.13255
     },
     {
       "tradeDate": "2026-01-16",
-      "cumulative": "0.150446"
+      "cumulative": 0.150446
     },
     {
       "tradeDate": "2026-01-19",
-      "cumulative": "0.154315"
+      "cumulative": 0.154315
     },
     {
       "tradeDate": "2026-01-20",
-      "cumulative": "0.154844"
+      "cumulative": 0.154844
     },
     {
       "tradeDate": "2026-01-21",
-      "cumulative": "0.136725"
+      "cumulative": 0.136725
     },
     {
       "tradeDate": "2026-01-22",
-      "cumulative": "0.146441"
+      "cumulative": 0.146441
     },
     {
       "tradeDate": "2026-01-23",
-      "cumulative": "0.148213"
+      "cumulative": 0.148213
     },
     {
       "tradeDate": "2026-01-26",
-      "cumulative": "0.147276"
+      "cumulative": 0.147276
     },
     {
       "tradeDate": "2026-01-27",
-      "cumulative": "0.155219"
+      "cumulative": 0.155219
     },
     {
       "tradeDate": "2026-01-28",
-      "cumulative": "0.171615"
+      "cumulative": 0.171615
     },
     {
       "tradeDate": "2026-01-29",
-      "cumulative": "0.163996"
+      "cumulative": 0.163996
     },
     {
       "tradeDate": "2026-01-30",
-      "cumulative": "0.144719"
+      "cumulative": 0.144719
     },
     {
       "tradeDate": "2026-02-02",
-      "cumulative": "0.131417"
+      "cumulative": 0.131417
     },
     {
       "tradeDate": "2026-02-03",
-      "cumulative": "0.148811"
+      "cumulative": 0.148811
     },
     {
       "tradeDate": "2026-02-04",
-      "cumulative": "0.149127"
+      "cumulative": 0.149127
     },
     {
       "tradeDate": "2026-02-05",
-      "cumulative": "0.136992"
+      "cumulative": 0.136992
     },
     {
       "tradeDate": "2026-02-06",
-      "cumulative": "0.141434"
+      "cumulative": 0.141434
     },
     {
       "tradeDate": "2026-02-09",
-      "cumulative": "0.162376"
+      "cumulative": 0.162376
     },
     {
       "tradeDate": "2026-02-10",
-      "cumulative": "0.191310"
+      "cumulative": 0.19131
     },
     {
       "tradeDate": "2026-02-11",
-      "cumulative": "0.212903"
+      "cumulative": 0.212903
     },
     {
       "tradeDate": "2026-02-23",
-      "cumulative": "0.211807"
+      "cumulative": 0.211807
     },
     {
       "tradeDate": "2026-02-24",
-      "cumulative": "0.238808"
+      "cumulative": 0.238808
     },
     {
       "tradeDate": "2026-02-25",
-      "cumulative": "0.269674"
+      "cumulative": 0.269674
     },
     {
       "tradeDate": "2026-02-26",
-      "cumulative": "0.265084"
+      "cumulative": 0.265084
     },
     {
       "tradeDate": "2026-03-02",
-      "cumulative": "0.248747"
+      "cumulative": 0.248747
     },
     {
       "tradeDate": "2026-03-03",
-      "cumulative": "0.223068"
+      "cumulative": 0.223068
     },
     {
       "tradeDate": "2026-03-04",
-      "cumulative": "0.173510"
+      "cumulative": 0.17351
     },
     {
       "tradeDate": "2026-03-05",
-      "cumulative": "0.195549"
+      "cumulative": 0.195549
     },
     {
       "tradeDate": "2026-03-06",
-      "cumulative": "0.190269"
+      "cumulative": 0.190269
     },
     {
       "tradeDate": "2026-03-09",
-      "cumulative": "0.140571"
+      "cumulative": 0.140571
     },
     {
       "tradeDate": "2026-03-10",
-      "cumulative": "0.159371"
+      "cumulative": 0.159371
     },
     {
       "tradeDate": "2026-03-11",
-      "cumulative": "0.205509"
+      "cumulative": 0.205509
     },
     {
       "tradeDate": "2026-03-12",
-      "cumulative": "0.181770"
+      "cumulative": 0.18177
     },
     {
       "tradeDate": "2026-03-13",
-      "cumulative": "0.172050"
+      "cumulative": 0.17205
     },
     {
       "tradeDate": "2026-03-16",
-      "cumulative": "0.167890"
+      "cumulative": 0.16789
     },
     {
       "tradeDate": "2026-03-17",
-      "cumulative": "0.178070"
+      "cumulative": 0.17807
     },
     {
       "tradeDate": "2026-03-18",
-      "cumulative": "0.192429"
+      "cumulative": 0.192429
     },
     {
       "tradeDate": "2026-03-19",
-      "cumulative": "0.161671"
+      "cumulative": 0.161671
     },
     {
       "tradeDate": "2026-03-20",
-      "cumulative": "0.156831"
+      "cumulative": 0.156831
     },
     {
       "tradeDate": "2026-03-23",
-      "cumulative": "0.136832"
+      "cumulative": 0.136832
     },
     {
       "tradeDate": "2026-03-24",
-      "cumulative": "0.134712"
+      "cumulative": 0.134712
     },
     {
       "tradeDate": "2026-03-25",
-      "cumulative": "0.155071"
+      "cumulative": 0.155071
     },
     {
       "tradeDate": "2026-03-26",
-      "cumulative": "0.152091"
+      "cumulative": 0.152091
     },
     {
       "tradeDate": "2026-03-27",
-      "cumulative": "0.142571"
+      "cumulative": 0.142571
     },
     {
       "tradeDate": "2026-03-30",
-      "cumulative": "0.120552"
+      "cumulative": 0.120552
     },
     {
       "tradeDate": "2026-03-31",
-      "cumulative": "0.105573"
+      "cumulative": 0.105573
     },
     {
       "tradeDate": "2026-04-01",
-      "cumulative": "0.156391"
+      "cumulative": 0.156391
     },
     {
       "tradeDate": "2026-04-02",
-      "cumulative": "0.134632"
+      "cumulative": 0.134632
     },
     {
       "tradeDate": "2026-04-07",
-      "cumulative": "0.155231"
+      "cumulative": 0.155231
     },
     {
       "tradeDate": "2026-04-08",
-      "cumulative": "0.204529"
+      "cumulative": 0.204529
     },
     {
       "tradeDate": "2026-04-09",
-      "cumulative": "0.205469"
+      "cumulative": 0.205469
     },
     {
       "tradeDate": "2026-04-10",
-      "cumulative": "0.223688"
+      "cumulative": 0.223688
     },
     {
       "tradeDate": "2026-04-13",
-      "cumulative": "0.218028"
+      "cumulative": 0.218028
     },
     {
       "tradeDate": "2026-04-14",
-      "cumulative": "0.251727"
+      "cumulative": 0.251727
     },
     {
       "tradeDate": "2026-04-15",
-      "cumulative": "0.263246"
+      "cumulative": 0.263246
     },
     {
       "tradeDate": "2026-04-16",
-      "cumulative": "0.269746"
+      "cumulative": 0.269746
     },
     {
       "tradeDate": "2026-04-17",
-      "cumulative": "0.249467"
+      "cumulative": 0.249467
     },
     {
       "tradeDate": "2026-04-20",
-      "cumulative": "0.249527"
+      "cumulative": 0.249527
     },
     {
       "tradeDate": "2026-04-21",
-      "cumulative": "0.265426"
+      "cumulative": 0.265426
     },
     {
       "tradeDate": "2026-04-22",
-      "cumulative": "0.274786"
+      "cumulative": 0.274786
     },
     {
       "tradeDate": "2026-04-23",
-      "cumulative": "0.279146"
+      "cumulative": 0.279146
     },
     {
       "tradeDate": "2026-04-24",
-      "cumulative": "0.320444"
+      "cumulative": 0.320444
     },
     {
       "tradeDate": "2026-04-27",
-      "cumulative": "0.355342"
+      "cumulative": 0.355342
     },
     {
       "tradeDate": "2026-04-28",
-      "cumulative": "0.335083"
+      "cumulative": 0.335083
     },
     {
       "tradeDate": "2026-04-29",
-      "cumulative": "0.327863"
+      "cumulative": 0.327863
     },
     {
       "tradeDate": "2026-04-30",
-      "cumulative": "0.303644"
+      "cumulative": 0.303644
     },
     {
       "tradeDate": "2026-05-04",
-      "cumulative": "0.358960"
+      "cumulative": 0.35896
     },
     {
       "tradeDate": "2026-05-05",
-      "cumulative": "0.375828"
+      "cumulative": 0.375828
     },
     {
       "tradeDate": "2026-05-06",
-      "cumulative": "0.404053"
+      "cumulative": 0.404053
     },
     {
       "tradeDate": "2026-05-07",
-      "cumulative": "0.429081"
+      "cumulative": 0.429081
     },
     {
       "tradeDate": "2026-05-08",
-      "cumulative": "0.433515"
+      "cumulative": 0.433515
     },
     {
       "tradeDate": "2026-05-11",
-      "cumulative": "0.428781"
+      "cumulative": 0.428781
     },
     {
       "tradeDate": "2026-05-12",
-      "cumulative": "0.421080"
+      "cumulative": 0.42108
     },
     {
       "tradeDate": "2026-05-13",
-      "cumulative": "0.398454"
+      "cumulative": 0.398454
     },
     {
       "tradeDate": "2026-05-14",
-      "cumulative": "0.406844"
+      "cumulative": 0.406844
     },
     {
       "tradeDate": "2026-05-15",
-      "cumulative": "0.399160"
+      "cumulative": 0.39916
     },
     {
       "tradeDate": "2026-05-18",
-      "cumulative": "0.395981"
+      "cumulative": 0.395981
     },
     {
       "tradeDate": "2026-05-19",
-      "cumulative": "0.368816"
+      "cumulative": 0.368816
     },
     {
       "tradeDate": "2026-05-20",
-      "cumulative": "0.363358"
+      "cumulative": 0.363358
     },
     {
       "tradeDate": "2026-05-21",
-      "cumulative": "0.406543"
+      "cumulative": 0.406543
     },
     {
       "tradeDate": "2026-05-22",
-      "cumulative": "0.438107"
+      "cumulative": 0.438107
     },
     {
       "tradeDate": "2026-05-25",
-      "cumulative": "0.494010"
+      "cumulative": 0.49401
     },
     {
       "tradeDate": "2026-05-26",
-      "cumulative": "0.482600"
+      "cumulative": 0.4826
     },
     {
       "tradeDate": "2026-05-27",
-      "cumulative": "0.524443"
+      "cumulative": 0.524443
     },
     {
       "tradeDate": "2026-05-28",
-      "cumulative": "0.506038"
+      "cumulative": 0.506038
     },
     {
       "tradeDate": "2026-05-29",
-      "cumulative": "0.542141"
+      "cumulative": 0.542141
     },
     {
       "tradeDate": "2026-06-01",
-      "cumulative": "0.567929"
+      "cumulative": 0.567929
     },
     {
       "tradeDate": "2026-06-02",
-      "cumulative": "0.584355"
+      "cumulative": 0.584355
     },
     {
       "tradeDate": "2026-06-03",
-      "cumulative": "0.613410"
+      "cumulative": 0.61341
     },
     {
       "tradeDate": "2026-06-04",
-      "cumulative": "0.585238"
+      "cumulative": 0.585238
     },
     {
       "tradeDate": "2026-06-05",
-      "cumulative": "0.573669"
+      "cumulative": 0.573669
     },
     {
       "tradeDate": "2026-06-08",
-      "cumulative": "0.511673"
+      "cumulative": 0.511673
     },
     {
       "tradeDate": "2026-06-09",
-      "cumulative": "0.563160"
+      "cumulative": 0.56316
     },
     {
       "tradeDate": "2026-06-10",
-      "cumulative": "0.507857"
+      "cumulative": 0.507857
     },
     {
       "tradeDate": "2026-06-11",
-      "cumulative": "0.500951"
+      "cumulative": 0.500951
     },
     {
       "tradeDate": "2026-06-12",
-      "cumulative": "0.531808"
+      "cumulative": 0.531808
     },
     {
       "tradeDate": "2026-06-15",
-      "cumulative": "0.583207"
+      "cumulative": 0.583207
     },
     {
       "tradeDate": "2026-06-16",
-      "cumulative": "0.607493"
+      "cumulative": 0.607493
     },
     {
       "tradeDate": "2026-06-17",
-      "cumulative": "0.606964"
+      "cumulative": 0.606964
     },
     {
       "tradeDate": "2026-06-18",
-      "cumulative": "0.616766"
+      "cumulative": 0.616766
     },
     {
       "tradeDate": "2026-06-22",
-      "cumulative": "0.656066"
+      "cumulative": 0.656066
     },
     {
       "tradeDate": "2026-06-23",
-      "cumulative": "0.647235"
+      "cumulative": 0.647235
     },
     {
       "tradeDate": "2026-06-24",
-      "cumulative": "0.589036"
+      "cumulative": 0.589036
     },
     {
       "tradeDate": "2026-06-25",
-      "cumulative": "0.593981"
+      "cumulative": 0.593981
     },
     {
       "tradeDate": "2026-06-26",
-      "cumulative": "0.532868"
+      "cumulative": 0.532868
     },
     {
       "tradeDate": "2026-06-29",
-      "cumulative": "0.537284"
+      "cumulative": 0.537284
     },
     {
       "tradeDate": "2026-06-30",
-      "cumulative": "0.571020"
+      "cumulative": 0.57102
     },
     {
       "tradeDate": "2026-07-01",
-      "cumulative": "0.600163"
+      "cumulative": 0.600163
     },
     {
       "tradeDate": "2026-07-02",
-      "cumulative": "0.578615"
+      "cumulative": 0.578615
     },
     {
       "tradeDate": "2026-07-03",
-      "cumulative": "0.565456"
+      "cumulative": 0.565456
     },
     {
       "tradeDate": "2026-07-06",
-      "cumulative": "0.568900"
+      "cumulative": 0.5689
     },
     {
       "tradeDate": "2026-07-07",
-      "cumulative": "0.556624"
+      "cumulative": 0.556624
     },
     {
       "tradeDate": "2026-07-08",
-      "cumulative": "0.566339"
+      "cumulative": 0.566339
     },
     {
       "tradeDate": "2026-07-09",
-      "cumulative": "0.543024"
+      "cumulative": 0.543024
     },
     {
       "tradeDate": "2026-07-13",
-      "cumulative": "0.545850"
+      "cumulative": 0.54585
     },
     {
       "tradeDate": "2026-07-14",
-      "cumulative": "0.526156"
+      "cumulative": 0.526156
     },
     {
       "tradeDate": "2026-07-15",
-      "cumulative": "0.544614"
+      "cumulative": 0.544614
     },
     {
       "tradeDate": "2026-07-16",
-      "cumulative": "0.554947"
+      "cumulative": 0.554947
     },
     {
       "tradeDate": "2026-07-17",
-      "cumulative": "0.457359"
+      "cumulative": 0.457359
     },
     {
       "tradeDate": "2026-07-20",
-      "cumulative": "0.463276"
+      "cumulative": 0.463276
     },
     {
       "tradeDate": "2026-07-21",
-      "cumulative": "0.520416"
+      "cumulative": 0.520416
     },
     {
       "tradeDate": "2026-07-22",
-      "cumulative": "0.536047"
+      "cumulative": 0.536047
     },
     {
       "tradeDate": "2026-07-23",
-      "cumulative": "0.542141"
+      "cumulative": 0.542141
     },
     {
       "tradeDate": "2026-07-24",
-      "cumulative": "0.511319"
+      "cumulative": 0.511319
     },
     {
       "tradeDate": "2026-07-27",
-      "cumulative": "0.509818"
+      "cumulative": 0.509818
     },
     {
       "tradeDate": "2026-07-28",
-      "cumulative": "0.445932"
+      "cumulative": 0.445932
     },
     {
       "tradeDate": "2026-07-29",
-      "cumulative": "0.400944"
+      "cumulative": 0.400944
     },
     {
       "tradeDate": "2026-07-30",
-      "cumulative": "0.403629"
+      "cumulative": 0.403629
     },
     {
       "tradeDate": "2026-07-31",
-      "cumulative": "0.531826"
+      "cumulative": 0.531826
     },
     {
       "tradeDate": "2026-08-03",
-      "cumulative": "0.531967"
+      "cumulative": 0.531967
     },
     {
       "tradeDate": "2026-08-04",
-      "cumulative": "0.510789"
+      "cumulative": 0.510789
     },
     {
       "tradeDate": "2026-08-05",
-      "cumulative": "0.557773"
+      "cumulative": 0.557773
     },
     {
       "tradeDate": "2026-08-06",
-      "cumulative": "0.536754"
+      "cumulative": 0.536754
     },
     {
       "tradeDate": "2026-08-07",
-      "cumulative": "0.537549"
+      "cumulative": 0.537549
     },
     {
       "tradeDate": "2026-08-10",
-      "cumulative": "0.554417"
+      "cumulative": 0.554417
     },
     {
       "tradeDate": "2026-08-11",
-      "cumulative": "0.559097"
+      "cumulative": 0.559097
     },
     {
       "tradeDate": "2026-08-12",
-      "cumulative": "0.571196"
+      "cumulative": 0.571196
     },
     {
       "tradeDate": "2026-08-13",
-      "cumulative": "0.585856"
+      "cumulative": 0.585856
     },
     {
       "tradeDate": "2026-08-14",
-      "cumulative": "0.574552"
+      "cumulative": 0.574552
     },
     {
       "tradeDate": "2026-08-17",
-      "cumulative": "0.558037"
+      "cumulative": 0.558037
     },
     {
       "tradeDate": "2026-08-18",
-      "cumulative": "0.539933"
+      "cumulative": 0.539933
     },
     {
       "tradeDate": "2026-08-19",
-      "cumulative": "0.521034"
+      "cumulative": 0.521034
     },
     {
       "tradeDate": "2026-08-20",
-      "cumulative": "0.522094"
+      "cumulative": 0.522094
     },
     {
       "tradeDate": "2026-08-21",
-      "cumulative": "0.544879"
+      "cumulative": 0.544879
     },
     {
       "tradeDate": "2026-08-24",
-      "cumulative": "0.526951"
+      "cumulative": 0.526951
     },
     {
       "tradeDate": "2026-08-25",
-      "cumulative": "0.542053"
+      "cumulative": 0.542053
     },
     {
       "tradeDate": "2026-08-26",
-      "cumulative": "0.561923"
+      "cumulative": 0.561923
     },
     {
       "tradeDate": "2026-08-27",
-      "cumulative": "0.560069"
+      "cumulative": 0.560069
     },
     {
       "tradeDate": "2026-08-28",
-      "cumulative": "0.576672"
+      "cumulative": 0.576672
     },
     {
       "tradeDate": "2026-08-31",
-      "cumulative": "0.578085"
+      "cumulative": 0.578085
     },
     {
       "tradeDate": "2026-09-01",
-      "cumulative": "0.616060"
+      "cumulative": 0.61606
     },
     {
       "tradeDate": "2026-09-02",
-      "cumulative": "0.589212"
+      "cumulative": 0.589212
     },
     {
       "tradeDate": "2026-09-03",
-      "cumulative": "0.596631"
+      "cumulative": 0.596631
     },
     {
       "tradeDate": "2026-09-04",
-      "cumulative": "0.619769"
+      "cumulative": 0.619769
     },
     {
       "tradeDate": "2026-09-07",
-      "cumulative": "0.656419"
+      "cumulative": 0.656419
     },
     {
       "tradeDate": "2026-09-08",
-      "cumulative": "0.652799"
+      "cumulative": 0.652799
     },
     {
       "tradeDate": "2026-09-09",
-      "cumulative": "0.641494"
+      "cumulative": 0.641494
     },
     {
       "tradeDate": "2026-09-10",
-      "cumulative": "0.640523"
+      "cumulative": 0.640523
     },
     {
       "tradeDate": "2026-09-11",
-      "cumulative": "0.616236"
+      "cumulative": 0.616236
     },
     {
       "tradeDate": "2026-09-14",
-      "cumulative": "0.608465"
+      "cumulative": 0.608465
     },
     {
       "tradeDate": "2026-09-15",
-      "cumulative": "0.596454"
+      "cumulative": 0.596454
     },
     {
       "tradeDate": "2026-09-16",
-      "cumulative": "0.607140"
+      "cumulative": 0.60714
     },
     {
       "tradeDate": "2026-09-17",
-      "cumulative": "0.624538"
+      "cumulative": 0.624538
     },
     {
       "tradeDate": "2026-09-18",
-      "cumulative": "0.647323"
+      "cumulative": 0.647323
     },
     {
       "tradeDate": "2026-09-21",
-      "cumulative": "0.675495"
+      "cumulative": 0.675495
     },
     {
       "tradeDate": "2026-09-22",
-      "cumulative": "0.676202"
+      "cumulative": 0.676202
     },
     {
       "tradeDate": "2026-09-23",
-      "cumulative": "0.690420"
+      "cumulative": 0.69042
     },
     {
       "tradeDate": "2026-09-24",
-      "cumulative": "0.682384"
+      "cumulative": 0.682384
     },
     {
       "tradeDate": "2026-09-29",
-      "cumulative": "0.663926"
+      "cumulative": 0.663926
     },
     {
       "tradeDate": "2026-09-30",
-      "cumulative": "0.667282"
+      "cumulative": 0.667282
     },
     {
       "tradeDate": "2026-10-01",
-      "cumulative": "0.681147"
+      "cumulative": 0.681147
     },
     {
       "tradeDate": "2026-10-02",
-      "cumulative": "0.676908"
+      "cumulative": 0.676908
     },
     {
       "tradeDate": "2026-10-05",
-      "cumulative": "0.719211"
+      "cumulative": 0.719211
     },
     {
       "tradeDate": "2026-10-06",
-      "cumulative": "0.712587"
+      "cumulative": 0.712587
     }
   ],
   "missingPrices": []

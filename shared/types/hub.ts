@@ -196,12 +196,12 @@ export interface SectorMetricHistory {
   entries: SectorMetricHistoryEntry[]
 }
 
-// 類股月營收：年增率只用「當月與去年同月都有營收」的同一批公司，兩個營收是千元字串。欄位名 2026-10-10 改成生態系統一詞彙
+// 類股月營收：年增率只用「當月與去年同月都有營收」的同一批公司，兩個營收是千元。欄位名 2026-10-10 改成生態系統一詞彙
 // （analysis-ts 40058581／業務中台 dcda99b；舊名 revenue／lastYearRevenue／yoyChangePercent 已棄用）。
 export interface SectorMonthlyRevenueEntry {
   yearMonth: string
-  currentMonthRevenue: string | number
-  lastYearSameMonthRevenue: string | number
+  currentMonthRevenue: number
+  lastYearSameMonthRevenue: number
   yoyChangePct: number | null
   companyCount: number
 }

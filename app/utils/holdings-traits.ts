@@ -22,9 +22,9 @@ export type StyleBoxKey = `${StyleBoxRow}${StyleBoxColumn}Pct`
 export const styleBoxKey = (row: StyleBoxRow, column: StyleBoxColumn): StyleBoxKey => `${row}${column}Pct`
 
 export type TraitKey = 'peRatio' | 'pbRatio' | 'dividendYield' | 'roe' | 'revenueGrowth' | 'beta' | 'revenueYoyVolatility' | 'top3HoldingsPct' | 'largeCapPct' | StyleBoxKey
-// 數字字串（beta 6 位、其餘 2 位小數）；dividendYield、roe、revenueGrowth、revenueYoyVolatility 與 *Pct 的單位是 %（"30.80" ＝ 30.8%）。
-// coverage ＝ 參與計算的持股占的權重（0～1）。全是 ETF 時 top3HoldingsPct 是真的 "0"，不是沒有資料
-export interface TraitValue { value: string | number | null; coverage: string | number | null }
+// beta 6 位、其餘 2 位小數；dividendYield、roe、revenueGrowth、revenueYoyVolatility 與 *Pct 的單位是 %（30.8 ＝ 30.8%）。
+// coverage ＝ 參與計算的持股占的權重（0～1）。全是 ETF 時 top3HoldingsPct 是真的 0，不是沒有資料
+export interface TraitValue { value: number | null; coverage: number | null }
 export type Traits = Record<TraitKey, TraitValue>
 // benchmark：大盤（業務中台詞彙表）
 export interface HoldingsTraitsResult { asOf: string | null; portfolio: Traits; benchmark: Traits | null }
@@ -62,17 +62,11 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   { keys: ['top3HoldingsPct'], label: '持股集中', rule: '前三大持股（ETF 除外）占比 ≥ 50%', needsMarket: false, test: own => own >= 50 }
 ]
 
-function toNumber(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined) return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
 // 一個值，或九宮格一欄的合計（全部沒有值才是 null）。合計四捨五入到 2 位，跟上游的精度一樣：10＋26.74＋13.26 不會被浮點數算成
 // 49.99999999999999 而踩不到門檻
 function read(traits: Traits | null, keys: TraitKey[]): { value: number | null; coverage: number | null } {
-  const values = keys.map(key => toNumber(traits?.[key]?.value))
-  const coverage = toNumber(keys.map(key => traits?.[key]?.coverage).find(value => value != null))
+  const values = keys.map(key => traits?.[key]?.value ?? null)
+  const coverage = keys.map(key => traits?.[key]?.coverage).find(value => value != null) ?? null
   if (values.every(value => value === null)) return { value: null, coverage }
   const sum = values.reduce<number>((total, value) => total + (value ?? 0), 0)
   return { value: keys.length > 1 ? Math.round(sum * 100) / 100 : sum, coverage }
@@ -89,17 +83,15 @@ export function traitTags(result: HoldingsTraitsResult): string[] {
   })
 }
 
-export function traitText(value: string | number | null | undefined, unit: 'ratio' | 'pct'): string {
-  const number = toNumber(value)
-  if (number === null) return '－'
+export function traitText(value: number | null | undefined, unit: 'ratio' | 'pct'): string {
+  if (value == null) return '－'
   // 負號是減號「−」（2026-11-03，使用者：「負號統一」）
-  return (unit === 'pct' ? `${number.toFixed(1)}%` : number.toFixed(2)).replace(/^-/, '−')
+  return (unit === 'pct' ? `${value.toFixed(1)}%` : value.toFixed(2)).replace(/^-/, '−')
 }
 
 // 九宮格的一格：寫四捨五入的整數（不到 0.5% 寫「<1%」），底色深淺也照這個整數決定，同樣寫 10% 的兩格不會一深一淺
-export function boxCell(value: string | number | null | undefined): { text: string; level: 0 | 1 | 2 | 3 } {
-  const number = toNumber(value)
-  if (number === null) return { text: '－', level: 0 }
-  const rounded = Math.round(number)
-  return { text: number > 0 && number < 0.5 ? '<1%' : `${rounded}%`, level: rounded >= 25 ? 3 : rounded >= 10 ? 2 : number > 0 ? 1 : 0 }
+export function boxCell(value: number | null | undefined): { text: string; level: 0 | 1 | 2 | 3 } {
+  if (value == null) return { text: '－', level: 0 }
+  const rounded = Math.round(value)
+  return { text: value > 0 && value < 0.5 ? '<1%' : `${rounded}%`, level: rounded >= 25 ? 3 : rounded >= 10 ? 2 : value > 0 ? 1 : 0 }
 }

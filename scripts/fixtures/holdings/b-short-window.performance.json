@@ -1,20 +1,20 @@
 {
   "from": "2026-08-10",
   "to": "2026-10-07",
-  "twr": "0.113843",
-  "mwr": "0.113843",
+  "twr": 0.113843,
+  "mwr": 0.113843,
   "annualized": {
     "twr": null,
     "mwr": null
   },
   "trading": {
-    "buyAmount": "0",
-    "sellAmount": "0",
-    "fees": "0",
-    "taxes": "0",
-    "averageMarketValue": "9120213",
-    "turnover": "0.000000",
-    "costRatio": "0.000000"
+    "buyAmount": 0,
+    "sellAmount": 0,
+    "fees": 0,
+    "taxes": 0,
+    "averageMarketValue": 9120213,
+    "turnover": 0,
+    "costRatio": 0
   },
   "benchmarkComparison": {
     "sampleDays": 40,
@@ -58,40 +58,40 @@
     "monthly": [
       {
         "yearMonth": "2026-08",
-        "portfolio": "0.026364",
-        "benchmark": "0.043019",
+        "portfolio": 0.026364,
+        "benchmark": 0.043019,
         "tradingDays": 16
       },
       {
         "yearMonth": "2026-09",
-        "portfolio": "0.056522",
-        "benchmark": "0.039274",
+        "portfolio": 0.056522,
+        "benchmark": 0.039274,
         "tradingDays": 20
       },
       {
         "yearMonth": "2026-10",
-        "portfolio": "0.027173",
-        "benchmark": "0.039266",
+        "portfolio": 0.027173,
+        "benchmark": 0.039266,
         "tradingDays": 4
       }
     ],
     "yearly": [
       {
-        "period": "2026",
-        "portfolio": "0.113843",
-        "benchmark": "0.126547",
+        "period": 2026,
+        "portfolio": 0.113843,
+        "benchmark": 0.126547,
         "tradingDays": 40
       }
     ]
   },
   "drawdown": {
-    "maxDrawdown": "-0.040875",
+    "maxDrawdown": -0.040875,
     "peakDate": "2026-08-13",
     "troughDate": "2026-08-19",
     "recoveryDate": "2026-09-01",
     "underwaterDays": 29,
     "longestUnderwaterDays": 12,
-    "currentDrawdown": "-0.003853"
+    "currentDrawdown": -0.003853
   },
   "rolling": {
     "windowDays": 60,
@@ -100,163 +100,163 @@
   "series": [
     {
       "tradeDate": "2026-08-10",
-      "cumulative": "0.010971"
+      "cumulative": 0.010971
     },
     {
       "tradeDate": "2026-08-11",
-      "cumulative": "0.014015"
+      "cumulative": 0.014015
     },
     {
       "tradeDate": "2026-08-12",
-      "cumulative": "0.021884"
+      "cumulative": 0.021884
     },
     {
       "tradeDate": "2026-08-13",
-      "cumulative": "0.031419"
+      "cumulative": 0.031419
     },
     {
       "tradeDate": "2026-08-14",
-      "cumulative": "0.024067"
+      "cumulative": 0.024067
     },
     {
       "tradeDate": "2026-08-17",
-      "cumulative": "0.013326"
+      "cumulative": 0.013326
     },
     {
       "tradeDate": "2026-08-18",
-      "cumulative": "0.001551"
+      "cumulative": 0.001551
     },
     {
       "tradeDate": "2026-08-19",
-      "cumulative": "-0.010741"
+      "cumulative": -0.010741
     },
     {
       "tradeDate": "2026-08-20",
-      "cumulative": "-0.010052"
+      "cumulative": -0.010052
     },
     {
       "tradeDate": "2026-08-21",
-      "cumulative": "0.004767"
+      "cumulative": 0.004767
     },
     {
       "tradeDate": "2026-08-24",
-      "cumulative": "-0.006893"
+      "cumulative": -0.006893
     },
     {
       "tradeDate": "2026-08-25",
-      "cumulative": "0.002929"
+      "cumulative": 0.002929
     },
     {
       "tradeDate": "2026-08-26",
-      "cumulative": "0.015853"
+      "cumulative": 0.015853
     },
     {
       "tradeDate": "2026-08-27",
-      "cumulative": "0.014647"
+      "cumulative": 0.014647
     },
     {
       "tradeDate": "2026-08-28",
-      "cumulative": "0.025445"
+      "cumulative": 0.025445
     },
     {
       "tradeDate": "2026-08-31",
-      "cumulative": "0.026364"
+      "cumulative": 0.026364
     },
     {
       "tradeDate": "2026-09-01",
-      "cumulative": "0.051063"
+      "cumulative": 0.051063
     },
     {
       "tradeDate": "2026-09-02",
-      "cumulative": "0.033601"
+      "cumulative": 0.033601
     },
     {
       "tradeDate": "2026-09-03",
-      "cumulative": "0.038426"
+      "cumulative": 0.038426
     },
     {
       "tradeDate": "2026-09-04",
-      "cumulative": "0.053475"
+      "cumulative": 0.053475
     },
     {
       "tradeDate": "2026-09-07",
-      "cumulative": "0.077312"
+      "cumulative": 0.077312
     },
     {
       "tradeDate": "2026-09-08",
-      "cumulative": "0.074957"
+      "cumulative": 0.074957
     },
     {
       "tradeDate": "2026-09-09",
-      "cumulative": "0.067605"
+      "cumulative": 0.067605
     },
     {
       "tradeDate": "2026-09-10",
-      "cumulative": "0.066973"
+      "cumulative": 0.066973
     },
     {
       "tradeDate": "2026-09-11",
-      "cumulative": "0.051177"
+      "cumulative": 0.051177
     },
     {
       "tradeDate": "2026-09-14",
-      "cumulative": "0.046123"
+      "cumulative": 0.046123
     },
     {
       "tradeDate": "2026-09-15",
-      "cumulative": "0.038311"
+      "cumulative": 0.038311
     },
     {
       "tradeDate": "2026-09-16",
-      "cumulative": "0.045261"
+      "cumulative": 0.045261
     },
     {
       "tradeDate": "2026-09-17",
-      "cumulative": "0.056577"
+      "cumulative": 0.056577
     },
     {
       "tradeDate": "2026-09-18",
-      "cumulative": "0.071396"
+      "cumulative": 0.071396
     },
     {
       "tradeDate": "2026-09-21",
-      "cumulative": "0.089719"
+      "cumulative": 0.089719
     },
     {
       "tradeDate": "2026-09-22",
-      "cumulative": "0.090178"
+      "cumulative": 0.090178
     },
     {
       "tradeDate": "2026-09-23",
-      "cumulative": "0.099426"
+      "cumulative": 0.099426
     },
     {
       "tradeDate": "2026-09-24",
-      "cumulative": "0.094199"
+      "cumulative": 0.094199
     },
     {
       "tradeDate": "2026-09-29",
-      "cumulative": "0.082194"
+      "cumulative": 0.082194
     },
     {
       "tradeDate": "2026-09-30",
-      "cumulative": "0.084377"
+      "cumulative": 0.084377
     },
     {
       "tradeDate": "2026-10-01",
-      "cumulative": "0.093395"
+      "cumulative": 0.093395
     },
     {
       "tradeDate": "2026-10-02",
-      "cumulative": "0.090638"
+      "cumulative": 0.090638
     },
     {
       "tradeDate": "2026-10-05",
-      "cumulative": "0.118150"
+      "cumulative": 0.11815
     },
     {
       "tradeDate": "2026-10-06",
-      "cumulative": "0.113843"
+      "cumulative": 0.113843
     }
   ],
   "missingPrices": []

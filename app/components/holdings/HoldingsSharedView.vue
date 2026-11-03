@@ -9,12 +9,11 @@ import type { HoldingMarketFields } from '~/composables/holdings/holdings-model'
 // （HoldingsSymbolTable），只讀：沒有展開明細。
 export interface PublicHolding extends HoldingMarketFields {
   symbol: string
-  // 數量欄位是字串（舊）或數字（業務中台 2026-11-03 起），兩種都收
-  weight?: string | number | null
+  weight?: number | null
   // 報酬率：百分比，4 位小數（12.3456＝12.3456%）；成本不明時 null
-  returnPct?: string | number | null
+  returnPct?: number | null
   quantity?: number
-  averageCost?: string | number | null
+  averageCost?: number | null
   costUnknownQuantity?: number
 }
 
@@ -38,9 +37,9 @@ const rows = computed(() => props.holdings.map((holding) => {
     label: entry ? `${entry.name} ${holding.symbol}` : holding.symbol,
     kind: entry?.kind ?? 'common',
     link: entry ? routeFor(entry) : securityPath(holding.symbol),
-    weight: holding.weight == null ? null : Number(holding.weight),
+    weight: holding.weight ?? null,
     // 表格的報酬率欄用 0～1 的比值
-    returnRatio: holding.returnPct == null ? null : Number(holding.returnPct) / 100,
+    returnRatio: holding.returnPct == null ? null : holding.returnPct / 100,
     quantity,
     figures: quantity === null
       ? null

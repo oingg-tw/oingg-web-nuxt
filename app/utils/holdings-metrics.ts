@@ -2,7 +2,7 @@
 // 欄位見 業務中台 src/application/holdings/holdings.types.ts）。不 import 任何東西：scripts/check-holdings-metrics.mjs
 // 直接用 node 跑它。
 //
-// 值是 6 位小數字串。null 不一律寫「－」——**每一種「沒有」各自命名**：樣本天數不夠、期間不滿一年、取不到
+// 值是 6 位小數。null 不一律寫「－」——**每一種「沒有」各自命名**：樣本天數不夠、期間不滿一年、取不到
 // 無風險利率，對讀者是三件不同的事（前兩件等久一點就會有，第三件不會）。只陳述數字與原因，不評價（投信投顧法）。
 
 export type HoldingsMetricFormat = 'pct' | 'signedPct' | 'ratio' | 'money'
@@ -17,13 +17,11 @@ export const COVARIANCE_MIN_DAYS = 120
 // 負號是減號「−」（2026-11-03，使用者：「負號統一」；同 shared 的 minusSign，這個檔案不 import 所以自己換開頭那一個）
 const minus = (text: string) => text.replace(/^-/, '−')
 
-export function holdingsMetricText(value: string | number | null | undefined, format: HoldingsMetricFormat, missing = '－', digits?: number): string {
-  if (value === null || value === undefined) return missing
-  const number = Number(value)
-  if (!Number.isFinite(number)) return missing
-  if (format === 'ratio') return minus(number.toFixed(digits ?? 2))
-  if (format === 'money') return `${minus(Math.round(number).toLocaleString('en-US'))} 元`
-  const percent = (number * 100).toFixed(digits ?? 1)
+export function holdingsMetricText(value: number | null | undefined, format: HoldingsMetricFormat, missing = '－', digits?: number): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return missing
+  if (format === 'ratio') return minus(value.toFixed(digits ?? 2))
+  if (format === 'money') return `${minus(Math.round(value).toLocaleString('en-US'))} 元`
+  const percent = (value * 100).toFixed(digits ?? 1)
   if (format === 'signedPct' && Number(percent) > 0) return `+${percent}%`
   return `${Number(percent) === 0 ? (0).toFixed(digits ?? 1) : minus(percent)}%`
 }
@@ -56,8 +54,6 @@ export function partialCoverageText(items: { label: string; coverage: string; fi
 }
 
 // 「涵蓋 88% 市值」：有這個數字的持股佔市值的比例；接近 100% 時不寫（沒有要交代的）
-export function coverageText(coverage: string | null): string | null {
-  if (coverage === null) return null
-  const share = Number(coverage)
-  return share < 0.9995 ? `涵蓋 ${(share * 100).toFixed(0)}% 市值` : null
+export function coverageText(coverage: number | null): string | null {
+  return coverage !== null && coverage < 0.9995 ? `涵蓋 ${(coverage * 100).toFixed(0)}% 市值` : null
 }

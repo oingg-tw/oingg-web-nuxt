@@ -59,11 +59,7 @@ function cellText(row: WatchlistRow, field: string): string {
 // ---- 試算表的欄位（SharedSheetGrid）----
 // 代號與名稱凍結在左邊；型錄欄位畫面上照 formatScreenerValue，複製出去的是原始數字（百分比換成比例並帶 Excel 的 0.00% 格式，
 // 貼進 Excel 是真的數字）。漲跌一格裡有金額與漲跌幅兩個數，複製照畫面上的字。操作欄不複製。
-const rawNumber = (row: WatchlistRow, field: string) => {
-  const raw = row.values[field]?.value
-  const value = Number(raw)
-  return raw == null || raw === '' || !Number.isFinite(value) ? null : value
-}
+const rawNumber = (row: WatchlistRow, field: string) => numericValue(row.values[field]?.value)
 const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
   { key: 'code', label: '代號', frozen: true, text: row => row.code, sortValue: row => row.code },
   { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },

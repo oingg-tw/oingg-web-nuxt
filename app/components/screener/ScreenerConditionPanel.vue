@@ -57,11 +57,8 @@ const title = computed(() => {
   return '選擇篩選指標'
 })
 const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fieldId ?? null))
-// 輸入框後面的單位（元、%、倍、人…），三組型錄的單位都是看得懂的字；「無單位」不顯示
-const unit = computed(() => {
-  const value = props.slot?.fieldId ? locateFieldInSchema(props.categories, props.slot.fieldId)?.field.unit : undefined
-  return value && value !== '無單位' ? value : ''
-})
+// 輸入框後面的單位（元、%、倍、人…），三組型錄的單位都是看得懂的字；沒有單位是 null
+const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.categories, props.slot.fieldId)?.field.unit : null) ?? '')
 </script>
 
 <template>

@@ -45,8 +45,8 @@ const columns = [
   col('balanceSheet', 'continuing_profit', '3800', 'profit')
 ]
 const balance = {
-  assets: '1000', current_assets: '600', cash: '300', receivables: '250', tiny: '5', empty_total: null, orphan: '45',
-  noncurrent_assets: '400', ppe: '380', misc_total: '5', misc_big: '50', misc_negative: '-45', never_filed: null, zero_line: '0', share_count: '123'
+  assets: 1000, current_assets: 600, cash: 300, receivables: 250, tiny: 5, empty_total: null, orphan: 45,
+  noncurrent_assets: 400, ppe: 380, misc_total: 5, misc_big: 50, misc_negative: -45, never_filed: null, zero_line: 0, share_count: 123
 }
 const keys = lines => lines.map(line => line.key)
 
@@ -76,17 +76,17 @@ console.log('資產負債表，展開全部')
 
 console.log('損益表：營業成本是減項')
 {
-  const exact = buildStatementLines(columns, 'incomeStatement', { gross_profit: '40', revenue: '100', operating_costs: '60' }, null, false).lines
+  const exact = buildStatementLines(columns, 'incomeStatement', { gross_profit: 40, revenue: 100, operating_costs: 60 }, null, false).lines
   assert(same(keys(exact), ['revenue', 'operating_costs', 'gross_profit']), '營收、成本、毛利依序')
   assert(!keys(exact).includes('gross_profit__other'), '100 − 60 = 40：沒有「其他」')
-  const off = buildStatementLines(columns, 'incomeStatement', { gross_profit: '41', revenue: '100', operating_costs: '60' }, { gross_profit: '30', revenue: '90', operating_costs: '60' }, false).lines
+  const off = buildStatementLines(columns, 'incomeStatement', { gross_profit: 41, revenue: 100, operating_costs: 60 }, { gross_profit: 30, revenue: 90, operating_costs: 60 }, false).lines
   const other = off.find(line => line.key === 'gross_profit__other')
   assert(other?.current === 1 && other?.prior === 0, '「其他」兩期各自算：當期 1、去年同期 0')
 }
 
 console.log('現金流量表的段落順序（GL 有字母也有數字）')
 {
-  const flows = { operating: '100', pretax: '80', fx: '-5', increase: '95', beginning: '1000', ending: '1095', no_gl_root: '-30' }
+  const flows = { operating: 100, pretax: 80, fx: -5, increase: 95, beginning: 1000, ending: 1095, no_gl_root: -30 }
   const order = keys(buildStatementLines(columns, 'cashFlowStatement', flows, null, true).lines)
   assert(same(order, ['pretax', 'operating__other', 'operating', 'fx', 'increase', 'beginning', 'ending', 'no_gl_root']),
     `營業 → 匯率 → 本期增減 → 期初 → 期末 → 沒有 GL 的（實得 ${order.join(',')}）`)
@@ -94,14 +94,14 @@ console.log('現金流量表的段落順序（GL 有字母也有數字）')
 
 console.log('合計底下只有一個一樣的子科目')
 {
-  const merged = keys(buildStatementLines(columns, 'balanceSheet', { assets: '1000', profit: '700', continuing_profit: '700' }, { assets: '1000', profit: '400', continuing_profit: '400' }, false).lines)
+  const merged = keys(buildStatementLines(columns, 'balanceSheet', { assets: 1000, profit: 700, continuing_profit: 700 }, { assets: 1000, profit: 400, continuing_profit: 400 }, false).lines)
   assert(merged.includes('profit') && !merged.includes('continuing_profit'), `兩期都一樣：只留合計（實得 ${merged.join(',')}）`)
-  const differs = keys(buildStatementLines(columns, 'balanceSheet', { assets: '1000', profit: '700', continuing_profit: '700' }, { assets: '1000', profit: '400', continuing_profit: '390' }, false).lines)
+  const differs = keys(buildStatementLines(columns, 'balanceSheet', { assets: 1000, profit: 700, continuing_profit: 700 }, { assets: 1000, profit: 400, continuing_profit: 390 }, false).lines)
   assert(differs.includes('continuing_profit') && differs.includes('profit__other'), `去年同期不一樣：子科目與「其他」都要列（實得 ${differs.join(',')}）`)
 }
 
 console.log('增減%：數據中台改送 JSON 數字（2026-11-03），字串與數字都收，0 是有值')
-assert(statementChangePercent('120', '100') === '20.00%' && statementChangePercent(120, 100) === '20.00%', '字串與數字算出一樣的增減%')
+assert(statementChangePercent(120, 100) === '20.00%' && statementChangePercent(120, 100) === '20.00%', '字串與數字算出一樣的增減%')
 assert(statementChangePercent(0, 100) === '−100.00%', `當期是 0：算得出（實得 ${statementChangePercent(0, 100)}）`)
 assert(statementChangePercent(null, 100) === '－' && statementChangePercent(100, 0) === '－', '缺值、或去年同期是 0：寫「－」')
 

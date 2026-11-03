@@ -57,7 +57,7 @@ assert.equal(findScreenerOption(quarters, 'older')?.label, '更早')
 assert.equal(findScreenerOption(quarters, '2024Q1'), null)
 assert.equal(formatScreenerValue('2026Q2', undefined, 'latestReportedQuarter.EOD', quarters), '26Q2')
 assert.equal(formatScreenerValue('older', undefined, 'latestReportedQuarter.EOD', quarters), '更早')
-assert.equal(findScreenerOption([{ value: 3, label: '中軌' }], '3')?.label, '中軌') // 河道位置：值是數字、上游給字串
+assert.equal(findScreenerOption([{ value: 3, label: '中軌' }], '3')?.label, '中軌') // 河道位置：值是數字、網址與存檔裡是字串
 
 // 送給業務中台時照型別送（wireValue）：布林、除權息月份是整數；代碼（類股 "24"、季別）不轉
 assert.equal(wireValue('isActive', 'true'), true)

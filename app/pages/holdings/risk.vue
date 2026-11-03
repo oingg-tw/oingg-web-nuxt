@@ -50,7 +50,7 @@ const drawdownRows = computed(() => {
     { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
     { name: '低於前高的天數', value: d ? `${d.underwaterDays} 天` : '', meaning: '收盤低於前高的交易日合計' },
     { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
-    { name: '目前距前高', value: !d ? '' : Number(d.currentDrawdown) === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
+    { name: '目前距前高', value: !d ? '' : d.currentDrawdown === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
   ]
 })
 const drawdownRowsHint = useLayoutHint('holdings-risk-drawdown', 4)
@@ -61,13 +61,13 @@ watch(drawdownRows, (rows) => {
 const report = computed(() => (outcome.value?.ok ? outcome.value.result : null))
 const companyByCode = useCompanyLookup(() => report.value?.holdings.map(holding => holding.symbol) ?? [])
 
-function pct(value: string | number | null | undefined, digits = 1): string {
+function pct(value: number | null | undefined, digits = 1): string {
   if (value === null || value === undefined) return '－'
-  return minusSign(`${(Number(value) * 100).toFixed(digits)}%`)
+  return minusSign(`${(value * 100).toFixed(digits)}%`)
 }
 
-function plain(value: string | number | null | undefined, digits = 2): string {
-  return value === null || value === undefined ? '－' : minusSign(Number(value).toFixed(digits))
+function plain(value: number | null | undefined, digits = 2): string {
+  return value === null || value === undefined ? '－' : minusSign(value.toFixed(digits))
 }
 
 function drawdownText(drawdown: RiskDrawdown | null): string {
@@ -96,8 +96,8 @@ const metricRows = computed(() => {
 function metricRowsOf(r: RiskReport) {
   const tailMissing = firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS))
   // 以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
-  // 市值明確比 null（2026-11-03：業務中台改送數字後，0 用 r.marketValue && … 會被當成沒有）
-  const loss = (value: string | number | null | undefined) => (r.marketValue != null && value != null ? holdingsMetricText(Math.abs(Number(value)), 'money') : null)
+  // 市值明確比 null：0 用 r.marketValue && … 會被當成沒有
+  const loss = (value: number | null) => (r.marketValue != null && value != null ? holdingsMetricText(Math.abs(value), 'money') : null)
   const varLoss = loss(r.portfolio.valueAtRisk95Amount)
   const esLoss = loss(r.portfolio.expectedShortfall95Amount)
   return [
@@ -123,7 +123,7 @@ const holdingLabel = (symbol: string) => {
 // 依權重由大到小；沒參與回推的（coverage none，權重是 null）不列
 const contributionHoldings = computed(() => (report.value?.holdings ?? [])
   .filter(holding => holding.weight !== null)
-  .sort((a, b) => Number(b.weight) - Number(a.weight)))
+  .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0)))
 
 const contributionRows = computed(() => {
   const r = report.value
@@ -152,7 +152,7 @@ const contributionOption = computed(() => {
   const ink = getChartInk(resolvedMode.value)
   // ECharts 的類別軸由下往上排，反過來才是最大的在最上面
   const holdings = [...contributionHoldings.value].reverse()
-  const toPct = (value: string | number | null) => (value === null ? null : Number((Number(value) * 100).toFixed(1)))
+  const toPct = (value: number | null) => (value === null ? null : Number((value * 100).toFixed(1)))
   // 一律一位小數：「{c}%」會把 54.0 印成「54%」，跟旁邊的「53.3%」對不齊
   const label = (color: string) => ({ show: true, position: 'right', color, fontSize: 16, formatter: ({ value }: { value: number | null }) => (value === null ? '' : `${value.toFixed(1)}%`) })
   return {

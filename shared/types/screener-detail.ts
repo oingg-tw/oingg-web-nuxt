@@ -15,7 +15,7 @@ export interface EtfDetail {
   issuerName: string
   category: string | null
   trackingIndex: string | null
-  // 月報年月：YYYYMM（舊）或 YYYY-MM（新），讀的時候用 normalizeYearMonth
+  // 月報年月 "YYYY-MM"
   yearMonth: string
   values: Record<string, EtfValue>
 }

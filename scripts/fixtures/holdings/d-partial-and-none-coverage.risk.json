@@ -3,193 +3,193 @@
   "to": "2026-10-07",
   "tradingDays": 242,
   "weightsAsOf": "2026-10-06",
-  "marketValue": "9872000",
+  "marketValue": 9872000,
   "portfolio": {
-    "annualizedVolatility": "0.290265",
-    "beta": "1.023556",
-    "correlation": "0.960474",
+    "annualizedVolatility": 0.290265,
+    "beta": 1.023556,
+    "correlation": 0.960474,
     "maxDrawdown": {
-      "depth": "-0.159745",
+      "depth": -0.159745,
       "peakDate": "2026-06-22",
       "troughDate": "2026-07-29",
       "recoveryDate": "2026-09-07"
     },
-    "downsideDeviation": "0.176149",
-    "ulcerIndex": "0.049550",
-    "valueAtRisk95": "-0.023325",
-    "expectedShortfall95": "-0.037851",
-    "valueAtRisk95Amount": "-230264",
-    "expectedShortfall95Amount": "-373665"
+    "downsideDeviation": 0.176149,
+    "ulcerIndex": 0.04955,
+    "valueAtRisk95": -0.023325,
+    "expectedShortfall95": -0.037851,
+    "valueAtRisk95Amount": -230264,
+    "expectedShortfall95Amount": -373665
   },
   "benchmark": {
-    "annualizedVolatility": "0.272376",
+    "annualizedVolatility": 0.272376,
     "maxDrawdown": {
-      "depth": "-0.163552",
+      "depth": -0.163552,
       "peakDate": "2026-06-22",
       "troughDate": "2026-07-30",
       "recoveryDate": "2026-09-22"
     },
-    "downsideDeviation": "0.171919",
-    "ulcerIndex": "0.040903",
-    "valueAtRisk95": "-0.024453",
-    "expectedShortfall95": "-0.036766"
+    "downsideDeviation": 0.171919,
+    "ulcerIndex": 0.040903,
+    "valueAtRisk95": -0.024453,
+    "expectedShortfall95": -0.036766
   },
   "concentration": {
-    "hhi": "0.329716",
-    "effectiveHoldings": "3.032914",
-    "topThreeWeight": "0.790924"
+    "hhi": 0.329716,
+    "effectiveHoldings": 3.032914,
+    "topThreeWeight": 0.790924
   },
-  "diversificationRatio": "1.255148",
+  "diversificationRatio": 1.255148,
   "sectors": {
-    "effectiveSectors": "2.038675",
+    "effectiveSectors": 2.038675,
     "groups": [
       {
         "sectorCode": "24",
         "sectorName": "半導體業",
-        "weight": "0.673217",
+        "weight": 0.673217,
         "symbols": [
-          "2330",
-          "2454"
+          2330,
+          2454
         ]
       },
       {
         "sectorCode": null,
         "sectorName": null,
-        "weight": "0.135535",
+        "weight": 0.135535,
         "symbols": [
-          "0056",
+          56,
           "00988A"
         ]
       },
       {
         "sectorCode": "17",
         "sectorName": "金融保險業",
-        "weight": "0.113452",
+        "weight": 0.113452,
         "symbols": [
-          "2882"
+          2882
         ]
       },
       {
         "sectorCode": "31",
         "sectorName": "其他電子業",
-        "weight": "0.077796",
+        "weight": 0.077796,
         "symbols": [
-          "2317"
+          2317
         ]
       }
     ]
   },
   "fundamentals": {
-    "dividendIncome": "120560",
-    "dividendYield": "0.014127",
-    "dividendCoverage": "0.864465",
-    "peRatio": "25.893090",
-    "peCoverage": "0.864465",
-    "pbRatio": "4.978886",
-    "pbCoverage": "0.864465"
+    "dividendIncome": 120560,
+    "dividendYield": 0.014127,
+    "dividendCoverage": 0.864465,
+    "peRatio": 25.89309,
+    "peCoverage": 0.864465,
+    "pbRatio": 4.978886,
+    "pbCoverage": 0.864465
   },
   "correlations": {
     "symbols": [
-      "2330",
-      "2454",
-      "0056",
-      "2882",
-      "2317",
+      2330,
+      2454,
+      56,
+      2882,
+      2317,
       "00988A"
     ],
     "matrix": [
       [
-        "1.000000",
-        "0.456525",
-        "0.584509",
-        "0.278229",
-        "0.585027",
-        "0.714975"
+        1,
+        0.456525,
+        0.584509,
+        0.278229,
+        0.585027,
+        0.714975
       ],
       [
-        "0.456525",
-        "1.000000",
-        "0.653526",
-        "0.330853",
-        "0.478311",
-        "0.577138"
+        0.456525,
+        1,
+        0.653526,
+        0.330853,
+        0.478311,
+        0.577138
       ],
       [
-        "0.584509",
-        "0.653526",
-        "1.000000",
-        "0.434171",
-        "0.688057",
-        "0.726728"
+        0.584509,
+        0.653526,
+        1,
+        0.434171,
+        0.688057,
+        0.726728
       ],
       [
-        "0.278229",
-        "0.330853",
-        "0.434171",
-        "1.000000",
-        "0.298913",
-        "0.306102"
+        0.278229,
+        0.330853,
+        0.434171,
+        1,
+        0.298913,
+        0.306102
       ],
       [
-        "0.585027",
-        "0.478311",
-        "0.688057",
-        "0.298913",
-        "1.000000",
-        "0.644354"
+        0.585027,
+        0.478311,
+        0.688057,
+        0.298913,
+        1,
+        0.644354
       ],
       [
-        "0.714975",
-        "0.577138",
-        "0.726728",
-        "0.306102",
-        "0.644354",
-        "1.000000"
+        0.714975,
+        0.577138,
+        0.726728,
+        0.306102,
+        0.644354,
+        1
       ]
     ]
   },
   "holdings": [
     {
       "symbol": "2330",
-      "weight": "0.523703",
+      "weight": 0.523703,
       "coverage": "full",
       "firstPriceDate": null,
-      "riskContribution": "0.527260"
+      "riskContribution": 0.52726
     },
     {
       "symbol": "2454",
-      "weight": "0.149514",
+      "weight": 0.149514,
       "coverage": "full",
       "firstPriceDate": null,
-      "riskContribution": "0.245657"
+      "riskContribution": 0.245657
     },
     {
       "symbol": "0056",
-      "weight": "0.117707",
+      "weight": 0.117707,
       "coverage": "full",
       "firstPriceDate": null,
-      "riskContribution": "0.072171"
+      "riskContribution": 0.072171
     },
     {
       "symbol": "2882",
-      "weight": "0.113452",
+      "weight": 0.113452,
       "coverage": "full",
       "firstPriceDate": null,
-      "riskContribution": "0.056396"
+      "riskContribution": 0.056396
     },
     {
       "symbol": "2317",
-      "weight": "0.077796",
+      "weight": 0.077796,
       "coverage": "full",
       "firstPriceDate": null,
-      "riskContribution": "0.074232"
+      "riskContribution": 0.074232
     },
     {
       "symbol": "00988A",
-      "weight": "0.017828",
+      "weight": 0.017828,
       "coverage": "partial",
       "firstPriceDate": "2025-11-05",
-      "riskContribution": "0.025784"
+      "riskContribution": 0.025784
     },
     {
       "symbol": "9999",

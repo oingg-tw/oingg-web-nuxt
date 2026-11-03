@@ -15,12 +15,12 @@ export interface HoldingFigures {
   // 其中成本不明的股數（業務中台 a742fff）；省略＝0
   costUnknownQuantity?: number
   // **只算成本已知的股數**；全部成本不明時是 null
-  averageCost: string | number | null
-  price: string | number | null | undefined
-  dividendPerShare: string | number | null | undefined
+  averageCost: number | null
+  price: number | null | undefined
+  dividendPerShare: number | null | undefined
   // 這批持股領過的現金股利（業務中台 1074647，2026-10-23）：除息日計入、股數用除息前一天的持股，部位歸零後重新買進從 0 算。
   // 沒有（舊版或匯入預覽）當 0
-  dividendsReceived?: string | number | null
+  dividendsReceived?: number | null
 }
 
 export interface HoldingRowFigures {
@@ -49,17 +49,10 @@ export interface HoldingsTotals {
   costUnknownCount: number
 }
 
-function toAmount(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const n = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(n) ? n : null
-}
-
 export function holdingRowFigures(h: HoldingFigures): HoldingRowFigures {
-  const averageCost = toAmount(h.averageCost)
-  const rawPrice = toAmount(h.price)
-  const price = rawPrice !== null && rawPrice > 0 ? rawPrice : null
-  const dividendPerShare = toAmount(h.dividendPerShare)
+  const averageCost = h.averageCost
+  const price = h.price != null && h.price > 0 ? h.price : null
+  const dividendPerShare = h.dividendPerShare ?? null
 
   // 成本不明的股數（使用者 2026-10-05 選「成本不明」：庫存照算、損益不計入）只進市值，不進成本與損益
   const knownQuantity = h.quantity - (h.costUnknownQuantity ?? 0)
@@ -71,7 +64,7 @@ export function holdingRowFigures(h: HoldingFigures): HoldingRowFigures {
   const annualDividend = dividendPerShare === null ? null : h.quantity * dividendPerShare
   // 含息只算成本已知的股數領到的那一份（照股數比例分），同未實現損益：成本不明的股數不進成本，它們的股利也不能拿來墊高報酬率
   // ponytail: 照現在的股數比例分攤，成本不明的那幾批如果是後來才取得，會略高估它們分到的股利；要精確得業務中台分批回報
-  const dividends = toAmount(h.dividendsReceived) ?? 0
+  const dividends = h.dividendsReceived ?? 0
   const knownDividends = h.quantity > 0 ? dividends * Math.max(knownQuantity, 0) / h.quantity : 0
   const pnlWithDividends = pnl === null ? null : pnl + knownDividends
   const pnlWithDividendsPct = pnlWithDividends === null || cost === null || cost === 0 ? null : (pnlWithDividends / cost) * 100
@@ -154,8 +147,8 @@ export interface WeightedYield {
 // 同一個算法（stock.price 對 stock.previousClose）。那天沒成交、或沒有前一日收盤的那一檔沒有今日漲跌，不是 0。
 export interface DayChangeInput {
   quantity: number
-  price: string | number | null | undefined
-  previousClose: string | number | null | undefined
+  price: number | null | undefined
+  previousClose: number | null | undefined
   // 這筆收盤是哪一天。上市與上櫃更新時間不同（2026-10-15 twse-ts／tpex-ts 確認）：上櫃當天 18:00 前就有當天收盤，
   // 上市要到隔天 07:15 後（證交所 OpenAPI 隔天清晨才給前一交易日）。所以晚上的持股會一半是今天、一半是昨天
   date?: string | null
@@ -167,9 +160,8 @@ export interface DayChange {
 }
 
 function dayPrices(row: DayChangeInput): { price: number; previous: number } | null {
-  const price = toAmount(row.price)
-  const previous = toAmount(row.previousClose)
-  return price !== null && price > 0 && previous !== null && previous > 0 ? { price, previous } : null
+  const { price, previousClose: previous } = row
+  return price != null && price > 0 && previous != null && previous > 0 ? { price, previous } : null
 }
 
 export function dayChange(row: DayChangeInput): DayChange {

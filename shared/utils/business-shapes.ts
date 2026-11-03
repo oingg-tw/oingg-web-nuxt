@@ -15,8 +15,8 @@ export function withExType<T extends object>(raw: T): T {
 
 type LooseRecord = Record<string, unknown>
 
-// 沒有單位：數據中台 2026-11-03 起送 null，業務中台切換前還是「無單位」。站內一律 null，畫面上就不寫單位（原本會寫出「單位無單位」，送 null 後變「單位null」）
-const unitOf = (unit: unknown) => (unit === '無單位' ? null : unit)
+// 篩選格子的數值（業務中台 c940774、數據中台 28c4283 起是 JSON 數字）；缺值與文字格子（類別欄位）是 null
+export const numericValue = (value: unknown): number | null => (typeof value === 'number' ? value : null)
 
 // GET /metrics 型錄：篩選器一路用 key／name／path／period 這組名字（useFilterSchema 與篩選的元件），在讀進來時換一次。
 // 分類 categoryKey／categoryDisplayName → key／name；指標 metricCode → key 與 path（兩個一直相同）；期別 timeframe → key、name、period
@@ -29,10 +29,9 @@ export function metricsCatalogFromBusiness<T extends { categories: unknown[] }>(
       name: categoryDisplayName,
       metrics: (category.metrics as LooseRecord[]).map(({ metricCode, ...metric }) => ({
         ...metric,
-        unit: unitOf(metric.unit),
         key: metricCode,
         path: metricCode,
-        fields: (metric.fields as LooseRecord[]).map(({ timeframe, ...field }) => ({ ...field, unit: unitOf(field.unit), key: timeframe, name: timeframe, period: timeframe }))
+        fields: (metric.fields as LooseRecord[]).map(({ timeframe, ...field }) => ({ ...field, key: timeframe, name: timeframe, period: timeframe }))
       }))
     }))
   }

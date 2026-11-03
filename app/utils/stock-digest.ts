@@ -122,7 +122,7 @@ export function collectMetricSources(categories: MetricCategory[], codes: readon
 }
 
 // Integers stay integers（7 年、8 分）, everything else gets two decimals; unit strings are the
-// catalog's literal suffixes（%／元／倍／分／年）; no unit is null（business-shapes.ts turns the old「無單位」into null）.
+// catalog's literal suffixes（%／元／倍／分／年）; no unit is null.
 export function formatDigestValue(value: number, unit: string | null | undefined): string {
   const number = minusSign(Number.isInteger(value) ? String(value) : value.toFixed(2))
   if (!unit) return number

@@ -45,7 +45,7 @@ const indexName = computed(() => benchmarkName(totalReturn.value))
 
 // 大盤的累積報酬由 業務中台 對齊好（3078dcf，2026-11-02，原本這頁下載 2,100 天加權指數自己算）：兩條線從持股第一天起算，
 // 基準是它前一個指數交易日的收盤。持股第一天之前的點兩邊都是 null，走勢圖從持股第一天畫起
-const percentOf = (value: string | number | null | undefined) => (value == null ? null : Number(value) * 100)
+const percentOf = (value: number | null | undefined) => (value == null ? null : value * 100)
 const comparison = computed(() => {
   const outcome = performance.value
   if (!outcome?.ok) return null
@@ -56,7 +56,7 @@ const comparison = computed(() => {
     label: point.tradeDate,
     values: { portfolio: { value: percentOf(point.cumulative) }, taiex: { value: percentOf(point.benchmarkCumulative) } }
   }))
-  return { start: series[first]!.tradeDate, entries, benchmark: benchmarkReturn == null ? null : Number(benchmarkReturn) }
+  return { start: series[first]!.tradeDate, entries, benchmark: benchmarkReturn ?? null }
 })
 
 const comparisonSeries = computed<LineSeriesSpec[]>(() => [
@@ -84,7 +84,7 @@ const report = computed(() => (performance.value?.ok && performance.value.result
 
 // 同樣進出買大盤：影子組合賣超（endValue ≤ 0）時它的 mwr 是 null
 const sameFlows = computed(() => report.value?.sameFlowsBenchmark ?? null)
-const sameFlowsOversold = computed(() => !!sameFlows.value && Number(sameFlows.value.endValue) <= 0)
+const sameFlowsOversold = computed(() => !!sameFlows.value && sameFlows.value.endValue <= 0)
 // 讀的時候（2026-10-20）：表格的列照樣列出、數值留空（HoldingsMetricTable loading），名稱與意思先出現；逐年的列數照上次
 const firstLoad = computed(() => !performance.value)
 const metricText = (...args: Parameters<typeof holdingsMetricText>) => (report.value ? holdingsMetricText(...args) : '')
@@ -108,7 +108,7 @@ const annualizedText = computed(() => {
 })
 
 // 逐年的座標叫 period（年份）、逐月的叫 yearMonth（業務中台詞彙表）
-const periodRow = (name: string, row: { portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }) => ({
+const periodRow = (name: string, row: { portfolio: number | null; benchmark: number | null; tradingDays: number }) => ({
   name,
   value: holdingsMetricText(row.portfolio, 'signedPct', '－', 2),
   market: holdingsMetricText(row.benchmark, 'signedPct', '－', 2),

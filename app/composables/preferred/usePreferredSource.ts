@@ -86,9 +86,8 @@ function formatValue(field: string, raw: string | number | null | undefined): st
   if (raw === null || raw === undefined) return '—'
   const metric = METRICS.get(field)
   if (metric?.kind === 'categorical') return labelEachValue(raw, value => metric.options?.find(option => option.value === value)?.label)
-  const value = Number(raw)
-  if (!metric || !Number.isFinite(value)) return String(raw)
-  return metric.unit === '%' ? minusSign(`${value.toFixed(2)}%`) : groupThousands(value.toFixed(2))
+  if (!metric || typeof raw !== 'number') return String(raw)
+  return metric.unit === '%' ? minusSign(`${raw.toFixed(2)}%`) : groupThousands(raw.toFixed(2))
 }
 
 function matches(entry: PreferredStockEntry, filter: FilterCriterion): boolean {

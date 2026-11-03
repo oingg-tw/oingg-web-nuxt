@@ -108,12 +108,12 @@ const letters = computed(() => columns.value.map((_, index) => columnLetter(inde
 const baseRows = computed(() => holdings.value.map((holding) => {
   const quote = market.value[holding.symbol]
   const figures = holdingRowFigures({ quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare })
-  const price = quote?.price === null || quote?.price === undefined ? null : Number(quote.price)
+  const price = quote?.price ?? null
   // 跟持股總覽同一支（holdings-summary.ts 的 dayChange），兩頁的今日漲跌不會不一樣
   const day = dayChange({ quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose })
   const fields: RowFields = {
     SHARES: holding.quantity,
-    AVGCOST: holding.averageCost === null ? null : Number(holding.averageCost),
+    AVGCOST: holding.averageCost,
     PRICE: price !== null && price > 0 ? price : null,
     MARKETVALUE: figures.marketValue,
     PNL: figures.pnl,
@@ -363,10 +363,9 @@ async function loadMetrics() {
     if (key !== metricsKey.value) return
     const percent = new Set(fields.filter(field => fieldOf(field)?.unit === '%'))
     metricValues.value = new Map(response.results.map(result => [result.symbol, new Map(fields.map((field) => {
-      // 缺值與空字串不當 0；0 照樣是 0（2026-11-03：業務中台改送 JSON 數字後，原本的 raw ? … 會把 0 當成沒有值）
+      // 數值是數字；缺值與文字（類別欄位）是 null
       const raw = result.values[field]?.value
-      const value = raw === null || raw === undefined || raw === '' ? Number.NaN : Number(raw)
-      return [field, Number.isFinite(value) ? (percent.has(field) ? value / 100 : value) : null] as const
+      return [field, typeof raw === 'number' ? (percent.has(field) ? raw / 100 : raw) : null] as const
     }))]))
     metricsFailed.value = false
   } catch (error) {

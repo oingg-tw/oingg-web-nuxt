@@ -112,12 +112,11 @@ function displayLabel(field: EtfFilterField): string {
 function formatValue(field: EtfFilterField | undefined, raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
   if (field?.kind === 'categorical') return labelEachValue(raw, value => valueLabel(field.field, value))
-  const value = Number(raw)
-  if (!Number.isFinite(value)) return String(raw)
+  if (typeof raw !== 'number') return raw
   // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
-  if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(value.toFixed(2)) : formatMoney(value)
+  if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(raw.toFixed(2)) : formatMoney(raw)
   if (field?.unit === '%') return minusSign(`${raw}%`)
-  return field?.unit && field.unit !== '無單位' ? `${groupThousands(raw)} ${field.unit}` : groupThousands(raw)
+  return field?.unit ? `${groupThousands(raw)} ${field.unit}` : groupThousands(raw)
 }
 
 export function useEtfSource(): UniverseSource {

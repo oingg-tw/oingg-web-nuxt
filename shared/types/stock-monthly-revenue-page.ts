@@ -14,12 +14,10 @@ export interface MonthlyRevenueEntry {
   // 要顯示的話標「出表日」，別寫「公告日」。
   generatedDate: string | null
   sectorName: string | null
-  // Bigint-serialised as strings in NT$ THOUSAND — parse to Number before charting, and never
-  // treat as already-numeric. analysis-ts deliberately does not convert the unit, so the
-  // conversion and the label have to agree on one side; this app does both in one place, the
-  // page's own 億元 formatter.
-  currentMonthRevenue: string | number | null
-  lastYearSameMonthRevenue: string | number | null
+  // NT$ THOUSAND. analysis-ts deliberately does not convert the unit, so the conversion and the
+  // label have to agree on one side; this app does both in one place, the page's own 億元 formatter.
+  currentMonthRevenue: number | null
+  lastYearSameMonthRevenue: number | null
   // Null for companies listed within the last year — there is no same month to compare against.
   // 226 rows market-wide（0.4%）. Passed through as null rather than zero by explicit agreement
   // with analysis-ts, so the chart can leave a real gap instead of drawing a fall to zero.
@@ -28,8 +26,8 @@ export interface MonthlyRevenueEntry {
   // analysis-ts's source has no MoM field at all.
   // Field names: the *Pct forms since 2026-10-10（業務中台 18612f4; the *Percent aliases go away after we confirm）.
   momChangePct: number | null
-  cumulativeRevenue: string | number | null
-  cumulativeLastYearRevenue: string | number | null
+  cumulativeRevenue: number | null
+  cumulativeLastYearRevenue: number | null
   cumulativeChangePct: number
   // The company's own filed revenue-variance explanation. A literal「無」means the company
   // explicitly reported nothing unusual; real null means no disclosure at all — 業務中台 confirmed
