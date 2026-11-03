@@ -32,7 +32,7 @@ const { resolvedMode } = useAppTheme()
 const theme = computed(() => {
   const name = `oingg-${resolvedMode.value}-${scale.value}`
   if (!registeredThemes.has(name)) {
-    registerTheme(name, chartTheme(resolvedMode.value, Number(scale.value) / 100))
+    registerTheme(name, chartTheme(resolvedMode.value, scale.value / 100))
     registeredThemes.add(name)
   }
   return name
@@ -88,7 +88,7 @@ function withMinusSign(value: unknown, key = ''): unknown {
   return result
 }
 
-const scaledOption = computed(() => withMinusSign(withStaticLegend(scaleFontSizes(props.option, Number(scale.value) / 100) as Record<string, unknown>)) as Record<string, unknown>)
+const scaledOption = computed(() => withMinusSign(withStaticLegend(scaleFontSizes(props.option, scale.value / 100) as Record<string, unknown>)) as Record<string, unknown>)
 
 // 有東西蓋住頁面時收起提示框與指示線（hideChartTips，見 chart-palette.ts）。只發 hideTip 的話軸上的指示線還在
 const chartRef = ref<InstanceType<typeof VChart> | null>(null)

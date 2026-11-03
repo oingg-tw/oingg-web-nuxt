@@ -28,9 +28,9 @@ const contentWidthMode = useContentWidthMode()
 // native-zoom job (WCAG Technique G142), already unblocked on this app; this control is just the
 // supplementary G178 convenience the standard's own reference implementation also treats it as.
 const TEXT_SCALE_OPTIONS: { key: TextScale; label: string }[] = [
-  { key: '100', label: '100%（預設）' },
-  { key: '110', label: '110%' },
-  { key: '120', label: '120%' }
+  { key: 100, label: '100%（預設）' },
+  { key: 110, label: '110%' },
+  { key: 120, label: '120%' }
 ]
 
 const THEME_COLOR_OPTIONS: { key: ThemeColor; label: string; swatch: string }[] = [

@@ -16,32 +16,33 @@
 // appearing because the custom control itself was being pushed to 2x). Matching the government's
 // own 100%/110%/120% range keeps this control as the supplementary G178 convenience it's actually
 // meant to be, while genuine 200% stays the browser's own job (G142), which was never blocked.
-export type TextScale = '100' | '110' | '120'
+// 數字（2026-11-03 格式統一，原本是字串 '100'／'110'／'120'）
+export type TextScale = 100 | 110 | 120
 
 // Old cookies may still hold values from the earlier 5-step (100/125/150/175/200) or 3-step
 // (100/150/200) ranges — normalized to the nearest new step on read (see normalizeScale below)
 // rather than left to silently fall outside the current union type.
 const LEGACY_SCALE_MAP: Record<string, TextScale> = {
-  '125': '110',
-  '150': '110',
-  '175': '120',
-  '200': '120'
+  '125': 110,
+  '150': 110,
+  '175': 120,
+  '200': 120
 }
 
-const DEFAULT_SCALE: TextScale = '100'
+const DEFAULT_SCALE: TextScale = 100
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 // Element Plus 的尺寸階（small／default／large）只管元件外框的內距與最小高度，不是讓字變大的機制（那是 main.css 的
 // html[data-text-scale] rem 級聯）。2026-10-08 起 100% 對 default（32px）、110／120% 對 large（40px）：原本 100% 對 small 時
 // 全站控制項只有 24px，連 WCAG 2.5.8 的 24×24 都貼著；觸控裝置另由 element-plus.css 的 (pointer: coarse) 規則補到 44px。
 const SCALE_TO_EL_SIZE: Record<TextScale, 'small' | 'default' | 'large'> = {
-  '100': 'default',
-  '110': 'large',
-  '120': 'large'
+  100: 'default',
+  110: 'large',
+  120: 'large'
 }
 
 function normalizeScale(value: string): TextScale {
-  if (value === '100' || value === '110' || value === '120') return value
+  if (value === '100' || value === '110' || value === '120') return Number(value) as TextScale
   return LEGACY_SCALE_MAP[value] ?? DEFAULT_SCALE
 }
 
@@ -50,7 +51,7 @@ function normalizeScale(value: string): TextScale {
 // refresh until hydration re-applied the real value, which is a much more jarring layout jump
 // for a text-SIZE setting than it ever was for a color change.
 export function useTextScale() {
-  // 舊版 Nuxt 寫的 cookie 沒有引號（text-scale=110），讀回來是數字 110：沒轉成字串時 110％、120％ 重新整理後會掉回 100％
+  // 存數字（2026-11-03 起）。之前存的是字串（"110"），更早的 Nuxt 寫成沒有引號的 110、讀回來是數字：一律轉成字串再比，三種都認得
   const rawScale = useCookie<string | number>('text-scale', { default: () => DEFAULT_SCALE, maxAge: COOKIE_MAX_AGE, sameSite: 'lax' })
   const scale = computed<TextScale>(() => normalizeScale(String(rawScale.value)))
   const elSize = computed(() => SCALE_TO_EL_SIZE[scale.value])

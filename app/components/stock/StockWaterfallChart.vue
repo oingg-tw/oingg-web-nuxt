@@ -63,9 +63,9 @@ const chartLabel = computed(() => `${props.steps[0]?.label ?? ''}到${props.step
 const chartOption = computed(() => {
   const steps = props.steps
   const accent = getAccentColor(resolvedMode.value, accentColorName.value)
-  // useTextScale's `scale` is the SETTING token（'100' | '110' | '120'), not a ratio — the same
-  // Number(scale)/100 conversion SharedChart itself does before walking the option tree.
-  const labelFont = `${(16 * Number(textScale.value)) / 100}px system-ui, -apple-system, "Segoe UI", sans-serif`
+  // useTextScale's `scale` is the setting in percent（100 | 110 | 120), not a ratio — the same
+  // scale/100 conversion SharedChart itself does before walking the option tree.
+  const labelFont = `${(16 * textScale.value) / 100}px system-ui, -apple-system, "Segoe UI", sans-serif`
   return {
     // right: 64 reserves room for the value label each bar hangs past its own right edge — with
     // the usual 16px the widest bar's label（毛利率, the chart's full extent）was clipped by the

@@ -87,7 +87,7 @@ const COLOR_LIMIT = 40
 // 兩個格線區（上面一條景氣同時指標、下面每列一個類股）共用月份軸，左邊的名稱欄要寫死同一個寬度。伺服器端量不到字寬，用最長的
 // 類股名稱字數算（都是全形字）；SharedChart 會把字級乘上文字大小設定，版面的高度與寬度這裡跟著乘
 const heatLayout = computed(() => {
-  const font = 16 * Number(scale.value) / 100
+  const font = 16 * scale.value / 100
   const labelWidth = Math.ceil(Math.max(6, ...heatRows.value.map(row => row.name.length)) * font) + 12
   const rowHeight = Math.ceil(font + 6)
   const legendHeight = Math.ceil(font * 2)
