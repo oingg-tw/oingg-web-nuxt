@@ -48,10 +48,10 @@ const yieldText = (value: number | null): string => (value === null ? '—' : `$
 const growthText = (value: number | null): string => (value === null ? '—' : minusSign(`${value.toFixed(1)}%`))
 const rows = computed(() => summary.value?.sectors ?? [])
 
+const coveredCount = computed(() => rows.value.reduce((total, row) => total + row.companyCount, 0).toLocaleString('en-US'))
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
-  const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。下表每一列是一個類股：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${coveredCount.value} 家。下表每一列是一個類股：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
 })
 
 const pathFor = (code: string) => sectorPath(code) ?? '/industries'
@@ -66,6 +66,28 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
   { key: 'revenueGrowth', label: '營收年增', num: true, sortValue: row => growthByCode.value.get(row.sectorCode)?.revenueGrowthRate.median },
   { key: 'netIncomeGrowth', label: '淨利年增', num: true, sortValue: row => growthByCode.value.get(row.sectorCode)?.netIncomeGrowthRate.median }
 ]
+
+// 手機版（2026-11-04，使用者從三個方案選了 C：「我選c因為文字沒有被折行」）：6 欄表格在手機要左右捲才看得到後 3 欄，改成照證交所指數
+// 分組的兩欄格子，格子上的數字用分段鈕換。電腦版照舊是上面那張可排序的表格；兩份都在伺服器輸出的 HTML 裡，CSS 決定哪一份看得到
+const shortAnswer = computed(() => (rows.value.length ? `${rows.value.length} 個類股、${coveredCount.value} 家上市櫃公司，照證交所的指數分成三組。格子上的數字是該類股的中位數，點格子看那個類股；怎麼算寫在頁面最後。` : null))
+const TILE_METRICS = [
+  { key: 'yield', label: '殖利率' },
+  { key: 'dividendGrowth', label: '股利 3 年' },
+  { key: 'revenueGrowth', label: '營收年增' },
+  { key: 'netIncomeGrowth', label: '淨利年增' }
+] as const
+const tileMetric = ref<(typeof TILE_METRICS)[number]['key']>('yield')
+const tileMetricLabel = computed(() => TILE_METRICS.find(metric => metric.key === tileMetric.value)!.label)
+function tileValue(row: SectorRow): string {
+  const growthRow = growthByCode.value.get(row.sectorCode)
+  if (tileMetric.value === 'yield') return yieldText(row.liveCashDividendYield.median)
+  if (tileMetric.value === 'dividendGrowth') return signedPct(row.dividendGrowthRate3y.median)
+  return signedPct(tileMetric.value === 'revenueGrowth' ? growthRow?.revenueGrowthRate.median : growthRow?.netIncomeGrowthRate.median)
+}
+// 證交所的指數分組：電子類（24～31）、金融保險類（17），其餘是未含金融電子類（非金電）
+const groupOf = (code: string) => (code >= '24' && code <= '31' ? 'electronics' : code === '17' ? 'financial' : 'others')
+const TILE_GROUPS = [{ key: 'electronics', title: '電子類' }, { key: 'financial', title: '金融保險類' }, { key: 'others', title: '非金電類' }] as const
+const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: rows.value.filter(row => groupOf(row.sectorCode) === group.key) })).filter(group => group.rows.length))
 </script>
 
 <template>
@@ -75,7 +97,8 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 
     <section class="stock-page-section" aria-labelledby="industries-overview-heading">
       <h2 id="industries-overview-heading" class="stock-page-section__title">證交所把上市櫃公司分成哪些類股？</h2>
-      <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
+      <p v-if="latestAnswer" class="hub-answer app-wide-only">{{ latestAnswer }}</p>
+      <p v-if="shortAnswer" class="hub-answer app-narrow-only">{{ shortAnswer }}</p>
       <p class="hub-answer">把這些類股的殖利率與股利成長畫在同一張圖上，看<NuxtLink to="/industries/dividend" class="hub-inline-link">殖利率分析</NuxtLink>。</p>
     </section>
 
@@ -84,23 +107,46 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
       <!-- 類股名稱搜尋 2026-10-21 拿掉（使用者：「這個搜尋 是多餘的」）：34 列、表頭可排序，搜尋只是多一個框 -->
       <!-- 欄位簡化（2026-10-21，使用者：「industries 表格欄位請簡化」）：8 欄 → 6 欄。「有值家數」兩欄拿掉（是中位數的分母，不是讀者要比
            的數字；各類股頁與散佈圖的提示框仍有），「中位數」三個字從每個欄名收進表格說明——每一欄都是中位數，說一次就好 -->
-      <p class="hub-answer">除了公司家數，每一欄都是該類股的中位數。</p>
-      <SharedSortableTable
-        :rows="rows"
-        :columns="COLUMNS"
-        :row-key="row => row.sectorCode"
-        label="各證交所類股的公司家數、殖利率與成長率中位數"
-        :caption="`證交所類股的中位數（殖利率為一年份的現金股利除以 ${summary?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月未配息以 0% 計入）`"
-      >
-        <template #row="{ row }">
-          <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
-          <td class="seo-table__num">{{ row.companyCount }}</td>
-          <td class="seo-table__num">{{ yieldText(row.liveCashDividendYield.median) }}</td>
-          <td class="seo-table__num">{{ growthText(row.dividendGrowthRate3y.median) }}</td>
-          <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
-          <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
-        </template>
-      </SharedSortableTable>
+      <p class="hub-answer app-wide-only">除了公司家數，每一欄都是該類股的中位數。</p>
+      <!-- 表格元件不把 class 傳到最外層，包一層才藏得掉 -->
+      <div class="app-wide-only">
+        <SharedSortableTable
+          :rows="rows"
+          :columns="COLUMNS"
+          :row-key="row => row.sectorCode"
+          label="各證交所類股的公司家數、殖利率與成長率中位數"
+          :caption="`證交所類股的中位數（殖利率為一年份的現金股利除以 ${summary?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月未配息以 0% 計入）`"
+        >
+          <template #row="{ row }">
+            <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
+            <td class="seo-table__num">{{ row.companyCount }}</td>
+            <td class="seo-table__num">{{ yieldText(row.liveCashDividendYield.median) }}</td>
+            <td class="seo-table__num">{{ growthText(row.dividendGrowthRate3y.median) }}</td>
+            <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
+            <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
+          </template>
+        </SharedSortableTable>
+      </div>
+      <div class="app-narrow-only">
+        <p id="industries-tile-metric" class="industries-page__metric-label">格子上的數字</p>
+        <el-radio-group v-model="tileMetric" aria-labelledby="industries-tile-metric" class="industries-page__metric">
+          <el-radio-button v-for="metric in TILE_METRICS" :key="metric.key" :value="metric.key">{{ metric.label }}</el-radio-button>
+        </el-radio-group>
+        <section v-for="group in tileGroups" :key="group.key" class="industries-page__group" :aria-labelledby="`industries-group-${group.key}`">
+          <h3 :id="`industries-group-${group.key}`" class="industries-page__group-title">{{ group.title }}<span>{{ group.rows.length }} 個類股</span></h3>
+          <ul class="industries-page__grid">
+            <li v-for="row in group.rows" :key="row.sectorCode">
+              <NuxtLink :to="pathFor(row.sectorCode)" class="industries-page__tile">
+                <span class="industries-page__tile-name">{{ row.sectorName }}</span>
+                <span class="industries-page__tile-foot">
+                  <span class="industries-page__tile-count">{{ row.companyCount }} 家</span>
+                  <span class="industries-page__tile-value"><span class="visually-hidden">{{ tileMetricLabel }} </span>{{ tileValue(row) }}</span>
+                </span>
+              </NuxtLink>
+            </li>
+          </ul>
+        </section>
+      </div>
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
@@ -121,6 +167,103 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 
 .industries-page__title {
   font-weight: 600;
+}
+
+/* 手機的分組索引格（方案 C）：兩欄，375 寬每格約 140px，最長的類股名稱（電腦及週邊設備業）一行放得下 */
+.industries-page__metric-label {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.industries-page__metric {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.industries-page__metric :deep(.el-radio-button) {
+  flex: 1 1 auto;
+}
+
+/* 四個選項在 375 寬排成一行：預設左右各 15px 會把「淨利年增」擠到第二行 */
+.industries-page__metric :deep(.el-radio-button__inner) {
+  width: 100%;
+  padding-inline: 8px;
+}
+
+.industries-page__group + .industries-page__group {
+  margin-top: 20px;
+}
+
+.industries-page__group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+
+  span {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+.industries-page__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+
+  li {
+    min-width: 0;
+    display: flex;
+  }
+}
+
+.industries-page__tile {
+  flex: 1;
+  min-height: 72px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-surface-border);
+  border-radius: 10px;
+  background: var(--app-card-bg);
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+}
+
+.industries-page__tile:hover {
+  border-color: var(--el-color-primary);
+}
+
+.industries-page__tile-name {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.industries-page__tile-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.industries-page__tile-count {
+  font-size: 0.875rem;
+  color: var(--el-text-color-secondary);
+}
+
+.industries-page__tile-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .industries-page__notes {
