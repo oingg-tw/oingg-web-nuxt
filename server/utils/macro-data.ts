@@ -55,12 +55,11 @@ function dividendYieldErp(side: ErpResponse['supplySide']): number | null {
 export const getEquityRiskPremium = defineCachedFunction(
   async (): Promise<EquityRiskPremiumPageData> => {
     const full = await businessFetch<ErpResponse>('/macro/equity-risk-premium')
-    const [endYear, endMonth] = full.windowEnd.split('-').map(Number) as [number, number]
+    // 窗口是 from／to 兩個 "YYYY-MM"（業務中台 4ae216f，2026-11-03；原本 startYear／startMonth／endYear／endMonth 四個數字，兩組一起送回 400）
+    const endYear = Number(full.windowEnd.slice(0, 4))
     const rest = await Promise.all(
       ERP_WINDOW_YEARS.map(years =>
-        businessFetch<ErpResponse>(
-          `/macro/equity-risk-premium?startYear=${endYear - years}&startMonth=${endMonth}&endYear=${endYear}&endMonth=${endMonth}`
-        )
+        businessFetch<ErpResponse>('/macro/equity-risk-premium', { query: { from: `${endYear - years}${full.windowEnd.slice(4)}`, to: full.windowEnd } })
       )
     )
     const toWindow = (label: string, response: ErpResponse): EquityRiskPremiumWindow => ({
