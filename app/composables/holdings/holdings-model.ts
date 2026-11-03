@@ -209,7 +209,8 @@ export interface PerformanceResult {
   riskFree: { source: string; latestYearMonth: string | null; rates: { yearMonth: string; ratePct: number; sourceYearMonth: string }[] } | null
   // 2026-10-07（業務中台 9d691cd）：逐年／逐月報酬（頭尾可能不滿一整期，tradingDays 看得出來）
   periodReturns: {
-    yearly: { period: string; portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }[]
+    // period：年份，"2026"（舊）或 2026（業務中台第 3 批起送數字）
+    yearly: { period: string | number; portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }[]
     monthly: { yearMonth: string; portfolio: string | number | null; benchmark: string | number | null; tradingDays: number }[]
   }
   // 實際帳本的跌幅：underwaterDays ＝ 期間內低於前高的交易日數，longestUnderwaterDays ＝ 最長連續那一段

@@ -114,7 +114,7 @@ const periodRow = (name: string, row: { portfolio: string | number | null; bench
   market: holdingsMetricText(row.benchmark, 'signedPct', '－', 2),
   meaning: `${row.tradingDays} 天`
 })
-const yearlyRows = computed(() => (report.value?.periodReturns.yearly ?? []).map(row => periodRow(row.period, row)))
+const yearlyRows = computed(() => (report.value?.periodReturns.yearly ?? []).map(row => periodRow(String(row.period), row)))
 const monthlyRows = computed(() => (report.value?.periodReturns.monthly ?? []).map(row => periodRow(row.yearMonth, row)))
 const yearCountHint = useLayoutHint('holdings-performance-years', 2)
 watch(yearlyRows, (rows) => {
