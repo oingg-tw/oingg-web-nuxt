@@ -17,7 +17,8 @@ export async function useEtf() {
   const num = (field: string): number | null => (typeof values.value[field] === 'number' ? values.value[field] as number : null)
   const text = (field: string): string | null => (typeof values.value[field] === 'string' ? values.value[field] as string : null)
   // 簡稱是 companyName（ETF 的發行投信是 issuerName）
-  const shortName = computed(() => etf.value?.companyName ?? code.value)
+  // 沒有簡稱（原本 ""、之後 null）就用代號
+  const shortName = computed(() => etf.value?.companyName || code.value)
   const stock = computed<Stock | null>(() => (etf.value
     ? { code: etf.value.symbol, name: shortName.value, price: data.value?.quote?.price ?? null, change: data.value?.quote?.change ?? null, changePercent: data.value?.quote?.changePercent ?? null }
     : null))

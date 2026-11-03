@@ -498,7 +498,8 @@ const ETF_PAGE_SIZE = 200
 const ETF_FUND_TYPE_ORDER = ['股票型', '債券型', '槓桿型／反向型', '平衡型', '不動產證券化／其他']
 
 async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPageData> {
-  type EtfResult = { symbol: string; companyName: string; values: Record<string, string | number | boolean | null> }
+  // companyName 沒有值：原本 ""，業務中台第 3 批起 null，名稱改用代號
+  type EtfResult = { symbol: string; companyName: string | null; values: Record<string, string | number | boolean | null> }
   const results: EtfResult[] = []
   for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
     const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
@@ -512,7 +513,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
     .map(result => ({ result, value: parseDecimal(result.values[definition.field] as string | number | null) }))
     .filter((entry): entry is { result: EtfResult; value: number } => entry.value !== null)
   const toRows = (entries: typeof ranked): RankingRow[] => entries.slice(0, RANKING_LIMIT)
-    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName, value: entry.value, knowledgeDate: null }))
+    .map((entry, index) => ({ rank: index + 1, symbol: entry.result.symbol, name: entry.result.companyName || entry.result.symbol, value: entry.value, knowledgeDate: null }))
   const rows = toRows(ranked)
   const typeOrder = (name: string) => (ETF_FUND_TYPE_ORDER.includes(name) ? ETF_FUND_TYPE_ORDER.indexOf(name) : ETF_FUND_TYPE_ORDER.length)
   const groups = [...new Set(ranked.map(entry => entry.result.values.fundType).filter((name): name is string => typeof name === 'string'))]

@@ -6,15 +6,16 @@ import type { DividendFillEvent } from './dividend-history'
 export type EtfValue = string | number | boolean | null
 
 // GET /etfs/:symbol（業務中台 045159d）。values 是 /etf-screener/filters 的全部欄位；trackingIndex 主動式是 null
+// fundName／companyName／category 沒有值原本是 ""，業務中台第 3 批起是 null：讀的地方用 || 兩種都當沒有
 export interface EtfDetail {
   symbol: string
-  fundName: string
+  fundName: string | null
   // 簡稱（發行投信是 issuerName）
-  companyName: string
+  companyName: string | null
   issuerName: string
-  category: string
+  category: string | null
   trackingIndex: string | null
-  // 月報年月 YYYYMM
+  // 月報年月：YYYYMM（舊）或 YYYY-MM（新），讀的時候用 normalizeYearMonth
   yearMonth: string
   values: Record<string, EtfValue>
 }

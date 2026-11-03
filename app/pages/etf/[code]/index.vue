@@ -28,7 +28,7 @@ const facts = computed<FactItem[]>(() => {
     { label: '市場', value: MARKETS[text('market') ?? ''] ?? '－' },
     { label: '成立日', value: text('establishedDate') ?? '－', note: years ? `成立 ${years} 年` : undefined },
     { label: '配息頻率', value: text('distributionFrequency') ?? '－' },
-    { label: '基金全名', value: etf.value.fundName }
+    { label: '基金全名', value: etf.value.fundName || '－' }
   ]
 })
 

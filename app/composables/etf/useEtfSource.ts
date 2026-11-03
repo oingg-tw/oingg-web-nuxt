@@ -26,13 +26,14 @@ interface EtfFilterCategory {
 
 type EtfValue = string | number | boolean | null
 
+// fundName／companyName／category 沒有值：原本 ""，業務中台第 3 批起 null
 interface EtfScreenerRow {
   symbol: string
-  fundName: string
+  fundName: string | null
   // 簡稱（發行投信是 issuerName）
-  companyName: string
+  companyName: string | null
   issuerName: string
-  category: string
+  category: string | null
   values: Record<string, EtfValue>
 }
 
@@ -189,7 +190,7 @@ export function useEtfSource(): UniverseSource {
   function toRow(row: EtfScreenerRow): ScreenerResultRow {
     return {
       symbol: row.symbol,
-      name: row.companyName,
+      name: row.companyName || row.symbol,
       values: Object.fromEntries(Object.entries(row.values).map(([field, value]) => [
         snapshotFieldId(field),
         // 數字照數字放（2026-11-03，原本 String() 存成字串、顯示時再 Number() 回來）；布林、陣列（業務中台改成保留陣列）寫成文字
