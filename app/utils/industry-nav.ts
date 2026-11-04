@@ -13,7 +13,8 @@ export const INDUSTRY_ZONE_ITEMS: StockNavNode[] = [
   { label: '殖利率分析', to: () => '/industries/dividend' },
   { label: '成長分析', to: () => '/industries/growth' },
   // 營收版 2026-10-24 從「景氣敏感度」改名：詞彙表的景氣敏感度是股價對同時指標的斜率（/industries/sensitivity），兩頁同名會分不出來
-  { label: '營收與景氣', to: () => '/industries/cycle' },
-  { label: '景氣敏感度', to: () => '/industries/sensitivity' }
+  { label: '營收與景氣', to: () => '/industries/cycle' }
+  // 2026-11-04 先隱藏（使用者：「那 景氣敏感度 先幫我註解掉」），恢復時打開這一行，見 pages/industries/sensitivity.vue
+  // { label: '景氣敏感度', to: () => '/industries/sensitivity' }
 ]
 

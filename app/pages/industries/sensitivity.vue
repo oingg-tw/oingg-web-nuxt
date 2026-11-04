@@ -11,6 +11,10 @@ import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue
 // 箱型圖跟類股分布頁同一種畫法（IndustryFacetChart），這裡只畫 25%～75% 與中位數。未註冊的 ECharts 型別靜靜不畫，自己註冊
 use([BoxplotChart])
 
+// 2026-11-04 先隱藏（使用者：「那 景氣敏感度 先幫我註解掉」，比過兩頁之後覺得「營收與景氣」比較有參考價值）：網址導到營收與景氣，
+// 側欄那一項註解掉（industry-nav.ts），網站地圖排除（nuxt.config 的 sitemap.exclude）；程式留著，恢復時拿掉這段 redirect、打開那三處
+definePageMeta({ redirect: '/industries/cycle' })
+
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股類股景氣敏感度：股價跟著景氣起伏的程度',
