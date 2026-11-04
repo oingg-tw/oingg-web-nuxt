@@ -600,8 +600,9 @@ export const getRanking = defineCachedFunction(
 // (useFilterSchema.ts) and the server never reads into it. 業務中台型錄的鍵在這裡換成篩選器用的那組（business-shapes.ts）
 export const getMetricsCatalog = defineCachedFunction(
   async () => metricsCatalogFromBusiness(await businessFetch<{ categories: unknown[] }>('/metrics')),
-  // -v2：2026-11-03 沒有單位改成 null，舊鍵裡還是「無單位」
-  { name: 'hub-metrics-catalog-v2', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：2026-11-03 沒有單位改成 null，舊鍵裡還是「無單位」；-v3：2026-11-04 型錄多了四個是／否欄位（交易方法、注意股票、處置狀態、
+  // 停止買賣狀態），舊鍵停在同步之前，網站讀得到的要等兩層快取各過一輪
+  { name: 'hub-metrics-catalog-v3', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // useFilterSchema 讀的精簡目錄（2026-10-16，/api/hub/filter-schema）。整份目錄序列化進頁面 payload 有 271 KB（個股頁 payload 的 92%），
@@ -637,8 +638,9 @@ export const getFilterSchemaCatalog = defineCachedFunction(
       }))
     }
   },
-  // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）；-v3：最新財報季別的選項多了 fiscalYear／fiscalQuarter（2026-11-04），舊快取沒有
-  { name: 'hub-filter-schema-v3', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）；-v3：最新財報季別的選項多了 fiscalYear／fiscalQuarter（2026-11-04），舊快取沒有；
+  // -v4：同日跟著 hub-metrics-catalog-v3 換（v3 是從還沒有是／否欄位的目錄建的）
+  { name: 'hub-filter-schema-v4', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，
