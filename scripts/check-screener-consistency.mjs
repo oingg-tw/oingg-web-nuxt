@@ -119,6 +119,10 @@ for (const target of PAGES) {
     expect(target.name, `挑「${target.search}」後出現數字輸入`, editor.ok)
     if (editor.ok) {
       expect(target.name, '輸入框旁有單位', await page.locator('.condition-panel .range-editor__unit').count() > 0)
+      // 減號「−」（網站顯示負數用的字，從頁面複製貼上就是它）照樣是負號（2026-11-04）：Chromium 原本把它丟掉，「−5」變成 5
+      await spin.fill('')
+      await spin.pressSequentially('−5')
+      expect(target.name, '打「−5」是 −5（不是 5）', (await spin.inputValue()) === '-5', await spin.inputValue())
       await spin.fill('999999999999999')
       await spin.press('Enter')
       await page.getByRole('button', { name: '完成' }).click()
