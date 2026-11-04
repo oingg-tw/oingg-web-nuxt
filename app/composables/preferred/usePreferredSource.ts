@@ -85,7 +85,7 @@ const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
 function formatValue(field: string, raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined) return '—'
   const metric = METRICS.get(field)
-  if (metric?.kind === 'categorical') return labelEachValue(raw, value => metric.options?.find(option => option.value === value)?.label)
+  if (metric?.kind === 'categorical') return labelEachValue(raw, value => findScreenerOption(metric.options, value)?.label)
   if (!metric || typeof raw !== 'number') return String(raw)
   return metric.unit === '%' ? minusSign(`${raw.toFixed(2)}%`) : groupThousands(raw.toFixed(2))
 }
@@ -93,8 +93,9 @@ function formatValue(field: string, raw: string | number | null | undefined): st
 function matches(entry: PreferredStockEntry, filter: FilterCriterion): boolean {
   const raw = entry[filter.field]
   if (filter.values) {
-    // 陣列（除權息月份）任一個在選的項目裡就算有；排除＝一個都沒有，沒有除權息的也留下（同上游普通股、ETF 的語意）
-    const hit = [raw].flat().some(value => value !== null && value !== undefined && filter.values!.includes(String(value)))
+    // 陣列（除權息月份）任一個在選的項目裡就算有；排除＝一個都沒有，沒有除權息的也留下（同上游普通股、ETF 的語意）。
+    // 選項照資料的型別（月份是整數），只有布林在勾選框裡是 "true"／"false"
+    const hit = [raw].flat().some(value => value !== null && value !== undefined && filter.values!.some(selected => selected === (typeof value === 'boolean' ? String(value) : value)))
     return filter.exclude ? !hit : hit
   }
   if (typeof raw !== 'number') return false

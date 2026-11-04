@@ -17,21 +17,19 @@ export const labelEachValue = (raw: string | number, labelOf: (value: string) =>
 // fiscalPeriod，不從 knowledgeDate 推（每季更新的年度指標，2026Q2 公布時的值是 2025 年度的）
 export const cellPeriodText = (cell: { knowledgeDate: string | null; fiscalPeriod?: string | null }) => cell.fiscalPeriod?.replace(/^20(\d\d)Q/, '$1Q') ?? cell.knowledgeDate
 
-// 除權息月份的選項（特別股、ETF 的值是字串 '1'～'12'；普通股的選項由型錄給，值是整數、名稱同樣是「1 月」）
-export const EX_DIVIDEND_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({ value: String(index + 1), label: `${index + 1} 月` }))
+// 除權息月份的選項（特別股自己列；值是整數，同普通股、ETF 型錄給的選項，名稱同樣是「1 月」）
+export const EX_DIVIDEND_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: `${index + 1} 月` }))
 
 // 類別選項（2026-10-23，analysis-ts 54e0699e）：最新財報季別的選項改成相對值——value 是 latest、latest-1…latest-7、older，label 照樣
 // 「26Q3」，fiscalPeriod 是實際季別（"2026Q3"，older 是 null）；每一格的值照舊是實際季別（或 "older"）。所以比對兩個都認：值等於選項的
 // value，或等於它的 fiscalPeriod。存檔與網址裡舊的實際季別也靠這個換成相對值（不換的話業務中台回 400，見 useScreenerTabs 的 buildSlots）
 export type ScreenerOption = { value: string | number; label: string; fiscalPeriod?: string | null }
 
-// 類別條件送給業務中台時照型別送（2026-11-03 格式統一）："true"／"false" 是布林、除權息月份是整數。畫面裡（勾選框、範本、存檔讀回、網址）
-// 照舊是字串：Element Plus 的勾選框群組不收布林，特別股在瀏覽器裡用字串比對。代碼（類股、季別）不轉，所以只認欄位名，不看長得像不像數字
-const MONTH_FIELD = /^exDividendMonths(\.|$)/
-export const wireValue = (field: string, value: string | number): string | number | boolean =>
-  value === 'true' ? true : value === 'false' ? false : MONTH_FIELD.test(field) && /^\d+$/.test(String(value)) ? Number(value) : value
+// 類別條件送給業務中台時照型別送（2026-11-03 格式統一）：只有布林在畫面裡是 "true"／"false"（Element Plus 的勾選框群組不收布林），
+// 送出前換回布林。其他值本來就是選項的型別（月份是整數，類股、季別代碼是字串）：網址與存檔讀回的字串先經 findScreenerOption 換成選項的值
+export const wireValue = (value: string | number): string | number | boolean => (value === 'true' ? true : value === 'false' ? false : value)
 export const wireFilters = <T extends { field: string; values?: (string | number)[] }>(filters: T[]) =>
-  filters.map(filter => (filter.values ? { ...filter, values: filter.values.map(value => wireValue(filter.field, value)) } : filter))
+  filters.map(filter => (filter.values ? { ...filter, values: filter.values.map(wireValue) } : filter))
 export const findScreenerOption = (options: readonly ScreenerOption[] | null | undefined, raw: string | number): ScreenerOption | null =>
   options?.find(option => String(option.value) === String(raw) || (option.fiscalPeriod != null && option.fiscalPeriod === String(raw))) ?? null
 

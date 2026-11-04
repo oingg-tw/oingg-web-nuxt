@@ -184,7 +184,7 @@ export function useEtfSource(): UniverseSource {
     const exclude = filter.exclude ? { exclude: true } : {}
     const field = RENAMED_FIELDS[filter.field] ?? filter.field
     return filter.values
-      ? { field, values: filter.values.map(value => wireValue(filter.field, value)), ...exclude }
+      ? { field, values: filter.values.map(wireValue), ...exclude }
       : { field, min: filter.min, max: filter.max, ...exclude }
   }
 

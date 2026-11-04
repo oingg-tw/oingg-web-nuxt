@@ -1,7 +1,7 @@
 // 篩選狀態放進網址的編碼與解析（app/utils/screener-url.ts，2026-10-22）。網址是任何人都能改的輸入：格式不對的要略過，不能讓頁面拿去查
 import assert from 'node:assert/strict'
 import { decodeScreenerQuery, encodeScreenerQuery, sameFilters } from '../app/utils/screener-url.ts'
-import { findScreenerOption, formatScreenerValue, wireFilters, wireValue } from '../app/utils/screener-value.ts'
+import { EX_DIVIDEND_MONTH_OPTIONS, findScreenerOption, formatScreenerValue, wireFilters, wireValue } from '../app/utils/screener-value.ts'
 
 // 來回一趟不變
 const state = {
@@ -59,13 +59,14 @@ assert.equal(formatScreenerValue('2026Q2', undefined, 'latestReportedQuarter.EOD
 assert.equal(formatScreenerValue('older', undefined, 'latestReportedQuarter.EOD', quarters), '更早')
 assert.equal(findScreenerOption([{ value: 3, label: '中軌' }], '3')?.label, '中軌') // 河道位置：值是數字、網址與存檔裡是字串
 
-// 送給業務中台時照型別送（wireValue）：布林、除權息月份是整數；代碼（類股 "24"、季別）不轉
-assert.equal(wireValue('isActive', 'true'), true)
-assert.equal(wireValue('isActive', 'false'), false)
-assert.equal(wireValue('exDividendMonths', '7'), 7)
-assert.equal(wireValue('exDividendMonths.EOD', 7), 7)
-assert.equal(wireValue('sector.code', '24'), '24')
-assert.equal(wireValue('latestReportedQuarter.EOD', 'latest-1'), 'latest-1')
-assert.deepEqual(wireFilters([{ field: 'exDividendMonths', values: ['1', '7'] }, { field: 'roe.TTM', min: 15, max: null }]), [{ field: 'exDividendMonths', values: [1, 7] }, { field: 'roe.TTM', min: 15, max: null }])
+// 送給業務中台時照型別送（wireValue）：勾選框裡的 "true"／"false" 換回布林；其他照原樣，代碼（類股 "24"、季別）不轉
+assert.equal(wireValue('true'), true)
+assert.equal(wireValue('false'), false)
+assert.equal(wireValue(7), 7)
+assert.equal(wireValue('24'), '24')
+assert.equal(wireValue('latest-1'), 'latest-1')
+// 特別股的除權息月份選項跟普通股、ETF 的型錄一樣是整數：網址與存檔裡的「7」對到選項就是 7，送出去也是 7
+assert.equal(findScreenerOption(EX_DIVIDEND_MONTH_OPTIONS, '7')?.value, 7)
+assert.deepEqual(wireFilters([{ field: 'exDividendMonths', values: [1, 7] }, { field: 'isActive', values: ['true'] }, { field: 'roe.TTM', min: 15, max: null }]), [{ field: 'exDividendMonths', values: [1, 7] }, { field: 'isActive', values: [true] }, { field: 'roe.TTM', min: 15, max: null }])
 
 console.log('PASS: screener url')
