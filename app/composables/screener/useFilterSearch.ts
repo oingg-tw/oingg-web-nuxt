@@ -26,13 +26,16 @@ export interface ScreenerResultColumn {
 // 2026-09-14（analysis-ts，適用 POST /screener、GET /screener/ranking、POST /screener/values）：asOfDate 改名 knowledgeDate、
 // 新增 nullReason（missing_input／zero_or_negative_denominator／not_applicable_industry／insufficient_history，同 metrics-history），
 // 讓「不適用」跟一般缺資料分得開。注意 nullReason: null 可能是「有值」也可能是「從沒算過」——只信非 null 的 nullReason。
-// 2026-10-23（analysis-ts 789ba5e1、業務中台 a52f7b5）：fiscalPeriod——數字屬於哪一期（"2026Q2"／"2025"／"2026-09"），逐日、窗口型、
-// 即時屬性與業務中台自己補的欄位是 null。畫面上的資料時間用它（cellPeriodText），沒有才寫 knowledgeDate
+// 2026-10-23（analysis-ts 789ba5e1、業務中台 a52f7b5）起每格帶數字屬於哪一期，2026-11-04 從 fiscalPeriod 字串拆成 fiscalYear、
+// fiscalQuarter（季）與 yearMonth（月頻，"2026-09"）；逐日、窗口型、即時屬性與業務中台自己補的欄位都是 null。畫面上的資料時間用它們
+// （cellPeriodText），沒有才寫 knowledgeDate
 export interface ScreenerFieldValue {
   value: string | number | null
   knowledgeDate: string
   nullReason: string | null
-  fiscalPeriod?: string | null
+  fiscalYear?: number | null
+  fiscalQuarter?: number | null
+  yearMonth?: string | null
 }
 
 // 多值的格子（除權息月份）：上游原本寫成「7、8」，數據中台 2026-11-03 起改送整數陣列 [7, 8]。站內照舊連成「、」的文字（同 ETF、

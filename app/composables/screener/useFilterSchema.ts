@@ -130,8 +130,8 @@ export interface Metric {
   kind?: 'numeric' | 'categorical'
   // value 是字串（特別股、ETF 的型錄）或數字（GET /metrics 的類別型欄位，例如河道位置 0～6，2026-10-21）；條件原樣送回上游
   // count：勾選清單在名稱後面括號列的家數（類股）。不放進 label，結果表的欄寬照名稱估、膠囊只寫名稱
-  // fiscalPeriod：相對值選項（最新財報季別的 latest、latest-1…）對應的實際季別，格子的值是它（findScreenerOption，2026-10-23）
-  options?: { value: string | number, label: string, count?: number, fiscalPeriod?: string | null }[]
+  // fiscalYear＋fiscalQuarter：相對值選項（最新財報季別的 latest、latest-1…）對應的實際季別（findScreenerOption）
+  options?: { value: string | number, label: string, count?: number, fiscalYear?: number | null, fiscalQuarter?: number | null }[]
   // 條件裡有、選項裡沒有的值要怎麼寫（已經持有：刪掉的帳戶）；不給就照原值
   missingOptionLabel?: string
   // 一格的值可能是好幾個選項用「、」串起來（已經持有的帳戶名稱）：欄寬照全部選項串起來估
@@ -373,7 +373,13 @@ export function useFilterSchema() {
         // 精簡版目錄（2026-10-16，server/api/hub/filter-schema.get.ts）：同一份伺服器快取一小時的 GET /metrics，只留這個 app 讀得到的
         // 欄位。整份序列化進 payload 是 271 KB（個股頁 payload 的 92%），長文字只有 /learn、/rank 會畫，它們讀完整的 /api/hub/metrics。
         // 要用目錄裡新的欄位，先加進 getFilterSchemaCatalog 的白名單
-        return await apiFetch<MetricCatalog>('/filter-schema', { baseURL: '/api/hub' })
+        const catalog = await apiFetch<MetricCatalog>('/filter-schema', { baseURL: '/api/hub' })
+        // 是／否欄位（2026-11-04 起：交易方法、注意股票、處置狀態、停止買賣狀態）的選項是布林：畫面裡寫成 "true"／"false"，同 ETF
+        // （Element Plus 的勾選框群組不收布林），送出時 wireValue 換回布林；格子的布林值照 findScreenerOption 的字串比對顯示名稱
+        for (const metric of catalog.categories.flatMap(category => category.metrics)) {
+          metric.options = metric.options?.map(option => ({ ...option, value: typeof option.value === 'boolean' ? String(option.value) : option.value }))
+        }
+        return catalog
       } catch (error) {
         devWarn('metrics', 'GET /api/hub/filter-schema unavailable', error)
         throw error

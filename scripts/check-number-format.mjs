@@ -27,10 +27,10 @@ assert.equal(formatSignificantDigits(1234.5, 4), '1,235')
 assert.equal(formatSignificantDigits(56_780_000, 4), '5,678萬')
 assert.equal(formatSignificantDigits(-0.00004, 1), '−0.00004')
 // 一格數字的資料時間（app/utils/screener-value.ts）：有財報期別寫期別，季別寫成 26Q2；沒有期別（逐日、即時）才寫日期
-assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalPeriod: '2026Q2' }), '26Q2')
-assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalPeriod: '2025' }), '2025') // 每季更新的年度指標：值是 2025 年度的
-assert.equal(cellPeriodText({ knowledgeDate: '2026-10-10', fiscalPeriod: '2026-09' }), '2026-09')
-assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22', fiscalPeriod: null }), '2026-10-22')
+assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalYear: 2026, fiscalQuarter: 2, yearMonth: null }), '26Q2')
+assert.equal(cellPeriodText({ knowledgeDate: '2026-08-12', fiscalYear: 2025, fiscalQuarter: null, yearMonth: null }), '2025') // 每季更新的年度指標：值是 2025 年度的
+assert.equal(cellPeriodText({ knowledgeDate: '2026-10-10', fiscalYear: null, fiscalQuarter: null, yearMonth: '2026-09' }), '2026-09')
+assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22', fiscalYear: null, fiscalQuarter: null, yearMonth: null }), '2026-10-22')
 assert.equal(cellPeriodText({ knowledgeDate: '2026-10-22' }), '2026-10-22')
 // 兩位小數的百分比：負號跟加減那一列（fixedSignedRateText）同一個減號，6589 營業利益率
 assert.equal(fixedRateText(-64.72), '−64.72%')

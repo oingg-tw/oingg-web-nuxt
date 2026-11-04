@@ -50,7 +50,7 @@ assert.ok(sameFilters(
 assert.ok(!sameFilters([{ field: 'a.Q', min: 1, max: null, exclude: false }], [{ field: 'a.Q', min: 1, max: null, exclude: true }]))
 
 // 類別選項兩個都認（2026-10-23，最新財報季別的相對選項）：存檔與網址裡舊的實際季別換成相對值，格子的實際季別顯示選項的名稱
-const quarters = [{ value: 'latest', label: '26Q3', fiscalPeriod: '2026Q3' }, { value: 'latest-1', label: '26Q2', fiscalPeriod: '2026Q2' }, { value: 'older', label: '更早', fiscalPeriod: null }]
+const quarters = [{ value: 'latest', label: '26Q3', fiscalYear: 2026, fiscalQuarter: 3 }, { value: 'latest-1', label: '26Q2', fiscalYear: 2026, fiscalQuarter: 2 }, { value: 'older', label: '更早', fiscalYear: null, fiscalQuarter: null }]
 assert.equal(findScreenerOption(quarters, '2026Q2')?.value, 'latest-1')
 assert.equal(findScreenerOption(quarters, 'latest-1')?.value, 'latest-1')
 assert.equal(findScreenerOption(quarters, 'older')?.label, '更早')

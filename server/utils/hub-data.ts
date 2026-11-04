@@ -639,8 +639,8 @@ export const getFilterSchemaCatalog = defineCachedFunction(
       }))
     }
   },
-  // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）
-  { name: 'hub-filter-schema-v2', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）；-v3：最新財報季別的選項多了 fiscalYear／fiscalQuarter（2026-11-04），舊快取沒有
+  { name: 'hub-filter-schema-v3', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，
