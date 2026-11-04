@@ -2,6 +2,7 @@ import type { FilterCriterion, ScreenerResultRow } from '~/composables/screener/
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 import type { UniverseQuery, UniverseResult, UniverseSource, UniverseTemplate } from '~/composables/screener/useUniverseScreener'
 import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
+import type { ExpenseRatioYear } from '#shared/types/screener-detail'
 
 // ETF 篩選的資料來源（2026-10-15 三組篩選重新設計）。型錄 GET /etf-screener/filters、查詢 POST /etf-screener，都是 業務中台。
 // 畫面與「我的篩選」的儲存跟另外兩組共用（ScreenerPageShell、useUniverseScreener），這裡只放 ETF 自己的部分。
@@ -35,7 +36,7 @@ interface EtfScreenerRow {
   companyName: string | null
   issuerName: string
   category: string | null
-  values: Record<string, EtfValue>
+  values: Record<string, EtfValue | ExpenseRatioYear[]>
 }
 
 interface EtfScreenerResponse {
@@ -65,11 +66,13 @@ const LABEL_OVERRIDES: Record<string, string> = {
 // 第一下由小到大：費用類，越低越是多數人要找的（同普通股的本益比）
 const ASCENDING_FIRST = /^(expenseRatio\d*|trailing12MonthExpenseRatioPct|managementFeeRate|custodianFeeRate|guaranteeFeeRate|otherFeeRate|commissionRate|transactionTaxRate|etfTradingFeeRate)$/
 
-// 歷年總費用率（expenseRatio2001…）不放進挑選面板（二十幾個同名欄位會淹掉其他），只用在「費用歷史」欄位組合。
-// 2026 不列：sitca 改了「完整年度」的定義，今年要到 2026 年 12 月公布才有值，現在 339 檔全是 null（業務中台 2026-10-15）；
-// 今年的費用看近 12 個月。ponytail: 年份寫死，2026 全年值公布後把 2026 加回來
+// 歷年總費用率不放進挑選面板（二十幾個同名欄位會淹掉其他），只用在「費用歷史」欄位組合，一年一欄（expenseRatio2025…，畫面自己的
+// 欄位 id，存檔與網址照舊）。2026-11-04 起上游只給一整串 expenseRatioHistory（[{ year, expenseRatio }]，只列有值的完整年度）：送出時
+// 這幾欄合成它一欄、回來再展開（toRow）；上游不能拿它排序，這幾欄只排已載入的列。年份從今天算：最近的完整年度是台北的去年，
+// 往前 25 年（今年的費用看近 12 個月）
 const EXPENSE_RATIO_YEAR = /^expenseRatio(\d{4})$/
-const EXPENSE_RATIO_YEARS = Array.from({ length: 25 }, (_, index) => 2025 - index)
+const LAST_FULL_YEAR = new Date(Date.now() + 8 * 3600_000).getUTCFullYear() - 1
+const EXPENSE_RATIO_YEARS = Array.from({ length: 25 }, (_, index) => LAST_FULL_YEAR - index)
 const TRAILING_EXPENSE = ['trailing12MonthExpenseRatioPct', 'trailing12MonthExpenseRatioMonths']
 
 // 基金類型（2026-10-21 起用上游 fundType：投信投顧公會基金類型的第二層，analysis-ts 8dad5785）。原本是 assetClass——那是上市／上櫃的
@@ -98,7 +101,7 @@ const DEFAULT_COLUMNS = ['close', 'nav', 'aum', 'return1y', 'expenseRatio', 'tra
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: ['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y'].map(snapshotFieldId) },
   { key: 'size', name: '規模與資金', description: '規模、受益人數、淨申購、定期定額與市占率', fieldKeys: ['aum', 'holders', 'netFlow', 'dcaAmount', 'marketShareRate'].map(snapshotFieldId) },
-  { key: 'cost', name: '費用歷史', description: '近 12 個月總費用率估算與涵蓋月數，加上 2025 年到 2001 年每一年的總費用率', fieldKeys: [...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)].map(snapshotFieldId) }
+  { key: 'cost', name: '費用歷史', description: `近 12 個月總費用率估算與涵蓋月數，加上 ${LAST_FULL_YEAR} 年到 ${LAST_FULL_YEAR - 24} 年每一年的總費用率`, fieldKeys: [...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)].map(snapshotFieldId) }
 ]
 
 function valueLabel(field: string, value: string): string {
@@ -147,7 +150,7 @@ export function useEtfSource(): UniverseSource {
     category.categoryDisplayName,
     index,
     category.fields
-      .filter(field => field.kind !== 'date' && !EXPENSE_RATIO_YEAR.test(field.field))
+      .filter(field => field.kind !== 'date' && !EXPENSE_RATIO_YEAR.test(field.field) && field.field !== 'expenseRatioHistory')
       .map(field => ({
         field: field.field,
         name: displayLabel(field),
@@ -170,7 +173,7 @@ export function useEtfSource(): UniverseSource {
       // 不用「（2025）」：表格在「顯示資料時間」關閉時會拿掉結尾的括號（那是普通股的期別）
       label: year ? `總費用率 ${year}` : meta ? displayLabel(meta) : LABEL_OVERRIDES[field] ?? field,
       format: raw => formatValue(meta ?? (year ? { field, label: '', kind: 'numeric', unit: '%' } : undefined), raw),
-      sortable: 'server',
+      sortable: year ? 'client' : 'server',
       ascendingFirst: ASCENDING_FIRST.test(field)
     }
   }
@@ -185,10 +188,13 @@ export function useEtfSource(): UniverseSource {
   }
 
   function toRow(row: EtfScreenerRow): ScreenerResultRow {
+    // 逐年總費用率展開成每年一欄（費用歷史的 expenseRatio2025…）；沒有那一年的值就沒有那一格（畫面寫「—」）
+    const { expenseRatioHistory, ...values } = row.values
+    const years = Array.isArray(expenseRatioHistory) ? expenseRatioHistory.map(entry => [`expenseRatio${entry.year}`, entry.expenseRatio] as const) : []
     return {
       symbol: row.symbol,
       name: row.companyName || row.symbol,
-      values: Object.fromEntries(Object.entries(row.values).map(([field, value]) => [
+      values: Object.fromEntries([...Object.entries(values), ...years].map(([field, value]) => [
         snapshotFieldId(field),
         // 數字照數字放（2026-11-03，原本 String() 存成字串、顯示時再 Number() 回來）；布林、陣列（業務中台改成保留陣列）寫成文字
         { value: value === null || typeof value === 'number' || typeof value === 'string' ? value : Array.isArray(value) ? (value as unknown[]).join('、') || null : String(value), knowledgeDate: '', nullReason: null }
@@ -200,8 +206,9 @@ export function useEtfSource(): UniverseSource {
     // 型錄沒有的欄位不送：業務中台對不認得的欄位整個查詢回 400（例如存起來的欄位組合用到上游已拿掉的欄位，或新欄位還沒上到這個環境）。
     // 濾完一欄都不剩（存了空的欄位組合、或組合裡的欄位上游全拿掉了）就改用預設欄位：沒有條件又沒有欄位，業務中台回 400
     //「"filters" or "columns" must have at least one item」，一進頁面就跳錯誤（2026-10-18）
-    const known = (fields: string[]) => fields.filter(field => field === HELD_FIELD_ID || !catalog.value || fieldsByKey.value.has(field))
-    const columns = known(query.columns)
+    // 每年一欄的總費用率不在型錄裡：合成一欄 expenseRatioHistory 送出，回來在 toRow 展開
+    const known = (fields: string[]) => fields.filter(field => field === HELD_FIELD_ID || EXPENSE_RATIO_YEAR.test(field) || !catalog.value || fieldsByKey.value.has(field))
+    const columns = [...new Set(known(query.columns).map(field => (EXPENSE_RATIO_YEAR.test(field) ? 'expenseRatioHistory' : field)))]
     const body: Record<string, unknown> = {
       columns: (columns.length ? columns : known(DEFAULT_COLUMNS.map(snapshotField))).map(field => ({ field })),
       page: query.page,
@@ -214,7 +221,8 @@ export function useEtfSource(): UniverseSource {
     if (held?.values?.length) body[held.exclude ? 'excludeHeldPortfolioIds' : 'heldPortfolioIds'] = held.values.map(String)
     // 預設順序是規模由大到小（2026-10-31，使用者：「ETF 篩選 希望預設排序按照規模」）：沒選排序就照規模排，表頭不標箭頭。業務中台只排
     // 請求裡有的欄位（sortField 不在 columns 回 400），這一組的欄位沒有規模時多帶這一欄，畫面上不會多出來
-    const sort = query.sort ?? { field: 'aum', order: 'desc' }
+    // 某一年的總費用率不能當 sortField（上游回 400）：存檔或舊書籤帶著的，照預設的規模排（畫面上那幾欄只排已載入的列）
+    const sort = query.sort && !EXPENSE_RATIO_YEAR.test(query.sort.field) ? query.sort : { field: 'aum', order: 'desc' }
     const sentColumns = body.columns as { field: string }[]
     if (!sentColumns.some(column => column.field === sort.field) && sort.field !== 'symbol') sentColumns.push({ field: sort.field })
     body.sortField = sort.field

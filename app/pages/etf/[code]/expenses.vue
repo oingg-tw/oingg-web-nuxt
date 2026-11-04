@@ -6,9 +6,11 @@ import type { FactItem } from '~/components/shared/SharedFactList.vue'
 const etfData = await useEtf()
 const { code, data, values, num, shortName } = etfData
 
-const years = computed(() => Object.keys(values.value)
-  .flatMap(key => (/^expenseRatio\d{4}$/.test(key) && typeof values.value[key] === 'number' ? [{ year: key.slice(-4), value: values.value[key] as number }] : []))
-  .sort((a, b) => b.year.localeCompare(a.year)))
+// 新的年份在上面；上游的陣列由舊到新
+const years = computed(() => {
+  const history = values.value.expenseRatioHistory
+  return Array.isArray(history) ? history.map(entry => ({ year: String(entry.year), value: entry.expenseRatio })).reverse() : []
+})
 
 const trailing = computed(() => num('trailing12MonthExpenseRatioPct'))
 const trailingNote = computed(() => {

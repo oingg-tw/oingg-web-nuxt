@@ -17,7 +17,14 @@ export interface EtfDetail {
   trackingIndex: string | null
   // 月報年月 "YYYY-MM"
   yearMonth: string
-  values: Record<string, EtfValue>
+  // expenseRatioHistory 是陣列，其他都是單一值
+  values: Record<string, EtfValue | ExpenseRatioYear[]>
+}
+
+// 逐年總費用率（數據中台 b7a196e，2026-11-04，取代 expenseRatio2001～2026 各一欄）：只列有值的完整年度，由舊到新
+export interface ExpenseRatioYear {
+  year: number
+  expenseRatio: number
 }
 
 export interface EtfDistributionComposition {

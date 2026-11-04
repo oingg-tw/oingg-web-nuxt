@@ -48,9 +48,8 @@ const lineSpec = computed<LineSpec | null>(() => {
       return { entries, series: [{ code: 'value', name: '每單位配息', type: 'bar', lineType: 'solid', symbol: 'rect', format: yuan, barMinWidth }], unit: '元', format: yuan, perYear: 12 }
     }
     case 'expenses': {
-      const entries = Object.keys(values)
-        .flatMap(key => (/^expenseRatio\d{4}$/.test(key) && typeof values[key] === 'number' ? [{ label: key.slice(-4), values: { value: { value: values[key] as number } } }] : []))
-        .sort((a, b) => a.label.localeCompare(b.label))
+      const history = values.expenseRatioHistory
+      const entries = Array.isArray(history) ? history.map(entry => ({ label: String(entry.year), values: { value: { value: entry.expenseRatio } } })) : []
       return entries.length ? { entries, series: [{ code: 'value', name: '總費用率', lineType: 'solid', symbol: 'circle', format: pct }], unit: '%', format: pct, perYear: 1 } : null
     }
     case 'returns': {
