@@ -21,7 +21,7 @@ use([ScatterChart, LabelLayout])
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股類股殖利率分析：34 個證交所類股的股利地圖',
-  description: '證交所 34 個類股的殖利率中位數與股利 3 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
+  description: '證交所 34 個類股的殖利率中位數與持股股利 5 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/dividend` }] })
 
@@ -57,9 +57,9 @@ const rows = computed(() => summary.value?.sectors ?? [])
 const plotted = computed(() =>
   rows.value.filter(row =>
     row.liveCashDividendYield.count >= MIN_SAMPLE
-    && row.dividendGrowthRate3y.count >= MIN_SAMPLE
+    && row.holdingDividendGrowthRate5y.count >= MIN_SAMPLE
     && row.liveCashDividendYield.median !== null
-    && row.dividendGrowthRate3y.median !== null)
+    && row.holdingDividendGrowthRate5y.median !== null)
 )
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
 
@@ -67,35 +67,35 @@ const excluded = computed(() => rows.value.filter(row => !plotted.value.includes
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
   const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。每個類股看兩個數字：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入），以及股利 3 年成長率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。每個類股看兩個數字：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入），以及持股股利 5 年成長率的中位數（5 年前買進、一直抱著的人，每年領到的現金股利的年化成長率）。`
 })
 
 const excludedText = computed(() => {
-  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、成長率 ${row.dividendGrowthRate3y.count} 家）`)
+  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）`)
   return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。它們的數字在產業索引的表格裡。` : ''
 })
 
 const chartAnswer = computed(() => {
   if (!rows.value.length) return null
-  return `圖上每一個點是一個類股：縱軸是殖利率，橫軸是股利 3 年成長率，點的大小代表該類股殖利率有值的公司數。兩個軸的家數不一樣，因為它們各自算各自有值的公司——殖利率通常整個類股都有值，成長率則要有連續三年的股利紀錄才算得出來。${excludedText.value}`
+  return `圖上每一個點是一個類股：縱軸是殖利率，橫軸是持股股利 5 年成長率，點的大小代表該類股殖利率有值的公司數。兩個軸的家數不一樣，因為它們各自算各自有值的公司——殖利率通常整個類股都有值，持股股利成長率則要有 5 年前的配息紀錄才算得出來。${excludedText.value}`
 })
 
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：殖利率以列入的類股中位數的中位數分高低，
-// 股利 3 年成長率以 0 分有沒有減少；表內照類股代號排
+// 持股股利 5 年成長率以 0 分有沒有減少；表內照類股代號排。3 年成長率與成本殖利率在最右欄的分段鈕裡（IndustryQuadrantTables 的 picks，順序同 HOLDER_DIVIDEND_PICKS）
 const yieldSplit = computed(() => medianOf(plotted.value.map(row => row.liveCashDividendYield.median as number)) ?? 0)
 const quadrants = computed(() =>
   quadrantGroups(
     [...plotted.value].sort((a, b) => a.sectorCode.localeCompare(b.sectorCode)),
-    row => [row.dividendGrowthRate3y.median as number, row.liveCashDividendYield.median as number],
+    row => [row.holdingDividendGrowthRate5y.median as number, row.liveCashDividendYield.median as number],
     [0, yieldSplit.value],
     ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 個類股）`,
-    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.dividendGrowthRate3y.median)] }))
+    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median)], picks: [growthText(row.holdingDividendGrowthRate5y.median), growthText(row.holdingDividendGrowthRate3y.median), yieldText(row.yieldOnCost5y.median)] }))
   })))
 const groupAnswer = computed(() =>
   plotted.value.length
-    ? `下面把 ${plotted.value.length} 個類股分成四組：殖利率以這些類股的中位數 ${yieldText(yieldSplit.value)} 分高低，股利 3 年成長率以 0 分有沒有減少。${excludedText.value}`
+    ? `下面把 ${plotted.value.length} 個類股分成四組：殖利率以這些類股的中位數 ${yieldText(yieldSplit.value)} 分高低，持股股利 5 年成長率以 0 分有沒有減少。${excludedText.value}`
     : null)
 
 // 標籤只在寬畫面顯示。實測（2026-09-30，30 個點、圖高 640px）：1440px 有 8 組標籤互相重疊、
@@ -124,13 +124,15 @@ const chartOption = computed(() => {
         if (!row) return ''
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.sectorName}</div>`
           + `<div>殖利率中位數 ${yieldText(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
-          + `<div>股利 3 年成長率中位數 ${growthText(row.dividendGrowthRate3y.median)}（${row.dividendGrowthRate3y.count} 家）</div>`
+          + `<div>持股股利 5 年成長率中位數 ${growthText(row.holdingDividendGrowthRate5y.median)}（${row.holdingDividendGrowthRate5y.count} 家）</div>`
+          + `<div>持股股利 3 年成長率中位數 ${growthText(row.holdingDividendGrowthRate3y.median)}（${row.holdingDividendGrowthRate3y.count} 家）</div>`
+          + `<div>5 年前買進的成本殖利率中位數 ${yieldText(row.yieldOnCost5y.median)}（${row.yieldOnCost5y.count} 家）</div>`
           + `<div style="color:${CHART_TOOLTIP_INK.secondary}">類股共 ${row.companyCount} 家</div></div>`
       }
     },
     xAxis: {
       type: 'value',
-      name: '股利 3 年成長率中位數 %',
+      name: '持股股利 5 年成長率中位數 %',
       nameLocation: 'middle',
       nameGap: 28,
       axisLabel: { formatter: (value: number) => `${value}%` }
@@ -163,7 +165,7 @@ const chartOption = computed(() => {
         // 34 個標籤一定會互相壓到：先上下推開，推不開才藏；完整數字在 tooltip 與產業索引的表格裡。
         labelLayout: { moveOverlap: 'shiftY', hideOverlap: true },
         data: plotted.value.map(row => ({
-          value: [row.dividendGrowthRate3y.median as number, row.liveCashDividendYield.median as number],
+          value: [row.holdingDividendGrowthRate5y.median as number, row.liveCashDividendYield.median as number],
           row
         }))
       }
@@ -184,9 +186,9 @@ const chartOption = computed(() => {
       <p v-if="chartAnswer" class="hub-answer app-wide-only">{{ chartAnswer }}</p>
       <p v-if="groupAnswer" class="hub-answer app-narrow-only">{{ groupAnswer }}</p>
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card app-wide-only">
-        <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與股利三年成長率中位數的散佈圖" />
+        <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與持股股利 5 年成長率中位數的散佈圖" />
       </el-card>
-      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率', '股利 3 年成長']" />
+      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率']" :picks="HOLDER_DIVIDEND_PICKS" />
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
@@ -195,7 +197,8 @@ const chartOption = computed(() => {
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」） -->
         <li>殖利率是一年份的現金股利除以收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
-        <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。股利 3 年成長率要有連續三年的股利紀錄，全市場不到六成的公司算得出來。</li>
+        <li>{{ HOLDER_DIVIDEND_NOTE }}</li>
+        <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>兩個數字都用中位數，少數公司的極端數字不會把整個類股拉偏。</li>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>

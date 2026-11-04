@@ -130,8 +130,8 @@ const companyNameOf = (row: ScreenerResultRow) => row.companyName ?? row.symbol
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
 // 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者「現在就換」，同篩選與排行，理由見 app/utils/replaced-metrics.ts）；
-// 股價淨值比讀即時版（2026-11-01，同上）
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'livePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'dividendGrowthRate3y.FY', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
+// 股價淨值比讀即時版（2026-11-01，同上）；股利成長讀持股股利成長率與 5 年前買進的成本殖利率（2026-11-04，理由見 SectorCompanyRow）
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'livePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'holdingDividendGrowthRate5y.EOD', 'holdingDividendGrowthRate3y.EOD', 'yieldOnCost5y.EOD', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -202,7 +202,9 @@ export const getSectorCompanies = defineCachedFunction(
           dividendYieldDate: cell('liveCashDividendYield.EOD')?.knowledgeDate || null,
           roe: number('roe.TTM'),
           debtRatio: number('debtRatio.Q'),
-          dividendGrowthRate3y: number('dividendGrowthRate3y.FY'),
+          holdingDividendGrowthRate5y: number('holdingDividendGrowthRate5y.EOD'),
+          holdingDividendGrowthRate3y: number('holdingDividendGrowthRate3y.EOD'),
+          yieldOnCost5y: number('yieldOnCost5y.EOD'),
           revenueGrowthRate: number('revenueGrowthRate.TTM'),
           netIncomeGrowthRate: number('netIncomeGrowthRate.TTM')
         })
@@ -219,8 +221,8 @@ export const getSectorCompanies = defineCachedFunction(
       fundamentalsDate: maxIsoDate(fundamentalsDates)
     }
   },
-  // -v2：2026-11-01 股價淨值比換成即時版，舊鍵裡是交易所的數字
-  { name: 'hub-sector-companies-v2', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：2026-11-01 股價淨值比換成即時版，舊鍵裡是交易所的數字；-v3：2026-11-04 股利成長換成持股股利成長率，舊鍵裡沒有那幾欄
+  { name: 'hub-sector-companies-v3', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // 一個類股的上市櫃公司（2026-10-09 從 /api/hub/industry/:code 抽出來，產業成長座標圖共用）。興櫃不顯示（2026-09-26
@@ -701,7 +703,8 @@ export const getTemplateMatchCount = defineCachedFunction(
 export const getSectorDividendSummary = defineCachedFunction(
   async (): Promise<SectorDividendSummaryPageData> =>
     businessFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
-  { name: 'hub-sector-dividend-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  // -v2：2026-11-04 多了持股股利成長率與成本殖利率，舊鍵裡沒有，頁面讀 .count 會 500
+  { name: 'hub-sector-dividend-summary-v2', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
 )
 
 // ---- 除權息月覽（/calendar/months，2026-10-21）----

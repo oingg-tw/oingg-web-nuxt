@@ -76,21 +76,22 @@ const distributionOption = computed(() => {
 })
 
 // ---- 殖利率與股利成長：公司散佈圖（2026-10-01）----
-// 軸跟 /industries/dividend 的類股版一樣（X 股利 3 年成長率、Y 殖利率），從總覽點進來看到的是同一張圖換一個層級。兩軸都有值才畫。
-// 不標公司名：一個類股最多 200 多個點，標籤沒有任何排法不會糊掉；名字在提示框與公司名單裡
+// 軸跟 /industries/dividend 的類股版一樣（X 持股股利 5 年成長率、Y 殖利率；2026-11-04 之前 X 是每股、不還原的股利 3 年成長率），從總覽
+// 點進來看到的是同一張圖換一個層級。兩軸都有值才畫。不標公司名：一個類股最多 200 多個點，標籤沒有任何排法不會糊掉；名字在提示框與公司名單裡
 const scatterRows = computed(() => industryScatterRows(props.data))
+const scatterAtFloor = computed(() => Math.min(...scatterRows.value.map(row => row.holdingDividendGrowthRate5y as number)) < -80)
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」：兩百多個點在手機上擠成一團）：殖利率以這些公司的
-// 中位數分高低，股利 3 年成長率以 0 分有沒有減少；表內照代號排
+// 中位數分高低，持股股利 5 年成長率以 0 分有沒有減少；表內照代號排。3 年成長率與成本殖利率在最右欄的分段鈕裡（IndustryQuadrantTables 的 picks，順序同 HOLDER_DIVIDEND_PICKS）
 const yieldSplit = computed(() => medianOf(scatterRows.value.map(row => row.dividendYield as number)) ?? 0)
 const quadrants = computed(() =>
   quadrantGroups(
     [...scatterRows.value].sort((a, b) => a.symbol.localeCompare(b.symbol)),
-    row => [row.dividendGrowthRate3y as number, row.dividendYield as number],
+    row => [row.holdingDividendGrowthRate5y as number, row.dividendYield as number],
     [0, yieldSplit.value],
     ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 家）`,
-    rows: group.rows.map(row => ({ key: row.symbol, name: `${row.name} ${row.symbol}`, to: securityPath(row.symbol), cells: [`${row.dividendYield?.toFixed(2)}%`, minusSign(`${row.dividendGrowthRate3y?.toFixed(1)}%`)] }))
+    rows: group.rows.map(row => ({ key: row.symbol, name: row.name, code: row.symbol, to: securityPath(row.symbol), cells: [industryPct(row.dividendYield)], picks: [industryGrowthPct(row.holdingDividendGrowthRate5y), industryGrowthPct(row.holdingDividendGrowthRate3y), industryPct(row.yieldOnCost5y)] }))
   })))
 type ScatterRow = (typeof scatterRows)['value'][number]
 interface ScatterParam { data?: { row: ScatterRow } }
@@ -103,11 +104,14 @@ const scatterOption = computed(() => ({
       if (!row) return ''
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
         // 自算的現金殖利率：0 不寫「不配息」（2026-10-24，理由見 dividend-event.ts 的 ZERO_YIELD_TEXT）
-        + `<div>殖利率 ${row.dividendYield?.toFixed(2)}%</div>`
-        + `<div>股利 3 年成長率 ${row.dividendGrowthRate3y?.toFixed(1)}%</div></div>`
+        + `<div>殖利率 ${industryPct(row.dividendYield)}</div>`
+        + `<div>持股股利 5 年成長率 ${industryGrowthPct(row.holdingDividendGrowthRate5y)}</div>`
+        + `<div>持股股利 3 年成長率 ${industryGrowthPct(row.holdingDividendGrowthRate3y)}</div>`
+        + `<div>5 年前買進的成本殖利率 ${industryPct(row.yieldOnCost5y)}</div></div>`
     }
   },
-  xAxis: { type: 'value', name: '股利 3 年成長率 %', nameLocation: 'middle', nameGap: 28, axisLabel: { formatter: (value: number) => `${value}%` } },
+  // 成長率最低就是 −100%（現在不配息），自動刻度會畫到不可能的 −120%
+  xAxis: { type: 'value', name: '持股股利 5 年成長率 %', nameLocation: 'middle', nameGap: 28, ...(scatterAtFloor.value && { min: -100, max: ({ max }: { max: number }) => Math.ceil(max / 20) * 20, interval: 20 }), axisLabel: { formatter: (value: number) => `${value}%` } },
   yAxis: { type: 'value', name: '殖利率 %', nameTextStyle: { align: 'left' }, axisLabel: { formatter: (value: number) => `${value}%` } },
   series: [
     {
@@ -115,7 +119,7 @@ const scatterOption = computed(() => ({
       // 10px：高齡友善規格對標記的下限是 8px，這裡取 10 讓密集區仍然點得到
       symbolSize: 10,
       itemStyle: { color: accent.value, opacity: 0.7 },
-      data: scatterRows.value.map(row => ({ value: [row.dividendGrowthRate3y as number, row.dividendYield as number], row }))
+      data: scatterRows.value.map(row => ({ value: [row.holdingDividendGrowthRate5y as number, row.dividendYield as number], row }))
     }
   ]
 }))
@@ -145,12 +149,12 @@ const scatterOption = computed(() => ({
       <template v-if="$slots.header" #header>
         <slot name="header" />
       </template>
-      <SharedChart class="app-chart" :option="scatterOption" autoresize :aria-label="`${sectorName}各公司殖利率與股利 3 年成長率的散佈圖`" />
+      <SharedChart class="app-chart" :option="scatterOption" autoresize :aria-label="`${sectorName}各公司殖利率與持股股利 5 年成長率的散佈圖`" />
     </SharedChartCard>
     <div class="industry-facet-chart__quadrants app-narrow-only">
       <slot name="header" />
-      <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，股利 3 年成長率以 0 分有沒有減少，分成四組。</p>
-      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率', '股利 3 年成長']" collapsed />
+      <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，持股股利 5 年成長率以 0 分有沒有減少，分成四組。</p>
+      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率']" :picks="HOLDER_DIVIDEND_PICKS" collapsed />
     </div>
   </template>
 </template>

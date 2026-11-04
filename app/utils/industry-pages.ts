@@ -8,6 +8,8 @@ import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChar
 export const industryNum = (value: number | null, decimals = 2) => (value === null ? '－' : minusSign(value.toFixed(decimals)))
 export const industrySignedPct = (value: number | null) => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(2)}%`))
 export const industryPct = (value: number | null | undefined) => (value == null ? '－' : minusSign(`${value.toFixed(2)}%`))
+// 股利成長率一位小數（同 /industries/dividend）
+export const industryGrowthPct = (value: number | null) => (value === null ? '－' : minusSign(`${value.toFixed(1)}%`))
 export const industryStat = (value: number | null, unit: string) => (value === null ? '－' : minusSign(`${value.toFixed(2)}${unit === '倍' ? ' 倍' : '%'}`))
 
 // 三率中位數（近四季）
@@ -44,6 +46,17 @@ export function industryDistribution(data: IndustryPageData) {
   ].filter(item => item.stat.median !== null && item.stat.count >= 5)
 }
 
-// 殖利率與股利 3 年成長率都有值的公司（全市場只有約 57% 的公司有連續三年的股利紀錄）
+// 持股股利成長率與成本殖利率怎麼讀（2026-11-04，使用者：「避免股價成長過快 造成殖利率衰退 但是 實際上用戶領到更多」）：/industries、
+// /industries/dividend、/industry/[sector]/dividend 同一句
+export const HOLDER_DIVIDEND_NOTE = '持股股利 5 年成長率是 5 年前買進、一直抱著的人，每年領到的現金股利的年化成長率，配股、分割、減資造成的股數變化都算進去，跟股價無關；5 年前有配息、現在不配息的公司是 −100%。5 年前買進的成本殖利率是這個人現在一年領的現金股利，除以 5 年前那天的收盤價。股價漲得比股利快時，殖利率會變低，股利卻可能還在成長。'
+
+// 手機四張表最右欄的三個數字（方案 D）：label 同 /industries 手機分段鈕的「股利 5 年」，name 同詞彙表
+export const HOLDER_DIVIDEND_PICKS = [
+  { label: '股利 5 年', name: '持股股利 5 年成長率' },
+  { label: '股利 3 年', name: '持股股利 3 年成長率' },
+  { label: '成本殖利率', name: '5 年前買進的成本殖利率' }
+]
+
+// 殖利率與持股股利 5 年成長率都有值的公司（5 年前沒有配息紀錄的算不出成長率）
 export const industryScatterRows = (data: IndustryPageData) =>
-  data.companies.rows.filter(row => row.dividendYield !== null && row.dividendGrowthRate3y !== null)
+  data.companies.rows.filter(row => row.dividendYield !== null && row.holdingDividendGrowthRate5y !== null)

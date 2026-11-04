@@ -491,6 +491,9 @@ const hubSectors = await (await fetch(`${baseUrl}/api/hub/sectors`)).json()
 const dividendSummary = await (await fetch(`${baseUrl}/api/hub/sector-dividend-summary`)).json()
 const summaryCounts = new Map((dividendSummary.sectors ?? []).map(sector => [sector.sectorCode, sector.companyCount]))
 expect('/api/hub/sectors', 'sectors discovered', hubSectors.length > 0, `${hubSectors.length}`)
+// 持股股利 5 年成長率是 /industries/dividend 的橫軸（2026-11-04 有 32 個類股超過 5 家）：上游沒數字時頁面照樣 200，只是圖和手機的表都不見
+const holderSectors = (dividendSummary.sectors ?? []).filter(sector => sector.holdingDividendGrowthRate5y?.count >= 5).length
+expect('/industries/dividend', 'holder growth axis has values', holderSectors >= 25, `${holderSectors} sectors`)
 for (const sector of hubSectors) {
   const page = await (await fetch(`${baseUrl}/api/hub/industry/${sector.code}`)).json()
   const listed = new Set([

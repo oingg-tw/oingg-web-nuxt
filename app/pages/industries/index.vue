@@ -17,7 +17,7 @@ import type { SortableColumn } from '~/components/shared/SharedSortableTable.vue
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股產業索引：34 個證交所類股一覽',
-  description: '證交所 34 個類股的公司家數、殖利率中位數與股利 3 年成長率中位數逐項列表，點類股名稱看該類股公司的股價、本益比、殖利率與 ROE 一覽表。'
+  description: '證交所 34 個類股的公司家數、殖利率中位數與持股股利 5 年成長率中位數逐項列表，點類股名稱看該類股公司的股價、本益比、殖利率與 ROE 一覽表。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries` }] })
 
@@ -51,7 +51,7 @@ const rows = computed(() => summary.value?.sectors ?? [])
 const coveredCount = computed(() => rows.value.reduce((total, row) => total + row.companyCount, 0).toLocaleString('en-US'))
 const latestAnswer = computed(() => {
   if (!rows.value.length) return null
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${coveredCount.value} 家。下表每一列是一個類股：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、股利 3 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
+  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${coveredCount.value} 家。下表每一列是一個類股：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、持股股利 5 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
 })
 
 const pathFor = (code: string) => sectorPath(code) ?? '/industries'
@@ -62,7 +62,7 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
   { key: 'sector', label: '類股', sortValue: row => row.sectorCode },
   { key: 'count', label: '家數', num: true, sortValue: row => row.companyCount },
   { key: 'yield', label: '殖利率', num: true, sortValue: row => row.liveCashDividendYield.median },
-  { key: 'dividendGrowth', label: '股利 3 年成長', num: true, sortValue: row => row.dividendGrowthRate3y.median },
+  { key: 'dividendGrowth', label: '持股股利 5 年成長', num: true, sortValue: row => row.holdingDividendGrowthRate5y.median },
   { key: 'revenueGrowth', label: '營收年增', num: true, sortValue: row => growthByCode.value.get(row.sectorCode)?.revenueGrowthRate.median },
   { key: 'netIncomeGrowth', label: '淨利年增', num: true, sortValue: row => growthByCode.value.get(row.sectorCode)?.netIncomeGrowthRate.median }
 ]
@@ -72,7 +72,7 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 const shortAnswer = computed(() => (rows.value.length ? `${rows.value.length} 個類股、${coveredCount.value} 家上市櫃公司，照證交所的指數分成三組。格子上的數字是該類股的中位數，點格子看那個類股；怎麼算寫在頁面最後。` : null))
 const TILE_METRICS = [
   { key: 'yield', label: '殖利率' },
-  { key: 'dividendGrowth', label: '股利 3 年' },
+  { key: 'dividendGrowth', label: '股利 5 年' },
   { key: 'revenueGrowth', label: '營收年增' },
   { key: 'netIncomeGrowth', label: '淨利年增' }
 ] as const
@@ -81,7 +81,7 @@ const tileMetricLabel = computed(() => TILE_METRICS.find(metric => metric.key ==
 function tileValue(row: SectorRow): string {
   const growthRow = growthByCode.value.get(row.sectorCode)
   if (tileMetric.value === 'yield') return yieldText(row.liveCashDividendYield.median)
-  if (tileMetric.value === 'dividendGrowth') return signedPct(row.dividendGrowthRate3y.median)
+  if (tileMetric.value === 'dividendGrowth') return signedPct(row.holdingDividendGrowthRate5y.median)
   return signedPct(tileMetric.value === 'revenueGrowth' ? growthRow?.revenueGrowthRate.median : growthRow?.netIncomeGrowthRate.median)
 }
 // 證交所的指數分組：電子類（24～31）、金融保險類（17），其餘是未含金融電子類（非金電）
@@ -121,7 +121,7 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
             <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
             <td class="seo-table__num">{{ row.companyCount }}</td>
             <td class="seo-table__num">{{ yieldText(row.liveCashDividendYield.median) }}</td>
-            <td class="seo-table__num">{{ growthText(row.dividendGrowthRate3y.median) }}</td>
+            <td class="seo-table__num">{{ growthText(row.holdingDividendGrowthRate5y.median) }}</td>
             <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
             <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
           </template>
@@ -155,7 +155,8 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」）。拿掉的：證交所
              2026-08-28 起把沒配息改成空白、我們一律當 0（上市上櫃算法一致）；中位數的分母與反推總額；34 個類股裡 8 個平均與中位數正負號相反 -->
         <li>殖利率是一年份的現金股利除以收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
-        <li>每一欄只算有這個數字的公司，所以算進去的家數不一定等於類股家數。例如股利 3 年成長率要有連續三年的股利紀錄，全市場不到六成的公司算得出來。</li>
+        <li>{{ HOLDER_DIVIDEND_NOTE }}</li>
+        <li>每一欄只算有這個數字的公司，所以算進去的家數不一定等於類股家數。例如持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>每一欄都用中位數（公司依數字排好、排在正中間那一家的數字），不用平均：少數公司的極端數字會把平均拉偏，中位數比較接近一般公司的情況。</li>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>
