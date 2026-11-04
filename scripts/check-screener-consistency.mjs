@@ -390,6 +390,24 @@ for (const target of PAGES) {
   await reopened.close()
 }
 
+// 舊欄位名（2026-11-04，數據中台拿掉 ETF 的 assetClass，送了回 400）：10-21 改名 listingCategory 以前的書籤，條件、欄位、排序都換成新名再查
+if (!only || only.includes('ETF')) {
+  const path = `/screener/etf?f=assetClass:${encodeURIComponent('槓桿型')}&c=assetClass&sort=assetClass:asc`
+  console.log(`\n== ETF 舊欄位名 ${path}`)
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  const sent = []
+  page.on('request', request => { if (request.url().includes('/etf-screener') && request.method() === 'POST') sent.push(request.postData() ?? '') })
+  await page.goto(`${baseUrl}${path}`, { waitUntil: 'load', timeout: 180000 })
+  const counted = await waitForCount(page, text => /符合上述條件 \d+ 檔/.test(text), 90000)
+  expect('ETF', '舊名的書籤照樣查得到', counted.ok, counted.text)
+  expect('ETF', '條件寫新名「掛牌分類」', (await pillTexts(page)) === '掛牌分類包含槓桿型', await pillTexts(page))
+  expect('ETF', '送出的條件、欄位、排序都是新名', sent.length > 0 && sent.every(body => !body.includes('assetClass') && body.includes('"sortField":"listingCategory"')), sent.at(-1)?.slice(0, 200))
+  const rewritten = decodeURIComponent(page.url())
+  expect('ETF', '網址換成新名', !rewritten.includes('assetClass') && rewritten.includes('listingCategory'), rewritten.replace(baseUrl, ''))
+  await context.close()
+}
+
 await browser.close()
 
 // ── 個別頁（ETF、特別股，2026-10-15）：伺服器端就有標題與內容（不靠瀏覽器再讀）、一圖一表、找不到的代號 noindex。

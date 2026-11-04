@@ -177,12 +177,8 @@ export function useEtfSource(): UniverseSource {
 
   // 排除（exclude）兩種都直接送（analysis-ts 17079ab，本機與 DEV 2026-10-15 都上線）。對 null 的處理不同，照上游：類別型排除保留 null
   // （2026-10-15 量：排除掛牌分類「槓桿型」＝322 檔＝339−17，含 40 檔沒有分類的），數字型排除 null 一律不留（不知道 null 在不在範圍外）
-  // 存起來的篩選還寫 assetClass 的（2026-10-21 以前的「資產類型」範本），送出時換成改名後的 listingCategory：值一模一樣，上游 2026-11-04
-  // 移除 assetClass 之後照樣能用。ponytail: 存的篩選不改寫；確定沒有人還存著 assetClass 時拿掉這一行
-  const RENAMED_FIELDS: Record<string, string> = { assetClass: 'listingCategory' }
-  function toEtfFilter(filter: FilterCriterion) {
+  function toEtfFilter({ field, ...filter }: FilterCriterion) {
     const exclude = filter.exclude ? { exclude: true } : {}
-    const field = RENAMED_FIELDS[filter.field] ?? filter.field
     return filter.values
       ? { field, values: filter.values.map(wireValue), ...exclude }
       : { field, min: filter.min, max: filter.max, ...exclude }
@@ -233,6 +229,9 @@ export function useEtfSource(): UniverseSource {
     categories,
     ready: computed(() => catalog.value !== null || catalogFailure.value !== null),
     defaultColumns: DEFAULT_COLUMNS,
+    // 掛牌分類 2026-10-21 從 assetClass 改名 listingCategory（值一樣），上游 2026-11-04 拿掉舊名、送舊名回 400。2026-10-21 以前的「資產類型」
+    // 範本存下來的篩選、欄位組合與書籤還寫 assetClass。ponytail: 帳號裡的存檔不改寫，下次儲存才換；網址永遠可能是舊的，這一行留著
+    renamedFields: { assetClass: 'listingCategory' },
     filterTemplates: FILTER_TEMPLATES,
     columnTemplates: COLUMN_TEMPLATES,
     column,

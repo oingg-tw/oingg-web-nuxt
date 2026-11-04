@@ -89,6 +89,8 @@ export interface UniverseSource {
   ready: Readonly<Ref<boolean>>
   // 內建「基本欄位」的欄位 id
   defaultColumns: string[]
+  // 上游改過名的欄位（舊名 → 新名）：存檔的條件與排序、欄位組合、網址裡的舊名，讀進來就換成新名
+  renamedFields?: Record<string, string>
   filterTemplates: UniverseTemplate[]
   // fieldKeys 是畫面的欄位 id
   columnTemplates: ColumnPresetTemplate[]
@@ -142,6 +144,8 @@ export function useUniverseScreener(source: UniverseSource) {
   const activeColumnSetId = ref('')
   const activeColumnSet = computed(() => columnSets.value.find(set => set.id === activeColumnSetId.value) ?? columnSets.value[0] ?? null)
   const ready = ref(false)
+  // 帳號（存檔、欄位組合）與網址來的欄位名換成畫面的 id；上游改過名的先換成新名
+  const storedFieldId = (field: string) => snapshotFieldId(source.renamedFields?.[field] ?? field)
 
   function labelOf(fieldId: string): string {
     return locateFieldInSchema(source.categories.value, fieldId)?.metric.name ?? source.column(fieldId).label
@@ -153,7 +157,7 @@ export function useUniverseScreener(source: UniverseSource) {
 
   function slotsOf(filters: FilterCriterion[]): TabFilterSlot[] {
     return filters.map((filter, index) => {
-      const fieldId = snapshotFieldId(filter.field)
+      const fieldId = storedFieldId(filter.field)
       return {
         id: index,
         fieldId,
@@ -204,7 +208,7 @@ export function useUniverseScreener(source: UniverseSource) {
     // 上次的排序（業務中台 c9e2208，2026-10-23；使用者：「screener 也要儲存用戶上次的排序」）：那一欄要在這一組的欄位裡——上游只收
     // 代號或 columns 裡的欄位，其他一律 400。不在就照預設順序開
     if (preset.sortField && preset.order) {
-      const field = preset.sortField === 'symbol' ? 'symbol' : snapshotFieldId(preset.sortField)
+      const field = preset.sortField === 'symbol' ? 'symbol' : storedFieldId(preset.sortField)
       if (field === 'symbol' || tab.columns.some(column => column.field === field)) {
         tab.sortField = field
         tab.sortOrder = preset.order
@@ -220,7 +224,7 @@ export function useUniverseScreener(source: UniverseSource) {
   }
 
   function toColumnSet(preset: ScreenerColumnPreset): ColumnSet {
-    return { id: preset.id, name: preset.name, fields: preset.columns.map(column => snapshotFieldId(column.field)), saved: true }
+    return { id: preset.id, name: preset.name, fields: preset.columns.map(column => storedFieldId(column.field)), saved: true }
   }
 
   // ---- 查詢 ----
@@ -622,7 +626,7 @@ export function useUniverseScreener(source: UniverseSource) {
       // 網址的欄位先套上（下面建的每一組都用目前的欄位組合）；跟目前選的那一組一樣就不動
       const urlState = pendingUrlState
       pendingUrlState = null
-      const urlColumns = urlState?.columns.map(snapshotFieldId) ?? []
+      const urlColumns = urlState?.columns.map(storedFieldId) ?? []
       if (urlColumns.length && urlColumns.join('|') !== activeColumnSet.value?.fields.join('|')) {
         columnSets.value[0]!.fields = urlColumns
         activeColumnSetId.value = BUILT_IN_ID
@@ -636,11 +640,11 @@ export function useUniverseScreener(source: UniverseSource) {
       if (urlState) {
         urlTab = urlState.filters.length ? savedTabs.find(tab => sameFilters(urlFiltersOf(tab.slots, snapshotField), urlState.filters)) : undefined
         if (!urlTab) {
-          builtInTab.slots = slotsOf(filtersFromUrl(urlState.filters, source.categories.value, snapshotFieldId).map(filter => ({ ...filter, field: snapshotField(filter.field) })))
+          builtInTab.slots = slotsOf(filtersFromUrl(urlState.filters, source.categories.value, storedFieldId).map(filter => ({ ...filter, field: snapshotField(filter.field) })))
           urlTab = builtInTab
         }
         // 排序只收代號或畫面上有的欄位：ETF 的上游對其他欄位回 400
-        const sortField = urlState.sort && (urlState.sort.field === 'symbol' ? 'symbol' : snapshotFieldId(urlState.sort.field))
+        const sortField = urlState.sort && (urlState.sort.field === 'symbol' ? 'symbol' : storedFieldId(urlState.sort.field))
         if (sortField && (sortField === 'symbol' || urlTab.columns.some(column => column.field === sortField))) {
           urlTab.sortField = sortField
           urlTab.sortOrder = urlState.sort!.order
