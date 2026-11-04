@@ -113,7 +113,7 @@ const { breadcrumbs } = useHubPageSeo({
     <div v-if="allRows.length" class="rank-list-block">
       <div v-if="groups.length > 1" class="rank-page__filter">
         <span aria-hidden="true">基金類型</span>
-        <el-radio-group v-model="fundType" aria-label="基金類型">
+        <el-radio-group v-model="fundType" aria-label="基金類型" class="app-radio-fill">
           <el-radio-button value="">全部</el-radio-button>
           <el-radio-button v-for="group in groups" :key="group.name" :value="group.name">{{ group.name }}</el-radio-button>
         </el-radio-group>
@@ -215,20 +215,7 @@ const { breadcrumbs } = useHubPageSeo({
   color: var(--el-text-color-secondary);
 }
 
-/* 手機：折行後每一行撐滿，兩行右緣對齊（同 SharedChartCard 窄卡片的期別切換） */
 @media (max-width: 767px) {
-  .rank-page__filter :deep(.el-radio-group) {
-    width: 100%;
-  }
-
-  .rank-page__filter :deep(.el-radio-button) {
-    flex: 1 1 auto;
-  }
-
-  .rank-page__filter :deep(.el-radio-button__inner) {
-    width: 100%;
-  }
-
   /* 表頭的年度自己一行：「2025 年總費用率（%）」一行要 189px，表格多捲 69px */
   .rank-page__year {
     display: block;

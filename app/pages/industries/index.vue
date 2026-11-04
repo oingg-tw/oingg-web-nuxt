@@ -129,7 +129,7 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
       </div>
       <div class="app-narrow-only">
         <p id="industries-tile-metric" class="industries-page__metric-label">格子上的數字</p>
-        <el-radio-group v-model="tileMetric" aria-labelledby="industries-tile-metric" class="industries-page__metric">
+        <el-radio-group v-model="tileMetric" aria-labelledby="industries-tile-metric" class="app-radio-fill industries-page__metric">
           <el-radio-button v-for="metric in TILE_METRICS" :key="metric.key" :value="metric.key">{{ metric.label }}</el-radio-button>
         </el-radio-group>
         <section v-for="group in tileGroups" :key="group.key" class="industries-page__group" :aria-labelledby="`industries-group-${group.key}`">
@@ -176,18 +176,7 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
 }
 
 .industries-page__metric {
-  width: 100%;
   margin-bottom: 16px;
-}
-
-.industries-page__metric :deep(.el-radio-button) {
-  flex: 1 1 auto;
-}
-
-/* 四個選項在 375 寬排成一行：預設左右各 15px 會把「淨利年增」擠到第二行 */
-.industries-page__metric :deep(.el-radio-button__inner) {
-  width: 100%;
-  padding-inline: 8px;
 }
 
 .industries-page__group + .industries-page__group {

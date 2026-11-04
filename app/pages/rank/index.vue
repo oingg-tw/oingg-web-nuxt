@@ -46,7 +46,7 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
       <section v-for="card in cards" :key="card.key" class="rank-card" :aria-labelledby="`rank-card-${card.key}`">
         <div class="rank-card__head">
           <h2 :id="`rank-card-${card.key}`" class="rank-card__title"><span class="rank-card__group">{{ card.group }}</span>{{ card.title }}</h2>
-          <el-radio-group v-if="card.items.length > 1" v-model="picked[card.key]" :aria-label="`${card.group}${card.title}：選擇排行`" class="rank-card__switch">
+          <el-radio-group v-if="card.items.length > 1" v-model="picked[card.key]" :aria-label="`${card.group}${card.title}：選擇排行`" class="app-radio-fill">
             <el-radio-button v-for="item in card.items" :key="item.page.slug" :value="item.page.slug">{{ item.page.short ?? item.page.label }}</el-radio-button>
           </el-radio-group>
         </div>
@@ -113,19 +113,6 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--el-text-color-secondary);
-}
-
-/* 分段鈕折行後每一行撐滿（同排行頁手機的基金類型） */
-.rank-card__switch {
-  width: 100%;
-}
-
-.rank-card__switch :deep(.el-radio-button) {
-  flex: 1 1 auto;
-}
-
-.rank-card__switch :deep(.el-radio-button__inner) {
-  width: 100%;
 }
 
 .rank-card__panel {

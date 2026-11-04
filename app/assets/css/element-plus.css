@@ -202,6 +202,21 @@ html .el-radio-button__inner {
   justify-content: center;
 }
 
+/* 撐滿整列的分段鈕，折行後每一行也撐滿、右緣對齊（2026-11-04 收成一個 class，原本 /rank、/rank/[slug]、/industries 各寫一份）。
+   左右 8px：預設 15px 在手機會把最後一個選項擠到第二行 */
+.app-radio-fill {
+  width: 100%;
+}
+
+.app-radio-fill .el-radio-button {
+  flex: 1 1 auto;
+}
+
+.app-radio-fill .el-radio-button__inner {
+  width: 100%;
+  padding-inline: 8px;
+}
+
 /* el-calendar 的標頭（配息月曆、持股的配息月曆）：手機的中文字型（Android 的思源黑體）比電腦寬，「2026 年 10 月」加「上個月／今天／下個月」
    在 360 寬擠不下，標題折成兩行、三顆按鈕也被擠成兩排（同一天、同一支手機）。標題不折、三顆按鈕不拆，放不下時整排換到下一行 */
 html .el-calendar__header {
