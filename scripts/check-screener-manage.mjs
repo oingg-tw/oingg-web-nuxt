@@ -55,7 +55,8 @@ const mock = async (ctx) => {
     const run = p.match(/^\/api\/core\/screener\/presets\/([^/]+)\/run$/)
     if (run && m === 'GET') {
       const preset = presets.find(item => item.id === run[1])
-      return route.fulfill({ json: { preset, screener: { count: 1, columns: [], results: [], page: 1, pageSize: 20, totalPages: 1 }, columnPresetId: null } })
+      // 跟業務中台一樣回這次套用的欄位組合（帶了 columnPresetId 就是它）：普通股用它對齊目前選的欄位組合
+      return route.fulfill({ json: { preset, screener: { count: 1, columns: [], results: [], page: 1, pageSize: 20, totalPages: 1 }, columnPresetId: url.searchParams.get('columnPresetId') } })
     }
     const one = p.match(/^\/api\/core\/screener\/presets\/([^/]+)$/)
     if (one && m === 'PATCH') {
@@ -188,6 +189,9 @@ await page.waitForTimeout(800)
 check(calls.join(' | ') === 'POST revenueYoy.M | PATCH p-new-2 成長 2 | REORDER p-c,p-new-2,p-b', '儲存：用原本那一組的條件建立、改名、排在它後面', calls.join(' | '))
 const copied = await options()
 check(copied.join('、') === '成長、成長 2、低 PE', '選單有副本、在原本那一組後面', copied.join('、'))
+// 儲存後切到複製出來的那一組（2026-11-04，使用者：「藉由複製新增 條件組合以後 確認以後 要立刻切換到該條件組合」）
+const selectedName = async (index) => (await page.locator('.screener-preset-select__select').nth(index).innerText()).trim()
+check((await selectedName(0)) === '成長 2', '儲存後切到複製出來的那一組', await selectedName(0))
 
 // 顯示欄位的管理也有複製：同樣的欄位、彈窗裡的名稱，排在原本那一組後面
 calls.length = 0
@@ -201,6 +205,8 @@ await columnDialog.waitFor({ state: 'hidden' })
 for (const start = Date.now(); Date.now() - start < 15000 && !calls.some(call => call.startsWith('REORDER COLUMNS')); await page.waitForTimeout(200));
 const columnCalls = calls.filter(call => call.includes('COLUMNS'))
 check(columnCalls.join(' | ') === 'POST COLUMNS 總覽 的副本 roe.TTM | REORDER COLUMNS c-a,c-new,c-b', '欄位組合儲存：同樣的欄位建立、排在原本那一組後面', calls.join(' | '))
+for (const start = Date.now(); Date.now() - start < 10000 && (await selectedName(1)) !== '總覽 的副本'; await page.waitForTimeout(200));
+check((await selectedName(1)) === '總覽 的副本', '欄位組合也一樣：儲存後切到副本', await selectedName(1))
 check(!pageErrors.length, '沒有 page error', pageErrors.join(' | '))
 
 console.log('訪客')

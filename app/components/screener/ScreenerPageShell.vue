@@ -73,6 +73,7 @@ interface GroupOps {
   remove(id: string): Promise<void> | void
   reorder(ids: string[]): Promise<void> | void
   copy(id: string, name: string): Promise<string | null>
+  select(id: string): void
 }
 async function applyChanges({ renames, copies, removals, order }: PresetChanges, ops: GroupOps) {
   for (const [id, name] of renames) await ops.rename(id, name)
@@ -80,19 +81,25 @@ async function applyChanges({ renames, copies, removals, order }: PresetChanges,
   for (const { id, from, name } of copies) created.set(id, await ops.copy(from, name))
   for (const id of removals) await ops.remove(id)
   if (order) await ops.reorder(order.flatMap(id => (created.has(id) ? created.get(id) ?? [] : [id])))
+  // 複製出來的那一組，儲存後立刻切過去（2026-11-04，使用者：「藉由複製新增 條件組合以後 確認以後 要立刻切換到該條件組合」）；
+  // 一次複製好幾組就切到最後一組。欄位組合的管理照同一套
+  const lastCopy = [...created.values()].filter(id => id !== null).at(-1)
+  if (lastCopy) ops.select(lastCopy)
 }
 const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
   rename: props.screener.renamePreset,
   remove: props.screener.removePreset,
   reorder: props.screener.reorderTabs,
-  copy: props.screener.copyPreset
+  copy: props.screener.copyPreset,
+  select: props.screener.selectTab
 })
 // 欄位組合的管理跟欄位設定分開（2026-11-01，使用者：「希望管理 欄位設定 分開」）：「顯示欄位」自己的「管理」，同「我的篩選」
 const applyColumnSetChanges = (changes: PresetChanges) => applyChanges(changes, {
   rename: props.screener.renameColumnSet,
   remove: props.screener.removeColumnSet,
   reorder: props.screener.reorderColumnSets,
-  copy: props.screener.copyColumnSet
+  copy: props.screener.copyColumnSet,
+  select: props.screener.selectColumnSet
 })
 
 function openRow(symbol: string) {
