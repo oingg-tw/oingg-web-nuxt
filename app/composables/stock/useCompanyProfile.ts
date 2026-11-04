@@ -15,7 +15,6 @@ export interface NormalizedCompanyProfile {
   isEmerging: boolean | null
   name: string | null
   shortName: string | null
-  foreignRegistrationCountry: string | null
   // 證交所類股（生態系詞彙表：代碼一律叫 sectorCode、名稱 sectorName，中文「類股」；2026-10-11 內部名稱也跟著改）。
   // 上游 2026-10-10 起上櫃公司的 sectorName 也有值（原本一律 null）。listedDate 讀的是上游的 listingDate。
   // 實收資本、股數那四個欄位與 auditingFirm 2026-11-03 拿掉：沒有地方讀，卻用 BigInt()／String() 轉了一遍（String(null) 還會變成 "null"）
@@ -37,9 +36,11 @@ export interface NormalizedCompanyProfile {
   // here — 20 symbols sampled the day it shipped were all "2", with their backfill still running,
   // so treat a "1" as expected-but-unseen rather than confirmed.
   metricDataType: string | null
-  // 每股面額（元）。不是 10 元的公司，證交所、櫃買中心會在簡稱後面加 *（強生* 是 5 元），摘要卡寫出實際面額（2026-10-22）。
-  // 沒有資料是 null（創新板的幾家）
+  // 每股面額。不是 10 元的公司，證交所、櫃買中心會在簡稱後面加 *（強生* 是 5 元），摘要卡寫出實際面額（2026-10-22）。
+  // 沒有資料是 null（創新板的幾家；無面額股目前也是 null，分不出來，上游之後會另給 hasParValue）
   parValue: number | null
+  // 面額的幣別（業務中台 4e8f630，2026-11-04）："TWD"、"USD"（外國公司，例如 4157 每股 0.001 美元）；面額是 null 時也是 null
+  parValueCurrency: string | null
 }
 
 function toDate(value: unknown): Date | null {
@@ -60,13 +61,13 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     // 不再用 String()：null 會變成字面上的 "null" 名稱（業務中台 f750e92）
     name: typeof name === 'string' ? name : null,
     shortName: typeof shortName === 'string' ? shortName : null,
-    foreignRegistrationCountry: (raw.foreignRegistrationCountry as string | null) ?? null,
     sectorCode: typeof raw.sectorCode === 'string' && raw.sectorCode ? raw.sectorCode : null,
     sectorName: (raw.sectorName as string | null) ?? null,
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
     metricDataType: (raw.metricDataType as string | null) ?? null,
-    parValue: typeof raw.parValue === 'number' ? raw.parValue : null
+    parValue: typeof raw.parValue === 'number' ? raw.parValue : null,
+    parValueCurrency: typeof raw.parValueCurrency === 'string' ? raw.parValueCurrency : null
   }
 }
 

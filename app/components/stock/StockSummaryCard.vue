@@ -43,9 +43,14 @@ const logo = computed(() => logoData.value?.logo ?? null)
 // 面額不是 10 元的公司寫出實際面額（2026-10-22，使用者選「頁尾一句＋摘要卡寫面額」）：簡稱後面的 * 就是這個意思（強生* 是 5 元）。
 // 讀頁面已經抓好的公司資料（useCompanyProfile 的同一個 key），不另外發請求；ETF、特別股頁沒有這份資料就不顯示
 const { data: companyProfile } = useNuxtData<NormalizedCompanyProfile | null>(`company-profile-${props.stock.code}`)
-const unusualParValue = computed(() => {
+// 單位看面額的幣別（2026-11-04）：台幣寫「元」，美元寫「美元」（外國公司，4157 每股 0.001 美元），其他照幣別代碼。
+// 沒有幣別就不寫：面額、幣別都是 null 的是無面額股或沒有資料，上游還分不出來
+const PAR_VALUE_UNITS: Record<string, string> = { TWD: '元', USD: '美元' }
+const parValueText = computed(() => {
   const par = companyProfile.value?.parValue
-  return par != null && par !== 10 ? par : null
+  const currency = companyProfile.value?.parValueCurrency
+  if (par == null || !currency || (currency === 'TWD' && par === 10)) return null
+  return `${par} ${PAR_VALUE_UNITS[currency] ?? currency}`
 })
 
 const haltText = computed(() => tradingHaltText(props.stock.tradingHalt))
@@ -205,7 +210,7 @@ const qrDialogVisible = ref(false)
         <span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
-      <p v-if="unusualParValue !== null" class="summary-card__par-value">{{ shortName.includes('*') ? '名稱後的 *：' : '' }}每股面額 {{ unusualParValue }} 元，不是一般的 10 元</p>
+      <p v-if="parValueText" class="summary-card__par-value">{{ shortName.includes('*') ? '名稱後的 *：' : '' }}每股面額 {{ parValueText }}，不是一般的 10 元</p>
       <!-- Price stacked above change/percent at mobile width (2026-09-16, "股價變動放在股價下面"),
            side by side on one baseline at desktop width — same two elements, CSS only. -->
       <!-- 沒有股價就整塊不渲染，而不是印「－」與「－ (－%)」（2026-10-01）。三個破折號看起來像壞掉，
