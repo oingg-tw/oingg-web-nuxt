@@ -85,17 +85,36 @@ function neighbourIndex(index: number, offset: -1 | 1): number {
   return rows.value[target] ? target : -1
 }
 
-function move(index: number, offset: -1 | 1) {
-  const target = neighbourIndex(index, offset)
-  if (target < 0) return
+// to 是搬完之後的位置（同 reorder() 的 finishIndex）
+function moveTo(from: number, to: number) {
   const next = [...rows.value]
-  const [row] = next.splice(index, 1)
-  next.splice(target, 0, row!)
+  const [row] = next.splice(from, 1)
+  next.splice(to, 0, row!)
   rows.value = next
   say(`「${row!.text}」移到第 ${shown.value.indexOf(row!) + 1} 欄`)
   commit()
-  focusRow(row!.field, offset < 0 ? 'up' : 'down', offset < 0 ? 'down' : 'up')
+  return row!
 }
+
+function move(index: number, offset: -1 | 1) {
+  const target = neighbourIndex(index, offset)
+  if (target < 0) return
+  const row = moveTo(index, target)
+  focusRow(row.field, offset < 0 ? 'up' : 'down', offset < 0 ? 'down' : 'up')
+}
+
+// 拖曳換順序（2026-11-04，使用者：「彈窗裡面 底下的欄位 順序 加上拖曳調整位置的功能」）：同側欄（StockPageNavList）的直向拖曳，
+// 拖曳中那一列不動、縫發亮、放手才搬。上移／下移照留給鍵盤與觸控；粗指標（手機）不拖，同側欄
+const dragKeys = computed(() => rows.value.map(row => ({ field: row.field })))
+const { headerClassFor: dragClassFor } = useColumnDrag({
+  headerCells: () => Array.from(listRef.value?.children ?? []) as HTMLElement[],
+  columns: dragKeys,
+  readonly: () => shown.value.length < 2,
+  headerClass: 'column-settings__row--draggable',
+  canDrag: () => !matchMedia('(pointer: coarse)').matches,
+  axis: 'y',
+  onReorder: (_updated, from, to) => moveTo(from, to)
+})
 
 function remove(index: number) {
   if (props.live) {
@@ -173,7 +192,7 @@ function save() {
   >
     <div v-show="step === 'list'">
       <ol ref="listRef" class="column-settings__list" aria-label="表格的欄位，由左到右">
-        <li v-for="(row, index) in rows" :key="row.field" :data-field="row.field" class="column-settings__row">
+        <li v-for="(row, index) in rows" :key="row.field" :data-field="row.field" class="column-settings__row" :class="dragClassFor({ field: row.field }, index)">
           <template v-if="row.removed">
             <span class="column-settings__label column-settings__label--removed">已移除「{{ row.text }}」</span>
             <span class="column-settings__actions">
@@ -181,7 +200,12 @@ function save() {
             </span>
           </template>
           <template v-else>
-            <span class="column-settings__label">{{ row.text }}</span>
+            <span class="column-settings__label">
+              <!-- 整列都能拖，握把只是提示（同側欄的六點握把）；aria-hidden，鍵盤用上移／下移 -->
+              <el-icon v-if="shown.length > 1" class="column-settings__drag" aria-hidden="true" title="拖曳調整順序">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg>
+              </el-icon>{{ row.text }}
+            </span>
             <span class="column-settings__actions">
               <el-button link data-action="up" :disabled="neighbourIndex(index, -1) < 0" :aria-label="`把「${row.text}」上移`" @click="move(index, -1)">上移</el-button>
               <el-button link data-action="down" :disabled="neighbourIndex(index, 1) < 0" :aria-label="`把「${row.text}」下移`" @click="move(index, 1)">下移</el-button>
@@ -228,6 +252,37 @@ function save() {
   min-height: 56px;
   padding: 4px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.column-settings__drag {
+  margin-right: 8px;
+  font-size: 1.125rem;
+  vertical-align: -0.2em;
+  color: var(--el-text-color-secondary);
+  cursor: grab;
+}
+
+.column-settings__row:hover .column-settings__drag {
+  color: var(--el-text-color-primary);
+}
+
+@media (pointer: coarse) {
+  .column-settings__drag {
+    display: none;
+  }
+}
+
+/* 拖曳中（同側欄）：來源列變淡，要插進去的縫發亮 */
+.column-settings__row.is-dragging {
+  opacity: 0.4;
+}
+
+.column-settings__row.is-insert-before {
+  box-shadow: inset 0 3px 0 0 var(--el-color-primary);
+}
+
+.column-settings__row.is-insert-after {
+  box-shadow: inset 0 -3px 0 0 var(--el-color-primary);
 }
 
 .column-settings__actions,
