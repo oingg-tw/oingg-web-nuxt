@@ -50,7 +50,8 @@ async function reopenConsent() {
             </svg>
           </a>
           <a href="mailto:ian.chu@oingg.com" class="shared-footer__icon-link" aria-label="Email 聯絡我們" title="Email">
-            <el-icon :size="20"><Message /></el-icon>
+            <!-- 字串照原樣寫進 style：用 rem 不用 px（Freego CS2140401C；數字會變成 font-size:20px） -->
+            <el-icon size="1.25rem"><Message /></el-icon>
           </a>
         </div>
       </div>

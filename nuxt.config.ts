@@ -76,6 +76,8 @@ export default defineNuxtConfig({
   // 本站的全站樣式分三個檔（2026-10-21）：main.css（版面與共用元件）→ theme.css（顏色）→ element-plus.css（Element Plus 的修正）。
   // 順序有意義：同特異性時後面的贏，Element Plus 的修正要蓋過前兩個
   css: ['vue-echarts/style.css', '~/assets/css/main.css', '~/assets/css/theme.css', '~/assets/css/element-plus.css'],
+  // 所有 CSS 的 font-size 在建置時換成 rem（Freego CS2140401C，見那個檔案）；Nuxt 預設的 autoprefixer、cssnano 照樣接在後面
+  postcss: { plugins: { './postcss-font-size-rem.mjs': {} } },
   // 連結只在滑鼠移上去或鍵盤聚焦時預先載入，不是一出現在畫面上就載（2026-10-16 DEV 的 Lighthouse）：ETF 篩選結果每一列都連到
   // 有圖表的 ETF 個別頁、頁首有外觀設定，可見即預載讓每一頁一進來就抓下並執行 575 KiB 的 ECharts（ETF 篩選頁 479 KiB 沒用到），
   // 跟這一頁真正要的資源搶頻寬與 CPU。滑過去才載，點下去時多半已經載好
