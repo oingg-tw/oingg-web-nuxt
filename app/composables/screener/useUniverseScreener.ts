@@ -456,15 +456,17 @@ export function useUniverseScreener(source: UniverseSource) {
   // 欄位換了：每個頁籤的欄位跟著換；目前這一組要不要重查由呼叫端決定，其他組下次切過去再查（ETF 只回要的欄位）。
   // 排序的那一欄不在了（換了欄位組合、移除了那一欄）就清掉排序：ETF 的上游只接受 symbol 或 columns 裡的欄位當 sortField，其他一律 400
   // （2026-10-16「sortField "expenseRatio" 要嘛是 "symbol"，要嘛要先出現在 columns 裡才能排序」）。回傳目前這一組的排序有沒有被清掉
+  // 只清目前這一組（2026-11-04）：原本每一組都清、還存回帳號，換一次欄位組合就把其他組存好的排序一起清掉。其他組的排序照留：
+  // ETF 送出時會把排序欄位補進 columns（run），特別股在瀏覽器裡排，排序的那一欄不在畫面上也查得到
   function applyColumns(fieldIds: string[]): boolean {
     let activeSortCleared = false
     for (const tab of tabs.value) {
       tab.columns = columnsOf(fieldIds)
-      if (tab.sortField && tab.sortField !== 'symbol' && !fieldIds.includes(tab.sortField)) {
+      if (tab.id === activeTabId.value && tab.sortField && tab.sortField !== 'symbol' && !fieldIds.includes(tab.sortField)) {
         tab.sortField = null
         tab.sortOrder = null
         saveSort(tab)
-        if (tab.id === activeTabId.value) activeSortCleared = true
+        activeSortCleared = true
       }
       if (tab.id !== activeTabId.value) tab.searched = false
     }
