@@ -169,7 +169,7 @@ export function useScreenerPresets(universe: ScreenerUniverse = 'common') {
 
   async function update(
     id: string,
-    patch: { name?: string; filters?: FilterCriterion[]; sortField?: string | null; order?: 'asc' | 'desc' | null } & PresetScope
+    patch: { name?: string; filters?: FilterCriterion[]; sortField?: string | null; order?: 'asc' | 'desc' | null; lastColumnPresetId?: string | null } & PresetScope
   ): Promise<ScreenerPreset | null> {
     if (!currentUser.value) return null
     try {

@@ -108,6 +108,8 @@ interface UniverseTab extends WorkspaceTab {
   columns: ScreenerResultTableColumn[]
   // 存在帳號裡；false＝內建的「全部」
   saved: boolean
+  // 這一組上次選的欄位組合（業務中台的 lastColumnPresetId）；null＝沒記過
+  columnSetId: string | null
 }
 
 interface ColumnSet {
@@ -199,12 +201,25 @@ export function useUniverseScreener(source: UniverseSource) {
       sortOrder: null,
       loading: false,
       loadingMore: false,
-      searched: false
+      searched: false,
+      columnSetId: null
     }
+  }
+
+  // 每一組記著上次選的欄位組合（2026-11-04，使用者：「我的篩選至少要保留 用戶 最後選擇了哪一組 欄位組合」；業務中台 9eca7f6 起
+  // 三種組合都收 lastColumnPresetId，普通股原本就有）：切到記過的那一組就換成它，沒記過的照目前的、不換（不會把正在看的欄位換掉）。
+  // shortcut: 內建的「基本欄位」沒有 id、記不住——選它就清掉這一組的記憶，切回來照目前的；要記住得請業務中台給內建組合一個代號
+  const rememberedColumnSet = (tab: UniverseTab | null) => (tab?.saved && tab.columnSetId ? columnSets.value.find(set => set.id === tab.columnSetId) : undefined)
+  function rememberColumnSet(tab: UniverseTab, set: ColumnSet) {
+    const columnSetId = set.saved ? set.id : null
+    if (!tab.saved || !currentUser.value || tab.columnSetId === columnSetId) return
+    tab.columnSetId = columnSetId
+    void presetsApi.update(tab.id, { lastColumnPresetId: columnSetId })
   }
 
   function presetToTab(preset: ScreenerPreset): UniverseTab {
     const tab = makeTab(preset.id, preset.name, true, preset.filters ?? [])
+    tab.columnSetId = preset.lastColumnPresetId ?? null
     // 上次的排序（業務中台 c9e2208，2026-10-23；使用者：「screener 也要儲存用戶上次的排序」）：那一欄要在這一組的欄位裡——上游只收
     // 代號或 columns 裡的欄位，其他一律 400。不在就照預設順序開
     if (preset.sortField && preset.order) {
@@ -317,6 +332,14 @@ export function useUniverseScreener(source: UniverseSource) {
     if (!tab) return
     activeTabId.value = id
     rememberChoice(tabKey, id)
+    const set = rememberedColumnSet(tab)
+    if (set && set.id !== activeColumnSetId.value) {
+      activeColumnSetId.value = set.id
+      rememberChoice(columnSetKey, set.id)
+      applyColumns(set.fields)
+      search(tab)
+      return
+    }
     if (!tab.searched) search(tab)
   }
 
@@ -394,6 +417,9 @@ export function useUniverseScreener(source: UniverseSource) {
     const created = await createPreset(filtersOf(tab), name)
     if (!created) return null
     adoptResults(created, tab)
+    // 副本記著跟原本那一組一樣的欄位組合（業務中台建立時不帶它）
+    const set = rememberedColumnSet(tab)
+    if (set) rememberColumnSet(created, set)
     selectTab(created.id)
     return created.id
   }
@@ -494,7 +520,10 @@ export function useUniverseScreener(source: UniverseSource) {
     activeColumnSetId.value = id
     rememberChoice(columnSetKey, id)
     applyColumns(set.fields)
-    if (activeTab.value) search(activeTab.value)
+    if (activeTab.value) {
+      rememberColumnSet(activeTab.value, set)
+      search(activeTab.value)
+    }
   }
 
   async function createColumnSet(name: string, fieldIds: string[]): Promise<ColumnSet | null> {
@@ -554,6 +583,8 @@ export function useUniverseScreener(source: UniverseSource) {
       return
     }
     columnSets.value = columnSets.value.filter(set => set.id !== id)
+    // 業務中台把記著它的那幾組改成 null，這裡跟著改
+    for (const tab of tabs.value) if (tab.columnSetId === id) tab.columnSetId = null
     if (activeColumnSetId.value === id) selectColumnSet(BUILT_IN_ID)
   }
 
@@ -655,6 +686,12 @@ export function useUniverseScreener(source: UniverseSource) {
       tabs.value = [builtInTab, ...savedTabs]
       const rememberedTab = rememberedChoice(tabKey)
       activeTabId.value = urlTab?.id ?? tabs.value.find(tab => tab.id === rememberedTab)?.id ?? BUILT_IN_ID
+      // 打開時那一組記著欄位組合就用它（網址帶了欄位照網址）
+      const remembered = urlColumns.length ? undefined : rememberedColumnSet(activeTab.value)
+      if (remembered && remembered.id !== activeColumnSetId.value) {
+        activeColumnSetId.value = remembered.id
+        applyColumns(remembered.fields)
+      }
       ready.value = true
       if (activeTab.value) search(activeTab.value)
     },
