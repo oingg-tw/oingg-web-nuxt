@@ -51,6 +51,10 @@ console.log('\n拒絕')
   assert(!r.ok && r.error.includes('委託書號'), '沒有委託書號 → 整份拒絕（無法去重）')
 }
 {
+  const r = parseBrokerTradeCsv(fixture.replace('2025/01/02', '2025/02/30'))
+  assert(!r.ok && r.error.includes('2025/02/30 不存在'), '日曆上沒有的成交日期（2/30）→ 整份拒絕並寫出是哪一天，不送出去讓業務中台進位或回 400')
+}
+{
   const r = parseBrokerTradeCsv('date,symbol\n2025-01-01,2330')
   assert(!r.ok, '不認得的格式 → 拒絕')
 }

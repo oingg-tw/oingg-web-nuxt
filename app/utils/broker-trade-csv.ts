@@ -134,6 +134,9 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
 
     const where = `第 ${line} 行（${symbol}）`
     if (!date) return { ok: false, error: `${where}的成交日期看不懂` }
+    const tradeDate = `${date[1]}-${date[2]}-${date[3]}`
+    // 格式對、日曆上沒有的（2026/02/30）：Date.UTC 會進位成 03-02，換回字串就對不上。業務中台以前默默存成 03-02，2026-11 起回 400
+    if (new Date(Date.UTC(Number(date[1]), Number(date[2]) - 1, Number(date[3]))).toISOString().slice(0, 10) !== tradeDate) return { ok: false, error: `${where}的成交日期 ${date[0]} 不存在` }
     if (side !== '買' && side !== '賣') return { ok: false, error: `${where}的買賣別不是「買」或「賣」` }
     if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, error: `${where}的成交數量不是正整數` }
     if (![price, amount, fee, tax, net].every(Number.isFinite) || price < 0) return { ok: false, error: `${where}有欄位不是數字` }
@@ -143,7 +146,6 @@ export function parseBrokerTradeCsv(text: string): BrokerCsvResult {
     const expectedNet = side === '買' ? -(amount + fee) : amount - fee - tax
     if (Math.abs(expectedNet - net) > 1) return { ok: false, error: `${where}的應收付金額對不上手續費與交易稅，檔案格式可能改了` }
 
-    const tradeDate = `${date[1]}-${date[2]}-${date[3]}`
     const cost = side === '賣' && Number.isFinite(pnl) ? net - pnl : null
     trades.push({
       externalRef: `${tradeDate}|${ref}`,
