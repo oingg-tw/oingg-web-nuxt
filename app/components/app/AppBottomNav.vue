@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 手機的區內導覽：底部固定一條「其他頁面 目前：XX」，點開往上展開這一區的清單（2026-10-07 全站統一，使用者在
 // 「底部固定條＋展開清單／頁首按鈕排／併進全站選單」三個方案裡選了第一個）。個股頁（StockPageNav）、持股管理與
-// 總經（SectionNav）、產業（IndustryNav）都用這一個外殼，各自只把清單放進 slot；寬螢幕仍是 AppNavRail。
+// 總經（SharedSectionNav）、產業（IndustryNav）都用這一個外殼，各自只把清單放進 slot；寬螢幕仍是 AppNavRail。
 //
 // 為什麼是原生 <details>、不是 el-drawer：清單裡的連結是站內連結圖的一部分，必須在 SSR HTML 裡（收合的
 // <details> 內容照樣在 markup 裡，drawer 沒打開就不在）。這段理由最早寫在 StockPageNav 2026-09-23 的註解。

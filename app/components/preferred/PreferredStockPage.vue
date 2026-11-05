@@ -52,7 +52,7 @@ const footer = {
     :footer="footer"
   >
     <template #nav>
-      <SectionNav :label="`${shortName} ${code}`" :items="preferredFacetItems(code)" />
+      <SharedSectionNav :label="`${shortName} ${code}`" :items="preferredFacetItems(code)" />
     </template>
     <slot />
   </StockPageShell>

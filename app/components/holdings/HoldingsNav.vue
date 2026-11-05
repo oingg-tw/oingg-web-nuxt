@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 持股管理的導覽（使用者 2026-10-05：「holdings sidebar 要有選項，可以跟大盤比對驗證特定日期間的績效」）。
-// 版面與兩份 DOM 的理由在 SectionNav.vue。
+// 版面與兩份 DOM 的理由在 SharedSectionNav.vue。
 // 2026-10-07 重排（使用者：「performance 這一頁太亂了，請把指標拆去別的畫面。盤點一下整個持股管理功能怎麼調整好，
 // Sidebar應該有那些項目」）：依「現在有什麼 → 過去發生了什麼 → 風險 → 設定」排。原本的「交易績效」拆成報酬與大盤、
 // 已實現損益、績效統計三頁；自訂欄位是總覽表格的設定，移到最後。
@@ -45,7 +45,7 @@ const currentAccount = computed(() => (showSwitch.value ? selected.value?.name ?
 </script>
 
 <template>
-  <SectionNav label="持股管理" :items="HOLDINGS_NAV_ITEMS" :current-detail="currentAccount">
+  <SharedSectionNav label="持股管理" :items="HOLDINGS_NAV_ITEMS" :current-detail="currentAccount">
     <template #after>
       <SharedScopeSwitch
         v-if="showSwitch || skeletonRows"
@@ -56,5 +56,5 @@ const currentAccount = computed(() => (showSwitch.value ? selected.value?.name ?
         @select="(id) => { selectedPortfolioId = id }"
       />
     </template>
-  </SectionNav>
+  </SharedSectionNav>
 </template>

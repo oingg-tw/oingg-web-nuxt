@@ -112,7 +112,7 @@ function priceText(transaction: Transaction): string {
         </template>
       </el-table-column>
     </el-table>
-    <!-- 窄螢幕的清單版：同一份資料的第二份 DOM，CSS 決定顯示哪一份（站上的既有做法，見 SectionNav.vue）。7 欄的交易
+    <!-- 窄螢幕的清單版：同一份資料的第二份 DOM，CSS 決定顯示哪一份（站上的既有做法，見 SharedSectionNav.vue）。7 欄的交易
          表在 375px 會溢出 446px（2026-10-05 量到），清單每筆兩行就放得下。兩行各分左右（2026-10-20 手機卡片改版）：
          「日期 買賣」｜「股數 @ 價格」、「費稅・備註」｜「編輯 刪除」，右邊切齊 -->
     <ul v-if="Array.isArray(entries)" class="ledger__list">

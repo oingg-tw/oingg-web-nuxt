@@ -3,8 +3,8 @@ import { ArrowRight, CircleCheck, Coin, DataLine, Discount, Folder, Lock, Money,
 import type { Component } from 'vue'
 import type { MetricCategory, MetricField, Metric } from '~/composables/screener/useFilterSchema'
 // Hollow-hexagon glyph for the 大師/量化 category — no matching glyph in Element Plus's icon
-// set, see IconHexagon.vue's own comment.
-import IconHexagon from '~/components/shared/IconHexagon.vue'
+// set, see SharedIconHexagon.vue's own comment.
+import IconHexagon from '~/components/shared/SharedIconHexagon.vue'
 
 // The 大/中/小 (category/metric/field) navigation itself, mounted by two wrappers: the screener's
 // ScreenerConditionPanel (conditions and columns, one panel) and SharedMetricColumnPicker (pick a

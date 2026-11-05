@@ -33,7 +33,7 @@ const trailingItems = computed(() => props.items.filter(item => item.trailing))
 // 拖曳排序（2026-10-13 個股自選指標起，使用者：「sidebar 自選指標 希望可以用拖曳的方式就更新排序」）。2026-10-23 從 sortablejs 換成
 // useColumnDrag（Pragmatic DnD，同表頭換欄）：拖的時候清單不動、插入的縫畫一條線、放手才搬。原生拖曳要移動一段距離才開始，點連結仍是
 // 點連結；粗指標（手機）不能拖，免得跟捲動底部清單打架。鍵盤與單指替代路徑由呼叫端提供（個股是指標速覽表格的上移／下移，WCAG 2.5.7）。
-// 呼叫端指定目前位置時照它（物件綁定：undefined 也要蓋掉路由在完全符合那一列設的 aria-current，見 SectionNav）
+// 呼叫端指定目前位置時照它（物件綁定：undefined 也要蓋掉路由在完全符合那一列設的 aria-current，見 SharedSectionNav）
 const mark = (item: StockNavNode) => (item.current === undefined ? {} : { 'aria-current': item.current ? 'page' as const : undefined })
 // 只有一列（或還在讀）就沒有東西可排：不畫握把、不掛拖曳
 const draggable = computed(() => props.sortableItems.length > 1 && !props.sortableItems.some(item => item.skeleton))

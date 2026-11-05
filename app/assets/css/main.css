@@ -226,7 +226,7 @@ body {
 }
 
 /* 側欄清單的樣子（2026-10-20，使用者：「watchlist sidebar 看起來像是跑版一樣，我們全站的 sidebar 樣式請統一管理」）：側欄的外框是
-   AppNavRail，裡面每一列、組標題、分隔線都用這幾個 class——SectionNav（持股、觀察清單、總經、新手、篩選、特別股）、StockPageNavList
+   AppNavRail，裡面每一列、組標題、分隔線都用這幾個 class——SharedSectionNav（持股、觀察清單、總經、新手、篩選、特別股）、StockPageNavList
   （個股、ETF）、SharedScopeSwitch（帳戶、清單的切換）。原本三處各寫一份，切換那一段多空一截、滑過與鍵盤焦點也不一致。
    列高 48px 是本站的觸控下限；目前頁粗體＋底線＋底色一起上，不只靠顏色 */
 .rail-list {
