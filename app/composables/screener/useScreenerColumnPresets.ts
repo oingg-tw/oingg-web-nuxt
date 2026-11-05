@@ -129,8 +129,12 @@ export function useScreenerColumnPresets(universe: ScreenerUniverse = 'common') 
   async function applyTemplate(key: string): Promise<ScreenerColumnPreset | null> {
     if (!currentUser.value) return null
     try {
-      const response = await authedFetch<{ preset: ScreenerColumnPreset }>(`/screener/column-preset-templates/${key}/apply`, { method: 'POST' })
-      return response.preset
+      const { preset } = await authedFetch<{ preset: ScreenerColumnPreset }>(`/screener/column-preset-templates/${key}/apply`, { method: 'POST' })
+      // 範本有被藏起來的舊指標就當場換掉（replaced-metrics.ts）：留到下次開頁才換，重新整理之後欄位就變了。存失敗一樣等下次開頁換
+      const fields = preset.columns.map(column => column.field)
+      const kept = replacedFields(fields)
+      if (kept.join() === fields.join()) return preset
+      return await update(preset.id, { fields: kept }) ?? preset
     } catch (error) {
       warn(`POST /screener/column-preset-templates/${key}/apply`, error)
       return null

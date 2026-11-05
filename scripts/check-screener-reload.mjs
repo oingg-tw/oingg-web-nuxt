@@ -1,6 +1,6 @@
 // 三組篩選重新整理前後，顯示欄位不能跑掉（2026-11-05，使用者：「screener 顯示欄位重新整理以後會跑掉」）：改欄位 → 記下兩個下拉、表頭順序 →
 // 重新整理 → 要一模一樣。原本 21 條流程有多條不一樣：換欄位組合時表格的順序跟存的不同（SharedMetricTable）、普通股訪客的總覽有被藏起來的舊指標、
-// 未儲存的那組變成「請選擇」、沒有條件的已存篩選跳回「全部」。
+// 未儲存的那組變成「請選擇」、沒有條件的已存篩選跳回「全部」、套用官方欄位組合時舊指標要到下次開頁才換。
 // 登入的流程用測試帳號，但篩選與欄位組合全是這支腳本假的（記得住狀態，存了下次讀得到）：帳號裡什麼都不會變，其他寫入一律擋下。訪客的流程是真的查。
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-screener-reload.mjs [流程名稱的一部分]（要 A11Y_TEST_EMAIL／PASSWORD；BASE_URL 可換 DEV）
 import { chromium } from 'playwright'
@@ -18,6 +18,9 @@ const UNIVERSES = {
   preferred: { path: '/screener/preferred', guestPath: '/screener/preferred', first: '高殖利率', second: '低溢價', guestColumn: '發行價', column: '最差殖利率', presets: () => [preset('p1', '高殖利率', [range('currentYieldPct', 1)]), preset('p2', '低溢價', [range('premiumRatePct', -100)])], sets: () => [set('A', false, ['issuePrice', 'ytwPct']), set('B', false, ['currentYieldPct', 'issuePrice', 'premiumRatePct'])] }
 }
 
+// 官方範本固定帶一支被藏起來的舊指標：業務中台的範本改好之後這條照樣驗得到，隱藏清單歸網站管，範本隨時可能又過期
+const TEMPLATE = { key: 'dividendIncome', name: '存股與股利', description: '殖利率與 ROE', fields: ['dividendYield.EOD', 'roe.TTM'] }
+
 // 假的業務中台：存的東西下次讀得到，/run 回那組欄位組合的順序並記住上次用的（同 run_preset.rs）。查詢是真的
 const mock = async (ctx, saved) => {
   await ctx.route('**/*', async (route) => {
@@ -25,6 +28,12 @@ const mock = async (ctx, saved) => {
     if (saved) {
       if (p === '/api/core/screener/presets' && m === 'GET') return route.fulfill({ json: { presets: saved.presets } })
       if (p === '/api/core/screener/column-presets' && m === 'GET') return route.fulfill({ json: { columnPresets: saved.sets } })
+      if (p === '/api/cached/screener/column-preset-templates') return route.fulfill({ json: { templates: [TEMPLATE] } })
+      if (p === `/api/core/screener/column-preset-templates/${TEMPLATE.key}/apply`) {
+        const created = { ...set('T', false, TEMPLATE.fields), name: TEMPLATE.name }
+        saved.sets.push(created)
+        return route.fulfill({ json: { preset: created } })
+      }
       const run = p.match(/^\/api\/core\/screener\/presets\/([^/]+)\/run$/)
       if (run) {
         const target = saved.presets.find(item => item.id === run[1])
@@ -79,6 +88,12 @@ async function addColumn(page, name) {
   await dialog.getByRole('button', { name: '儲存' }).click()
   await page.waitForTimeout(2500)
 }
+const applyColumnTemplate = async (page) => {
+  await page.getByRole('button', { name: '新增欄位組合' }).click()
+  await page.getByRole('button', { name: /官方精選欄位組合/ }).click()
+  await page.getByRole('button', { name: new RegExp(TEMPLATE.name) }).click()
+  await page.waitForTimeout(2500)
+}
 
 // ---- 登入（同 check-screener-manage） ----
 const loginCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
@@ -106,7 +121,7 @@ const flowsOf = (key) => {
     { name: '組合B 加一欄', act: async (page) => { await onFirst(page); await choose(page, 1, '組合B'); await addColumn(page, u.column) } },
     { name: '切到第二組', act: page => choose(page, 0, u.second) }
   ]
-  if (key === 'common') return [...flows, { name: '未儲存的那組 選組合B', path: '/screener/common?f=roe.TTM:20~', act: page => choose(page, 1, '組合B') }]
+  if (key === 'common') return [...flows, { name: '未儲存的那組 選組合B', path: '/screener/common?f=roe.TTM:20~', act: page => choose(page, 1, '組合B') }, { name: '套用官方欄位組合', act: applyColumnTemplate }]
   return [
     ...flows,
     { name: '內建那組 選組合B', act: page => choose(page, 1, '組合B') },
