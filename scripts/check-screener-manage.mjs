@@ -21,7 +21,7 @@ const START = [
   // 殖利率用留下來的那一支（replaced-metrics.ts）：用被藏起來的舊指標，篩選一打開就會換掉並存回，「取消什麼都不送」就不成立
   { id: 'p-a', name: '高股息', filters: [{ field: 'liveCashDividendYield.EOD', min: 5, max: null, exclude: false }] },
   { id: 'p-b', name: '低本益比', filters: [{ field: 'exchangePeRatio.EOD', min: null, max: 12, exclude: false }] },
-  { id: 'p-c', name: '成長', filters: [{ field: 'revenueYoy.M', min: 20, max: null, exclude: false }] }
+  { id: 'p-c', name: '成長', filters: [{ field: 'revenueGrowthRate.TTM', min: 20, max: null, exclude: false }] }
 ]
 let presets = structuredClone(START)
 // 顯示欄位的管理（複製）也用假的欄位組合
@@ -186,7 +186,7 @@ await dialog.getByRole('button', { name: '儲存' }).click()
 await dialog.waitFor({ state: 'hidden' })
 for (const start = Date.now(); Date.now() - start < 15000 && !calls.some(call => call.startsWith('REORDER')); await page.waitForTimeout(200));
 await page.waitForTimeout(800)
-check(calls.join(' | ') === 'POST revenueYoy.M | PATCH p-new-2 成長 2 | REORDER p-c,p-new-2,p-b', '儲存：用原本那一組的條件建立、改名、排在它後面', calls.join(' | '))
+check(calls.join(' | ') === 'POST revenueGrowthRate.TTM | PATCH p-new-2 成長 2 | REORDER p-c,p-new-2,p-b', '儲存：用原本那一組的條件建立、改名、排在它後面', calls.join(' | '))
 const copied = await options()
 check(copied.join('、') === '成長、成長 2、低 PE', '選單有副本、在原本那一組後面', copied.join('、'))
 // 儲存後切到複製出來的那一組（2026-11-04，使用者：「藉由複製新增 條件組合以後 確認以後 要立刻切換到該條件組合」）

@@ -42,7 +42,7 @@ export function useScreenerTabColumnPresets(ctx: {
 }) {
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
-  const { run, lastErrorMessage } = useScreenerPresets()
+  const { run } = useScreenerPresets()
   const {
     create: createColumnPreset,
     update: updateColumnPreset,
@@ -116,7 +116,7 @@ export function useScreenerTabColumnPresets(ctx: {
       // this branch only covers a genuinely new-to-this-tab column preset.)
       const result = await run(tab.id, columnPresetId ?? undefined, { page: 1, pageSize: tab.pageSize })
       if (!result) {
-        showErrorMessage(lastErrorMessage.value ?? '切換欄位組合失敗')
+        showErrorMessage('切換欄位組合失敗，請稍後再試')
         return
       }
       tab.columnPresetId = columnPresetId

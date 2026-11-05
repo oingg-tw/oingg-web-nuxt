@@ -20,7 +20,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   const authResolved = useAuthResolved()
   // 「已經持有」的帳戶（條件選項）
   const { portfolios: heldPortfolios } = useHeldSymbols()
-  const { update, run, runStateless, list, lastErrorMessage, lastError } = useScreenerPresets()
+  const { update, run, runStateless, list, lastError } = useScreenerPresets()
   // 搜尋讀不到（2026-10-11）：交給全站讀取失敗彈窗，重試＝同一個分頁、同一頁再搜一次。4xx（例如條件不合法）是可以
   // 行動的回饋，照舊用提示顯示上游給的理由；「載入更多」失敗也照舊用提示（已載入的列留著）。
   const searchFailure = shallowRef<{ tab: ScreenerTab; page?: number; error: unknown } | null>(null)
@@ -69,7 +69,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
         }
       }
     }
-    return fieldId
+    return GONE_FIELD_LABEL
   }
 
   // 類別值換成目前選項的值（2026-10-23）：最新財報季別的選項改成相對值（latest-1），存檔裡是當時的實際季別（"2026Q2"），送舊值業務中台
@@ -302,6 +302,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       return
     }
     const updated = await updateColumnPreset(tab.columnPresetId, { fields })
+    tab.columnsUnsaved = !updated
     // 選單裡記的欄位跟著更新：未儲存的頁籤切到這一組時，無狀態查詢帶的就是改過的欄位
     const option = columnPresetOptions.value.find(item => item.id === tab.columnPresetId)
     if (updated && option) option.fields = updated.columns.map(column => column.field)
@@ -317,6 +318,13 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // page=1 (isPageChangeOnly=true) to skip the filter PATCH but want a REPLACE, not an
   // append; only loadMoreResults's page=tab.page+1 call passes append=true.
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
+    if (goneSlot(tab.slots)) {
+      tab.searched = true
+      tab.results = []
+      tab.resultColumns = []
+      tab.total = 0
+      return
+    }
     const filters = filtersOfTab(tab)
 
     // 業務中台 要至少一個條件：數字條件、類股或已經持有的範圍都算（2026-10-19 起只有類股也能查，業務中台 5c3f36b；使用者要「只看某產業」）。
@@ -331,14 +339,6 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     const isPageChangeOnly = page !== undefined
     // 訪客、還沒存的頁籤：沒有 preset 可以 PATCH 或 run，走無狀態的 POST /screener，每次自己帶條件與欄位
     const isLocal = !currentUser.value || !!tab.unsaved
-
-    // Captured before the flag flips below: was this tab already searched at least once
-    // this session, i.e. does tab.columns actually reflect its backing column-preset's real
-    // fields? On a tab's very first search (freshly loaded from a reload, or a brand-new
-    // tab before its first run), tab.columns is still the empty placeholder from
-    // presetToTab — syncing that would PATCH a real, non-null column-preset down to zero
-    // columns, wiping out whatever it actually had saved server-side.
-    const alreadySearched = tab.searched
 
     if (append) tab.loadingMore = true
     else tab.loading = true
@@ -357,7 +357,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           // to resolve server-side; the stateless endpoint takes filters/columns/sectorCodes
           // directly on every call, so this is the entire request, no separate sync step.
           if (isLocal) {
-            const columns = tab.columns.map(column => column.field)
+            // 自己帶欄位時，上游拿掉的那一欄會讓業務中台整個回 400（存檔的欄位組合才是它讀取時略過）。同網址的 urlSelection
+            const columns = tab.columns.map(column => column.field).filter(field => !schema.value || field.startsWith('stock.') || locateFieldInSchema(categories.value, field))
             const result = await runStateless({
               filters,
               ...(columns.length ? { columns } : {}),
@@ -387,15 +388,14 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
               persistedFilterKeys.set(tab.id, filterKey)
             }
 
-            // Belt-and-braces: column edits already sync themselves immediately, this just
-            // covers a tab that's already bound to a real column-preset (fields may be stale
-            // server-side otherwise) and already known-accurate (see alreadySearched above).
+            // 欄位一改當下就存了，這裡只補送上次沒存成功的。不能每次查詢都存：業務中台讀取時略過型錄已沒有的欄位（448b511），畫面比存檔少
+            // 不是用戶改的；型錄暫時沒有也可能是部署時間差，存回去就真的把那一欄從帳號刪掉了。
             // Also skipped while columnPresetId is still null (the true zero-preset case) —
             // tab.columns there is just a read-only view of whatever the server resolved as
             // the default, not something the user configured, so syncing it would lazily
             // create a brand-new "顯示欄位 N" preset out of it and silently pin the tab to a
             // concrete id on the next filter edit, even though no column was ever touched.
-            if (alreadySearched && tab.columnPresetId !== null) {
+            if (tab.columnsUnsaved && tab.columnPresetId !== null) {
               await syncColumnPreset(tab)
             }
           }
@@ -442,9 +442,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
             // through just because loading the NEXT batch failed.
             tab.results = []
             tab.resultColumns = []
-            if (!reportSearchFailure(tab, page, lastError.value)) showErrorMessage(lastErrorMessage.value ?? '搜尋失敗，請稍後再試')
+            if (!reportSearchFailure(tab, page, lastError.value)) showErrorMessage(SEARCH_REJECTED_TEXT)
           } else {
-            showErrorMessage(lastErrorMessage.value ?? '載入更多失敗，請稍後再試')
+            showErrorMessage('載入更多失敗，請稍後再試')
           }
         })(),
         12_000,

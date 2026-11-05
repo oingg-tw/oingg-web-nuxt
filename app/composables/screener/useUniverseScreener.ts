@@ -95,6 +95,9 @@ export interface UniverseSource {
   // fieldKeys 是畫面的欄位 id
   columnTemplates: ColumnPresetTemplate[]
   column(fieldId: string): ScreenerResultTableColumn
+  // 這一組現在有沒有這個欄位：舊書籤、分享連結與存檔可能帶著上游拿掉的。欄位不影響篩出誰，不畫就好（不然表頭是欄位 id、整欄「—」）；
+  // 條件不能默默少，見 GONE_FIELD_LABEL
+  knownField(fieldId: string): boolean
   run(query: UniverseQuery): Promise<UniverseResult>
   rowLink(symbol: string): string
   // 每一格連到這檔哪個面向的頁；null＝整列（rowLink）
@@ -149,12 +152,15 @@ export function useUniverseScreener(source: UniverseSource) {
   // 帳號（存檔、欄位組合）與網址來的欄位名換成畫面的 id；上游改過名的先換成新名
   const storedFieldId = (field: string) => snapshotFieldId(source.renamedFields?.[field] ?? field)
 
+  const knownFields = (fieldIds: string[]) => fieldIds.filter(fieldId => source.knownField(fieldId))
+
   function labelOf(fieldId: string): string {
+    if (!source.knownField(fieldId)) return GONE_FIELD_LABEL
     return locateFieldInSchema(source.categories.value, fieldId)?.metric.name ?? source.column(fieldId).label
   }
 
   function columnsOf(fieldIds: string[]): ScreenerResultTableColumn[] {
-    return fieldIds.map(fieldId => source.column(fieldId))
+    return knownFields(fieldIds).map(fieldId => source.column(fieldId))
   }
 
   function slotsOf(filters: FilterCriterion[]): TabFilterSlot[] {
@@ -239,7 +245,7 @@ export function useUniverseScreener(source: UniverseSource) {
   }
 
   function toColumnSet(preset: ScreenerColumnPreset): ColumnSet {
-    return { id: preset.id, name: preset.name, fields: preset.columns.map(column => storedFieldId(column.field)), saved: true }
+    return { id: preset.id, name: preset.name, fields: knownFields(preset.columns.map(column => storedFieldId(column.field))), saved: true }
   }
 
   // ---- 查詢 ----
@@ -253,6 +259,13 @@ export function useUniverseScreener(source: UniverseSource) {
   })
 
   async function search(tab: UniverseTab, append = false) {
+    if (goneSlot(tab.slots)) {
+      tab.searched = true
+      tab.results = []
+      tab.total = 0
+      tab.totalPages = 0
+      return
+    }
     const seq = (requestSeq.get(tab.id) ?? 0) + 1
     requestSeq.set(tab.id, seq)
     const page = append ? tab.page + 1 : 1
@@ -282,8 +295,8 @@ export function useUniverseScreener(source: UniverseSource) {
       tab.results = []
       tab.total = 0
       tab.totalPages = 0
-      // 4xx（條件不合法）是可以行動的回饋，照上游的理由提示；其他交給全站讀取失敗彈窗
-      if (classifyApiError(error).kind === 'client') showErrorMessage(describeBusinessError(error) ?? '搜尋失敗，請稍後再試')
+      // 4xx 重試也不會好，請用戶調整；其他交給全站讀取失敗彈窗
+      if (classifyApiError(error).kind === 'client') showErrorMessage(SEARCH_REJECTED_TEXT)
       else searchFailure.value = { tabId: tab.id, error }
     } finally {
       if (requestSeq.get(tab.id) === seq) {
@@ -656,10 +669,10 @@ export function useUniverseScreener(source: UniverseSource) {
         ?? columnPresets.find(preset => preset.isDefault)?.id
         ?? BUILT_IN_ID
 
-      // 網址的欄位先套上（下面建的每一組都用目前的欄位組合）；跟目前選的那一組一樣就不動
+      // 網址的欄位先套上（下面建的每一組都用目前的欄位組合）；跟目前選的那一組一樣就不動。上游拿掉的不收：全都拿掉了就當網址沒帶欄位
       const urlState = pendingUrlState
       pendingUrlState = null
-      const urlColumns = urlState?.columns.map(storedFieldId) ?? []
+      const urlColumns = knownFields(urlState?.columns.map(storedFieldId) ?? [])
       if (urlColumns.length && urlColumns.join('|') !== activeColumnSet.value?.fields.join('|')) {
         columnSets.value[0]!.fields = urlColumns
         activeColumnSetId.value = BUILT_IN_ID

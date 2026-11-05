@@ -17,14 +17,14 @@ export function urlFiltersOf(slots: TabFilterSlot[], fieldOut: (fieldId: string)
   })
 }
 
-// 網址的條件 → 篩選條件：型錄沒有的不帶（業務中台對不認得的欄位整個查詢回 400），類別值照型錄的選項換回原本的型別（除權息月份的
-// 選項值是整數，網址讀出來是字串，膠囊比對選項用 ===）
+// 網址的條件 → 篩選條件：類別值照型錄的選項換回原本的型別（除權息月份的選項值是整數，網址讀出來是字串，膠囊比對選項用 ===）。
+// 型錄沒有的也帶著，畫面寫「已下架的條件」（GONE_FIELD_LABEL）：丟掉的話，分享的連結會默默少一個條件。已經持有例外：訪客沒有帳戶，不帶
 export function filtersFromUrl(filters: ScreenerUrlFilter[], categories: MetricCategory[], fieldIn: (field: string) => string = field => field): FilterCriterion[] {
   return filters.flatMap((filter): FilterCriterion[] => {
     const fieldId = fieldIn(filter.field)
     const metric = locateFieldInSchema(categories, fieldId)?.metric
-    if (!metric) return []
-    const values = filter.values?.map(value => findScreenerOption(metric.options, value)?.value ?? value)
+    if (!metric && isHeldField(fieldId)) return []
+    const values = filter.values?.map(value => findScreenerOption(metric?.options, value)?.value ?? value)
     return [{ field: fieldId, min: filter.min, max: filter.max, exclude: filter.exclude, ...(values ? { values } : {}) }]
   })
 }

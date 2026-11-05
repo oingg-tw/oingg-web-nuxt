@@ -37,6 +37,14 @@ export interface TabFilterSlot {
   values?: (string | number)[]
 }
 
+// 條件用到的欄位上游拿掉了（2026-11-05）：算不出來，也不能默默少掉這個條件（業務中台對這種存檔回 400，結果會比用戶以為的多），所以膠囊寫這個
+// 名字、不查，結果區說明並給移除的按鈕。只擋查詢、不動帳號裡的存檔：型錄暫時沒有也可能是上游部署的時間差（market.EOD，2026-10-21 被誤刪過）
+export const GONE_FIELD_LABEL = '已下架的條件'
+export const goneSlot = (slots: TabFilterSlot[]) => slots.find(slot => slot.fieldLabel === GONE_FIELD_LABEL)
+
+// 查詢被擋下來（4xx）：上游的理由是寫給工程師的（英文、欄位 id、API 路徑），不給用戶看
+export const SEARCH_REJECTED_TEXT = '查不出結果，請調整條件或欄位後再試'
+
 // 條件編輯（useScreenerConditionEditor）只碰頁籤的這三個欄位——普通股、特別股、ETF 三組的頁籤都滿足它，共用同一套條件流程
 export interface ConditionTab {
   slots: TabFilterSlot[]
@@ -199,6 +207,8 @@ export interface ScreenerTab extends WorkspaceTab {
   unsaved?: boolean
   columns: ResultColumnChoice[]
   columnPresetId: string | null
+  // 上次改欄位沒存進帳號：下一次查詢補送，不然查詢讀帳號裡的欄位，畫面上剛改的會被蓋回去
+  columnsUnsaved?: boolean
   // Keyed by columnViewCacheKey(columnPresetId) — 'default' for null. tab.columns /
   // tab.results / tab.resultColumns always mirror whichever entry columnPresetId
   // currently points to; the cache is the source of truth for everything not currently

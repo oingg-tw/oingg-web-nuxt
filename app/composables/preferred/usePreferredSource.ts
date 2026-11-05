@@ -167,6 +167,11 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     }
   }
 
+  function knownField(fieldId: string): boolean {
+    const field = snapshotField(fieldId)
+    return field === HELD_FIELD_ID || METRICS.has(field)
+  }
+
   async function run(query: UniverseQuery): Promise<UniverseResult> {
     const heldFilter = query.filters.find(filter => filter.field === HELD_FIELD_ID)
     const wantsHeld = !!heldFilter || query.columns.includes(HELD_FIELD_ID)
@@ -202,6 +207,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     filterTemplates: FILTER_TEMPLATES,
     columnTemplates: COLUMN_TEMPLATES,
     column,
+    knownField,
     run,
     rowLink: preferredStockPath,
     cellLink: (symbol: string, fieldId: string) => preferredFieldPath(symbol, snapshotField(fieldId)),

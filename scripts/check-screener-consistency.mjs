@@ -429,6 +429,29 @@ if (!only || only.includes('ETF')) {
   await context.close()
 }
 
+// 上游拿掉的欄位（2026-11-05）：舊書籤、分享連結帶著它，三組都不畫（ETF、特別股原本表頭是欄位 id、整欄「—」），網址也洗掉。同一個網址裡還有的
+// 欄位留著，包括型錄分類裡沒有的 ETF 每年總費用率；一欄都不剩就是預設欄位
+const GONE_COLUMN_URLS = [
+  ['普通股', '/screener/common?f=roe.TTM:15~&c=roe.TTM,oldMetricGone.TTM', 'ROE'],
+  ['特別股', '/screener/preferred?c=issuePrice,oldMetricGone', '發行價'],
+  ['特別股', '/screener/preferred?c=oldMetricGone', '收盤價'],
+  ['ETF', '/screener/etf?c=expenseRatio2025,oldMetricGone', '總費用率 2025'],
+  ['ETF', '/screener/etf?c=oldMetricGone', '收盤價']
+]
+for (const [name, path, kept] of GONE_COLUMN_URLS.filter(([name]) => !only || only.includes(name))) {
+  console.log(`\n== ${name} 上游拿掉的欄位 ${path}`)
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  await page.goto(`${baseUrl}${path}`, { waitUntil: 'load', timeout: 180000 })
+  await visible(page.locator('.screener-result-table .el-table__body tbody tr'), 90000)
+  const labels = await page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()
+  expect(name, '表頭沒有欄位 id', !labels.some(label => label.includes('oldMetricGone')), labels.join('、'))
+  expect(name, `「${kept}」在表頭`, labels.some(label => label.includes(kept)), labels.join('、'))
+  const cleaned = await page.waitForFunction(() => !location.search.includes('oldMetricGone'), null, { timeout: 5000 }).then(() => true, () => false)
+  expect(name, '網址洗掉', cleaned, decodeURIComponent(page.url()).replace(baseUrl, ''))
+  await context.close()
+}
+
 await browser.close()
 
 // ── 個別頁（ETF、特別股，2026-10-15）：伺服器端就有標題與內容（不靠瀏覽器再讀）、一圖一表、找不到的代號 noindex。

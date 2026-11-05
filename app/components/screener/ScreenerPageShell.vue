@@ -29,6 +29,7 @@ const uid = useId()
 const hasHydrated = useHasHydrated()
 const tab = computed(() => props.screener.activeTab)
 const hasConditions = computed(() => !!tab.value?.slots.some(slot => slot.fieldId !== null))
+const goneCondition = computed(() => goneSlot(tab.value?.slots ?? []))
 
 // 「全部」還是「符合上述條件」看的是這個數字查到的時候有沒有條件，不是現在：改條件到自動查詢之間的 0.6 秒，數字還是上一次的，
 // 跟著現在的條件換字首會讓 live region 先念一個錯的數字（2026-10-15 量到「符合上述條件 339 檔」接著才「322 檔」）
@@ -43,6 +44,7 @@ const countParts = computed(() => {
   const current = tab.value
   if (!current?.searched) return null
   if (current.loading) return { prefix: '', main: '搜尋中…', note: '' }
+  if (goneCondition.value) return { prefix: '', main: '有已下架的條件', note: '' }
   const main = `${groupThousands(current.total)} 檔`
   if (!countedWithConditions.value) return { prefix: '全部 ', main, note: '' }
   return { prefix: '符合上述條件 ', main, note: current.total > 0 && current.total < 10 ? '檔數少，條件稍微變動結果就可能不同' : '' }
@@ -51,6 +53,13 @@ const countParts = computed(() => {
 const empty = computed(() => !!tab.value?.searched && !tab.value.loading && tab.value.total === 0 && hasConditions.value)
 const conditionCount = computed(() => tab.value?.slots.filter(slot => slot.fieldId !== null).length ?? 0)
 const lastSlotId = computed(() => tab.value?.slots.at(-1)?.id ?? null)
+
+// 空狀態的按鈕查完就跟著消失：焦點先移到結果標題，鍵盤使用者才不會被丟回頁首
+const resultsHeading = ref<HTMLElement>()
+function removeFromEmpty(slotId: number) {
+  resultsHeading.value?.focus()
+  props.screener.removeSlot(tab.value!, slotId)
+}
 
 // 新增條件按「完成」之後焦點落在新膠囊的值上，不是回到「新增條件」：鍵盤使用者接著要改值或移除，不必再找一次。
 // 等面板的 closed（關閉動畫結束）才移：Element Plus 的對話框在那之前會把焦點還給打開它的按鈕
@@ -160,7 +169,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           <!-- 全站表格的卡片（SharedTable custom）：標題、顯示欄位與表格在同一張卡片上；手機（卡片版面）拿掉，見 CSS -->
           <SharedTable custom class="screener-shell__results-card">
           <div class="screener-shell__results-header">
-            <h2 :id="`${uid}-results`" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
+            <h2 :id="`${uid}-results`" ref="resultsHeading" tabindex="-1" class="app-page__h2 screener-shell__results-title">篩選結果</h2>
             <!-- 提醒在 live region 裡照樣念，畫面上是後面那個 aria-hidden 的：擠在檔數那一格裡，手機會折成三到五行（2026-11-01），
                  窄的時候它自己一行、寬的時候接在檔數後面 -->
             <p class="screener-shell__count" role="status"><template v-if="countParts"><span class="screener-shell__count-prefix">{{ countParts.prefix }}</span>{{ countParts.main }}<span v-if="countParts.note" class="visually-hidden">；{{ countParts.note }}</span></template></p>
@@ -173,8 +182,14 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           <!-- 沒有結果：說清楚是條件太嚴，給一個馬上能做的動作（三組同一段）。這時「顯示欄位」跟著表格一起收起來（沒有資料就沒有欄位可選）。
                下面結果表的名稱欄跟著資料寬（SharedMetricTable 量最長的名稱） -->
           <div v-if="empty" class="screener-shell__empty">
-            <p class="screener-shell__empty-text">沒有符合上述條件的{{ zone.subject }}。可以放寬或移除條件。</p>
-            <el-button v-if="lastSlotId !== null" class="screener-shell__empty-button" @click="screener.removeSlot(tab!, lastSlotId)">移除最後一個條件</el-button>
+            <template v-if="goneCondition">
+              <p class="screener-shell__empty-text">這組篩選有指標已經下架，查不出結果。請移除它，或到篩選條件換成別的指標。</p>
+              <el-button class="screener-shell__empty-button" @click="removeFromEmpty(goneCondition!.id)">移除已下架的條件</el-button>
+            </template>
+            <template v-else>
+              <p class="screener-shell__empty-text">沒有符合上述條件的{{ zone.subject }}。可以放寬或移除條件。</p>
+              <el-button v-if="lastSlotId !== null" class="screener-shell__empty-button" @click="removeFromEmpty(lastSlotId)">移除最後一個條件</el-button>
+            </template>
           </div>
           <SharedMetricTable
             v-else

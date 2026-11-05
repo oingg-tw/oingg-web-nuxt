@@ -72,10 +72,12 @@ const rangeText = computed(() => {
 // no longer asks for a period up front (see ScreenerIndicatorPickerBody's hidePeriod prop),
 // so this is the only place left where it's visible without opening the range editor.
 const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLabel.value}  ${rangeText.value}` : rangeText.value))
+// 上游拿掉的指標沒有範圍可以改，只能換一個指標或移除
+const gone = computed(() => props.fieldLabel === GONE_FIELD_LABEL)
 </script>
 
 <template>
-  <div class="condition-pill" :class="{ 'condition-pill--empty': !fieldLabel }">
+  <div class="condition-pill" :class="{ 'condition-pill--empty': !fieldLabel || gone }">
     <!-- title 帶完整名稱：兩欄時名稱太長會加刪節號（可及名稱本來就是按鈕上的全名） -->
     <button
       type="button"
@@ -86,7 +88,7 @@ const valueText = computed(() => (currentPeriodLabel.value ? `${currentPeriodLab
 
     <!-- 可及名稱帶上欄位名：朗讀器聽到的是「ROE：大於 15%」，不是孤零零的「大於 15%」 -->
     <button
-      v-if="fieldLabel"
+      v-if="fieldLabel && !gone"
       type="button"
       class="condition-pill__value"
       :title="valueText"

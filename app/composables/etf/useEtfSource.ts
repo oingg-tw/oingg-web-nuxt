@@ -178,6 +178,12 @@ export function useEtfSource(): UniverseSource {
     }
   }
 
+  // 每年一欄的總費用率不在型錄裡（見 run）；型錄讀不到的時候不判斷
+  function knownField(fieldId: string): boolean {
+    const field = snapshotField(fieldId)
+    return field === HELD_FIELD_ID || EXPENSE_RATIO_YEAR.test(field) || !catalog.value || fieldsByKey.value.has(field)
+  }
+
   // 排除（exclude）兩種都直接送（analysis-ts 17079ab，本機與 DEV 2026-10-15 都上線）。對 null 的處理不同，照上游：類別型排除保留 null
   // （2026-10-15 量：排除掛牌分類「槓桿型」＝322 檔＝339−17，含 40 檔沒有分類的），數字型排除 null 一律不留（不知道 null 在不在範圍外）
   function toEtfFilter({ field, ...filter }: FilterCriterion) {
@@ -207,7 +213,7 @@ export function useEtfSource(): UniverseSource {
     // 濾完一欄都不剩（存了空的欄位組合、或組合裡的欄位上游全拿掉了）就改用預設欄位：沒有條件又沒有欄位，業務中台回 400
     //「"filters" or "columns" must have at least one item」，一進頁面就跳錯誤（2026-10-18）
     // 每年一欄的總費用率不在型錄裡：合成一欄 expenseRatioHistory 送出，回來在 toRow 展開
-    const known = (fields: string[]) => fields.filter(field => field === HELD_FIELD_ID || EXPENSE_RATIO_YEAR.test(field) || !catalog.value || fieldsByKey.value.has(field))
+    const known = (fields: string[]) => fields.filter(field => knownField(field))
     const columns = [...new Set(known(query.columns).map(field => (EXPENSE_RATIO_YEAR.test(field) ? 'expenseRatioHistory' : field)))]
     const body: Record<string, unknown> = {
       columns: (columns.length ? columns : known(DEFAULT_COLUMNS.map(snapshotField))).map(field => ({ field })),
@@ -221,8 +227,8 @@ export function useEtfSource(): UniverseSource {
     if (held?.values?.length) body[held.exclude ? 'excludeHeldPortfolioIds' : 'heldPortfolioIds'] = held.values.map(String)
     // 預設順序是規模由大到小（2026-10-31，使用者：「ETF 篩選 希望預設排序按照規模」）：沒選排序就照規模排，表頭不標箭頭。業務中台只排
     // 請求裡有的欄位（sortField 不在 columns 回 400），這一組的欄位沒有規模時多帶這一欄，畫面上不會多出來
-    // 某一年的總費用率不能當 sortField（上游回 400）：存檔或舊書籤帶著的，照預設的規模排（畫面上那幾欄只排已載入的列）
-    const sort = query.sort && !EXPENSE_RATIO_YEAR.test(query.sort.field) ? query.sort : { field: 'aum', order: 'desc' }
+    // 某一年的總費用率不能當 sortField（上游回 400）：存檔或舊書籤帶著的，照預設的規模排（畫面上那幾欄只排已載入的列）；上游拿掉的欄位一樣
+    const sort = query.sort && knownField(query.sort.field) && !EXPENSE_RATIO_YEAR.test(query.sort.field) ? query.sort : { field: 'aum', order: 'desc' }
     const sentColumns = body.columns as { field: string }[]
     if (!sentColumns.some(column => column.field === sort.field) && sort.field !== 'symbol') sentColumns.push({ field: sort.field })
     body.sortField = sort.field
@@ -243,6 +249,7 @@ export function useEtfSource(): UniverseSource {
     filterTemplates: FILTER_TEMPLATES,
     columnTemplates: COLUMN_TEMPLATES,
     column,
+    knownField,
     run,
     rowLink: etfPath,
     cellLink: (symbol: string, fieldId: string) => {

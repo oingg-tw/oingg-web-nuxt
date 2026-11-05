@@ -4,6 +4,7 @@
 //   - 切到記著欄位組合的那一組，欄位換成它
 //   - 在一組上選欄位組合 → 只 PATCH 那一組的 lastColumnPresetId；選內建的「基本欄位」→ null
 //   - 切到沒記過的那一組，欄位照目前的、不換，也不會順手改到其他組
+//   - 欄位組合帶著上游拿掉的欄位：那一欄不畫（2026-11-05）
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-screener-column-memory.mjs（要 A11Y_TEST_EMAIL／PASSWORD）
 import { chromium } from 'playwright'
 
@@ -18,7 +19,8 @@ const presets = [
 ]
 const columnPresets = [
   { id: 'ec-a', name: '規模', isDefault: false, columns: [{ field: 'aum' }, { field: 'holders' }] },
-  { id: 'ec-b', name: '報酬', isDefault: false, columns: [{ field: 'return1y' }, { field: 'return3y' }] }
+  { id: 'ec-b', name: '報酬', isDefault: false, columns: [{ field: 'return1y' }, { field: 'return3y' }] },
+  { id: 'ec-gone', name: '上游拿掉一欄', isDefault: false, columns: [{ field: 'aum' }, { field: 'oldMetricGone' }] }
 ]
 const patches = []
 const mock = async (ctx) => {
@@ -88,6 +90,9 @@ patches.length = 0
 await choose(1, '基本欄位')
 await page.waitForTimeout(800)
 check(patches.join(' | ') === 'e-a {"lastColumnPresetId":null}', '選內建的「基本欄位」→ 這一組的記憶清掉（null）', patches.join(' | '))
+await choose(1, '上游拿掉一欄')
+const heads = (await page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()).join('、')
+check(heads === '代號、名稱、規模', '欄位組合裡上游拿掉的欄位不畫（表頭不是欄位 id）', heads)
 check(!pageErrors.length, '沒有 page error', pageErrors.join(' | '))
 
 await browser.close()
