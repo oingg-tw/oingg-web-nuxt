@@ -259,13 +259,7 @@ export function useUniverseScreener(source: UniverseSource) {
   })
 
   async function search(tab: UniverseTab, append = false) {
-    if (goneSlot(tab.slots)) {
-      tab.searched = true
-      tab.results = []
-      tab.total = 0
-      tab.totalPages = 0
-      return
-    }
+    if (goneSlot(tab.slots)) return
     const seq = (requestSeq.get(tab.id) ?? 0) + 1
     requestSeq.set(tab.id, seq)
     const page = append ? tab.page + 1 : 1
@@ -684,7 +678,10 @@ export function useUniverseScreener(source: UniverseSource) {
       const savedTabs = presets.map(presetToTab)
       let urlTab: UniverseTab | undefined
       if (urlState) {
-        urlTab = urlState.filters.length ? savedTabs.find(tab => sameFilters(urlFiltersOf(tab.slots, snapshotField), urlState.filters)) : undefined
+        // 網址只有欄位：剛才在一組沒有條件的已存篩選上就還是那一組，不跳回內建的「全部」
+        urlTab = urlState.filters.length
+          ? savedTabs.find(tab => sameFilters(urlFiltersOf(tab.slots, snapshotField), urlState.filters))
+          : savedTabs.find(tab => tab.id === rememberedChoice(tabKey) && !tab.slots.length)
         if (!urlTab) {
           builtInTab.slots = slotsOf(filtersFromUrl(urlState.filters, source.categories.value, storedFieldId).map(filter => ({ ...filter, field: snapshotField(filter.field) })))
           urlTab = builtInTab

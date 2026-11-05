@@ -37,8 +37,9 @@ export function useGuestScreener() {
   let overviewFieldKeysPromise: Promise<string[]> | null = null
   function resolveOverviewFieldKeys(): Promise<string[]> {
     // 讀不到時照舊用空欄位（訪客流程不因為欄位範本讀不到而卡住）；範本清單本身的失敗由下面的載入器報給彈窗
+    // 官方總覽還有被藏起來的舊指標（股價淨值比、殖利率）：一開始就換成留下來的那一支，不然重新整理之後（網址那條路會換）欄位就變了
     overviewFieldKeysPromise ??= listColumnTemplatesApi().then(
-      list => list.find(item => item.key === OVERVIEW_COLUMN_TEMPLATE_KEY)?.fieldKeys ?? [],
+      list => replacedFields(list.find(item => item.key === OVERVIEW_COLUMN_TEMPLATE_KEY)?.fieldKeys ?? []),
       () => []
     )
     return overviewFieldKeysPromise

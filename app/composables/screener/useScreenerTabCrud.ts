@@ -48,6 +48,7 @@ export function useScreenerTabCrud(ctx: {
   // 未儲存的頁籤（登入的人從 ?template／?sector 打開）用使用者自己的預設欄位組合：要它的 id 與欄位（無狀態查詢自己帶欄位）
   resolveDefaultColumnPresetId: () => string | null
   columnFieldsOf: (columnPresetId: string) => string[] | null
+  columnPresetWithFields: (fields: string[]) => string | null
 }) {
   const { data: schema } = useFilterSchema()
   const currentUser = useCurrentUser()
@@ -116,7 +117,8 @@ export function useScreenerTabCrud(ctx: {
   async function addLocalTab(filters: FilterCriterion[], fieldKeys: string[], name: string, options: { ownColumns?: boolean, sort?: { field: string, order: 'asc' | 'desc' } | null } = {}) {
     const tab = buildLocalTab(ctx.buildSlots(filters), fieldKeys, name)
     if (options.ownColumns) {
-      tab.columnPresetId = null
+      // 跟哪一組欄位組合一樣就是那一組：未儲存的這組選了欄位組合再重新整理，顯示欄位才不會變成「請選擇」
+      tab.columnPresetId = ctx.columnPresetWithFields(fieldKeys)
       tab.columns = fieldKeys.map(field => ({ field, label: field }))
     }
     if (options.sort) {

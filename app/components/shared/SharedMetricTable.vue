@@ -170,10 +170,9 @@ const emit = defineEmits<{
   sortChange: [field: string | null, order: 'ascending' | 'descending' | null]
 }>()
 
-// Local display order, drag-reorderable independently of whatever order the parent's
-// `columns` prop happens to be in — synced back up via `reorder` so the parent can
-// persist it (this tab's backing column-preset), and kept in sync here when columns are
-// added/removed upstream without losing the current drag order for the rest.
+// Local display order: a drag or the column menu moves it at once, and `reorder` hands the new
+// order to the parent to persist (this tab's backing column-preset). The parent's `columns`
+// always win after that.
 // Real bug fixed 2026-09-11 (reported live: "陌生訪客現在的表頭會變成代碼而非中文") — this used to
 // keep the OLD orderedColumns entry object for any field still present in the new `next`, only
 // ever reading `next` to decide WHICH fields survive, never to refresh what they're now labeled.
@@ -183,8 +182,7 @@ const emit = defineEmits<{
 // field} — before its first real search resolves, so this component mounts with real fields but
 // raw-code labels; once the real search replaced tab.columns with properly-labelled entries for
 // the SAME fields, this watcher kept the stale placeholder objects instead of adopting the fresh
-// ones. Still preserves drag ORDER (position in the old array), just takes each field's actual
-// current object from `next` rather than whatever it used to be.
+// ones.
 //
 // That alone wasn't the whole fix, though — confirmed live via a temporary debug log that
 // orderedColumns.value itself DID hold the correct refreshed label right after this watcher ran,
@@ -200,20 +198,16 @@ const orderedColumns = ref<ScreenerResultTableColumn[]>([...props.columns])
 watch(
   () => props.columns,
   next => {
-    const nextByField = new Map(next.map(column => [column.field, column]))
-    // 保留自己的拖曳順序，只把新欄位接在最後。不能一律照父層：每次搜尋都用伺服器回傳的欄位重設 tab.columns，順序可能跟使用者
-    // 拖過的不同——2026-10-06 試過一律跟父層，結果每次搜尋都重掛表格，股價的前端排序被清掉、無限捲動也斷了
-    // （check-screener-operations 兩項失敗）
-    const ordered = [
-      ...orderedColumns.value.filter(column => nextByField.has(column.field)).map(column => nextByField.get(column.field)!),
-      ...next.filter(column => !orderedColumns.value.some(existing => existing.field === column.field))
-    ]
-    // 相對順序真的變了才重掛：el-table 的內部欄位表不會跟著 keyed v-for 換順序（見下面 tableKey 的註解）。
+    // 順序一律照父層（2026-11-05，使用者：「screener 顯示欄位重新整理以後會跑掉」）：原本保留這裡的順序、新欄位接在最後，換一組欄位組合時畫面
+    // 跟存的順序不一樣，重新整理才變回來。2026-10-06 試過照父層，每次搜尋都重掛，因為那時 tab.columns 是伺服器回的順序；現在照要求的順序排
+    // （inRequestedOrder），順序沒變就不重掛，股價的前端排序與無限捲動不受影響（check-screener-operations）。
+    // 留下來的欄位還在最前面、順序沒變＝只是少了幾欄或最後多了幾欄，el-table 自己跟得上；其他情況要重掛（見下面 tableKey 的註解）。
     // 拖曳放開時那邊已經自己重掛過，父層回傳的順序跟現在一樣，不會再掛一次。
-    const before = orderedColumns.value.map(column => column.field).filter(field => nextByField.has(field))
-    const after = ordered.map(column => column.field).filter(field => before.includes(field))
-    orderedColumns.value = ordered
-    if (before.join('|') !== after.join('|')) tableKey.value++
+    const fields = new Set(next.map(column => column.field))
+    const stayed = orderedColumns.value.filter(column => fields.has(column.field))
+    const inPlace = stayed.every((column, index) => column.field === next[index]?.field)
+    orderedColumns.value = [...next]
+    if (!inPlace) tableKey.value++
   }
 )
 

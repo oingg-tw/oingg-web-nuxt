@@ -138,6 +138,10 @@ export function useScreenerTabColumnPresets(ctx: {
     return columnPresetOptions.value.find(option => option.id === columnPresetId)?.fields ?? null
   }
 
+  function columnPresetWithFields(fields: string[]): string | null {
+    return columnPresetOptions.value.find(option => option.fields.join('|') === fields.join('|'))?.id ?? null
+  }
+
   // What a tab should open to when it has no columnPresetId of its own yet (a fresh preset,
   // or one whose lastColumnPresetId came back null) — the user's own isDefault preset if
   // they've marked one, else whichever one happens to be first, else genuinely null for the
@@ -403,6 +407,7 @@ export function useScreenerTabColumnPresets(ctx: {
     // 核心要用的：共用狀態與兩個「這個頁籤該用哪個預設」的解析函式。
     columnPresetOptions,
     columnFieldsOf,
+    columnPresetWithFields,
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
     // 頁面要用的。

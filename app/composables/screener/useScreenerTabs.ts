@@ -187,6 +187,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   const {
     columnPresetOptions,
     columnFieldsOf,
+    columnPresetWithFields,
     resolveDefaultColumnPresetId,
     ensureOverviewColumnPreset,
     switchColumnPreset,
@@ -318,13 +319,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // page=1 (isPageChangeOnly=true) to skip the filter PATCH but want a REPLACE, not an
   // append; only loadMoreResults's page=tab.page+1 call passes append=true.
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
-    if (goneSlot(tab.slots)) {
-      tab.searched = true
-      tab.results = []
-      tab.resultColumns = []
-      tab.total = 0
-      return
-    }
+    if (goneSlot(tab.slots)) return
     const filters = filtersOfTab(tab)
 
     // 業務中台 要至少一個條件：數字條件、類股或已經持有的範圍都算（2026-10-19 起只有類股也能查，業務中台 5c3f36b；使用者要「只看某產業」）。
@@ -504,7 +499,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     filtersOf: tab => filtersOfTab(tab),
     ensureOverviewColumnPreset: () => ensureOverviewColumnPreset(),
     resolveDefaultColumnPresetId: () => resolveDefaultColumnPresetId(),
-    columnFieldsOf: id => columnFieldsOf(id)
+    columnFieldsOf: id => columnFieldsOf(id),
+    columnPresetWithFields: fields => columnPresetWithFields(fields)
   })
   const {
     addTab,

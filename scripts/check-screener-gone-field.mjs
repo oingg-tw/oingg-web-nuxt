@@ -110,6 +110,8 @@ for (const target of SAVED) {
   const beforeRemove = log.filter(line => line.includes(GONE) || line.startsWith('run') || line.startsWith('patch'))
   check(!beforeRemove.length, `${target.name}：沒有送查詢、沒有寫回帳號`, beforeRemove.join(' | ').slice(0, 160))
   await page.getByRole('button', { name: '移除已下架的條件' }).click()
+  const justRemoved = await bodyText(page)
+  check(!justRemoved.includes('沒有符合上述條件') && !justRemoved.includes('符合上述條件 0 檔'), `${target.name}：移除之後到查回來之前，不說「沒有符合」`)
   await page.waitForTimeout(3000)
   const focused = await page.evaluate(() => document.activeElement?.textContent?.trim())
   check(focused === '篩選結果', `${target.name}：按鈕消失後焦點在結果標題，不是掉回頁首`, focused?.slice(0, 40))

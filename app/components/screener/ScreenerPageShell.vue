@@ -42,15 +42,16 @@ watch(() => [tab.value?.id, tab.value?.loading] as const, () => {
 // 分三段：手機上字首（符合上述條件／全部）不畫、照樣念（2026-10-22 操作區方案 A），檔數短了，同一行右邊的開關才不會被推走
 const countParts = computed(() => {
   const current = tab.value
+  if (goneCondition.value) return { prefix: '', main: '有已下架的條件', note: '' }
   if (!current?.searched) return null
   if (current.loading) return { prefix: '', main: '搜尋中…', note: '' }
-  if (goneCondition.value) return { prefix: '', main: '有已下架的條件', note: '' }
   const main = `${groupThousands(current.total)} 檔`
   if (!countedWithConditions.value) return { prefix: '全部 ', main, note: '' }
   return { prefix: '符合上述條件 ', main, note: current.total > 0 && current.total < 10 ? '檔數少，條件稍微變動結果就可能不同' : '' }
 })
 
-const empty = computed(() => !!tab.value?.searched && !tab.value.loading && tab.value.total === 0 && hasConditions.value)
+// 有已下架的條件時不查（searched 留著 false）：移除之後到查回來之前才不會說「沒有符合」
+const empty = computed(() => !!goneCondition.value || (!!tab.value?.searched && !tab.value.loading && tab.value.total === 0 && hasConditions.value))
 const conditionCount = computed(() => tab.value?.slots.filter(slot => slot.fieldId !== null).length ?? 0)
 const lastSlotId = computed(() => tab.value?.slots.at(-1)?.id ?? null)
 

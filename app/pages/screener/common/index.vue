@@ -67,7 +67,10 @@ async function urlSelection(): Promise<DeepLinkSelection | null> {
   // 排序的欄位要在欄位裡（或代號），不然 業務中台 回 400
   const sortField = urlState.sort ? replacedField(urlState.sort.field) : null
   const sort = urlState.sort && sortField && (sortField === 'symbol' || columns.includes(sortField)) ? { ...urlState.sort, field: sortField } : null
-  const selection = await guest.filtersSelection(filters, '網址帶入的篩選')
+  // 條件跟哪個範本一樣就用它的名字：範本開的那一組重新整理之後，名字不會變成「網址帶入的篩選」
+  await templatesReady
+  const template = guest.templates.value.find(item => sameFilters(item.filters, urlState.filters))
+  const selection = await guest.filtersSelection(filters, template?.name ?? '網址帶入的篩選')
   return { ...selection, fieldKeys: columns.length ? columns : selection.fieldKeys, options: { ownColumns: columns.length > 0, sort } }
 }
 
