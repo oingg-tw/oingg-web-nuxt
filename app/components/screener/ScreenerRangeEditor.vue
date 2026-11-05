@@ -43,6 +43,10 @@ const categoricalMode = computed<string>({
   set: next => { exclude.value = next === 'exclude' }
 })
 
+// 最新財報季別的最新一季跟著日曆換，不等公司公布（數據中台 reported_quarter_options）：剛換季時只勾它只剩幾家
+//（2026-11-04，使用者：「前一天還可以拉到好幾筆，該季第一筆財報出來以後，就只抓出一筆」）。規則不動，寫在勾選項底下
+const LATEST_QUARTER_FIELD = 'latestReportedQuarter.EOD'
+
 type RangeMode = 'above' | 'below' | 'between' | 'outside' | 'equal'
 
 // Math symbols for the four modes that have an exact one (>, <, ↔, =) — "outside" doesn't
@@ -160,6 +164,7 @@ function reset() {
             <el-checkbox v-for="option in options ?? []" :key="option.value" :value="option.value" class="range-editor__option">{{ option.label }}<template v-if="option.count != null">（{{ option.count }}）</template></el-checkbox>
           </el-checkbox-group>
         </fieldset>
+        <p v-if="currentFieldId === LATEST_QUARTER_FIELD" class="range-editor__hint">最新一季在季度結束時就換新，這時多數公司還沒公布財報，只勾這一季家數會很少。要看多數公司，請連前一季一起勾。</p>
       </template>
 
       <template v-else>
@@ -419,6 +424,12 @@ function reset() {
   font-size: 1rem;
   line-height: 1.4;
   white-space: normal;
+}
+
+.range-editor__hint {
+  margin: 0;
+  color: var(--el-text-color-regular);
+  line-height: 1.5;
 }
 </style>
 
