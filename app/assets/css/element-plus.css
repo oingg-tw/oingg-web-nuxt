@@ -456,7 +456,8 @@ html .el-popover {
    卡片）跟表格卡片同一套——白底（--app-card-bg）、淡的暖色框、圓角 12px。也寫在 html 上：不是 el-card 的卡片（持股、觀察清單、篩選結果
    在手機上一列一張的 .holdings-card／.smt-card，卡片的頁尾）照這三個變數畫，原本在 el-card 外面讀到的是後備值 4px */
 html,
-html .el-card {
+html .el-card,
+html.dark .el-card {
   --el-card-bg-color: var(--app-card-bg);
   --el-card-border-color: var(--app-surface-border);
   --el-card-border-radius: 12px;

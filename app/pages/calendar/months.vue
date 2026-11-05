@@ -385,7 +385,7 @@ html.dark .ex-bar {
   padding: 0 12px;
   border: 0;
   border-radius: var(--el-border-radius-base);
-  background: var(--el-bg-color);
+  background: var(--el-fill-color-blank);
   box-shadow: 0 0 0 1px var(--el-border-color) inset;
   color: var(--el-text-color-primary);
   font: inherit;

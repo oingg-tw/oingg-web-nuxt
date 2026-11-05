@@ -109,8 +109,8 @@ const status = computed(() => (props.pending ? '' : `已顯示 ${range.value[0]}
   min-height: 32px;
   padding: 0 8px;
   border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  background: var(--el-bg-color);
+  border-radius: var(--el-border-radius-base);
+  background: var(--el-fill-color-blank);
   color: var(--el-text-color-primary);
   font: inherit;
   font-size: 1rem;

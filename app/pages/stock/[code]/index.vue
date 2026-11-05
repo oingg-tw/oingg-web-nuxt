@@ -656,15 +656,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   min-height: 44px;
   padding: 0 8px;
   border: 0;
-  border-radius: 6px;
-  background: var(--el-fill-color-light);
+  border-radius: var(--el-border-radius-base);
+  background: var(--el-fill-color);
   color: var(--el-text-color-primary);
   font: inherit;
   cursor: pointer;
 }
 
 .stock-quick-view-page__move:not(:disabled):hover {
-  background: var(--el-fill-color);
+  background: var(--el-fill-color-dark);
 }
 
 .stock-quick-view-page__move:disabled {

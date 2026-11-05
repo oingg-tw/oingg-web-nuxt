@@ -235,7 +235,7 @@ useHead({
 }
 
 .blog-post__body :deep(th) {
-  background: var(--el-fill-color-light);
+  background: var(--app-table-head-bg);
   font-weight: 600;
   color: var(--el-text-color-primary);
   white-space: nowrap;

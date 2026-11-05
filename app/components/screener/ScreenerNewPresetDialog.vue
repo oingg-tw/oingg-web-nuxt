@@ -183,7 +183,7 @@ const activeTemplates = computed(() => {
 /* font-size 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — 16px is the site-wide floor with
    no exceptions for new components (the only carved-out exception is Element Plus's own
    literal size="small" 12px, which this isn't). Contrast confirmed: --el-text-color-secondary
-   on --el-fill-color measures 5.41:1, clear of the 4.5:1 AA threshold for normal text (see
+   on --el-fill-color measures 4.61:1, clear of the 4.5:1 AA threshold for normal text (see
    that doc's §5.1 formula) — box dimensions bumped from the old 18px to fit 16px text without
    the number crowding the badge's edges. */
 .new-preset-dialog__tile-count {

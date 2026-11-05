@@ -307,7 +307,7 @@ const previewOption = computed(() => {
   padding: 8px 16px;
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
-  background: var(--el-bg-color);
+  background: var(--el-fill-color-blank);
   color: var(--el-text-color-primary);
   font-size: 1rem;
   cursor: pointer;
