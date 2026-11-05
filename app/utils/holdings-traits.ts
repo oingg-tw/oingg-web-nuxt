@@ -37,7 +37,7 @@ export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; m
   { key: 'roe', name: 'ROE', unit: 'pct', meaning: '近四季 ROE，依市值加權平均' },
   { key: 'revenueGrowth', name: '營收成長率', unit: 'pct', meaning: '近四季營收年增率，依市值加權平均' },
   { key: 'beta', name: 'Beta（近一年）', unit: 'ratio', meaning: '大盤漲跌 1% 時，這組持股平均跟著漲跌幾 %；用現在的持股比例，套近一年含息、已還原除權與減資的股價回推（大盤用加權報酬指數），ETF 也算在內' },
-  { key: 'revenueYoyVolatility', name: '營收年增率波動', unit: 'pct', meaning: '近三個月累計營收年增率在近五年的起伏大小，越大代表營收越跟著景氣起落；依市值加權平均。營建股不算（營收依完工交屋認列，年增率本來就大起大落），去年同期基數異常低的月份也不採用' },
+  { key: 'revenueYoyVolatility', name: '營收年增率波動', unit: 'pct', meaning: '近三個月累計營收年增率在近五年的起伏大小，越大代表成長幅度起落越大，高速成長的公司也會很大；依市值加權平均。營建股不算（營收依完工交屋認列，年增率本來就大起大落），去年同期基數異常低的月份也不採用' },
   { key: 'top3HoldingsPct', name: '前三大持股占比（ETF 除外）', unit: 'pct', meaning: '市值最大的三檔占整組持股的比例，分母包含 ETF；ETF 本身已分散、這裡拆不到它的成分股，不算進前三（0050 裡的台積電看不到）；特別股算一檔' }
 ]
 
@@ -54,7 +54,9 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   { keys: ['pbRatio'], label: '低股價淨值比', rule: '股價淨值比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
   { keys: ['roe'], label: '高 ROE', rule: 'ROE ≥ 大盤＋5 個百分點', needsMarket: true, test: (own, market) => own >= market + 5 },
   { keys: ['revenueGrowth'], label: '高成長', rule: '營收成長率 ≥ 大盤＋10 個百分點', needsMarket: true, test: (own, market) => own >= market + 10 },
-  { keys: ['revenueYoyVolatility'], label: '景氣循環型', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
+  // 景氣循環型 2026-11-05 先隱藏（使用者：「先註解隱藏，因為我懷疑現在的頁面有問題」）：這條只看營收波動，高速成長的公司一樣踩得到，數據中台的驗證名單 34 家
+  // 循環股只標到 4 家。數據中台的景氣循環度上線、持股標籤有自己的門檻後換掉這條，不是原樣打開
+  // { keys: ['revenueYoyVolatility'], label: '景氣循環型', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
   // 規模、風格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的混合欄占六成
   { keys: ['largeCapPct'], label: '中小型為主', rule: '大型股占比 ≤ 50%', needsMarket: false, test: own => own <= 50 },
   { keys: boxColumn('Value'), label: '價值型為主', rule: '價值股（九宮格左欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },

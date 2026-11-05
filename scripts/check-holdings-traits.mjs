@@ -36,7 +36,7 @@ assert(same(tagsOf({ pbRatio: 1.000000 }, { pbRatio: 2.000000 }), ['低股價淨
 assert(same(tagsOf({ roe: 20.000000 }, { roe: 14.000000 }), ['高 ROE']), 'ROE 20% 對 14%（＋6）：高 ROE')
 assert(same(tagsOf({ roe: 18.000000 }, { roe: 14.000000 }), []), 'ROE 18% 對 14%（＋4）：不貼')
 assert(same(tagsOf({ revenueGrowth: 25.000000 }, { revenueGrowth: 12.000000 }), ['高成長']), '營收成長 25% 對 12%（＋13）：高成長')
-assert(same(tagsOf({ revenueYoyVolatility: 30.000000 }, { revenueYoyVolatility: 15.000000 }), ['景氣循環型']), '營收年增率波動 30 對 15：景氣循環型')
+assert(same(tagsOf({ revenueYoyVolatility: 30.000000 }, { revenueYoyVolatility: 15.000000 }), []), '營收年增率波動 30 對 15：不貼（景氣循環型先隱藏，等數據中台的景氣循環度）')
 
 console.log('九宮格與集中度：固定門檻，不必等大盤')
 assert(same(tagsOf({ largeCapPct: 50.00 }), ['中小型為主']), '大型股剛好 50% 也算（≤）：中小型為主')
