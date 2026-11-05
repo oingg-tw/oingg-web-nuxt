@@ -250,11 +250,12 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       await input.press('Enter')
       await page.waitForTimeout(600)
       await page.keyboard.press('Escape')
+      const sentPeriod = () => sentBodies.slice(sent).some(body => body.includes('"roe.Q"'))
       const start = Date.now()
-      while (sentBodies.length === sent && Date.now() - start < 30000) await page.waitForTimeout(300)
+      while (!sentPeriod() && Date.now() - start < 30000) await page.waitForTimeout(300)
       const pillText = (await page.locator('.screener-shell__setup .condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? ''
       expect('換期別', '膠囊寫「單季」', pillText.includes('單季'), pillText)
-      expect('換期別', '送出的條件是 roe.Q', sentBodies.slice(sent).some(body => body.includes('"roe.Q"')), `${sentBodies.length - sent} 次查詢`)
+      expect('換期別', '送出的條件是 roe.Q', sentPeriod(), `${sentBodies.length - sent} 次查詢`)
       await page.locator('.screener-shell__setup .condition-pill').last().locator('.condition-pill__remove').click()
       await page.waitForTimeout(1500)
     } else {
@@ -315,13 +316,15 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       if (labels.includes('興櫃')) await options.filter({ hasText: '興櫃' }).click()
       await page.waitForTimeout(400)
       await page.keyboard.press('Escape')
+      // 等的是帶這個條件的那一次，不是下一次：先送出去的可能是別的查詢（換條件前排進去的下一頁）
+      const sentCondition = () => sentBodies.slice(sent).some(body => body.includes('"market.EOD"') && body.includes('"rotc"'))
       const start = Date.now()
-      while (sentBodies.length === sent && Date.now() - start < 30000) await page.waitForTimeout(300)
+      while (!sentCondition() && Date.now() - start < 30000) await page.waitForTimeout(300)
       const added = await page.locator('.screener-shell__setup .condition-pill').count() === pillsBefore + 1
       const pillText = added ? (await page.locator('.screener-shell__setup .condition-pill').last().textContent())?.replace(/\s+/g, ' ').trim() ?? '' : '沒有多出條件'
       // 只有每日一個期別，膠囊不寫「每日」（ScreenerConditionPill 的 NON_INFORMATIVE_SOLE_PERIODS）
       expect('市場別', '膠囊寫「市場別 包含 興櫃」', pillText.replace(/\s/g, '') === '市場別包含興櫃', pillText)
-      expect('市場別', '送出 market.EOD 的字串值 rotc', sentBodies.slice(sent).some(body => body.includes('"market.EOD"') && body.includes('"rotc"')), `${sentBodies.length - sent} 次查詢、業務中台 ${upstream.at(-1)}`)
+      expect('市場別', '送出 market.EOD 的字串值 rotc', sentCondition(), `${sentBodies.length - sent} 次查詢、業務中台 ${upstream.at(-1)}`)
       // 只移除剛加的那一顆：沒加成功時移除最後一顆會刪到範本原本的條件，後面的排序與載入更多就全部跟著錯
       if (added) {
         await page.locator('.screener-shell__setup .condition-pill').last().locator('.condition-pill__remove').click()

@@ -558,11 +558,13 @@ function observeSentinel(sentinel: Ref<HTMLElement | undefined>) {
     observer = null
     if (!element) return
     observer = new IntersectionObserver((entries) => {
-      if (entries.some(entry => entry.isIntersecting) && props.hasMore && !props.loadingMore) emit('loadMore')
+      if (entries.some(entry => entry.isIntersecting) && props.hasMore && !props.loading && !props.loadingMore) emit('loadMore')
     }, { rootMargin: '200px 0px' })
     observer.observe(element)
   })
-  watch(() => props.rows.length, () => {
+  // 查完也要重看：查詢途中碰到底的那一次沒有算，而排序是 20 列換 20 列，列數沒變、哨兵也還在畫面裡，就再也不會載下一頁
+  // （2026-11-05，scripts/check-screener-load-more.mjs）
+  watch([() => props.rows.length, () => props.loading], () => {
     const element = sentinel.value
     if (observer && element) {
       observer.unobserve(element)
