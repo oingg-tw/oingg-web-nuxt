@@ -119,6 +119,8 @@ function formatValue(field: EtfFilterField | undefined, raw: string | number | n
   // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
   if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(raw.toFixed(2)) : formatMoney(raw)
   if (field?.unit === '%') return minusSign(`${raw}%`)
+  // 總費用率年度、費用率細項年度是年份，不分千位（原本寫「2,025 年」）；成立年數也是年，不到千
+  if (field?.unit === '年') return `${raw} 年`
   return field?.unit ? `${groupThousands(raw)} ${field.unit}` : groupThousands(raw)
 }
 

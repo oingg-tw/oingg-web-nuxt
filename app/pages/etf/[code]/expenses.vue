@@ -19,7 +19,8 @@ const trailingNote = computed(() => {
   return months !== null && months < 12 ? `估算；只有 ${months} 個月，已換算成一年` : '估算'
 })
 
-// 各項費用不是契約費率，是最近一個完整年度的實際比率（analysis-ts 從 SITCA 全年報表讀，跟歷年表的第一列同一年；sitca-ts 2026-10-21）
+// 各項費用不是契約費率，是最近一個完整年度的實際比率（analysis-ts 從 SITCA 全年報表讀，sitca-ts 2026-10-21）；是哪一年由上游的 feeBreakdownYear 標出
+const feeYear = computed(() => num('feeBreakdownYear'))
 const fees = computed<FactItem[]>(() => [
   ...ETF_FEE_FIELDS.flatMap(item => (num(item.field) === null ? [] : [{ label: item.label, value: etfPct(num(item.field)), note: 'note' in item ? item.note : undefined }])),
   { label: '近 12 個月總費用率', value: etfPct(trailing.value), note: trailingNote.value }
@@ -31,7 +32,7 @@ const answer = computed(() => {
   const parts = [`${shortName.value}（${code.value}）${latest.year} 年總費用率 ${etfPct(latest.value)}`]
   if (trailing.value !== null) parts.push(`近 12 個月估算 ${etfPct(trailing.value)}`)
   const management = num('managementFeeRate')
-  if (management !== null) parts.push(`其中經理費 ${etfPct(management)}`)
+  if (management !== null) parts.push(`${feeYear.value ? `${feeYear.value} 年` : ''}經理費 ${etfPct(management)}`)
   return `${parts.join('，')}；總費用率從淨值裡每天扣，不另外收。`
 })
 </script>
@@ -54,8 +55,8 @@ const answer = computed(() => {
           </tr>
         </tbody>
       </SharedTable>
-      <p v-if="years.length" class="hub-answer">各項費用是 {{ years[0]!.year }} 年全年的實際比率，不是契約費率。總費用率含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。</p>
-      <SharedFactList :items="fees" :label="years.length ? `${shortName} ${years[0]!.year} 年各項費用` : `${shortName}各項費用`" />
+      <p v-if="feeYear" class="hub-answer">各項費用是 {{ feeYear }} 年全年的實際比率，不是契約費率。總費用率含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。</p>
+      <SharedFactList :items="fees" :label="feeYear ? `${shortName} ${feeYear} 年各項費用` : `${shortName}各項費用`" />
     </StockQuestionSection>
   </EtfPage>
 </template>
