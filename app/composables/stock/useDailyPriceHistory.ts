@@ -2,11 +2,13 @@ export interface DailyPriceHistoryEntry {
   tradeDate: string
   // 興櫃沒有開盤價（議價交易，業務中台 2026-10-24）
   open: number | null
-  high: number
-  low: number
-  close: number
+  // 沒有一般交易的日子開高低收全是 null，見 isRealClose
+  high: number | null
+  low: number | null
+  close: number | null
   // null ＝ 沒有資料，不是 0 股（業務中台 359dc48：證交所無成交日可能是 NULL，例如 1538 2026-09-03；上櫃寫 0）。
-  // 判斷那天有沒有成交看 close === null，不看 volume。
+  // 判斷那天有沒有成交看 close（isRealClose），不看 volume：只成交零股或鉅額的日子量大於 0、收盤是 null。
+  // 上櫃 2026-11-05 起是全日總量（一般＋零股＋盤後定價＋鉅額，tpex 重補到 2007-04-23）
   volume: number | null
 }
 

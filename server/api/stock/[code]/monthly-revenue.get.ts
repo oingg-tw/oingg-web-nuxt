@@ -73,7 +73,7 @@ const cachedMonthlyRevenue = defineCachedFunction(
 const cachedMonthlyPrices = defineCachedFunction(
   async (symbol: string): Promise<{ monthlyPrices: MonthlyPrice[]; breakMonths: string[] }> => {
     const response = await businessFetch<DailyPriceResponse>(`/stocks/${symbol}/daily-price-history`, { query: { from: priceFrom() } })
-    // 無成交日的 close 是 0，會把月均價拉低——見 stock-data.ts 的 isRealClose 註解。
+    // 無成交日的 close 是 0，會把月均價拉低——見 price-breaks.ts 的 isRealClose 註解。
     const closes = (response.entries ?? []).filter(isRealClose).sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
     return { monthlyPrices: toMonthlyPrices(closes), breakMonths: priceBreakMonths(closes) }
   },

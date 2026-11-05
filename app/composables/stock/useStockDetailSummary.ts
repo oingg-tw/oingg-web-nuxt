@@ -14,16 +14,17 @@ export function useStockDetailSummary(code: Ref<string>) {
   const { data: profile, pending: profilePending, error: profileError, refresh: refreshProfile } = useCompanyProfile(code)
   // 讀取失敗交給全站彈窗（2026-10-11）；只有 404 才是「沒有這檔」，見 useCompanyProfile
   watchLoadFailure(() => `company-profile:${code.value}`, () => profileError.value, refreshProfile)
-  // 漲跌用的前兩天收盤，在伺服器就抓（2026-10-16）：原本走 useDailyPriceHistory（只在瀏覽器抓，見它的 import.meta.server），伺服器輸出的
+  // 漲跌用的近幾天收盤，在伺服器就抓（2026-10-16）：原本走 useDailyPriceHistory（只在瀏覽器抓，見它的 import.meta.server），伺服器輸出的
   // HTML 裡漲跌是「－ (－%)」，等瀏覽器的請求回來才補上。跟上面的摘要、profile 同一個做法（useAsyncData：Nuxt 在伺服器等它、放進
-  // payload）。同一支 /api/cached（快取 15 分鐘），只是改在伺服器先問
+  // payload）。同一支 /api/cached（快取 15 分鐘），只是改在伺服器先問。
+  // 拿 20 天不是 2 天（2026-11-05）：冷門股連續幾天沒成交，只拿 2 天可能兩天都沒有收盤價（latestCloseChange）
   const { data: priceHistory } = useAsyncData<DailyPriceHistoryEntry[] | null>(
-    () => `daily-price-history-2-${code.value}`,
+    () => `daily-price-history-recent-${code.value}`,
     async () => {
       const symbol = code.value
       if (!symbol) return null
       try {
-        return (await apiFetch<{ entries: DailyPriceHistoryEntry[] }>(`/stocks/${symbol}/daily-price-history`, { baseURL: BUSINESS_CACHED_BASE, query: { limit: 2 } })).entries
+        return (await apiFetch<{ entries: DailyPriceHistoryEntry[] }>(`/stocks/${symbol}/daily-price-history`, { baseURL: BUSINESS_CACHED_BASE, query: { limit: 20 } })).entries
       } catch (error) {
         devWarn('daily-price-history', `GET /api/cached/stocks/${symbol}/daily-price-history unavailable`, error)
         return null
@@ -32,15 +33,7 @@ export function useStockDetailSummary(code: Ref<string>) {
     { watch: [code] }
   )
 
-  const priceChange = computed<{ amount: number; percent: number } | null>(() => {
-    const entries = priceHistory.value
-    if (!entries || entries.length < 2) return null
-    const latest = entries[entries.length - 1]!
-    const previous = entries[entries.length - 2]!
-    if (previous.close === 0) return null
-    const amount = latest.close - previous.close
-    return { amount, percent: (amount / previous.close) * 100 }
-  })
+  const priceChange = computed(() => latestCloseChange(priceHistory.value ?? []))
 
   // 「這家公司存不存在」= profile 查得到，**不是**「有沒有股價」（2026-10-01）。
   //

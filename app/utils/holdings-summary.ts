@@ -6,7 +6,7 @@
 //
 // 三條規則，每一條都是「不捏造數字」：
 //   1. 字串自己轉。業務中台 的 averageCost（Decimal 18,4）與 /screener/values 的每一個值都以字串送來。
-//   2. 價格 ≤ 0 當成沒有報價——同 server/utils/stock-data.ts 的 isRealClose：沒有成交的日子收盤是 0，
+//   2. 價格 ≤ 0 當成沒有報價——同 shared/utils/price-breaks.ts 的 isRealClose：沒有成交的日子收盤是 0，
 //      拿它去乘會算出一個市值 0、虧損 100% 的部位。
 //   3. 缺值的列不進加總，而且會被計數，讓頁面說得出「N 檔未計入」。全部缺值時總計是 null，不是 0。
 
