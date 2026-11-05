@@ -32,6 +32,8 @@ const orderWord = definition.direction === 'desc' ? '由高到低' : '由低到�
 const label = definition.label
 // ETF 的排行（2026-10-21，使用者：「rank 希望 sidebar 區分 普通股與 etf」）：標題寫「台股 ETF 規模排行」，母體是 ETF，說明用 RANK_PAGES 的 note
 const isEtf = definition.universe === 'etf'
+// 手機的膠囊列只列這一組，同側欄 RankNav（2026-11-06，使用者：「排行的膠囊 是不是把個股與ETF 分開比較好」）；另一組在「其他頁面」的類別
+const rankChips = RANK_PAGES.filter(page => (page.universe === 'etf') === isEtf)
 const subject = isEtf ? ` ETF ${label}` : label
 // 篩過的表寫「債券型 ETF 總費用率」
 const tableSubject = computed(() => (fundType.value ? `${fundType.value} ETF ${label}` : subject))
@@ -105,9 +107,9 @@ const { breadcrumbs } = useHubPageSeo({
 
     <!-- 手機（2026-11-02，排行手機版方案 C）：指標膠囊列可以直接換排行，名次清單排在答句前面，第一屏就看得到名單；電腦版照舊是側欄＋
          下面的表格（這兩塊在電腦版不畫） -->
-    <nav ref="chipStrip" class="rank-chips" aria-label="其他排行">
-      <NuxtLink v-for="page in RANK_PAGES" :key="page.slug" :to="rankPath(page.slug)" class="rank-chips__chip" :aria-current="page.slug === slug ? 'page' : undefined">
-        {{ page.universe === 'etf' ? `ETF ${page.label}` : page.label }}
+    <nav ref="chipStrip" class="rank-chips" :aria-label="isEtf ? '其他 ETF 排行' : '其他普通股排行'">
+      <NuxtLink v-for="page in rankChips" :key="page.slug" :to="rankPath(page.slug)" class="hub-chip rank-chips__chip" :aria-current="page.slug === slug ? 'page' : undefined">
+        {{ page.label }}
       </NuxtLink>
     </nav>
     <div v-if="allRows.length" class="rank-list-block">
