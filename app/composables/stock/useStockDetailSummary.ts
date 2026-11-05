@@ -1,5 +1,19 @@
 import type { Stock } from '~/composables/stock/useStocks'
-import type { DailyPriceHistoryEntry } from '~/composables/stock/useDailyPriceHistory'
+// 業務中台 GET /stocks/:symbol/daily-price-history 的一筆（2026-09-10 實測，a03d9a8）：真正的日線 OHLCV，跟 useMetricsHistory 的
+// 'stockPrice'（季末快照，StockValuationRiverChart 用）是不同的資料來源。`limit` 是天數不是期數，後端上限 2000（超過回 400）。
+export interface DailyPriceHistoryEntry {
+  tradeDate: string
+  // 興櫃沒有開盤價（議價交易，業務中台 2026-10-24）
+  open: number | null
+  // 沒有一般交易的日子開高低收全是 null，見 isRealClose
+  high: number | null
+  low: number | null
+  close: number | null
+  // null ＝ 沒有資料，不是 0 股（業務中台 359dc48：證交所無成交日可能是 NULL，例如 1538 2026-09-03；上櫃寫 0）。
+  // 判斷那天有沒有成交看 close（isRealClose），不看 volume：只成交零股或鉅額的日子量大於 0、收盤是 null。
+  // 上櫃 2026-11-05 起是全日總量（一般＋零股＋盤後定價＋鉅額，tpex 重補到 2007-04-23）
+  volume: number | null
+}
 
 // Extracted 2026-09-17 out of stock/[code].vue's own top-of-file logic (unchanged, just moved),
 // per direct request ("整頁滑動的概念完全捨棄...只有Header部分會長相一樣") — 股利怎麼來/財務報表
@@ -14,7 +28,7 @@ export function useStockDetailSummary(code: Ref<string>) {
   const { data: profile, pending: profilePending, error: profileError, refresh: refreshProfile } = useCompanyProfile(code)
   // 讀取失敗交給全站彈窗（2026-10-11）；只有 404 才是「沒有這檔」，見 useCompanyProfile
   watchLoadFailure(() => `company-profile:${code.value}`, () => profileError.value, refreshProfile)
-  // 漲跌用的近幾天收盤，在伺服器就抓（2026-10-16）：原本走 useDailyPriceHistory（只在瀏覽器抓，見它的 import.meta.server），伺服器輸出的
+  // 漲跌用的近幾天收盤，在伺服器就抓（2026-10-16）：原本只在瀏覽器抓，伺服器輸出的
   // HTML 裡漲跌是「－ (－%)」，等瀏覽器的請求回來才補上。跟上面的摘要、profile 同一個做法（useAsyncData：Nuxt 在伺服器等它、放進
   // payload）。同一支 /api/cached（快取 15 分鐘），只是改在伺服器先問。
   // 拿 20 天不是 2 天（2026-11-05）：冷門股連續幾天沒成交，只拿 2 天可能兩天都沒有收盤價（latestCloseChange）

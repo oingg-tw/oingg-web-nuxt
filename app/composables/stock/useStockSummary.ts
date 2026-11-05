@@ -7,8 +7,8 @@ import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 // verified against 業務中台's own schema first, the exact mistake this app's own conventions say to
 // avoid (see the ecosystem reference guide's "don't invent field/metric keys, ever"). The real
 // endpoint has no `/summary` suffix, no marketCap section at all, and price only ever carries
-// `close` — no volume, no change amount/percent (stock/[code].vue derives those for real from
-// useDailyPriceHistory's last two entries instead of assuming this endpoint has them).
+// `close` — no volume, no change amount/percent (useStockDetailSummary derives those for real
+// from the recent daily closes instead of assuming this endpoint has them).
 export interface StockSummaryPrice {
   tradeDate: string
   close: number

@@ -2,7 +2,7 @@ import type { UserWatchlistItem, Watchlist } from '~/composables/watchlist/useUs
 import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 
 // 摘要卡用的最小股票物件。數值可以是 null：業務中台 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
-// useDailyPriceHistory 的兩天資料算，資料不足就是 null，畫面顯示「－」而不是假的 0。
+// 近幾天的收盤算（useStockDetailSummary），資料不足就是 null，畫面顯示「－」而不是假的 0。
 export interface Stock {
   code: string
   name: string
