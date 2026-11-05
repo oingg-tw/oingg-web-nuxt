@@ -2,6 +2,12 @@
    觸控 44px 下限、v-loading 轉圈的位置。載入順序在 nuxt.config 的 css：main.css → theme.css → 本檔。@element-plus/nuxt 隨用隨載
    的元件 CSS 排在這些全部之後，下面幾條的 html 前綴與 !important 就是為了這個。 */
 
+/* 主色實心的標籤（持股配息月曆的「發放」）：Element 寫死白字，深色模式的主色是亮色（金 #d6b351），白字不到 4.5:1。字色跟全站主色底的元件一樣用
+   --el-bg-color，七種主題、淺深色都過（2026-11-06，check-a11y-pages 登入頁量到；當月有發放才畫得出來，所以平常掃不到） */
+html .el-tag.el-tag--dark.el-tag--primary {
+  --el-tag-text-color: var(--el-bg-color);
+}
+
 /* Element Plus's `info` tag paints its text in --el-color-info (#909399) on a #f4f4f5 fill —
    2.8:1, well under AA's 4.5:1 (axe flagged every el-select `multiple` chip and the 近四季/單季
    tag on the stock pages, 2026-09-19). Regular body-text grey on the same fill is ≈5.3:1. Only
