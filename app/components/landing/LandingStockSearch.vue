@@ -160,7 +160,7 @@ function handleSubmit() {
   gap: 12px;
   min-height: 48px;
   padding: 8px 4px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
   color: var(--el-text-color-primary);
   font-size: 1rem;
   text-decoration: none;

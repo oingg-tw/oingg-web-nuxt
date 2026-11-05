@@ -748,7 +748,7 @@ watch(() => props.loading, (loading, wasLoading) => {
     <div v-loading="loading" class="smt-cards-view">
       <p v-if="!rows.length" class="smt-cards__empty">目前沒有資料</p>
       <ul v-else class="smt-cards" :aria-label="`共 ${rows.length} 檔已載入`">
-        <li v-for="row in cardRows" :key="row.symbol" class="smt-card">
+        <li v-for="row in cardRows" :key="row.symbol" class="app-card smt-card">
           <div class="smt-card__head">
             <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
             <span class="smt-card__code">{{ row.symbol }}</span>
@@ -909,9 +909,6 @@ watch(() => props.loading, (loading, wasLoading) => {
 
 .smt-card {
   padding: 12px 16px;
-  border: 1px solid var(--el-card-border-color);
-  border-radius: var(--el-card-border-radius);
-  background: var(--el-card-bg-color);
 }
 
 .smt-card__head {
@@ -1243,7 +1240,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   text-align: right;
   background: none;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--el-border-radius-base);
   cursor: pointer;
 }
 

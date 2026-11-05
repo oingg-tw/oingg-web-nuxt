@@ -89,7 +89,7 @@ async function createAndAdd() {
   flex-direction: column;
   gap: 4px;
   padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .watchlist-picker__label {

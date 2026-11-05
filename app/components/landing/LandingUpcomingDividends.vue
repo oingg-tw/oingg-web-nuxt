@@ -27,7 +27,7 @@ function amountText(item: HomeAgendaDay['items'][number], track: string) {
 </script>
 
 <template>
-  <section class="upcoming" aria-labelledby="upcoming-title">
+  <section class="app-card upcoming" aria-labelledby="upcoming-title">
     <div class="upcoming__head">
       <el-icon class="upcoming__icon" aria-hidden="true"><Calendar /></el-icon>
       <h2 id="upcoming-title" class="upcoming__title">接下來的除權息與發放</h2>
@@ -89,9 +89,6 @@ function amountText(item: HomeAgendaDay['items'][number], track: string) {
 
 <style scoped>
 .upcoming {
-  background: var(--app-card-bg);
-  border: 1px solid var(--app-surface-border);
-  border-radius: 12px;
   overflow: hidden;
 }
 

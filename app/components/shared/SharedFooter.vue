@@ -92,7 +92,7 @@ async function reopenConsent() {
 
 <style scoped>
 .shared-footer {
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .shared-footer__inner {
@@ -216,7 +216,7 @@ async function reopenConsent() {
   flex-wrap: wrap;
   gap: 4px 16px;
   padding-top: 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .shared-footer__copyright,

@@ -240,7 +240,7 @@ function save() {
   margin: 0 0 12px;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .column-settings__row {
@@ -251,7 +251,7 @@ function save() {
   gap: 0 12px;
   min-height: 56px;
   padding: 4px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .column-settings__drag {

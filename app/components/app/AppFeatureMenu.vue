@@ -137,7 +137,7 @@ const { close } = useSlideLayer()
 .feature-menu__user {
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 </style>

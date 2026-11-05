@@ -567,7 +567,7 @@ function selectIndicator(entry: IndicatorEntry) {
      into scrolling whatever's behind it (the page behind a fullscreen dialog, or the
      popover's own positioning) — this contains that momentum at this list's own edge. */
   overscroll-behavior: contain;
-  border-right: 1px solid var(--el-border-color-lighter);
+  border-right: 1px solid var(--app-divider);
   padding-right: 8px;
 }
 
@@ -685,7 +685,7 @@ function selectIndicator(entry: IndicatorEntry) {
     flex: none;
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    border-bottom: 1px solid var(--app-divider);
     padding-right: 0;
     padding-bottom: 8px;
   }

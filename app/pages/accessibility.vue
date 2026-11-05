@@ -134,7 +134,7 @@ const FEEDBACK_EMAIL = 'ian.chu@oingg.com'
 
 .accessibility-page__section--en {
   padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .accessibility-page__h3 {

@@ -50,7 +50,7 @@ const latestWarning = computed(() => events.value.find(event => event.distributi
         </tbody>
       </SharedTable>
       <p class="hub-answer">收益平準金是新申購的人買進時付的錢、已實現資本利得是賣股票的價差，兩者都來自基金的本金與資產，不是持股配發的股利或利息。</p>
-      <details v-if="latestWarning" class="hub-details">
+      <details v-if="latestWarning" class="app-card hub-details">
         <summary>投信公告附註（原文）</summary>
         <blockquote class="etf-composition__warning">{{ latestWarning }}</blockquote>
       </details>

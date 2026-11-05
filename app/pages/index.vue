@@ -184,7 +184,7 @@ useHead({
     <section class="landing-page__section" aria-labelledby="landing-tasks-heading">
       <h2 id="landing-tasks-heading" class="landing-page__section-title">你想做什麼？</h2>
       <div class="landing-bento">
-        <div class="landing-bento__tile landing-bento__tile--year">
+        <div class="app-card landing-bento__tile landing-bento__tile--year">
           <h3 class="landing-bento__title"><el-icon aria-hidden="true"><Calendar /></el-icon>我想知道什麼時候配息</h3>
           <template v-if="yearBars.length">
             <p class="landing-bento__text">今年每個月的除權息檔數。{{ yearCaption }}</p>
@@ -207,7 +207,7 @@ useHead({
           </p>
         </div>
 
-        <div class="landing-bento__tile landing-bento__tile--wide">
+        <div class="app-card landing-bento__tile landing-bento__tile--wide">
           <h3 class="landing-bento__title"><el-icon aria-hidden="true"><Filter /></el-icon>我想找符合條件的股票</h3>
           <!-- 範本只給符合的檔數、不列名單（名單讀起來就是推薦），跟 /screener/common/{slug} 條件頁同一個規則 -->
           <ul v-if="home?.templates?.length" class="landing-bento__templates">
@@ -223,32 +223,32 @@ useHead({
           </p>
         </div>
 
-        <NuxtLink :to="rankLink.to" class="landing-bento__tile landing-bento__stat">
+        <NuxtLink :to="rankLink.to" class="app-card landing-bento__tile landing-bento__stat">
           <el-icon class="landing-bento__icon" aria-hidden="true"><Sort /></el-icon>
           <span class="landing-bento__stat-title">{{ rankLink.label }}</span>
           <span class="landing-bento__stat-value">{{ RANK_PAGES.length }}<span> 種</span></span>
           <span class="landing-bento__text">{{ rankLink.description }}</span>
         </NuxtLink>
-        <NuxtLink :to="industriesLink.to" class="landing-bento__tile landing-bento__stat">
+        <NuxtLink :to="industriesLink.to" class="app-card landing-bento__tile landing-bento__stat">
           <el-icon class="landing-bento__icon" aria-hidden="true"><OfficeBuilding /></el-icon>
           <span class="landing-bento__stat-title">{{ industriesLink.label }}</span>
           <span v-if="sectors.length" class="landing-bento__stat-value">{{ sectors.length }}<span> 個類股</span></span>
           <span class="landing-bento__text"><template v-if="companyCount">{{ groupThousands(companyCount) }} 家公司。</template>{{ industriesLink.description }}</span>
         </NuxtLink>
 
-        <div class="landing-bento__tile landing-bento__tile--wide">
+        <div class="app-card landing-bento__tile landing-bento__tile--wide">
           <h3 class="landing-bento__title"><el-icon aria-hidden="true"><Star /></el-icon>我想記下自己的股票<span class="landing-bento__note">需登入</span></h3>
           <ul class="landing-bento__subs">
             <li v-for="link in linksOf('mine')" :key="link.to">
-              <NuxtLink :to="link.to" class="landing-bento__sub"><b>{{ link.label }} ›</b><span>{{ link.description }}</span></NuxtLink>
+              <NuxtLink :to="link.to" class="app-card landing-bento__sub"><b>{{ link.label }} ›</b><span>{{ link.description }}</span></NuxtLink>
             </li>
           </ul>
         </div>
-        <div class="landing-bento__tile landing-bento__tile--wide">
+        <div class="app-card landing-bento__tile landing-bento__tile--wide">
           <h3 class="landing-bento__title"><el-icon aria-hidden="true"><Reading /></el-icon>我想學會看這些數字</h3>
           <ul class="landing-bento__subs">
             <li v-for="link in linksOf('learn')" :key="link.to">
-              <NuxtLink :to="link.to" class="landing-bento__sub"><b>{{ link.label }} ›</b><span>{{ link.description }}</span></NuxtLink>
+              <NuxtLink :to="link.to" class="app-card landing-bento__sub"><b>{{ link.label }} ›</b><span>{{ link.description }}</span></NuxtLink>
             </li>
           </ul>
         </div>
@@ -263,7 +263,7 @@ useHead({
         證交所每個類股各有一頁，列出該類股每家公司的股價、本益比、殖利率與 ROE。
         <NuxtLink to="/industries" class="landing-page__inline-link">看產業索引</NuxtLink>
       </p>
-      <details class="hub-details landing-page__sectors">
+      <details class="app-card hub-details landing-page__sectors">
         <summary>展開 {{ sectors.length }} 個類股</summary>
         <ul class="hub-chip-list">
           <li v-for="sector in sectors" :key="sector.code">
@@ -456,9 +456,6 @@ useHead({
   flex-direction: column;
   gap: 16px;
   padding: 24px;
-  background: var(--app-card-bg);
-  border: 1px solid var(--app-surface-border);
-  border-radius: 12px;
 
   @media (max-width: 767px) {
     padding: 16px;
@@ -691,9 +688,6 @@ useHead({
   gap: 4px;
   min-height: 88px;
   padding: 16px;
-  border: 1px solid var(--app-divider);
-  border-radius: 8px;
-  background: var(--el-bg-color);
   color: inherit;
   text-decoration: none;
   line-height: 1.5;

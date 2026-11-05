@@ -88,7 +88,7 @@ const activeTemplates = computed(() => {
         v-for="[category, items] in groupedTemplates"
         :key="category"
         type="button"
-        class="new-preset-dialog__tile"
+        class="app-card new-preset-dialog__tile"
         @click="openCategory(category)"
       >
         <el-icon class="new-preset-dialog__tile-icon"><component :is="filterTemplateCategoryIcon(category)" /></el-icon>
@@ -100,11 +100,11 @@ const activeTemplates = computed(() => {
            we curated" path and read as the primary offering; 自訂篩選邏輯 is the fallback
            for "none of those fit," which belongs at the end, not competing for the first
            (most-noticed) grid slot. -->
-      <button type="button" class="new-preset-dialog__tile" @click="chooseCopy">
+      <button type="button" class="app-card new-preset-dialog__tile" @click="chooseCopy">
         <el-icon class="new-preset-dialog__tile-icon"><CopyDocument /></el-icon>
         <span class="new-preset-dialog__tile-label">複製目前這組</span>
       </button>
-      <button type="button" class="new-preset-dialog__tile" @click="chooseCustom">
+      <button type="button" class="app-card new-preset-dialog__tile" @click="chooseCustom">
         <el-icon class="new-preset-dialog__tile-icon"><Edit /></el-icon>
         <span class="new-preset-dialog__tile-label">空白開始</span>
       </button>
@@ -123,7 +123,7 @@ const activeTemplates = computed(() => {
           v-for="template in activeTemplates"
           :key="template.id"
           type="button"
-          class="new-preset-dialog__template"
+          class="app-card new-preset-dialog__template"
           :class="{ 'is-pending': template.status !== 'AVAILABLE' }"
           :aria-disabled="template.status !== 'AVAILABLE'"
           @click="chooseTemplate(template)"
@@ -161,9 +161,6 @@ const activeTemplates = computed(() => {
   justify-content: center;
   gap: 8px;
   padding: 20px 8px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: transparent;
   color: var(--el-text-color-primary);
   cursor: pointer;
   transition: border-color 0.15s ease;
@@ -242,9 +239,6 @@ const activeTemplates = computed(() => {
   display: block;
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: transparent;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease;

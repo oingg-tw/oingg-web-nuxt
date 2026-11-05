@@ -83,11 +83,11 @@ useHead({
     </p>
 
     <nav v-if="prevPost || nextPost" class="blog-post__surround" aria-label="文章導覽">
-      <NuxtLink v-if="prevPost" :to="`/blog/${prevPost.slug}`" class="blog-post__surround-link blog-post__surround-link--prev">
+      <NuxtLink v-if="prevPost" :to="`/blog/${prevPost.slug}`" class="app-card blog-post__surround-link blog-post__surround-link--prev">
         <span class="blog-post__surround-label">← 上一篇</span>
         <span class="blog-post__surround-title">{{ prevPost.title }}</span>
       </NuxtLink>
-      <NuxtLink v-if="nextPost" :to="`/blog/${nextPost.slug}`" class="blog-post__surround-link blog-post__surround-link--next">
+      <NuxtLink v-if="nextPost" :to="`/blog/${nextPost.slug}`" class="app-card blog-post__surround-link blog-post__surround-link--next">
         <span class="blog-post__surround-label">下一篇 →</span>
         <span class="blog-post__surround-title">{{ nextPost.title }}</span>
       </NuxtLink>
@@ -204,7 +204,7 @@ useHead({
 .blog-post__body :deep(hr) {
   margin: 8px 0;
   border: none;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 /* Real bug fixed 2026-09-10 (reported live: "表格有點壞掉") — this block never had any table
@@ -249,7 +249,7 @@ useHead({
 .blog-post__disclaimer {
   margin: 0;
   padding-top: 24px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }
@@ -270,8 +270,6 @@ useHead({
   gap: 4px;
   max-width: 320px;
   padding: 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
   text-decoration: none;
   transition: border-color 0.2s ease;
 }

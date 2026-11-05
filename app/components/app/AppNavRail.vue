@@ -49,7 +49,7 @@ const contentWidthMode = useContentWidthMode()
     bottom: 0;
     width: var(--app-sidebar-width);
     background: var(--el-bg-color);
-    border-right: 1px solid var(--el-border-color-lighter);
+    border-right: 1px solid var(--app-divider);
     z-index: 5;
   }
 }
@@ -114,8 +114,9 @@ const contentWidthMode = useContentWidthMode()
   );
   transform: translateY(max(-50%, calc(var(--app-header-height) + var(--app-banner-height) + 16px - 50vh)));
   max-height: calc(100vh - 96px);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
+  border: 1px solid var(--el-card-border-color);
+  border-radius: var(--el-card-border-radius);
+  background: var(--el-card-bg-color);
   box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
   /* Clip content to the rounded shape — the list's links run edge to edge, so without this the
      active row's own background tint would paint square over the corners it touches. */

@@ -68,7 +68,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
 
     <!-- 門檻與公式是同一件事（這個徽章的量化定義）的兩種說法，所以放進同一張有邊框的卡（深色模式下只靠底色分不出來，
          2026-09-10 實測 rgb(30,30,30) 對 rgb(38,39,39)）；視覺重點在公式，門檻文字退回一般字重（使用者指定）。 -->
-    <div class="guru-badge-card__criteria-card">
+    <div class="app-card guru-badge-card__criteria-card">
       <p class="guru-badge-card__criteria-label">比較標準</p>
       <p class="guru-badge-card__criteria-value">{{ badge.threshold.description }}</p>
       <!-- 幾個公式（Ohlson／Zmijewski／Beneish 的多項迴歸）寬過對話框：在自己的盒子裡橫向捲動；可聚焦的具名區域，鍵盤才捲得到被切掉的那一段 -->
@@ -173,9 +173,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
 .guru-badge-card__criteria-card {
   margin: 0 0 16px;
   padding: 12px 16px;
-  border-radius: 8px;
   background: var(--el-fill-color-light);
-  border: 1px solid var(--el-border-color);
 }
 
 .guru-badge-card__criteria-label {
@@ -197,7 +195,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
 .guru-badge-card__criteria-formula {
   margin: 12px -16px -12px;
   padding: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
   border-radius: 0 0 7px 7px;
   background: var(--el-color-primary-light-9);
   overflow-x: auto;
@@ -215,7 +213,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
 .guru-badge-card__dialog-disclaimer {
   margin: 16px 0 0;
   padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }

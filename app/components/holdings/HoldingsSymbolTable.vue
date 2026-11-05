@@ -197,7 +197,7 @@ function toggle(symbol: string, event?: MouseEvent) {
     <ul class="view-card symbol-table__cards">
       <!-- 骨架卡片：跟下面同一套排法，欄名與「明細」照畫，名稱與數字是骨架 -->
       <template v-if="skeletonRows">
-        <li v-for="index in skeletonRows" :key="index" class="symbol-table__card holdings-card" aria-hidden="true">
+        <li v-for="index in skeletonRows" :key="index" class="app-card symbol-table__card holdings-card" aria-hidden="true">
           <div class="symbol-table__name"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /></div>
           <dl v-if="summaryColumns.length" class="holdings-card__rows">
             <div v-for="column in summaryColumns" :key="column.key" class="holdings-card__row">
@@ -210,7 +210,7 @@ function toggle(symbol: string, event?: MouseEvent) {
           </el-button>
         </li>
       </template>
-      <li v-for="row in sortedRows" v-else :key="row.symbol" class="symbol-table__card holdings-card">
+      <li v-for="row in sortedRows" v-else :key="row.symbol" class="app-card symbol-table__card holdings-card">
         <div class="symbol-table__name">
           <NuxtLink :to="row.link" class="stock-name-link">{{ row.name }}</NuxtLink>
           <span class="symbol-table__code">{{ row.symbol }}</span>

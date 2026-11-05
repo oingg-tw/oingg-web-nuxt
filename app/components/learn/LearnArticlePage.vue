@@ -104,7 +104,7 @@ const { breadcrumbs } = useHubPageSeo({
       <!-- tabindex="0" + role/aria-label (2026-09-20) — a real axe scrollable-region-focusable
            finding: the wider formulas overflow at 375px, and a horizontally-scrollable region needs
            its own keyboard focus stop or a keyboard user cannot reach the part scrolled off-screen. -->
-      <div v-if="formulaHtml" class="learn-page__formula" tabindex="0" role="group" :aria-label="`${name}的計算公式`" v-html="formulaHtml" />
+      <div v-if="formulaHtml" class="app-card learn-page__formula" tabindex="0" role="group" :aria-label="`${name}的計算公式`" v-html="formulaHtml" />
       <p v-if="metric?.sources?.length" class="hub-answer">資料來源：{{ metric.sources.join('、') }}。</p>
       <p v-if="metric?.referenceUrl || metric?.academicSourceUrl" class="hub-answer">
         <template v-if="metric.academicSourceUrl"><a :href="metric.academicSourceUrl" target="_blank" rel="noopener" class="hub-inline-link">原始文獻（另開新視窗）</a></template>
@@ -132,9 +132,6 @@ const { breadcrumbs } = useHubPageSeo({
 .learn-page__formula {
   padding: 16px;
   overflow-x: auto;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: var(--el-fill-color-blank);
   font-size: 1.125rem;
 }
 

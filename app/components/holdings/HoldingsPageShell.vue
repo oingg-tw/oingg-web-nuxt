@@ -20,7 +20,6 @@ defineSlots<{ default?: (props: { loading: boolean }) => unknown; actions?: (pro
 
 const authResolved = useAuthResolved()
 const currentUser = useCurrentUser()
-const { open: openLogin } = useLoginDialog()
 // 登入狀態還沒確定時畫內容的骨架還是訪客卡：useMemberGate（觀察清單兩頁共用）
 const { resolving, member } = useMemberGate()
 
@@ -59,11 +58,7 @@ const loading = computed(() => resolving.value || !ready.value || props.pending)
 
     <HoldingsNav />
 
-    <section v-if="!member" class="holdings-shell__guest">
-      <h2 class="app-page__h2">{{ props.guestTitle }}</h2>
-      <p class="holdings-shell__guest-text">{{ props.guestText }}</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
+    <SharedLoginPrompt v-if="!member" :title="props.guestTitle" :text="props.guestText" />
 
     <slot v-else :loading="loading" />
   </div>
@@ -97,19 +92,4 @@ const loading = computed(() => resolving.value || !ready.value || props.pending)
   gap: 8px;
 }
 
-.holdings-shell__guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.holdings-shell__guest-text {
-  margin: 0;
-  color: var(--el-text-color-regular);
-}
 </style>

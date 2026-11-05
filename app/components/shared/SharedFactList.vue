@@ -48,7 +48,7 @@ defineProps<{
   align-items: baseline;
   gap: 4px 16px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .fact-list__label {

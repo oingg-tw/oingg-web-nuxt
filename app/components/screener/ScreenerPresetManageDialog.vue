@@ -171,7 +171,7 @@ function save() {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 /* 窄的時候名稱一行、按鈕一行；寬的時候同一行 */
@@ -182,7 +182,7 @@ function save() {
   gap: 4px 12px;
   min-height: 56px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .preset-manage__input,

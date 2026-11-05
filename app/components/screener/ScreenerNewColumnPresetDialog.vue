@@ -44,12 +44,12 @@ function chooseTemplate(template: ColumnPresetTemplate) {
     @open="step = 'choose'"
   >
     <div v-if="step === 'choose'" class="new-column-preset-dialog__choices">
-      <button type="button" class="new-column-preset-dialog__choice" @click="step = 'browse'">
+      <button type="button" class="app-card new-column-preset-dialog__choice" @click="step = 'browse'">
         <el-icon class="new-column-preset-dialog__choice-icon"><Trophy /></el-icon>
         <span class="new-column-preset-dialog__choice-title">官方精選欄位組合</span>
         <span class="new-column-preset-dialog__choice-desc">套用我們整理好的常用欄位組合，一鍵開始</span>
       </button>
-      <button type="button" class="new-column-preset-dialog__choice" @click="chooseCustom">
+      <button type="button" class="app-card new-column-preset-dialog__choice" @click="chooseCustom">
         <el-icon class="new-column-preset-dialog__choice-icon"><Edit /></el-icon>
         <span class="new-column-preset-dialog__choice-title">自訂欄位</span>
         <span class="new-column-preset-dialog__choice-desc">從空白開始，自由挑選要顯示的欄位</span>
@@ -71,7 +71,7 @@ function chooseTemplate(template: ColumnPresetTemplate) {
           v-for="template in templates"
           :key="template.key"
           type="button"
-          class="new-column-preset-dialog__template"
+          class="app-card new-column-preset-dialog__template"
           @click="chooseTemplate(template)"
         >
           <div class="new-column-preset-dialog__template-head">
@@ -98,9 +98,6 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   align-items: flex-start;
   gap: 4px;
   padding: 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: transparent;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease;
@@ -164,9 +161,6 @@ function chooseTemplate(template: ColumnPresetTemplate) {
   display: block;
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: transparent;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease;

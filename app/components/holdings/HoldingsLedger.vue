@@ -167,7 +167,7 @@ function priceText(transaction: Transaction): string {
   align-items: center;
   column-gap: 16px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
   font-variant-numeric: tabular-nums;
 }
 

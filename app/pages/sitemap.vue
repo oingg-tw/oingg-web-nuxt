@@ -30,7 +30,7 @@ const ACCESS_KEYS = [
       <p class="sitemap-page__subtitle">這一頁列出本站的每一個功能、鍵盤快速鍵與頁面結構</p>
     </div>
 
-    <nav class="sitemap-page__toc" aria-label="這一頁的段落">
+    <nav class="app-card sitemap-page__toc" aria-label="這一頁的段落">
       <a href="#sitemap-start">第一次來？</a>
       <a href="#sitemap-map">網站地圖</a>
       <a href="#sitemap-keys">快速鍵</a>
@@ -40,7 +40,7 @@ const ACCESS_KEYS = [
     <section id="sitemap-start" class="sitemap-page__section" aria-labelledby="sitemap-start-title">
       <h2 id="sitemap-start-title" class="app-page__h2 sitemap-page__section-title">第一次來？可以從這三頁開始</h2>
       <ul class="sitemap-page__start">
-        <li v-for="point in START_POINTS" :key="point.to">
+        <li v-for="point in START_POINTS" :key="point.to" class="app-card">
           <NuxtLink :to="point.to" class="sitemap-page__link">{{ point.label }}</NuxtLink>
           <span class="sitemap-page__note">{{ point.note }}</span>
         </li>
@@ -117,8 +117,6 @@ const ACCESS_KEYS = [
   flex-wrap: wrap;
   gap: 0 20px;
   padding: 2px 14px;
-  border-radius: 8px;
-  background: var(--el-fill-color-light);
 }
 
 .sitemap-page__toc a {
@@ -151,8 +149,6 @@ const ACCESS_KEYS = [
   display: flex;
   flex-direction: column;
   padding: 4px 14px 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
 }
 
 .sitemap-page__group-title {
@@ -174,7 +170,7 @@ const ACCESS_KEYS = [
   align-items: baseline;
   column-gap: 12px;
   padding: 0 0 8px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .sitemap-page__items li:last-child {

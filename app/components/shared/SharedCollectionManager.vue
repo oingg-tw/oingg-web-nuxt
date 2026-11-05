@@ -153,7 +153,7 @@ async function add() {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .collection-manager__row {
@@ -164,7 +164,7 @@ async function add() {
   gap: 4px 16px;
   min-height: 56px;
   padding: 4px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .collection-manager__name {

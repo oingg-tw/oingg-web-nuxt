@@ -277,7 +277,7 @@ body {
 .rail-heading {
   margin: 8px 0 0;
   padding: 12px 20px 4px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
   font-size: 1rem;
   color: var(--el-text-color-secondary);
 }
@@ -302,13 +302,13 @@ body {
 
 .rail-group--lead + nav {
   margin-top: 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 /* 沒有組標題的分隔（設定類的頁面跟上面分開） */
 .rail-divided {
   margin-top: 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 /* 頁首列上的每一個控制項（2026-10-21，使用者：「app-header-menu 我懷疑 這邊的樣式也是不一致的 請重新設計 並確保 UIUX 使用體驗順暢，手機
@@ -431,9 +431,12 @@ body {
   list-style: none;
 }
 
+/* 全站的晶片（2026-11-06）：可點的短標籤，44px 高、膠囊形，框是控制項的 3:1。目前這一個（aria-current）實心主色，同分段鈕選中的樣子。
+   排行的換指標、更新紀錄的篩選、指標總覽的跳轉、大師徽章的段落、速覽的挑指標都是它，各頁只補自己的版面 */
 .hub-chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--el-border-color);
@@ -458,6 +461,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.hub-chip[aria-current='page'] {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary);
+  color: var(--el-bg-color);
+}
+
 .hub-chip:hover .hub-chip__count,
 .hub-chip:focus-visible .hub-chip__count {
   color: inherit;
@@ -468,11 +477,6 @@ body {
    own "其他類股" chip list. Native disclosure widget: no JS, fully in the SSR HTML regardless of
    open/closed state (a crawler and check-hub-pages.mjs/check-click-depth.mjs's own regex-based
    link scan both read it either way), ≥48px summary row for a real touch target. */
-.hub-details {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: var(--el-fill-color-blank);
-}
 
 .hub-details > summary {
   display: flex;
@@ -487,7 +491,7 @@ body {
 }
 
 .hub-details[open] > summary {
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .hub-details > :not(summary) {
@@ -521,6 +525,16 @@ body {
   text-underline-offset: 3px;
 }
 
+/* 全站的卡片（2026-11-06，使用者：「元件庫的元件風格統一，比如卡片，讓網站每個卡片的邊框樣式一樣」）：框、圓角、底色只有這一份，值是 --el-card-*
+   （element-plus.css 的「卡片統一」），el-card 讀同一組。放內容的框都是卡片，可點的也是（靠文字辨識，不靠框線）；輸入框、按鈕、晶片是控制項，
+   框要 3:1（--el-border-color，theme.css），不用這個。頁面只寫版面與 hover，不寫框；有理由才換底色（公式區、外觀預覽）。
+   新增卡片用 <el-card> 或這個 class，scripts/check-component-library.mjs 擋住手畫的 */
+.app-card {
+  border: 1px solid var(--el-card-border-color);
+  border-radius: var(--el-card-border-radius);
+  background: var(--el-card-bg-color);
+}
+
 /* ── 全站表格：卡片＋表格（2026-10-23，使用者：「要以 screener-shell__results 這邊的卡片+表格，為核心去滿足整個網站的所有表格需求。
    先抽為共用樣式，再逐步替換掉網站其他的表格」）。樣子出自篩選結果（同日配色方案 A，使用者選）：
    - .app-table-card：卡片白底（--app-card-bg，同圖表卡片）、淡的暖色框、圓角 12px。表格在卡片裡邊到邊；卡片自己的標題列、工具列
@@ -529,11 +543,6 @@ body {
      試算表格線）；第一欄與最後一欄離卡片邊 16px；不畫斑馬紋。Element 的 el-table 同一組在 element-plus.css 的「全站表格」
    元件只有一個：SharedTable（卡片、捲動區、<table>、caption 都在那裡，頁面只給表頭與表身；「重點是表格元件要統一管理」）。
    scripts/check-tables.mjs 擋住別處直接寫 <table>、.app-table-card 或改 .seo-table ── */
-.app-table-card {
-  background: var(--app-card-bg);
-  border: 1px solid var(--app-surface-border);
-  border-radius: 12px;
-}
 
 /* 16px、等寬數字；第一欄黏在左邊，寬表格在手機上左右捲時還看得到是哪一列 */
 .seo-table {
@@ -707,13 +716,10 @@ body.has-bottom-nav-bar .load-failure-notice {
 
 /* 持股管理「表格在手機變卡片」共用的外觀（2026-10-08 使用者：「卡片能做成共用元件嗎？這樣樣式才比較好統一」）。
    用 class 不用元件：HoldingsMetricTable 的卡片是 <tr>（要保留表格語意），持股總覽與已實現損益是 <li>，結構各不相同，
-   共用的只有外觀。原本三處各寫一份，持股總覽的外框較深、圓角 8px、內距 16px，已實現損益的數字字重 600。框、圓角、底色跟全站卡片
+   共用的只有內距，框是 .app-card。原本三處各寫一份，持股總覽的外框較深、圓角 8px、內距 16px，已實現損益的數字字重 600。框、圓角、底色跟全站卡片
    同一組（--el-card-*，element-plus.css 的「卡片統一」，2026-10-23） */
 .holdings-card {
   padding: 12px 16px;
-  border: 1px solid var(--el-card-border-color);
-  border-radius: var(--el-card-border-radius);
-  background: var(--el-card-bg-color);
 }
 
 /* 卡片上最重要的那個數字 */

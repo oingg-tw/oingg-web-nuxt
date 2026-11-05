@@ -173,7 +173,7 @@ const { breadcrumbs } = useStockPageSeo({
       <!-- 跳轉索引：一次選擇就到位，Hick 成本是一次對數而不是「捲到找到」。真的 <a href="#…">，
            不靠 JS，爬蟲也讀得到。搜尋中不顯示——那時候結果已經是平鋪的。 -->
       <nav v-if="!normalizedQuery" class="stock-metric-index-page__jump" aria-label="跳到指標分組">
-        <a v-for="section in sections" :key="section.id" :href="`#${section.id}`" class="stock-metric-index-page__jump-link">
+        <a v-for="section in sections" :key="section.id" :href="`#${section.id}`" class="hub-chip stock-metric-index-page__jump-link">
           {{ section.label }}
         </a>
       </nav>
@@ -353,24 +353,6 @@ const { breadcrumbs } = useStockPageSeo({
   gap: 8px;
 }
 
-.stock-metric-index-page__jump-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 999px;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-  font-size: 1rem;
-}
-
-.stock-metric-index-page__jump-link:hover {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
 /* 不用 main.css 的 .hub-details（2026-09-28「如果要用類似表格的形式呈現，那就不需要放在卡片中，
    這樣版面更乾淨」）。那一支給的是卡片外觀——外框、圓角、底色、四邊 16px 內距——而這一頁的內容
    本來就是表格，卡片只是多一層框。這裡只留「一條分隔線 + 可點的標題列」，內容齊左貼齊表格。 */
@@ -490,7 +472,7 @@ const { breadcrumbs } = useStockPageSeo({
   min-width: 104px;
   padding: 0 16px;
   border: 1px solid var(--el-border-color);
-  border-radius: 6px;
+  border-radius: var(--el-border-radius-base);
   background: var(--el-fill-color-blank);
   color: var(--el-text-color-primary);
   font-size: 1rem;
@@ -645,6 +627,7 @@ const { breadcrumbs } = useStockPageSeo({
     padding: 0;
     border: 0;
     border-radius: 0;
+    background: none;
     color: var(--el-color-primary-dark-2);
     font-weight: 600;
   }

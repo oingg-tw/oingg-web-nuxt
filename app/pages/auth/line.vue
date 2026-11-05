@@ -120,7 +120,7 @@ onMounted(async () => {
 
 <template>
   <div class="line-login-page">
-    <div v-if="failure && failureText" class="line-login-page__panel">
+    <div v-if="failure && failureText" class="app-card line-login-page__panel">
       <h1 class="line-login-page__title">{{ failureText.title }}</h1>
       <p class="line-login-page__detail" role="alert">{{ failureText.detail }}</p>
       <!-- 綁定那條：重試或回個人資料（重新驗證、換帳號都在那裡做），不出現「改用其他方式登入」 -->
@@ -209,9 +209,6 @@ onMounted(async () => {
   width: 100%;
   max-width: 420px;
   padding: 32px 24px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: var(--el-bg-color);
   text-align: center;
 }
 

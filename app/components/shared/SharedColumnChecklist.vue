@@ -45,7 +45,7 @@ const sensitiveColumns = computed(() => props.columns.filter(column => column.se
 .column-checklist__heading {
   margin: 12px 0 4px;
   padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
   color: var(--el-text-color-secondary);
   /* el-checkbox-group 自己是 font-size: 0（排勾選框用），小標要設回來，不然字是 0 */
   font-size: 1rem;

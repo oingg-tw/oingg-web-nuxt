@@ -91,7 +91,7 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
   bottom: 0;
   z-index: 10;
   background: var(--el-bg-color-overlay);
-  border-top: 1px solid var(--el-border-color);
+  border-top: 1px solid var(--app-divider);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);
   /* nuxt.config 沒有 viewport-fit=cover，所以 env() 現在是 0、iOS 自己會把固定元素放在安全區之上。刻意不加 cover：
      加了之後 iPhone 橫拿時整站內容會延伸到瀏海底下，頁首與頁面左右都沒有對應的 safe-area 留白。這一行是為了
@@ -156,7 +156,7 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
   overflow-y: auto;
   /* 捲到清單盡頭時不接著捲後面的頁面 */
   overscroll-behavior: contain;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 /* 寬螢幕交給 AppNavRail。斷點與站上其他七處一致（見 layouts/default.vue）。 */

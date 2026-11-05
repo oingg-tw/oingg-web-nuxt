@@ -138,7 +138,7 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
           <h3 :id="`industries-group-${group.key}`" class="industries-page__group-title">{{ group.title }}<span>{{ group.rows.length }} 個類股</span></h3>
           <ul class="industries-page__grid">
             <li v-for="row in group.rows" :key="row.sectorCode">
-              <NuxtLink :to="pathFor(row.sectorCode)" class="industries-page__tile">
+              <NuxtLink :to="pathFor(row.sectorCode)" class="app-card industries-page__tile">
                 <span class="industries-page__tile-name">{{ row.sectorName }}</span>
                 <span class="industries-page__tile-foot">
                   <span class="industries-page__tile-count">{{ row.companyCount }} 家</span>
@@ -224,9 +224,6 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
   justify-content: space-between;
   gap: 6px;
   padding: 10px 12px;
-  border: 1px solid var(--app-surface-border);
-  border-radius: 10px;
-  background: var(--app-card-bg);
   color: var(--el-text-color-primary);
   text-decoration: none;
 }

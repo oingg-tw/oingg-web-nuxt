@@ -48,7 +48,7 @@ useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/changelog` }] }
         <li v-for="filter in filters" :key="filter.label">
           <NuxtLink
             :to="filter.kind ? { path: '/changelog', query: { kind: filter.kind } } : '/changelog'"
-            class="changelog-page__filter"
+            class="hub-chip"
             :aria-current="filter.kind === kind ? 'page' : undefined"
           >
             {{ filter.label }}
@@ -138,24 +138,4 @@ useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/changelog` }] }
   list-style: none;
 }
 
-.changelog-page__filter {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid var(--app-surface-border);
-  border-radius: 999px;
-  color: var(--el-text-color-regular);
-  text-decoration: none;
-}
-
-.changelog-page__filter:hover {
-  color: var(--el-color-primary-dark-2);
-}
-
-.changelog-page__filter[aria-current='page'] {
-  border-color: var(--el-color-primary-dark-2);
-  color: var(--el-color-primary-dark-2);
-  font-weight: 600;
-}
 </style>

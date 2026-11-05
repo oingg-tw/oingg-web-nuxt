@@ -205,7 +205,7 @@ function onKeydown(event: KeyboardEvent) {
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--el-border-color);
+  border-bottom: 1px solid var(--app-divider);
   background: var(--el-bg-color-overlay);
 }
 

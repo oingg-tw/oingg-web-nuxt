@@ -118,7 +118,7 @@ const { breadcrumbs } = useHubPageSeo({
           <el-radio-button v-for="group in groups" :key="group.name" :value="group.name">{{ group.name }}</el-radio-button>
         </el-radio-group>
       </div>
-      <section class="rank-list" :aria-label="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
+      <section class="app-card rank-list" :aria-label="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
         <RankList :rows="rows" :page="definition">
           <template #head="{ sharedDate }">
             <p class="rank-list__head">
@@ -250,25 +250,10 @@ const { breadcrumbs } = useHubPageSeo({
 
   .rank-chips__chip {
     flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 16px;
-    border: 1px solid var(--el-color-primary-light-5);
-    border-radius: 999px;
-    background: var(--app-card-bg);
-    color: var(--el-color-primary-dark-2);
-    font-weight: 600;
     white-space: nowrap;
-    text-decoration: none;
   }
 
   /* 字色用頁面底色：深色模式的主色是淺金，白字看不清 */
-  .rank-chips__chip[aria-current='page'] {
-    border-color: var(--el-color-primary);
-    background: var(--el-color-primary);
-    color: var(--el-bg-color);
-  }
 
   .rank-list-block {
     display: block;
@@ -276,9 +261,6 @@ const { breadcrumbs } = useHubPageSeo({
   }
 
   .rank-list {
-    background: var(--app-card-bg);
-    border: 1px solid var(--app-surface-border);
-    border-radius: 12px;
     overflow: hidden;
   }
 

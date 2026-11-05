@@ -29,7 +29,7 @@ const ssrAttr = computed(() => (props.ssr === false ? undefined : props.ssr === 
 
 <template>
   <!-- <table> 明寫 role="table"：頁面窄的時候把表格改成 block/grid（指標速覽、持股指標表），Safari＋VoiceOver 會因此丟掉表格語意 -->
-  <div class="shared-table app-table-card">
+  <div class="app-card shared-table app-table-card">
     <div v-if="$slots.header" class="shared-table__header">
       <slot name="header" />
     </div>

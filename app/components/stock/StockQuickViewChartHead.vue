@@ -48,7 +48,7 @@ const emit = defineEmits<{ remove: [] }>()
   margin: -6px -8px -6px 0;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--el-border-radius-base);
   background: none;
   color: var(--el-text-color-secondary);
   font-size: 18px;

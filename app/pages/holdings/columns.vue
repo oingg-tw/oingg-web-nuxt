@@ -482,7 +482,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
         <p v-if="!editingId" class="columns-toolbar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除；要排序就點那一欄的任一格，再按「由小到大」或「由大到小」。</p>
 
         <h2 v-if="editingId" class="visually-hidden">公式列</h2>
-        <div v-if="editingId" class="formula-bar" role="group" aria-label="公式列">
+        <div v-if="editingId" class="app-card formula-bar" role="group" aria-label="公式列">
           <span class="formula-bar__letter" aria-hidden="true">{{ editingLetter }}</span>
           <el-input v-model="draft.label" class="formula-bar__label" maxlength="20" aria-label="欄位名稱" placeholder="欄位名稱" />
           <span class="formula-bar__fx" aria-hidden="true">fx</span>
@@ -601,9 +601,6 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
   align-items: center;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
 }
 
 /* 觸控目標至少 44px（2026-10-07 a11y 盤點：輸入框與按鈕原本 32px） */
@@ -669,7 +666,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
   position: relative;
   min-height: 44px;
   border: 1px solid var(--el-border-color);
-  border-radius: var(--el-border-radius-base, 4px);
+  border-radius: var(--el-border-radius-base);
   background: var(--el-fill-color-blank);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 1rem;

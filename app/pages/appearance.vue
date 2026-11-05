@@ -254,7 +254,7 @@ const previewOption = computed(() => {
 
       <!-- Preview chart — see this component's own script-side comment for why every one of
            the 4 settings above needs manual wiring here instead of picking them up for free. -->
-      <div class="appearance-page__preview">
+      <div class="app-card appearance-page__preview">
         <SharedChart class="appearance-page__preview-chart" :option="previewOption" autoresize aria-label="漲跌顏色預覽圖表" />
       </div>
     </section>
@@ -350,8 +350,6 @@ const previewOption = computed(() => {
 .appearance-page__preview {
   margin-top: 4px;
   padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
   background: var(--el-bg-color-page);
 }
 

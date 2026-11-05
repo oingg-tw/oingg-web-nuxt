@@ -103,11 +103,11 @@ useHead({
 }
 
 .blog-index__item {
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .blog-index__item:last-child {
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .blog-index__link {

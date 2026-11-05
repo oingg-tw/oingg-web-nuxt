@@ -46,7 +46,7 @@ function confirm() {
         v-for="template in selectableTemplates"
         :key="template.id"
         type="button"
-        class="guest-picker__tile"
+        class="app-card guest-picker__tile"
         :aria-pressed="selectedTemplateId === template.id"
         :class="{ 'is-selected': selectedTemplateId === template.id }"
         @click="pickTemplate(template.id)"
@@ -119,9 +119,6 @@ function confirm() {
   gap: 8px;
   min-height: 64px;
   padding: 16px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: transparent;
   color: var(--el-text-color-primary);
   text-align: left;
   cursor: pointer;

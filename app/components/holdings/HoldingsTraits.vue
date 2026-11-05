@@ -88,7 +88,7 @@ const methodGroups = computed(() => [
     </ul>
     <p v-else class="holdings-traits__tags holdings-traits__none">沒有達到任何標籤的門檻（門檻寫在下面的「指標的意思與計算方式」）。</p>
 
-    <div class="holdings-traits__panel">
+    <div class="app-card holdings-traits__panel">
       <!-- 上層：九宮格「這組持股 vs 大盤」，各占一半寬、在自己那一半置中；放不下時上下疊，vs 夾在中間 -->
       <figure v-if="boxes.length" class="holdings-traits__boxes">
         <figcaption>規模與風格九宮格（占市值）</figcaption>
@@ -175,9 +175,6 @@ const methodGroups = computed(() => [
 .holdings-traits__panel {
   container-type: inline-size;
   padding: 16px 20px;
-  border: 1px solid var(--el-card-border-color);
-  border-radius: var(--el-card-border-radius);
-  background: var(--el-card-bg-color);
 }
 
 /* 答句：標籤一排，在面板上面 */
@@ -244,7 +241,7 @@ const methodGroups = computed(() => [
 .holdings-traits__vs::after {
   content: '';
   flex: 1;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 /* 每一格是一塊色塊、不畫格線（不像試算表）：0 是淺灰、字淡；有占比的依格子上寫的整數分三階主色 */
@@ -385,7 +382,7 @@ const methodGroups = computed(() => [
 /* 指標的意思與計算方式：四組，組與組之間一條細線；每組小標、一句總說明，再來「名稱｜說明」兩欄（窄的時候名稱在上） */
 .holdings-traits__method-group {
   padding: 16px 0;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .holdings-traits__method-group:first-of-type {
@@ -452,7 +449,7 @@ const methodGroups = computed(() => [
   .holdings-traits__box-row--pair .holdings-traits__vs::before,
   .holdings-traits__box-row--pair .holdings-traits__vs::after {
     border-top: 0;
-    border-left: 1px solid var(--el-border-color-lighter);
+    border-left: 1px solid var(--app-divider);
   }
 
   /* 數字對準九宮格的格子：九宮格左邊多一欄「大型／中型／小型」（2.5em 加兩道 4px 間距），格子的中心往右偏 22px */

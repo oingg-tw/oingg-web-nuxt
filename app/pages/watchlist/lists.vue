@@ -5,7 +5,6 @@
 useSeoMeta({ title: '清單管理', robots: 'noindex, nofollow' })
 
 const currentUser = useCurrentUser()
-const { open: openLogin } = useLoginDialog()
 // 登入過的瀏覽器先畫清單管理的結構、列是骨架，沒登入過直接畫訪客卡（useMemberGate，同持股頁的外殼，2026-10-20）。清單是登入時由
 // app.vue 的 useWatchlistSync 讀進來的：讀到之前是骨架（不然會先閃「還沒有任何清單」）。synced 在開始讀時就是 true，讀完要再看 sync-pending
 const { resolving, member } = useMemberGate()
@@ -24,11 +23,7 @@ const listCountHint = useLayoutHint('watchlist-lists', 1)
 
     <WatchlistNav />
 
-    <section v-if="!member" class="watchlist-lists-page__guest">
-      <h2 class="app-page__h2">登入後管理你的觀察清單</h2>
-      <p class="watchlist-lists-page__subtitle">清單存在你的帳號裡，換電腦或手機都在。</p>
-      <el-button type="primary" size="large" @click="openLogin">登入／註冊</el-button>
-    </section>
+    <SharedLoginPrompt v-if="!member" class="watchlist-lists-page__guest" title="登入後管理你的觀察清單" text="清單存在你的帳號裡，換電腦或手機都在。" />
 
     <SharedCollectionManager
       v-else
@@ -58,14 +53,6 @@ const listCountHint = useLayoutHint('watchlist-lists', 1)
 
 /* 同持股頁的訪客卡（HoldingsPageShell） */
 .watchlist-lists-page__guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
   margin-top: 24px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
 }
 </style>

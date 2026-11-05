@@ -63,7 +63,7 @@ function choose(value: AnalyticsConsent) {
   justify-content: center;
   gap: 12px 24px;
   padding: 16px;
-  border-top: 1px solid var(--el-border-color);
+  border-top: 1px solid var(--app-divider);
   background: var(--el-bg-color-overlay);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);
   color: var(--el-text-color-primary);

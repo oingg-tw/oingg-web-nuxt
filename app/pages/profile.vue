@@ -231,7 +231,7 @@ const planName = computed(() => {
 <template>
   <div v-if="currentUser" class="profile-page">
     <h1 class="app-page__title app-page__title--app profile-page__title">個人資料設定</h1>
-    <div class="profile-page__card">
+    <div class="app-card profile-page__card">
       <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" alt="" class="profile-page__avatar">
         {{ displayLabel.slice(0, 1).toUpperCase() }}
       </el-avatar>
@@ -242,7 +242,7 @@ const planName = computed(() => {
 
     <section class="profile-page__section" aria-labelledby="sign-in-methods-title">
       <h2 id="sign-in-methods-title" class="profile-page__section-title">登入方式</h2>
-      <ul class="profile-page__methods">
+      <ul class="app-card profile-page__methods">
         <li v-if="providers.includes('google.com')" class="profile-page__method"><span>Google</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
         <li v-if="providers.includes('password')" class="profile-page__method"><span>電子郵件</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
         <li class="profile-page__method">
@@ -372,9 +372,6 @@ const planName = computed(() => {
   align-items: center;
   gap: 8px;
   padding: 32px 16px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
 }
 
 .profile-page__avatar {
@@ -412,9 +409,6 @@ const planName = computed(() => {
   margin: 0 0 12px;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
-  background: var(--el-bg-color);
 }
 
 .profile-page__method {
@@ -428,7 +422,7 @@ const planName = computed(() => {
 }
 
 .profile-page__method + .profile-page__method {
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .profile-page__method-note {

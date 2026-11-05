@@ -276,7 +276,7 @@ function reset() {
   font-size: 1rem;
   color: var(--el-text-color-secondary);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--el-border-radius-base);
 }
 
 .range-editor__reset:hover {

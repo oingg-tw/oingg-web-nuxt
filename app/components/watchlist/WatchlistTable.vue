@@ -166,7 +166,7 @@ const sortedCards = computed(() => {
   <!-- 手機卡片跟持股明細的卡片同一種排法（2026-10-22，使用者：「觀察清單在手機版 看起來 髒髒的」，方案頁選 4B）：名稱靠左、數字靠右、一列一項
        （.holdings-card__rows），備註與移除是卡片的頁尾、沒有框。原本數字排兩欄、名稱在上數字在下，每張卡片底下一顆有框的備註、一顆紅框的移除 -->
   <ul class="view-card watchlist-cards">
-    <li v-for="row in sortedCards" :key="row.code" class="watchlist-card holdings-card">
+    <li v-for="row in sortedCards" :key="row.code" class="app-card watchlist-card holdings-card">
       <div v-if="loading" class="watchlist-name" aria-hidden="true"><span class="app-skeleton app-skeleton--inline watchlist-skeleton" /></div>
       <div v-else class="watchlist-name">
         <NuxtLink :to="linkOf(row)" class="stock-name-link">{{ row.name }}</NuxtLink>

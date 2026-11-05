@@ -74,7 +74,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 
     <!-- 分類列不上色、只放 icon（使用者指定，同個股頁的分類列；GURU_CATEGORY_ICON 兩邊共用） -->
     <nav v-if="filteredGroups.length" class="guru-indicators-page__nav" aria-label="分類快速跳轉">
-      <a v-for="group in filteredGroups" :key="group.anchor" :href="`#${group.anchor}`" class="guru-indicators-page__nav-link">
+      <a v-for="group in filteredGroups" :key="group.anchor" :href="`#${group.anchor}`" class="hub-chip">
         <el-icon class="guru-indicators-page__nav-icon"><component :is="GURU_CATEGORY_ICON[group.category]" /></el-icon>
         {{ group.category }}
       </a>
@@ -121,22 +121,6 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 32px;
-}
-
-.guru-indicators-page__nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--el-border-color);
-  font-size: 1rem;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-}
-
-.guru-indicators-page__nav-link:hover {
-  background: var(--el-fill-color-light);
 }
 
 .guru-indicators-page__nav-icon {

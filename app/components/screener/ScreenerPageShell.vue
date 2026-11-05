@@ -182,7 +182,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
           </div>
           <!-- 沒有結果：說清楚是條件太嚴，給一個馬上能做的動作（三組同一段）。這時「顯示欄位」跟著表格一起收起來（沒有資料就沒有欄位可選）。
                下面結果表的名稱欄跟著資料寬（SharedMetricTable 量最長的名稱） -->
-          <div v-if="empty" class="screener-shell__empty">
+          <div v-if="empty" class="app-card screener-shell__empty">
             <template v-if="goneCondition">
               <p class="screener-shell__empty-text">這組篩選有指標已經下架，查不出結果。請移除它，或到篩選條件換成別的指標。</p>
               <el-button class="screener-shell__empty-button" @click="removeFromEmpty(goneCondition!.id)">移除已下架的條件</el-button>
@@ -495,8 +495,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   align-items: flex-start;
   gap: 12px;
   padding: 24px 16px;
-  border: 1px dashed var(--el-border-color);
-  border-radius: 12px;
 }
 
 .screener-shell__empty-text {

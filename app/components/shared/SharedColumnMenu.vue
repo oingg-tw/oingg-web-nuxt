@@ -149,7 +149,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerdown,
 
 .column-menu__head {
   padding: 4px 16px 8px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .column-menu__title {
@@ -178,7 +178,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerdown,
 
 .column-menu__divider {
   margin: 4px 0;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .column-menu__item {

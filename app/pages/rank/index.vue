@@ -43,7 +43,7 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
     <RankNav />
     <p class="hub-answer">{{ RANK_PAGES.length }} 份排行，各依一個指標排序。每張卡片切換同類的排行，先列前 5 名；點「看前 50 檔」看完整名單、資料日期與指標說明。</p>
     <div class="rank-index__cards">
-      <section v-for="card in cards" :key="card.key" class="rank-card" :aria-labelledby="`rank-card-${card.key}`">
+      <section v-for="card in cards" :key="card.key" class="app-card rank-card" :aria-labelledby="`rank-card-${card.key}`">
         <div class="rank-card__head">
           <h2 :id="`rank-card-${card.key}`" class="rank-card__title"><span class="rank-card__group">{{ card.group }}</span>{{ card.title }}</h2>
           <el-radio-group v-if="card.items.length > 1" v-model="picked[card.key]" :aria-label="`${card.group}${card.title}：選擇排行`" class="app-radio-fill">
@@ -89,9 +89,6 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
 .rank-card {
   display: flex;
   flex-direction: column;
-  background: var(--app-card-bg);
-  border: 1px solid var(--app-surface-border);
-  border-radius: 12px;
   overflow: hidden;
 }
 

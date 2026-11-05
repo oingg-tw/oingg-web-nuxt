@@ -416,7 +416,7 @@ async function submit() {
                先試的三格卡片版「合併以後看起來髒髒的」——各格內容長短不一、同一格紅綠兩色、括號太多）。改成一塊、不分格：總市值是唯一的
                大數字，下面三列對齊成「名稱｜金額｜比率」，損益兩列在上、股利一列在下。每列只有一種顏色；日期只在總市值寫一次 -->
           <!-- 讀的時候欄名照畫，數字是同樣長短的範例字骨架（2026-10-20）：欄寬照內容算，換成真的數字時不移動 -->
-          <dl v-if="loading" class="holdings-overview" aria-hidden="true">
+          <dl v-if="loading" class="app-card holdings-overview" aria-hidden="true">
             <div class="holdings-overview__hero">
               <dt>總市值<span class="app-skeleton app-skeleton--flow">（10/16 收盤）</span></dt>
               <dd><span class="app-skeleton app-skeleton--flow">1,234,567 元</span></dd>
@@ -437,7 +437,7 @@ async function submit() {
               <dd>殖利率 <span class="app-skeleton app-skeleton--flow">3.45%</span><span class="holdings-overview__compare"><span class="app-skeleton app-skeleton--flow">（大盤 3.12%）</span></span></dd>
             </div>
           </dl>
-          <dl v-else class="holdings-overview">
+          <dl v-else class="app-card holdings-overview">
             <div class="holdings-overview__hero">
               <dt>總市值<template v-if="priceDates.length">（{{ shortDate(priceDates.at(-1)!) }} 收盤）</template></dt>
               <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
@@ -648,9 +648,6 @@ async function submit() {
   row-gap: 14px;
   margin: 0;
   padding: 16px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  background: var(--el-bg-color);
   font-variant-numeric: tabular-nums;
 }
 
@@ -666,7 +663,7 @@ async function submit() {
   grid-column: 1 / -1;
   margin-bottom: 8px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .holdings-overview__hero dd {
@@ -729,7 +726,7 @@ async function submit() {
     margin: 0 8px 0 0;
     padding: 0 32px 0 0;
     border-bottom: 0;
-    border-right: 1px solid var(--el-border-color-lighter);
+    border-right: 1px solid var(--app-divider);
   }
 
   .holdings-overview__row {
@@ -771,7 +768,7 @@ async function submit() {
 .holdings-page__clear {
   margin-top: 24px;
   padding-top: 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-divider);
 }
 
 .holdings-page__clear .el-button {

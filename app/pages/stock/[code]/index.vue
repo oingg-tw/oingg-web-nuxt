@@ -381,7 +381,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
               <li v-for="link in group.children" :key="slugOf(link)">
                 <button
                   type="button"
-                  class="stock-quick-view-page__picker-item"
+                  class="hub-chip stock-quick-view-page__picker-item"
                   :class="{ 'is-pinned': isPinned(slugOf(link)) }"
                   :aria-pressed="isPinned(slugOf(link))"
                   :disabled="!isPinned(slugOf(link)) && isFull"
@@ -546,15 +546,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 }
 
 .stock-quick-view-page__picker-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 999px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
   font: inherit;
   cursor: pointer;
 }
