@@ -87,6 +87,15 @@ const pageErrors = []
 page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
 // 送出的查詢內容（換期別要看真的送了哪個欄位）
 const sentBodies = []
+// 還沒回來的查詢：伺服器慢的時候，前一步的回應會晚到，被算成下一步發的
+let queriesInFlight = 0
+const isQuery = request => request.method() === 'POST' && request.url().includes('/screener')
+page.on('request', (request) => { if (isQuery(request)) queriesInFlight++ })
+for (const event of ['requestfinished', 'requestfailed']) page.on(event, (request) => { if (isQuery(request)) queriesInFlight-- })
+// 等這一步的查詢回來：固定等幾秒的話，伺服器一慢就誤報成沒發
+const queryAnswered = async (since) => {
+  for (const start = Date.now(); Date.now() - start < 20000 && upstream.length <= since;) await new Promise(resolve => setTimeout(resolve, 200))
+}
 page.on('response', response => {
   if (response.request().method() !== 'POST' || !response.url().includes('/screener')) return
   upstream.push(response.status())
@@ -369,10 +378,10 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   // 而值其實在 row.values[field].value）。所以這裡直接量單調性。
   const priceIndex = await headerIndex('收盤價')
   if (priceIndex >= 0) {
-    // 先等列數穩定：表格現在最高一個螢幕（2026-10-15），20 列剛好碰到底，無限捲動會自己再載一頁——那不是排序發的請求
+    // 先等列數穩定、查詢都回來：表格現在最高一個螢幕（2026-10-15），20 列剛好碰到底，無限捲動會自己再載一頁——那不是排序發的請求
     for (let stable = 0, last = -1; stable < 4;) {
       const count = await page.locator('.el-table__body tbody tr').count()
-      stable = count === last ? stable + 1 : 0
+      stable = count === last && !queriesInFlight ? stable + 1 : 0
       last = count
       await page.waitForTimeout(500)
     }
@@ -530,13 +539,13 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     expect('手機', '沒選排序時方向鍵停用', await direction.isDisabled())
     const requestsBefore = upstream.length
     await m.getByRole('combobox', { name: '排序', exact: true }).selectOption({ label: '本益比' })
-    await m.waitForTimeout(4000)
+    await queryAnswered(requestsBefore)
     expect('手機', '排序選單選本益比會打後端', upstream.length > requestsBefore && upstream.at(-1) === 200, `多發了 ${upstream.length - requestsBefore} 次`)
     const directionText = await direction.textContent() ?? ''
     expect('手機', '選了本益比，方向是小到大', !await direction.isDisabled() && directionText.includes('小到大'), directionText)
     const requestsBeforeToggle = upstream.length
     await direction.click()
-    await m.waitForTimeout(4000)
+    await queryAnswered(requestsBeforeToggle)
     const toggledText = await direction.textContent() ?? ''
     expect('手機', '按方向鍵換成大到小並打後端', toggledText.includes('大到小') && upstream.length > requestsBeforeToggle && upstream.at(-1) === 200, `${toggledText}，多發了 ${upstream.length - requestsBeforeToggle} 次`)
     expect('手機', '排序後卡片還在', await m.locator('.smt-card').count() > 0)

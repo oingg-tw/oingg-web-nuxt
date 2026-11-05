@@ -1,6 +1,7 @@
 // 三組篩選重新整理前後，顯示欄位不能跑掉（2026-11-05，使用者：「screener 顯示欄位重新整理以後會跑掉」）：改欄位 → 記下兩個下拉、表頭順序 →
 // 重新整理 → 要一模一樣。原本 21 條流程有多條不一樣：換欄位組合時表格的順序跟存的不同（SharedMetricTable）、普通股訪客的總覽有被藏起來的舊指標、
-// 未儲存的那組變成「請選擇」、沒有條件的已存篩選跳回「全部」、套用官方欄位組合時舊指標要到下次開頁才換、沒有欄位可顯示的組合（空白或全被上游拿掉）變「請選擇」。
+// 未儲存的那組變成「請選擇」、沒有條件的已存篩選跳回「全部」、套用官方欄位組合時舊指標要到下次開頁才換、沒有欄位可顯示的組合（空白或全被上游拿掉）變「請選擇」，
+// ETF、特別股只剩代號與名稱、帳號有了第一組之後其他篩選停在「請選擇」、別的篩選用的組合被刪掉之後表格還是舊的欄位、特別股的排序沒有存、普通股晚到的舊結果蓋掉新的。
 // 登入的流程用測試帳號，但篩選與欄位組合全是這支腳本假的（記得住狀態，存了下次讀得到）：帳號裡什麼都不會變，其他寫入一律擋下。訪客的流程是真的查。
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-screener-reload.mjs [流程名稱的一部分]（要 A11Y_TEST_EMAIL／PASSWORD；BASE_URL 可換 DEV）
 import { chromium } from 'playwright'
@@ -44,7 +45,10 @@ const mock = async (ctx, saved) => {
         // 同 resolve_screener_columns（業務中台 448b511）：型錄沒有的欄位略過，一欄都不剩（或這個帳號一組都沒有）就退回官方總覽，columnPresetId 是 null
         const known = (columnSet?.columns ?? []).map(({ field }) => field).filter(field => !field.startsWith('oldGone'))
         const columns = known.length ? known : ['liveMarketCap.EOD', 'roe.TTM']
-        return route.fulfill({ json: { screener: { count: 1, page: 1, pageSize: 20, totalPages: 1, columns: columns.map(field => ({ field, metricName: field, fieldName: '', unit: '' })), results: [{ symbol: '2330', name: '台積電', values: {} }] }, columnPresetId: known.length ? columnSet.id : null, preset: target } })
+        // 代號跟著條件數變，舊結果蓋掉新的看得出來
+        const symbol = String(2330 + target.filters.length)
+        if (saved.slowRun === target.filters.length) await new Promise(resolve => setTimeout(resolve, 3000))
+        return route.fulfill({ json: { screener: { count: 1, page: 1, pageSize: 20, totalPages: 1, columns: columns.map(field => ({ field, metricName: field, fieldName: '', unit: '' })), results: [{ symbol, name: '台積電', values: {} }] }, columnPresetId: known.length ? columnSet.id : null, preset: target } })
       }
       const one = p.match(/^\/api\/core\/screener\/presets\/([^/]+)$/)
       if (one && m === 'PATCH') {
@@ -58,6 +62,12 @@ const mock = async (ctx, saved) => {
         Object.assign(target, req.postDataJSON())
         return route.fulfill({ json: { columnPreset: target } })
       }
+      if (column && m === 'DELETE') {
+        saved.sets = saved.sets.filter(item => item.id !== column[1])
+        // 同外鍵 ON DELETE SET NULL
+        for (const item of saved.presets) if (item.lastColumnPresetId === column[1]) item.lastColumnPresetId = null
+        return route.fulfill({ status: 204 })
+      }
     }
     if (m === 'GET' || /identitytoolkit|securetoken/.test(url.host + p)) return route.continue()
     if (['/api/core/etf-screener', '/api/core/screener', '/api/core/screener/values'].includes(p) && m === 'POST') return route.continue()
@@ -67,7 +77,9 @@ const mock = async (ctx, saved) => {
 
 const snapshot = page => page.evaluate(() => ({
   menus: [...document.querySelectorAll('.screener-preset-select__select')].map(el => el.innerText.trim().replace(/\s+/g, ' ')),
-  heads: [...document.querySelectorAll('.smt-table-view .el-table__header th .screener-result-table__column-label')].map(el => el.textContent.trim())
+  heads: [...document.querySelectorAll('.smt-table-view .el-table__header th .screener-result-table__column-label')].map(el => el.textContent.trim()),
+  sort: [...document.querySelectorAll('.smt-table-view .screener-result-table__head')].map(el => el.textContent.trim()).filter(text => text.includes('排序')),
+  first: document.querySelector('.smt-table-view .el-table__body tbody tr td')?.textContent.trim()
 }))
 const settled = async (page) => {
   await page.locator('.screener-result-table .el-table__body tbody tr').first().waitFor({ timeout: 60000 }).catch(() => {})
@@ -83,6 +95,11 @@ const removeLastColumn = async (page) => {
   await page.locator('.column-menu [role="menu"]').getByRole('menuitem', { name: /移除這一欄/ }).click()
   await page.waitForTimeout(1500)
 }
+const sortLastColumn = async (page) => {
+  await page.locator('.smt-table-view .screener-result-table__head').last().click()
+  await page.locator('.column-menu [role="menu"]').getByRole('menuitem', { name: /由大到小/ }).click()
+  await page.waitForTimeout(1800)
+}
 async function addColumn(page, name) {
   const dialog = page.getByRole('dialog', { name: /^(欄位設定|新增欄位)$/ })
   await page.getByRole('button', { name: '欄位設定' }).click()
@@ -96,6 +113,13 @@ const applyColumnTemplate = async (page) => {
   await page.getByRole('button', { name: '新增欄位組合' }).click()
   await page.getByRole('button', { name: /官方精選欄位組合/ }).click()
   await page.getByRole('button', { name: new RegExp(TEMPLATE.name) }).click()
+  await page.waitForTimeout(2500)
+}
+const deleteColumnSet = async (page, name) => {
+  const dialog = page.getByRole('dialog', { name: '管理顯示欄位' })
+  await page.getByRole('button', { name: '管理顯示欄位' }).click()
+  await dialog.getByRole('button', { name: `刪除「${name}」` }).click()
+  await dialog.getByRole('button', { name: '儲存' }).click()
   await page.waitForTimeout(2500)
 }
 
@@ -123,11 +147,14 @@ const flowsOf = (key) => {
     { name: '選組合B', act: async (page) => { await onFirst(page); await choose(page, 1, '組合B') } },
     { name: '組合B 移除一欄', act: async (page) => { await onFirst(page); await choose(page, 1, '組合B'); await removeLastColumn(page) } },
     { name: '組合B 加一欄', act: async (page) => { await onFirst(page); await choose(page, 1, '組合B'); await addColumn(page, u.column) } },
+    { name: '組合B 排序', sorted: true, act: async (page) => { await onFirst(page); await choose(page, 1, '組合B'); await sortLastColumn(page) } },
+    { name: '排序之後切到第二組', act: async (page) => { await onFirst(page); await choose(page, 1, '組合B'); await sortLastColumn(page); await choose(page, 0, u.second) } },
     { name: '切到第二組', act: page => choose(page, 0, u.second) },
     { name: '失效 少一欄的組合', act: async (page) => { await onFirst(page); await choose(page, 1, '組合C') } },
-    { name: '失效 整組都沒了的組合', act: async (page) => { await onFirst(page); await choose(page, 1, '組合D') } }
+    { name: '失效 整組都沒了的組合', act: async (page) => { await onFirst(page); await choose(page, 1, '組合D') } },
+    { name: '失效 整組都沒了的組合 排序', sorted: true, act: async (page) => { await onFirst(page); await choose(page, 1, '組合D'); await sortLastColumn(page) } }
   ]
-  if (key === 'common') return [...flows, { name: '未儲存的那組 選組合B', path: '/screener/common?f=roe.TTM:20~', act: page => choose(page, 1, '組合B') }, { name: '套用官方欄位組合', act: applyColumnTemplate }, { name: '空白的組合', act: page => choose(page, 1, '組合E') }, { name: '沒有欄位組合的帳號', sets: () => [], act: () => {} }, { name: '沒有欄位組合 點選單裡的總覽', sets: () => [], act: page => choose(page, 1, '總覽') }, { name: '沒有欄位組合 套用官方欄位組合', sets: () => [], act: applyColumnTemplate }]
+  if (key === 'common') return [...flows, { name: '未儲存的那組 選組合B', path: '/screener/common?f=roe.TTM:20~', act: page => choose(page, 1, '組合B') }, { name: '套用官方欄位組合', act: applyColumnTemplate }, { name: '空白的組合', act: page => choose(page, 1, '組合E') }, { name: '沒有欄位組合的帳號', sets: () => [], act: () => {} }, { name: '沒有欄位組合 點選單裡的總覽', sets: () => [], act: page => choose(page, 1, '總覽') }, { name: '沒有欄位組合 套用官方欄位組合', sets: () => [], act: applyColumnTemplate }, { name: '沒有欄位組合 有了第一組再切到別組', sets: () => [], act: async (page) => { await applyColumnTemplate(page); await choose(page, 0, u.second) } }, { name: '慢的舊查詢不蓋掉新的', slowRun: 2, presets: () => [preset('p1', '高 ROE', [range('roe.TTM', 15), range('debtRatio.Q', 1), range('eps.TTM', 1)]), preset('p2', '低負債', [range('debtRatio.Q', 1)])], act: async (page) => { await page.locator('.condition-pill__remove').first().click(); await page.waitForTimeout(900); await page.locator('.condition-pill__remove').first().click(); await page.waitForTimeout(4000) } }, { name: '別組用的組合被刪掉', act: async (page) => { await choose(page, 0, u.second); await choose(page, 1, '組合B'); await choose(page, 0, u.first); await deleteColumnSet(page, '組合B'); await choose(page, 0, u.second) } }]
   return [
     ...flows,
     { name: '內建那組 選組合B', act: page => choose(page, 1, '組合B') },
@@ -141,7 +168,7 @@ for (const key of Object.keys(UNIVERSES)) {
   for (const flow of flowsOf(key).filter(item => !only || item.name.includes(only))) {
     const u = UNIVERSES[key]
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(flow.guest ? {} : { storageState }) })
-    await mock(ctx, flow.guest ? null : { presets: u.presets(), sets: (flow.sets ?? u.sets)() })
+    await mock(ctx, flow.guest ? null : { presets: (flow.presets ?? u.presets)(), sets: (flow.sets ?? u.sets)(), slowRun: flow.slowRun })
     const page = await ctx.newPage()
     await page.goto(`${base}${flow.path ?? u.path}`, { waitUntil: 'networkidle', timeout: 180000 })
     await settled(page)
@@ -151,7 +178,8 @@ for (const key of Object.keys(UNIVERSES)) {
     await page.reload({ waitUntil: 'networkidle', timeout: 180000 })
     await settled(page)
     const after = await snapshot(page)
-    const same = JSON.stringify(before) === JSON.stringify(after) && before.heads.length > 0 && !after.heads.some(head => head.startsWith('oldGone')) && !after.menus.includes('請選擇')
+    // 表頭只有代號、名稱（兩欄）也算沒畫對：有資料的欄位一欄都沒有
+    const same = JSON.stringify(before) === JSON.stringify(after) && before.heads.length > 2 && (!flow.sorted || before.sort.length > 0) && !after.heads.some(head => head.startsWith('oldGone')) && !after.menus.includes('請選擇')
     if (!same) failures++
     console.log(`  ${same ? 'PASS' : 'FAIL'}  ${flow.name}${same ? '' : `\n        前 ${JSON.stringify(before)}\n        後 ${JSON.stringify(after)}`}`)
     await ctx.close()

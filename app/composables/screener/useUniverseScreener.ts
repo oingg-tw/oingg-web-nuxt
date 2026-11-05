@@ -160,7 +160,9 @@ export function useUniverseScreener(source: UniverseSource) {
   }
 
   function columnsOf(fieldIds: string[]): ScreenerResultTableColumn[] {
-    return knownFields(fieldIds).map(fieldId => source.column(fieldId))
+    const known = knownFields(fieldIds)
+    // 一欄都不剩（全被上游拿掉、空白的一組）：畫基本欄位，同普通股業務中台退回總覽，不是只有代號與名稱。查詢本來就退回這幾欄（source.run）
+    return (known.length ? known : knownFields(source.defaultColumns)).map(fieldId => source.column(fieldId))
   }
 
   function slotsOf(filters: FilterCriterion[]): TabFilterSlot[] {
@@ -495,7 +497,7 @@ export function useUniverseScreener(source: UniverseSource) {
     let activeSortCleared = false
     for (const tab of tabs.value) {
       tab.columns = columnsOf(fieldIds)
-      if (tab.id === activeTabId.value && tab.sortField && tab.sortField !== 'symbol' && !fieldIds.includes(tab.sortField)) {
+      if (tab.id === activeTabId.value && tab.sortField && tab.sortField !== 'symbol' && !tab.columns.some(column => column.field === tab.sortField)) {
         tab.sortField = null
         tab.sortOrder = null
         saveSort(tab)
@@ -624,7 +626,8 @@ export function useUniverseScreener(source: UniverseSource) {
     tab.sortField = field
     tab.sortOrder = order
     saveSort(tab)
-    search(tab)
+    // 在瀏覽器裡排的（特別股全部一次讀進來）不用重查
+    if (source.sortMode === 'server') search(tab)
   }
 
   // ---- 畫面的兩個選單 ----

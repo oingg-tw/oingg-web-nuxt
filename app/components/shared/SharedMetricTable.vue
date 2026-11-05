@@ -271,8 +271,8 @@ const defaultSort = computed(() =>
 function handleSortChange({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }) {
   activeSort.value = { field: order ? prop : null, order }
   if (programmaticSort) return
-  if (props.sortMode === 'client') return
-  if (prop === 'name' || (prop && (BACKEND_UNSORTABLE.test(prop) || columnSortable(prop) === 'client'))) return
+  // client 模式（特別股）在這裡排完，父層只是記下來：重新整理後照舊（2026-10-23「screener 也要儲存用戶上次的排序」）
+  if (props.sortMode !== 'client' && (prop === 'name' || (prop && (BACKEND_UNSORTABLE.test(prop) || columnSortable(prop) === 'client')))) return
   // el-table's third click (clearing a column's sort) still reports that column as `prop`
   // even though `order` comes back null — null out field too so "cleared" is a clean,
   // single null/null state throughout (changeSort, the tab, and default-sort below all key
@@ -373,7 +373,10 @@ function displayLabel(column: ScreenerResultTableColumn) {
 // 程式觸發的 sort 也會讓 el-table 送出 sort-change，用 programmaticSort 擋掉那一次，改由這裡自己 emit 一次。
 const activeSort = ref<{ field: string | null; order: 'ascending' | 'descending' | null }>({ field: props.sortField, order: props.sortOrder })
 watch(() => [props.sortField, props.sortOrder] as const, ([field, order]) => {
-  if (props.sortMode === 'server' && (field === null || !isLocalSort(field))) activeSort.value = { field, order }
+  // client 模式換了一組：el-table 自己排，要跟著那一組的排序走（自己按的已經是這個排序，不用再排一次）
+  if (props.sortMode === 'client') {
+    if (field !== activeSort.value.field || order !== activeSort.value.order) sortTable(field, order)
+  } else if (field === null || !isLocalSort(field)) activeSort.value = { field, order }
 })
 let programmaticSort = false
 
@@ -388,13 +391,17 @@ const sortFieldOptions = computed(() => [
   ...orderedColumns.value.map(column => ({ value: column.field, label: displayLabel(column) }))
 ])
 
-function applySort(field: string | null, order: 'ascending' | 'descending' | null) {
+function sortTable(field: string | null, order: 'ascending' | 'descending' | null) {
   activeSort.value = { field: order ? field : null, order: field ? order : null }
   programmaticSort = true
   if (field && order) tableRef.value?.sort(field, order)
   else tableRef.value?.clearSort()
   programmaticSort = false
-  if (props.sortMode === 'server' && (!field || !isLocalSort(field))) emit('sortChange', field && order ? field : null, field ? order : null)
+}
+
+function applySort(field: string | null, order: 'ascending' | 'descending' | null) {
+  sortTable(field, order)
+  if (props.sortMode === 'client' || !field || !isLocalSort(field)) emit('sortChange', field && order ? field : null, field ? order : null)
 }
 
 function onSortFieldChange(value: string) {

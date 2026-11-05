@@ -39,6 +39,8 @@ export function useScreenerTabColumnPresets(ctx: {
   syncColumnPreset: (tab: ScreenerTab) => Promise<void>
   // 核心的 handleSearch：未儲存的頁籤換欄位組合時不能打 /:id/run（沒有 preset），改用無狀態查詢重查（2026-10-15）
   runSearch: (tab: ScreenerTab, page?: number) => Promise<void>
+  // 開始一次查詢，之前還沒回來的都作廢；回傳的函式問這一次是不是也被作廢了
+  startSearch: (tab: ScreenerTab) => () => boolean
 }) {
   const currentUser = useCurrentUser()
   const { open: openLogin } = useLoginDialog()
@@ -80,6 +82,8 @@ export function useScreenerTabColumnPresets(ctx: {
       return
     }
 
+    // 還沒回來的查詢作廢：晚到的是上一組的欄位
+    const isStale = ctx.startSearch(tab)
     const cacheKey = columnViewCacheKey(columnPresetId)
     const cached = tab.columnViewCache[cacheKey]
     if (cached) {
@@ -94,6 +98,8 @@ export function useScreenerTabColumnPresets(ctx: {
       tab.sortField = cached.sortField
       tab.sortOrder = cached.sortOrder
       tab.searched = true
+      tab.loading = false
+      tab.loadingMore = false
       return
     }
 
@@ -115,6 +121,7 @@ export function useScreenerTabColumnPresets(ctx: {
       // already-cached view above still restores exactly how many rows had accumulated —
       // this branch only covers a genuinely new-to-this-tab column preset.)
       const result = await run(tab.id, columnPresetId ?? undefined, { page: 1, pageSize: tab.pageSize })
+      if (isStale()) return
       if (!result) {
         showErrorMessage('切換欄位組合失敗，請稍後再試')
         return
@@ -125,9 +132,13 @@ export function useScreenerTabColumnPresets(ctx: {
       ctx.cacheColumnView(tab)
     } catch (error) {
       if (import.meta.dev) console.error('[screener] failed to switch column view', error)
+      if (isStale()) return
       showErrorMessage('切換欄位組合失敗')
     } finally {
-      tab.loading = false
+      if (!isStale()) {
+        tab.loading = false
+        tab.loadingMore = false
+      }
     }
   }
 
@@ -152,6 +163,14 @@ export function useScreenerTabColumnPresets(ctx: {
   function resolveDefaultColumnPresetId(): string | null {
     const options = columnPresetOptions.value
     return options.find(option => option.isDefault)?.id ?? options[0]?.id ?? null
+  }
+
+  // 已存的篩選換了欄位組合，但不是在它上面換的（帳號有了第一組、它用的那組被刪了）：畫面上還是舊的欄位，清掉，切過去時照新的這一組重查，
+  // 跟重新整理後一樣。排序留著：不在新的這一組時 runSearch 會清
+  function moveTabToColumnPreset(tab: ScreenerTab, columnPresetId: string | null) {
+    tab.columnPresetId = columnPresetId
+    tab.columns = []
+    tab.searched = false
   }
 
   // Real gap fixed 2026-09-11 (reported live: "新增一組自定義的screenerPreset時候，colmnsPreset
@@ -359,8 +378,10 @@ export function useScreenerTabColumnPresets(ctx: {
     // switched but its table never refetched ("tab 改了但是 table columns 沒變動").
     const wasActive = tab.columnPresetId === id
     for (const otherTab of ctx.tabs.value) {
-      if (otherTab === tab) continue
-      if (otherTab.columnPresetId === id) otherTab.columnPresetId = fallbackId
+      if (otherTab === tab || otherTab.columnPresetId !== id) continue
+      // 未儲存的那組欄位是自己帶的（跟著網址），只是不再屬於哪一組
+      if (otherTab.unsaved) otherTab.columnPresetId = null
+      else moveTabToColumnPreset(otherTab, fallbackId)
     }
     if (wasActive) await switchColumnPreset(tab, fallbackId)
   }
@@ -409,6 +430,7 @@ export function useScreenerTabColumnPresets(ctx: {
     columnFieldsOf,
     columnPresetWithFields,
     resolveDefaultColumnPresetId,
+    moveTabToColumnPreset,
     ensureOverviewColumnPreset,
     // 頁面要用的。
     switchColumnPreset,

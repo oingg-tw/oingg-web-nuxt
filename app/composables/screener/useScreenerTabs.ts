@@ -182,13 +182,15 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     cacheColumnView: tab => cacheCurrentColumnView(tab),
     applyRunResult: (tab, result, requestedFields) => applyRunResult(tab, result, requestedFields),
     syncColumnPreset: tab => syncColumnPreset(tab),
-    runSearch: (tab, page) => handleSearch(tab, page)
+    runSearch: (tab, page) => handleSearch(tab, page),
+    startSearch: tab => startSearch(tab)
   })
   const {
     columnPresetOptions,
     columnFieldsOf,
     columnPresetWithFields,
     resolveDefaultColumnPresetId,
+    moveTabToColumnPreset,
     ensureOverviewColumnPreset,
     switchColumnPreset,
     newColumnPresetDialogVisible,
@@ -318,6 +320,14 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // `append` is independent of that — changeSort/changePageSize-era callers still pass
   // page=1 (isPageChangeOnly=true) to skip the filter PATCH but want a REPLACE, not an
   // append; only loadMoreResults's page=tab.page+1 call passes append=true.
+  // 同一組只算最新一次查詢（同 useUniverseScreener 的 requestSeq）：還沒回來又查了一次，晚到的舊結果不能蓋掉新的，也不能接在新的後面
+  const searchSeq = new Map<string, number>()
+  function startSearch(tab: ScreenerTab) {
+    const seq = (searchSeq.get(tab.id) ?? 0) + 1
+    searchSeq.set(tab.id, seq)
+    return () => searchSeq.get(tab.id) !== seq
+  }
+
   async function handleSearch(tab: ScreenerTab, page?: number, append = false) {
     if (goneSlot(tab.slots)) return
     const filters = filtersOfTab(tab)
@@ -334,6 +344,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     const isPageChangeOnly = page !== undefined
     // 訪客、還沒存的頁籤：沒有 preset 可以 PATCH 或 run，走無狀態的 POST /screener，每次自己帶條件與欄位
     const isLocal = !currentUser.value || !!tab.unsaved
+    const isStale = startSearch(tab)
 
     if (append) tab.loadingMore = true
     else tab.loading = true
@@ -361,6 +372,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
               pagination: { page: targetPage, pageSize: tab.pageSize },
               sort: tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
             })
+            if (isStale()) return
             if (!isPageChangeOnly) tab.columnViewCache = {}
             if (result) {
               applyRunResult(tab, result, columns, append)
@@ -402,10 +414,12 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           const sort = tab.sortField && tab.sortOrder ? { field: tab.sortField, order: tab.sortOrder } : undefined
           const pagination = { page: targetPage, pageSize: tab.pageSize }
           let result = await run(tab.id, tab.columnPresetId ?? undefined, pagination, sort)
+          if (isStale()) return
           // 存下來的排序那一欄已不在這組欄位裡（同一組欄位在別的篩選拿掉了那一欄）：業務中台只收代號或這次的欄位，回 400。不帶排序
           // 再跑一次，成功就清掉排序（排序的 watcher 存回帳號），整組照樣打得開
           if (!result && sort && businessErrorStatus(lastError.value) === 400) {
             result = await run(tab.id, tab.columnPresetId ?? undefined, pagination)
+            if (isStale()) return
             if (result) {
               tab.sortField = null
               tab.sortOrder = null
@@ -444,10 +458,14 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       // this is worth surfacing rather than leaving the user looking at a spinner that
       // quietly reset with no explanation.
       if (import.meta.dev) console.error('[screener] search failed', error)
+      if (isStale()) return
       if (append || !reportSearchFailure(tab, page, error)) showErrorMessage('搜尋失敗，請稍後再試')
     } finally {
-      if (append) tab.loadingMore = false
-      else tab.loading = false
+      // 舊的那次不收：新的還在跑
+      if (!isStale()) {
+        tab.loading = false
+        tab.loadingMore = false
+      }
       if (import.meta.dev) console.timeEnd(debugLabel)
     }
   }
@@ -523,7 +541,10 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   watch(activeTabId, id => {
     if (!id) return
     const tab = tabs.value.find(item => String(item.id) === id)
-    if (!tab || tab.searched || tab.loading) return
+    if (!tab) return
+    // 這組打開之後帳號才有了第一組欄位組合（在別組新增或套用的）：用那一組，跟重新整理後一樣，不停在「請選擇」
+    if (tab.columnPresetId === null && !tab.unsaved && columnPresetOptions.value.length) moveTabToColumnPreset(tab, resolveDefaultColumnPresetId())
+    if (tab.searched || tab.loading) return
     if (!tab.slots.length) return
     handleSearch(tab)
   })
