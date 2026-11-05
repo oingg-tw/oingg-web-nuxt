@@ -20,12 +20,14 @@ const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks
 
 <template>
   <div class="industry-quadrant-tables" :class="{ 'industry-quadrant-tables--picks': picks }">
-    <div v-if="pick">
-      <el-radio-group v-model="picked" aria-label="最右欄的數字" class="app-radio-fill">
-        <el-radio-button v-for="(item, index) in picks" :key="item.label" :value="index">{{ item.label }}</el-radio-button>
-      </el-radio-group>
+    <template v-if="pick">
+      <div class="app-sticky-bar">
+        <el-radio-group v-model="picked" aria-label="最右欄的數字" class="app-radio-fill">
+          <el-radio-button v-for="(item, index) in picks" :key="item.label" :value="index">{{ item.label }}</el-radio-button>
+        </el-radio-group>
+      </div>
       <p class="industry-quadrant-tables__pick">{{ pick.name }}</p>
-    </div>
+    </template>
     <template v-for="group in groups" :key="group.title">
       <component :is="collapsed ? 'details' : 'div'" v-if="group.rows.length" :class="{ 'app-disclosure': collapsed }">
         <summary v-if="collapsed">{{ group.title }}</summary>
@@ -60,8 +62,9 @@ const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks
   gap: 16px;
 }
 
+/* 全名緊貼切換列：清單的間距 16px 收回一半 */
 .industry-quadrant-tables__pick {
-  margin: 8px 0 0;
+  margin: -8px 0 0;
   color: var(--el-text-color-regular);
 }
 

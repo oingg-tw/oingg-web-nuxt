@@ -151,7 +151,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
     </StockQuestionSection>
 
     <!-- 手機才有：往下滑時黏在頁首下面，滑到清單哪裡都能換種類、換月；換月跳回清單開頭（#ex-months-list） -->
-    <div class="ex-bar">
+    <div class="ex-bar app-sticky-bar">
       <label class="ex-bar__kind">
         <span class="visually-hidden">標的種類</span>
         <select v-model="kind" class="app-select">
@@ -556,18 +556,12 @@ html.dark .ex-bar {
     display: none;
   }
 
-  /* 貼齊畫面左右（版面的 16px 內距），不讓清單從兩側露出來；z-index 在頁首（10）底下 */
+  /* 右邊不留內距：月份鈕捲到畫面邊緣 */
   .ex-bar {
-    position: sticky;
-    top: calc(var(--app-header-height) + var(--app-banner-height));
-    z-index: 5;
     display: flex;
     gap: 8px;
     align-items: center;
-    margin: 0 -16px;
-    padding: 6px 0 6px 16px;
-    background: var(--el-bg-color-page);
-    border-block: 1px solid var(--app-divider);
+    padding-right: 0;
   }
 
   /* 從切換列換月會跳到這裡：讓開頁首與切換列 */

@@ -157,6 +157,25 @@ body {
   }
 }
 
+/* 手機長清單上方的切換列（2026-11-05，使用者：「不用等別人的都做一做」；原本滑到清單中段想換數字，要滑回上面）：黏在頁首底下。
+   父層要包住整份清單，黏的範圍才到清單結束。貼齊畫面左右（版面的 16px 內距），不讓清單從兩側露出來；z-index 在頁首（10）底下。
+   切換列後面的連結與收合列，鍵盤移到時要讓開這一列（320 寬折成兩列時約 102px）。換了就整份重排的篩選不用這個：本來就要從頭看，/rank/[slug] 的基金類型還會折成三列 */
+@media (max-width: 767px) {
+  .app-sticky-bar {
+    position: sticky;
+    top: calc(var(--app-header-height) + var(--app-banner-height));
+    z-index: 5;
+    margin-inline: -16px;
+    padding: 6px 16px;
+    background: var(--el-bg-color-page);
+    border-block: 1px solid var(--app-divider);
+  }
+
+  .app-sticky-bar ~ * :is(a, summary) {
+    scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 112px);
+  }
+}
+
 /* 手機至少 20rem（2026-11-02 手機掃描：原本 15rem／70vw，375px 寬只剩 262px，總經的圖比其他頁小一圈）；電腦版照舊到 420px */
 .app-chart {
   width: 100%;

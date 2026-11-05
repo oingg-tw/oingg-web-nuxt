@@ -129,9 +129,11 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
       </div>
       <div class="app-narrow-only">
         <p id="industries-tile-metric" class="industries-page__metric-label">格子上的數字</p>
-        <el-radio-group v-model="tileMetric" aria-labelledby="industries-tile-metric" class="app-radio-fill industries-page__metric">
-          <el-radio-button v-for="metric in TILE_METRICS" :key="metric.key" :value="metric.key">{{ metric.label }}</el-radio-button>
-        </el-radio-group>
+        <div class="app-sticky-bar industries-page__metric">
+          <el-radio-group v-model="tileMetric" aria-labelledby="industries-tile-metric" class="app-radio-fill">
+            <el-radio-button v-for="metric in TILE_METRICS" :key="metric.key" :value="metric.key">{{ metric.label }}</el-radio-button>
+          </el-radio-group>
+        </div>
         <section v-for="group in tileGroups" :key="group.key" class="industries-page__group" :aria-labelledby="`industries-group-${group.key}`">
           <h3 :id="`industries-group-${group.key}`" class="industries-page__group-title">{{ group.title }}<span>{{ group.rows.length }} 個類股</span></h3>
           <ul class="industries-page__grid">
