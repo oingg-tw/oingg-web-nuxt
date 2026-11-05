@@ -395,7 +395,6 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
             }
           }
 
-          const hadNullColumnPresetId = tab.columnPresetId === null
           // 第一次查詢時 tab.columns 還是空的，照這組欄位組合存下來的順序
           const requestedFields = tab.columns.length
             ? tab.columns.map(column => column.field)
@@ -420,15 +419,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           if (!isPageChangeOnly) tab.columnViewCache = {}
           if (result) {
             applyRunResult(tab, result, requestedFields, append)
-            // Reconcile with whatever the server actually applied — but only when the tab
-            // was already pinned to a concrete column-preset (e.g. one that's since been
-            // deleted server-side and fell back to something else). When columnPresetId was
-            // null going in (the true zero-preset case), the server always resolves that to
-            // *some* real id (this preset's last view, the user's isDefault column-preset,
-            // or the curated overview) — adopting that id here would silently pin the tab to
-            // a concrete preset on every filter edit, even though nothing about columns
-            // changed and resolveDefaultColumnPresetId is what should own that decision.
-            if (!hadNullColumnPresetId) tab.columnPresetId = result.columnPresetId
+            // 回應的 columnPresetId 是 null 代表這組沒有欄位可顯示（空白，或全被上游拿掉），業務中台退回官方總覽，但選的還是這一組：
+            // 跟著清掉，顯示欄位一重新整理就變「請選擇」。不存在的組合是 404，走不到這裡
             cacheCurrentColumnView(tab)
             if (searchFailure.value?.tab.id === tab.id) searchFailure.value = null
           } else if (!append) {
@@ -620,10 +612,12 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     editable: !tab.unsaved,
     unsaved: !!tab.unsaved
   })))
-  const columnSetItems = computed<PresetSelectItem[]>(() => (currentUser.value
-    ? columnPresetOptions.value.map(option => ({ id: option.id, name: option.name }))
-    : [{ id: GUEST_COLUMNS_ID, name: '總覽', editable: false }]))
-  const activeColumnSetId = computed(() => (currentUser.value ? (activeTab.value?.columnPresetId ?? '') : GUEST_COLUMNS_ID))
+  // 訪客和一組都沒有的帳號（新帳號的第一個畫面），表格就是官方總覽：選單照實寫，不是空的「請選擇」
+  const overviewOnly = computed(() => !currentUser.value || !columnPresetOptions.value.length)
+  const columnSetItems = computed<PresetSelectItem[]>(() => (overviewOnly.value
+    ? [{ id: GUEST_COLUMNS_ID, name: '總覽', editable: false }]
+    : columnPresetOptions.value.map(option => ({ id: option.id, name: option.name }))))
+  const activeColumnSetId = computed(() => (overviewOnly.value ? GUEST_COLUMNS_ID : (activeTab.value?.columnPresetId ?? '')))
 
   function findTab(id: string) {
     return tabs.value.find(tab => tab.id === id) ?? null

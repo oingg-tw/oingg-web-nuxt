@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict'
 import { REPLACED_METRICS, replacedFields } from '../app/utils/replaced-metrics.ts'
 
-const catalog = await (await fetch(`${process.env.BASE ?? 'http://localhost:3000'}/api/hub/filter-schema`)).json()
+const base = process.env.BASE ?? 'http://localhost:3000'
+const catalog = await (await fetch(`${base}/api/hub/filter-schema`)).json()
 const metrics = new Map(catalog.categories.flatMap(category => category.metrics).map(metric => [metric.key, metric]))
 for (const [hidden, target] of Object.entries(REPLACED_METRICS)) {
   const [targetKey, targetField] = target.split('.')
@@ -13,6 +14,11 @@ for (const [hidden, target] of Object.entries(REPLACED_METRICS)) {
   assert.ok(to, `${target} 不在型錄裡`)
   assert.ok(from.fields.every(field => field.unit === to.unit), `${hidden}（${from.fields.map(field => field.unit)}）跟 ${target}（${to.unit}）單位不同`)
 }
+// 官方欄位範本是業務中台的資料，這張表一改就可能過期（11-01 改留即時股價淨值比，範本舊了四天才發現）。沒有欄位組合的帳號（新帳號的第一個畫面）直接
+// 讀總覽範本，網站換不到，紅了要請業務中台改範本（同它的 migration 0013）
+const { templates } = await (await fetch(`${base}/api/core/screener/column-preset-templates`)).json()
+assert.ok(templates.length, '讀不到官方欄位範本')
+for (const { key, fields } of templates) assert.deepEqual(replacedFields(fields), fields, `官方欄位範本 ${key} 還有被藏起來的指標`)
 // 換完去掉重複、留前面那一個位置；不在表上的照舊
 assert.deepEqual(replacedFields(['stock.price', 'pegRatio.TTM', 'roe.TTM', 'livePegRatio.EOD', 'peRatioRiverBand.1Y_1D']), ['stock.price', 'livePegRatio.EOD', 'roe.TTM', 'peRatioRiverBand.1Y_1D'])
 console.log('PASS: replaced metrics')
