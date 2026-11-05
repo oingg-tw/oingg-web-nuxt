@@ -113,7 +113,7 @@ function displayLabel(field: EtfFilterField): string {
 }
 
 function formatValue(field: EtfFilterField | undefined, raw: string | number | null | undefined): string {
-  if (raw === null || raw === undefined) return '—'
+  if (raw === null || raw === undefined) return '－'
   if (field?.kind === 'categorical') return labelEachValue(raw, value => valueLabel(field.field, value))
   if (typeof raw !== 'number') return raw
   // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
@@ -165,7 +165,7 @@ export function useEtfSource(): UniverseSource {
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
     // 業務中台 不能排這一欄，只排已載入的列（同普通股）；欄名同普通股的回應
-    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '—' : String(raw)), sortable: 'client' }
+    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '－' : String(raw)), sortable: 'client' }
     const year = EXPENSE_RATIO_YEAR.exec(field)?.[1]
     const meta = fieldsByKey.value.get(field)
     return {
@@ -194,7 +194,7 @@ export function useEtfSource(): UniverseSource {
   }
 
   function toRow(row: EtfScreenerRow): ScreenerResultRow {
-    // 逐年總費用率展開成每年一欄（費用歷史的 expenseRatio2025…）；沒有那一年的值就沒有那一格（畫面寫「—」）
+    // 逐年總費用率展開成每年一欄（費用歷史的 expenseRatio2025…）；沒有那一年的值就沒有那一格（畫面寫「－」）
     const { expenseRatioHistory, ...values } = row.values
     const years = Array.isArray(expenseRatioHistory) ? expenseRatioHistory.map(entry => [`expenseRatio${entry.year}`, entry.expenseRatio] as const) : []
     return {

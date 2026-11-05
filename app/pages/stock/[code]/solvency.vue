@@ -202,7 +202,7 @@ const { breadcrumbs } = useStockPageSeo({
             <td v-for="metricCode in ['currentRatio', 'quickRatio', 'cashRatio', 'debtRatio']" :key="metricCode" :title="nullReasonTitle(entry.values[metricCode])">
               {{ reasonedCellText(entry.values[metricCode], fixedRateText) }}
             </td>
-            <td>{{ entry.values.currentRatio?.knowledgeDate ?? '—' }}</td>
+            <td>{{ entry.values.currentRatio?.knowledgeDate ?? '－' }}</td>
           </tr>
         </tbody>
       </SharedTable>

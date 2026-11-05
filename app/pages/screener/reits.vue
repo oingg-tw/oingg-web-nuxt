@@ -55,7 +55,7 @@ const COLUMNS: SortableColumn<Reit>[] = [
   { key: 'trustee', label: '受託機構', sortValue: row => row.trusteeName },
   { key: 'issue', label: '發行總額', num: true, sortValue: row => row.totalIssueAmountNtd }
 ]
-const num = (value: number | null, digits: number) => (value === null ? '—' : minusSign(value.toFixed(digits)))
+const num = (value: number | null, digits: number) => (value === null ? '－' : minusSign(value.toFixed(digits)))
 </script>
 
 <template>
@@ -79,12 +79,12 @@ const num = (value: number | null, digits: number) => (value === null ? '—' : 
           <th scope="row"><NuxtLink :to="reitPath(row.symbol)">{{ row.companyName }}（{{ row.symbol }}）</NuxtLink></th>
           <td class="seo-table__num">{{ num(row.close, 2) }}</td>
           <td class="seo-table__num">{{ num(row.nav, 2) }}</td>
-          <td class="seo-table__num">{{ row.premiumDiscountPct === null ? '—' : fixedSignedRateText(row.premiumDiscountPct) }}</td>
+          <td class="seo-table__num">{{ row.premiumDiscountPct === null ? '－' : fixedSignedRateText(row.premiumDiscountPct) }}</td>
           <td class="seo-table__num">{{ num(row.trailing12MonthDistributionPerUnit, 4) }}</td>
-          <td class="seo-table__num">{{ row.trailing12MonthDistributionYieldPct === null ? '—' : fixedRateText(row.trailing12MonthDistributionYieldPct) }}</td>
-          <td class="seo-table__num">{{ row.trailing12MonthDistributionCount ?? '—' }}</td>
-          <td>{{ row.trusteeName ?? '—' }}</td>
-          <td class="seo-table__num">{{ row.totalIssueAmountNtd === null ? '—' : formatMoney(row.totalIssueAmountNtd) }}</td>
+          <td class="seo-table__num">{{ row.trailing12MonthDistributionYieldPct === null ? '－' : fixedRateText(row.trailing12MonthDistributionYieldPct) }}</td>
+          <td class="seo-table__num">{{ row.trailing12MonthDistributionCount ?? '－' }}</td>
+          <td>{{ row.trusteeName ?? '－' }}</td>
+          <td class="seo-table__num">{{ row.totalIssueAmountNtd === null ? '－' : formatMoney(row.totalIssueAmountNtd) }}</td>
         </template>
       </SharedSortableTable>
     </section>

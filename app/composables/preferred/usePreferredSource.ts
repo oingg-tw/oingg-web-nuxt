@@ -83,7 +83,7 @@ const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
 ]
 
 function formatValue(field: string, raw: string | number | null | undefined): string {
-  if (raw === null || raw === undefined) return '—'
+  if (raw === null || raw === undefined) return '－'
   const metric = METRICS.get(field)
   if (metric?.kind === 'categorical') return labelEachValue(raw, value => findScreenerOption(metric.options, value)?.label)
   if (!metric || typeof raw !== 'number') return String(raw)
@@ -156,7 +156,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
 
   function column(fieldId: string): ScreenerResultTableColumn {
     const field = snapshotField(fieldId)
-    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '—' : String(raw)), sortable: 'client' }
+    if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '－' : String(raw)), sortable: 'client' }
     return {
       field: fieldId,
       label: METRICS.get(field)?.name ?? field,

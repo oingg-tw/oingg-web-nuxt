@@ -10,7 +10,7 @@ const events = computed(() => [...(data.value?.distributions?.events ?? [])].sor
 const share = (value: number | null) => (value === null ? '未揭露' : `${value.toFixed(2)}%`)
 function undisclosed(composition: EtfDistributionComposition): string {
   const gap = 100 - ETF_DISTRIBUTION_PARTS.reduce((total, part) => total + (composition[part.key] ?? 0), 0)
-  return gap > 0.05 ? `${gap.toFixed(2)}%` : '—'
+  return gap > 0.05 ? `${gap.toFixed(2)}%` : '－'
 }
 
 const answer = computed(() => {

@@ -43,8 +43,8 @@ if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類
 // 再寫「配息公司的平均」——實測 34 個類股裡有 31 個的殖利率 count 已經等於 companyCount，而造紙
 // 工業的中位數是 0（過半公司不配息），那個 0 是真的不是缺值。
 const MIN_SAMPLE = 5
-const yieldText = (value: number | null): string => (value === null ? '—' : `${value.toFixed(2)}%`)
-const growthText = (value: number | null): string => (value === null ? '—' : minusSign(`${value.toFixed(1)}%`))
+const yieldText = (value: number | null): string => (value === null ? '－' : `${value.toFixed(2)}%`)
+const growthText = (value: number | null): string => (value === null ? '－' : minusSign(`${value.toFixed(1)}%`))
 
 const rows = computed(() => summary.value?.sectors ?? [])
 

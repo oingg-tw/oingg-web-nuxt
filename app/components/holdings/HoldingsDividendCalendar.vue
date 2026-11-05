@@ -88,7 +88,7 @@ function openDetail(day: string) {
             <el-tag size="small" :type="item.kind === 'pay' ? 'primary' : 'success'" :effect="item.kind === 'pay' ? 'dark' : 'light'">{{ item.label }}</el-tag>
           </div>
           <p class="holdings-dividend-calendar__detail-text">
-            每股 {{ item.event.perShareText || '—' }}・{{ item.event.sharesText }}・應收 {{ item.event.amountText }}
+            每股 {{ item.event.perShareText || '－' }}・{{ item.event.sharesText }}・應收 {{ item.event.amountText }}
           </p>
         </li>
       </ul>

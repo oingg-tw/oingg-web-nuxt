@@ -109,7 +109,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     // 伺服器端不抓：SSR 不會等這個請求（不是 useAsyncData），抓了也只是白打一次。分享頁的清單在 SSR 就知道，名稱先畫、數字到瀏覽器再補
     if (import.meta.server) return
     // 欄位組合變了（加／刪欄）就每一檔都重抓：快取是照「代號」存的，不知道少了哪一欄。但**舊的值留在畫面上**
-    // 直到新的回來——原本是先清空，加一欄整張表就全部變「—」約一秒（2026-10-06 截圖時看到的）。
+    // 直到新的回來——原本是先清空，加一欄整張表就全部變「－」約一秒（2026-10-06 截圖時看到的）。
     const requested = [...new Set([...ALWAYS_FIELDS, ...fields.value])]
     const fieldsKey = requested.join(',')
     const fieldsChanged = fieldsKey !== loadedFields

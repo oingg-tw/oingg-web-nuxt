@@ -22,7 +22,7 @@ export interface SheetColumn<Row> {
   copyable?: boolean
   width?: number
   minWidth?: number
-  // 典型值的樣本字串：自動欄寬把它也算進去。值在瀏覽器才讀到、又比欄名寬的欄（觀察清單的「漲跌」：「—」→「-20.00 (-0.82%)」，
+  // 典型值的樣本字串：自動欄寬把它也算進去。值在瀏覽器才讀到、又比欄名寬的欄（觀察清單的「漲跌」：「－」→「-20.00 (-0.82%)」，
   // 76→174px）不給的話，資料到的那一刻這一欄變寬、右邊每一欄被推走（2026-10-18 全站版面位移量測）。不影響手動拖拉的下限
   widthSample?: string
   // 欄位選單（columnMenu）裡欄名下面的說明（型錄的指標說明）
@@ -312,7 +312,7 @@ const isEmpty = (cell: SheetCell) => {
   const column = props.columns[cell.c]
   if (!row || !column) return true
   const value = column.value ? column.value(row) : column.text(row)
-  return value === null || value === '' || value === '－' || value === '—'
+  return value === null || value === '' || value === '－'
 }
 
 // ---- 朗讀（框選、複製、排序、欄寬）：連續拖曳時只念最後一次 ----

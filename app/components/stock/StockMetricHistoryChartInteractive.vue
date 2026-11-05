@@ -231,7 +231,7 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
         lineType: 'dotted',
         symbol: 'diamond',
         axis: 'right',
-        format: (value: number | null) => (value === null ? '—' : `${formatSignificantDigits(value, 4)}${props.rightMetric!.unit ? ` ${props.rightMetric!.unit}` : ''}`)
+        format: (value: number | null) => (value === null ? '－' : `${formatSignificantDigits(value, 4)}${props.rightMetric!.unit ? ` ${props.rightMetric!.unit}` : ''}`)
       } satisfies LineSeriesSpec]
     : [])
 ])
@@ -279,7 +279,7 @@ const { chartOption } = useMetricHistoryChartOption(
       palette="compare"
       :unit="unit"
       :unit-right="rightCode ? rightMetric?.unit : undefined"
-      :format="value => (value === null ? '—' : `${formatSignificantDigits(value, 4)}${unit}`)"
+      :format="value => (value === null ? '－' : `${formatSignificantDigits(value, 4)}${unit}`)"
     />
     <StockStackedBarChart
       v-else-if="stacked"

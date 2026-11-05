@@ -280,7 +280,7 @@ const { breadcrumbs } = useHubPageSeo({
             <td class="seo-table__num">{{ countOrPending(cycle.totalMonths) }}{{ supplemented(cycle, 'totalMonths') }}</td>
             <td>
               <NuxtLink v-if="drawable(cycle)" :to="{ query: { cycle: cycle.cycleNo }, hash: '#macro-clock-chart' }" :aria-label="`在景氣時鐘上看第 ${cycle.cycleNo} 次循環`">在景氣時鐘上看</NuxtLink>
-              <template v-else>—</template>
+              <template v-else>－</template>
             </td>
           </tr>
         </tbody>

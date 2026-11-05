@@ -28,7 +28,7 @@ const STATEMENT_LABELS: Record<string, string> = Object.fromEntries(
 
 function provenanceSourceText(item: MetricProvenanceEntry): string {
   if (item.type === 'statementField' && item.statementType) return STATEMENT_LABELS[item.statementType] ?? item.statementType
-  return item.sourceDescription ?? '—'
+  return item.sourceDescription ?? '－'
 }
 
 // 用收盤價算的指標，表格要說自己用的是哪一天的價格——它跟頁面上方的「目前值」可能不同（那個用

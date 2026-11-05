@@ -103,7 +103,7 @@ const answer = computed(() => {
   if (!last) return null
   const parts = order.value
     .map(i => ({ name: nameOf(props.partCodes[i]!), value: last.parts[i]! }))
-    .map(part => `${part.name} ${numberText(part.value)}（${last.parent === 0 ? '—' : minusSign(`${((part.value / last.parent) * 100).toFixed(1)}%`)}）`)
+    .map(part => `${part.name} ${numberText(part.value)}（${last.parent === 0 ? '－' : minusSign(`${((part.value / last.parent) * 100).toFixed(1)}%`)}）`)
   return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，由${parts.join('、')}組成。`
 })
 

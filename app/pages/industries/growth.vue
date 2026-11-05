@@ -35,7 +35,7 @@ function axisRange(values: number[]): { min: number; max: number } {
   const clamped = values.map(clamp)
   return { min: Math.floor(Math.min(0, ...clamped) / 10) * 10 - 10, max: Math.ceil(Math.max(0, ...clamped) / 10) * 10 + 10 }
 }
-const pct = (value: number | null): string => (value === null ? '—' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(1)}%`))
+const pct = (value: number | null): string => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(1)}%`))
 
 const rows = computed(() => summary.value?.sectors ?? [])
 const plotted = computed(() =>

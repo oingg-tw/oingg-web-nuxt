@@ -311,7 +311,7 @@ const { breadcrumbs } = useStockPageSeo({
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
             <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode" :title="nullReasonTitle(entry.values[rateCode])">{{ reasonedCellText(entry.values[rateCode], fixedRateText) }}</td>
-            <td>{{ entry.values.grossMargin?.knowledgeDate ?? '—' }}</td>
+            <td>{{ entry.values.grossMargin?.knowledgeDate ?? '－' }}</td>
           </tr>
         </tbody>
       </SharedTable>

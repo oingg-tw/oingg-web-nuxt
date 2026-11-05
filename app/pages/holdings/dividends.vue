@@ -76,7 +76,7 @@ const events = computed(() => {
       amountText: [
         event.cashAmount !== null ? money(event.cashAmount) : null,
         event.stockShares !== null ? `${groupThousands(event.stockShares)} 股` : null
-      ].filter(Boolean).join('、') || '—'
+      ].filter(Boolean).join('、') || '－'
     }
   })
 })

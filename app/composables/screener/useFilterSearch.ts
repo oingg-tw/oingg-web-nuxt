@@ -50,6 +50,6 @@ export interface ScreenerResultRow {
   // Keyed by the same `field` string as ScreenerResultColumn.field — can be absent (the whole
   // entry null) for a field never computed for this company, distinct from an entry that
   // exists but whose own .value is null (see ScreenerFieldValue's own comment) — both render
-  // the same "—" in practice, but are different states on the wire.
+  // the same "－" in practice, but are different states on the wire.
   values: Record<string, ScreenerFieldValue | null>
 }

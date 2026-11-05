@@ -22,7 +22,7 @@ const components = computed(() => data.value?.components ?? null)
 const full = computed(() => windows.value[0] ?? null)
 
 // null 是「沒有數字」不是 0：supplySide 整塊或 erp 本身都可能是 null（上游在市值覆蓋率不足時不算）。
-const pct = (value: number | null | undefined): string => (value === null || value === undefined ? '—' : minusSign(`${value.toFixed(2)}%`))
+const pct = (value: number | null | undefined): string => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)}%`))
 const yearsText = (months: number): string => `約 ${(months / 12).toFixed(1)} 年`
 
 const latestAnswer = computed(() => {
@@ -196,7 +196,7 @@ const legendGroups = computed<ChartLegendGroup[]>(() => [{ items: chartOption.va
           <tr>
             <th scope="row">股利殖利率</th>
             <td>{{ pct(components.dividendYield) }}</td>
-            <td>上市公司市值加權，{{ components.dividendYieldTradeDate ?? '最新交易日' }} 共 {{ components.dividendYieldCompanyCount ?? '—' }} 家</td>
+            <td>上市公司市值加權，{{ components.dividendYieldTradeDate ?? '最新交易日' }} 共 {{ components.dividendYieldCompanyCount ?? '－' }} 家</td>
           </tr>
           <tr>
             <th scope="row">本益比成長</th>

@@ -95,7 +95,7 @@ export interface UniverseSource {
   // fieldKeys 是畫面的欄位 id
   columnTemplates: ColumnPresetTemplate[]
   column(fieldId: string): ScreenerResultTableColumn
-  // 這一組現在有沒有這個欄位：舊書籤、分享連結與存檔可能帶著上游拿掉的。欄位不影響篩出誰，不畫就好（不然表頭是欄位 id、整欄「—」）；
+  // 這一組現在有沒有這個欄位：舊書籤、分享連結與存檔可能帶著上游拿掉的。欄位不影響篩出誰，不畫就好（不然表頭是欄位 id、整欄「－」）；
   // 條件不能默默少，見 GONE_FIELD_LABEL
   knownField(fieldId: string): boolean
   run(query: UniverseQuery): Promise<UniverseResult>

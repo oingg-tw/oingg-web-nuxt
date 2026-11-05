@@ -33,7 +33,7 @@ const { data: growth } = await useFetch<SectorGrowthSummary | null>('/api/hub/se
   default: () => null
 })
 const growthByCode = computed(() => new Map((growth.value?.sectors ?? []).map(row => [row.code, row])))
-const signedPct = (value: number | null | undefined): string => (value == null ? '—' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(1)}%`))
+const signedPct = (value: number | null | undefined): string => (value == null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(1)}%`))
 
 // **兩軸都用中位數**（2026-09-30 使用者拍板）。原本 Y 軸指定用平均，我提的論點被接受了：一個點的
 // Y 是平均、X 是中位數解釋起來不漂亮，而成長率那一軸非用中位數不可——34 個類股裡有 8 個的 mean
@@ -44,8 +44,8 @@ const signedPct = (value: number | null | undefined): string => (value == null ?
 // 從 0.00 改成空白，使用者決定那之後的空白一律當 0，於是上市與上櫃的寫法一致了。所以文案**不能**
 // 再寫「配息公司的平均」——實測 34 個類股裡有 31 個的殖利率 count 已經等於 companyCount，而造紙
 // 工業的中位數是 0（過半公司不配息），那個 0 是真的不是缺值。
-const yieldText = (value: number | null): string => (value === null ? '—' : `${value.toFixed(2)}%`)
-const growthText = (value: number | null): string => (value === null ? '—' : minusSign(`${value.toFixed(1)}%`))
+const yieldText = (value: number | null): string => (value === null ? '－' : `${value.toFixed(2)}%`)
+const growthText = (value: number | null): string => (value === null ? '－' : minusSign(`${value.toFixed(1)}%`))
 const rows = computed(() => summary.value?.sectors ?? [])
 
 const coveredCount = computed(() => rows.value.reduce((total, row) => total + row.companyCount, 0).toLocaleString('en-US'))
