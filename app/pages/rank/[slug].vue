@@ -48,7 +48,7 @@ const metricPageIndexable = !!definition.metricCode && isIndexableMetricSlug(met
 const shownCount = computed(() => rows.value.length)
 // 少於 50 列要說出原因，否則「取前 29 檔」看起來像隨便挑的。只有設了基期門檻的頁面才有這句。
 const floorNote = definition.growthBaseFloor
-  ? '已排除基期數值過小的公司：基期接近零時，年增率會被放大成不具意義的數字。'
+  ? '已排除基期數值過小的公司。'
   : ''
 // 篩過族群的頁面要自己說母體（見 RANK_PAGES 的 `population`）。沒有這一句，答句的「全市場有 X
 // 資料的公司」就是錯的。
@@ -84,7 +84,6 @@ const FIELD_NOTES: Record<string, string> = {
 }
 
 const topThreeOf = (list: RankingRow[]) => list.slice(0, 3).map(row => `第 ${row.rank} 名 ${row.name}（${row.symbol}）${valueText(row.value)}${unit.value === '%' ? '%' : unit.value ? ` ${unit.value}` : ''}`).join('、')
-const topThree = computed(() => topThreeOf(rows.value))
 
 const { breadcrumbs } = useHubPageSeo({
   title: () => `台股${subject}排行：${orderWord}前 ${allRows.value.length} 檔`,
@@ -143,9 +142,8 @@ const { breadcrumbs } = useHubPageSeo({
         </el-radio-group>
       </div>
       <p class="hub-answer">
-{{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。{{ topThree }}。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
+{{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
       </p>
-      <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
       <SharedTable v-if="rows.length" class="rank-page__table" :label="`${tableSubject.trim()}排行`" :caption="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
         <thead>
           <tr>
@@ -167,6 +165,7 @@ const { breadcrumbs } = useHubPageSeo({
         </tbody>
       </SharedTable>
       <p v-else class="hub-answer">目前沒有這個指標的排行資料。</p>
+      <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="rank-metric-heading">
@@ -193,6 +192,8 @@ const { breadcrumbs } = useHubPageSeo({
       <template v-else>
         <p class="hub-answer">名次只反映資料日期當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
         <p v-if="FIELD_NOTES[slug]" class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
+        <p v-if="definition.growthBaseFloor" class="hub-answer">排除基期數值過小的公司，是因為基期接近零時，年增率會被放大成不具意義的數字。</p>
+        <p v-if="definition.screener?.populationNote" class="hub-answer">{{ definition.screener.populationNote }}</p>
       </template>
       <!-- 型錄自己的 limitations／misreadings（2026-09-28）。這一段本來只有上面兩句前端文案，而上游
            2026-09-28 補的敘述裡有一件我們自己寫不出來的事：同一個「本益比」有三支指標（交易所公布值／

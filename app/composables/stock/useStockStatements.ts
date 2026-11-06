@@ -92,18 +92,21 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     return { current: periodLabel(period.year, period.season, statementType), prior: periodLabel(period.year - 1, period.season, statementType) }
   }
 
-  // One question per statement:「損益表：2026 年第 2 季累計營業收入 1,270,380,250 千元（去年同期 …，
-  // 增減 36.05%）、本期淨利 …、基本每股盈餘 … 元。」— every number straight off the filing,
-  // formatted deterministically.
-  function line(statementType: StatementType, key: string, label: string, unit: string): string | null {
+  // One question per statement. 答句三個數字（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」：原本四個科目各帶去年同期的金額，一段兩百多字，
+  // 每一格都在下面的表裡）：「營業收入 1.27兆元（年增 36.05%）、本期淨利 7,068億元（年增 77.81%）、基本每股盈餘 27.25 元（年增 77.41%）。」
+  function line(statementType: StatementType, key: string, label: string, unit: '千元' | '元' = '千元'): string | null {
     const { current, prior } = statementOf(statementType)
     const now = current?.found ? current.statement?.[key] : null
     if (now === null || now === undefined) return null
-    const then = prior?.found ? prior.statement?.[key] : null
-    // 明確比 null：去年同期是 0 的科目（例如上半年還沒發的現金股利）用 then ? … 會被當成沒有
-    const hasThen = then !== null && then !== undefined
-    const change = hasThen ? statementChangePercent(now, then) : '－'
-    return `${label} ${formatStatementAmount(now)} ${unit}${hasThen ? `（去年同期 ${formatStatementAmount(then)} ${unit}${change !== '－' ? `，增減 ${change}` : ''}）` : ''}`
+    const change = statementChangePercent(now, prior?.found ? prior.statement?.[key] : null)
+    return `${label} ${unit === '元' ? `${formatStatementAmount(now)} 元` : formatMoney(now * 1000)}${change === '－' ? '' : `（年增 ${change}）`}`
+  }
+  // 現金流量寫流入或流出，不寫年增：基期是負數時，增減的正負號讀不出方向
+  function flowLine(key: string, label: string): string | null {
+    const { current } = statementOf('cashFlowStatement')
+    const now = current?.found ? current.statement?.[key] : null
+    if (now === null || now === undefined) return null
+    return `${label}淨現金${now < 0 ? '流出' : '流入'} ${formatMoney(Math.abs(now) * 1000)}`
   }
 
   const statementQuestions = computed<Record<StatementType, string>>(() => {
@@ -122,9 +125,9 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     const period = latest.value
     if (!period) return { incomeStatement: null, balanceSheet: null, cashFlowStatement: null }
     return {
-      incomeStatement: joinClauses([line('incomeStatement', 'revenue', '營業收入', '千元'), line('incomeStatement', 'gross_profit', '營業毛利', '千元'), line('incomeStatement', 'profit_loss', '本期淨利', '千元'), line('incomeStatement', 'basic_earnings_loss_per_share', '基本每股盈餘', '元')]),
-      balanceSheet: joinClauses([line('balanceSheet', 'assets', '資產總計', '千元'), line('balanceSheet', 'liabilities', '負債總計', '千元'), line('balanceSheet', 'equity', '權益總計', '千元'), line('balanceSheet', 'cash_and_cash_equivalents', '現金及約當現金', '千元')]),
-      cashFlowStatement: joinClauses([line('cashFlowStatement', 'cash_flows_from_used_in_operating_activities', '營業活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'net_cash_flows_from_used_in_investing_activities', '投資活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'cash_flows_from_used_in_financing_activities', '籌資活動之淨現金流入（出）', '千元'), line('cashFlowStatement', 'dividends_paid_classified_as_financing_activities', '發放現金股利', '千元')])
+      incomeStatement: joinClauses([line('incomeStatement', 'revenue', '營業收入'), line('incomeStatement', 'profit_loss', '本期淨利'), line('incomeStatement', 'basic_earnings_loss_per_share', '基本每股盈餘', '元')]),
+      balanceSheet: joinClauses([line('balanceSheet', 'assets', '資產總計'), line('balanceSheet', 'liabilities', '負債總計'), line('balanceSheet', 'equity', '權益總計')]),
+      cashFlowStatement: joinClauses([flowLine('cash_flows_from_used_in_operating_activities', '營業活動'), flowLine('net_cash_flows_from_used_in_investing_activities', '投資活動'), flowLine('cash_flows_from_used_in_financing_activities', '籌資活動')])
     }
   })
 

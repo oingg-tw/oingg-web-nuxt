@@ -24,7 +24,7 @@ const [, { latest }, { digest, description }] = await Promise.all([
   useStockStatements(code, stockShortName),
   useStockPageDigest(code, 'financial-statements', { shortName: stockShortName })
 ])
-const browseAnswer = computed(() => `${latest.value ? `預設是 ${latest.value.year} 年第 ${latest.value.season} 季；` : ''}用年度與季別選擇器切換，資產負債表、損益表與現金流量表同時更新，每一期都與去年同期並列，方便逐行核對。`)
+const browseAnswer = computed(() => `${latest.value ? `預設是 ${latest.value.year} 年第 ${latest.value.season} 季，` : ''}每一期都與去年同期並列。`)
 // 頁尾（2026-10-14）：最新一期三張報表各自的頁原本是第一段的小表，現在放這裡
 const footerLinks = computed(() => [
   { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` },

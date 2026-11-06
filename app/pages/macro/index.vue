@@ -66,25 +66,17 @@ const rows = computed<ClockRow[]>(() => {
 })
 const latest = computed(() => rows.value.at(-1) ?? null)
 
-// 軌跡經過的區域：每次換區記下起始月份
-const passages = computed(() => rows.value.reduce<{ zone: ClockZone; from: string }[]>((list, row) => {
-  if (list.at(-1)?.zone !== row.zone) list.push({ zone: row.zone, from: row.period })
-  return list
-}, []))
-
 const answer = computed(() => {
   const row = latest.value
   if (!row) return null
   const cycle = selectedCycle.value
   // 一次循環動輒 40～100 個月，逐段列換區太長：只數每一區待了幾個月
   if (cycle) {
-    const dates = [`${monthText(cycle.troughStart)}起`, cycle.peak && `${monthText(cycle.peak)}高峰`, cycle.troughEnd ? `${monthText(cycle.troughEnd)}結束` : '尚未結束'].filter(Boolean).join('、')
     const counts = (Object.keys(CLOCK_ZONES) as ClockZone[]).map(zone => `${CLOCK_ZONES[zone].name} ${rows.value.filter(item => item.zone === zone).length} 個月`).join('、')
-    return `第 ${cycle.cycleNo} 次景氣循環（國家發展委員會認定：${dates}）期間，${indicatorName.value}去趨勢值落在${counts}。`
+    return `第 ${cycle.cycleNo} 次循環期間，${indicatorName.value}去趨勢值落在${counts}。`
   }
   const zone = CLOCK_ZONES[row.zone]
-  const path = passages.value.map(item => `${CLOCK_ZONES[item.zone].name}（${monthText(item.from)}起）`).join('、')
-  return `國家發展委員會最新公布的 ${monthText(row.period)}，${indicatorName.value}去趨勢值為 ${row.level.toFixed(2)}，比上個月${row.change >= 0 ? '增加' : '減少'} ${Math.abs(row.change).toFixed(2)} 點；在景氣時鐘上落在「${zone.definition}」那一區（OECD 稱為${zone.name}）。過去 ${rows.value.length} 個月依序經過：${path}。`
+  return `${monthText(row.period)}${indicatorName.value}去趨勢值 ${row.level.toFixed(2)}，比上個月${row.change >= 0 ? '增加' : '減少'} ${Math.abs(row.change).toFixed(2)} 點，落在「${zone.definition}」那一區（OECD 稱為${zone.name}）。`
 })
 
 const isDesktop = useIsDesktop()
@@ -192,9 +184,7 @@ const cycleAnswer = computed(() => {
   if (!list.length) return null
   const ended = list.filter(cycle => cycle.expansionMonths !== null && cycle.contractionMonths !== null)
   const average = (values: number[]) => Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
-  const ongoing = list.find(cycle => cycle.troughEnd === null)
-  return `國家發展委員會自 ${monthText(list[0]!.troughStart)}起共認定 ${list.length} 次景氣循環；已結束的 ${ended.length} 次，擴張期平均 ${average(ended.map(cycle => cycle.expansionMonths!))} 個月、收縮期平均 ${average(ended.map(cycle => cycle.contractionMonths!))} 個月。`
-    + (ongoing ? `第 ${ongoing.cycleNo} 次自 ${monthText(ongoing.troughStart)}起，${ongoing.peak ? `${monthText(ongoing.peak)}高峰，終點` : '高峰與終點'}尚未認定。` : '')
+  return `自 ${monthText(list[0]!.troughStart)}起共認定 ${list.length} 次；已結束的 ${ended.length} 次，擴張期平均 ${average(ended.map(cycle => cycle.expansionMonths!))} 個月、收縮期平均 ${average(ended.map(cycle => cycle.contractionMonths!))} 個月。`
 })
 
 const DESCRIPTION = '國家發展委員會景氣領先指標與同時指標畫在 OECD 景氣時鐘上：最近 24 個月與國發會認定的歷次景氣循環軌跡，以及每次循環的起點、高峰、終點與月數。'

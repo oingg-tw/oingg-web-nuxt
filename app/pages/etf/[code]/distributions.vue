@@ -11,7 +11,7 @@ const answer = computed(() => {
   const total = data.value?.distributions?.trailing12MonthDistributionPerUnit ?? null
   const yieldPct = num('trailing12MonthDistributionYieldPct')
   const parts = [`${shortName.value}（${code.value}）共有 ${events.value.length} 次配息紀錄，配息頻率${text('distributionFrequency') ?? '未知'}`]
-  if (window && total !== null) parts.push(`近 12 個月（${window.start}～${window.end}）每單位合計 ${etfYuan(total)}${yieldPct !== null ? `，配息率 ${etfPct(yieldPct)}` : ''}`)
+  if (window && total !== null) parts.push(`近 12 個月每單位合計 ${etfYuan(total)}${yieldPct !== null ? `，配息率 ${etfPct(yieldPct)}` : ''}`)
   return `${parts.join('；')}。`
 })
 </script>

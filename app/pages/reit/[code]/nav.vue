@@ -10,11 +10,11 @@ const answer = computed(() => {
   const item = reit.value
   if (!item) return null
   const parts: string[] = []
-  if (item.nav !== null) parts.push(`${item.navDate ?? '最新'}每單位淨值 ${reitYuan(item.nav)}${item.premiumDiscountPct === null ? '' : `，當天折溢價 ${reitSignedPct(item.premiumDiscountPct)}`}`)
+  if (item.nav !== null) parts.push(`${item.navDate ?? '最新'}淨值 ${reitYuan(item.nav)}${item.premiumDiscountPct === null ? '' : `，當天折溢價 ${reitSignedPct(item.premiumDiscountPct)}`}`)
   const lastYear = months.value.slice(0, 12)
   const highs = lastYear.flatMap(row => row.premiumHighest ?? [])
   const lows = lastYear.flatMap(row => row.premiumLowest ?? [])
-  if (highs.length) parts.push(`近 ${lastYear.length} 個月單日折溢價最高 ${reitSignedPct(Math.max(...highs))}、最低 ${reitSignedPct(Math.min(...lows))}`)
+  if (highs.length) parts.push(`近 ${lastYear.length} 個月最高 ${reitSignedPct(Math.max(...highs))}、最低 ${reitSignedPct(Math.min(...lows))}`)
   return parts.length ? `${shortName.value}（${code.value}）${parts.join('；')}。` : null
 })
 </script>

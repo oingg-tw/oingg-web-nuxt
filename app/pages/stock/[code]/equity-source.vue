@@ -79,7 +79,7 @@ const flowAnswer = computed(() => {
     .slice(0, 2)
     .map(item => `${item.name} ${perShare(item.value)} 元`)
     .join('與')
-  return `${last.fiscalYear} 年每股淨值從 ${perShare(last.openingBvps)} 元變成 ${perShare(last.closingBvps)} 元、${sign} ${Math.abs(change).toFixed(2)} 元。變動最大的兩項是${top}。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。`
+  return `${last.fiscalYear} 年每股淨值從 ${perShare(last.openingBvps)} 元變成 ${perShare(last.closingBvps)} 元、${sign} ${Math.abs(change).toFixed(2)} 元。變動最大的兩項是${top}。`
 })
 
 const { breadcrumbs } = useStockPageSeo({
@@ -151,7 +151,7 @@ const { breadcrumbs } = useStockPageSeo({
       <p class="stock-answer">目前沒有這檔股票可以拆解每股淨值逐年變動的申報資料。</p>
     </StockQuestionSection>
 
-    <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="每股淨值的逐年變動來自權益變動表，整理自公開資訊觀測站（MOPS）的公司申報資料。" />
+    <StockQuestionSection id="stock-equity-source-more" question="這些數字是從哪份報表來的？" answer="每股淨值的逐年變動來自權益變動表，整理自公開資訊觀測站（MOPS）的公司申報資料。金額都是元／股，並已換算到目前的股數基準，所以逐年可以直接相比。" />
     <template #guide>
       <StockMetricGuide id-prefix="stock-equity-source" topic="每股淨值" :definition="definition ? [definition] : []" />
     </template>

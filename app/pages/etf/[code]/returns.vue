@@ -14,7 +14,7 @@ const answer = computed(() => {
   if (!known.length) return null
   const longest = known.at(-1)!
   const oneYear = rows.value.find(row => row.label === '近1年')?.value ?? null
-  return `截至${month.value ?? '最新一期'}基金月報，${shortName.value}（${code.value}）${oneYear !== null ? `近 1 年含息報酬率 ${etfPct(oneYear)}，` : ''}有資料的最長期間是${longest.label}，累積含息報酬率 ${etfPct(longest.value)}（整段期間合計，不是每年平均）。`
+  return `截至${month.value ?? '最新一期'}基金月報，${shortName.value}（${code.value}）${oneYear !== null ? `近 1 年含息報酬率 ${etfPct(oneYear)}，` : ''}有資料的最長期間是${longest.label}，累積含息報酬率 ${etfPct(longest.value)}。`
 })
 </script>
 

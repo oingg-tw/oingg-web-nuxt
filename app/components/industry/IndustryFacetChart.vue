@@ -153,8 +153,8 @@ const scatterOption = computed(() => ({
     </SharedChartCard>
     <div class="industry-facet-chart__quadrants app-narrow-only">
       <slot name="header" />
-      <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，持股股利 5 年成長率以 0 分有沒有減少，分成四組。</p>
       <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率']" :picks="HOLDER_DIVIDEND_PICKS" collapsed />
+      <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，持股股利 5 年成長率以 0 分有沒有減少，分成四組。</p>
     </div>
   </template>
 </template>

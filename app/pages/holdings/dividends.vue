@@ -109,7 +109,7 @@ const answer = computed(() => {
 </script>
 
 <template>
-  <HoldingsPageShell title="配息日程" subtitle="持股接下來要除權息、發放的，以及過去一年發放過的" guest-title="登入後查看你的配息日程" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !result">
+  <HoldingsPageShell title="配息日程" guest-title="登入後查看你的配息日程" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="pending && !result">
     <template #default="{ loading }">
       <!-- 讀的時候問句、月曆（這個月、空的）、表頭、註腳照畫，答句與表格的列是骨架（2026-10-20）。月曆的格子有最小高度，
            事件標籤放進去不變高。上次沒有任何配息時（列數提示是 0）不畫月曆與表格，跟資料到了一樣 -->

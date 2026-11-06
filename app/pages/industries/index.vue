@@ -49,10 +49,8 @@ const growthText = (value: number | null): string => (value === null ? '－' : m
 const rows = computed(() => summary.value?.sectors ?? [])
 
 const coveredCount = computed(() => rows.value.reduce((total, row) => total + row.companyCount, 0).toLocaleString('en-US'))
-const latestAnswer = computed(() => {
-  if (!rows.value.length) return null
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${coveredCount.value} 家。下表每一列是一個類股：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入）、持股股利 5 年成長率的中位數，以及營收、淨利近四季年增率的中位數。`
-})
+// 算法在頁尾的注意事項（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）
+const latestAnswer = computed(() => (rows.value.length ? `${rows.value.length} 個類股、共 ${coveredCount.value} 家上市櫃公司。除了家數，數字都是該類股的中位數。` : null))
 
 const pathFor = (code: string) => sectorPath(code) ?? '/industries'
 
@@ -69,7 +67,6 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 
 // 手機版（2026-11-04，使用者從三個方案選了 C：「我選c因為文字沒有被折行」）：6 欄表格在手機要左右捲才看得到後 3 欄，改成照證交所指數
 // 分組的兩欄格子，格子上的數字用分段鈕換。電腦版照舊是上面那張可排序的表格；兩份都在伺服器輸出的 HTML 裡，CSS 決定哪一份看得到
-const shortAnswer = computed(() => (rows.value.length ? `${rows.value.length} 個類股、${coveredCount.value} 家上市櫃公司，照證交所的指數分成三組。格子上的數字是該類股的中位數，點格子看那個類股；怎麼算寫在頁面最後。` : null))
 const TILE_METRICS = [
   { key: 'yield', label: '殖利率' },
   { key: 'dividendGrowth', label: '股利成長' },
@@ -95,19 +92,12 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
     <h1 class="app-page__title industries-page__title">台股產業索引</h1>
     <IndustryNav />
 
-    <section class="stock-page-section" aria-labelledby="industries-overview-heading">
-      <h2 id="industries-overview-heading" class="stock-page-section__title">證交所把上市櫃公司分成哪些類股？</h2>
-      <p v-if="latestAnswer" class="hub-answer app-wide-only">{{ latestAnswer }}</p>
-      <p v-if="shortAnswer" class="hub-answer app-narrow-only">{{ shortAnswer }}</p>
-      <p class="hub-answer">把這些類股的殖利率與股利成長畫在同一張圖上，看<NuxtLink to="/industries/dividend" class="hub-inline-link">殖利率分析</NuxtLink>。</p>
-    </section>
-
     <section class="stock-page-section" aria-labelledby="industries-table-heading">
-      <h2 id="industries-table-heading" class="stock-page-section__title">每個類股的數字是多少？</h2>
+      <h2 id="industries-table-heading" class="stock-page-section__title">證交所把上市櫃公司分成哪些類股？</h2>
+      <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
       <!-- 類股名稱搜尋 2026-10-21 拿掉（使用者：「這個搜尋 是多餘的」）：34 列、表頭可排序，搜尋只是多一個框 -->
       <!-- 欄位簡化（2026-10-21，使用者：「industries 表格欄位請簡化」）：8 欄 → 6 欄。「有值家數」兩欄拿掉（是中位數的分母，不是讀者要比
            的數字；各類股頁與散佈圖的提示框仍有），「中位數」三個字從每個欄名收進表格說明——每一欄都是中位數，說一次就好 -->
-      <p class="hub-answer app-wide-only">除了公司家數，每一欄都是該類股的中位數。</p>
       <!-- 表格元件不把 class 傳到最外層，包一層才藏得掉 -->
       <div class="app-wide-only">
         <SharedSortableTable
@@ -153,10 +143,11 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
       <h2 id="industries-notes-heading" class="stock-page-section__title">看這些數字要注意什麼？</h2>
+      <p class="hub-answer">把這些類股的殖利率與股利成長畫在同一張圖上，看<NuxtLink to="/industries/dividend" class="hub-inline-link">殖利率分析</NuxtLink>。</p>
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」）。拿掉的：證交所
              2026-08-28 起把沒配息改成空白、我們一律當 0（上市上櫃算法一致）；中位數的分母與反推總額；34 個類股裡 8 個平均與中位數正負號相反 -->
-        <li>殖利率是一年份的現金股利除以收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
+        <li>殖利率是一年份的現金股利除以 {{ summary?.liveCashDividendYieldTradeDate ?? '' }} 收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
         <li>{{ HOLDER_DIVIDEND_NOTE }}</li>
         <li>每一欄只算有這個數字的公司，所以算進去的家數不一定等於類股家數。例如持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>每一欄都用中位數（公司依數字排好、排在正中間那一家的數字），不用平均：少數公司的極端數字會把平均拉偏，中位數比較接近一般公司的情況。</li>

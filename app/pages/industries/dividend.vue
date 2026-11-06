@@ -63,21 +63,9 @@ const plotted = computed(() =>
 )
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
 
-// 答句不提「圖」：手機上那個位置是四張表（下面的 quadrants），圖的讀法另外寫在 chartAnswer（電腦版）與 groupAnswer（手機）
-const latestAnswer = computed(() => {
-  if (!rows.value.length) return null
-  const covered = rows.value.reduce((total, row) => total + row.companyCount, 0)
-  return `證交所把上市櫃公司分成 ${rows.value.length} 個類股，共 ${covered.toLocaleString('en-US')} 家。每個類股看兩個數字：殖利率的中位數（一年份的現金股利除以 ${summary.value?.liveCashDividendYieldTradeDate ?? ''} 收盤價，近 12 個月沒有配息紀錄的公司以 0% 計入），以及持股股利 5 年成長率的中位數（5 年前買進、一直抱著的人，每年領到的現金股利的年化成長率）。`
-})
-
 const excludedText = computed(() => {
   const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）`)
   return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。它們的數字在產業索引的表格裡。` : ''
-})
-
-const chartAnswer = computed(() => {
-  if (!rows.value.length) return null
-  return `圖上每一個點是一個類股：縱軸是殖利率，橫軸是持股股利 5 年成長率，點的大小代表該類股殖利率有值的公司數。兩個軸的家數不一樣，因為它們各自算各自有值的公司——殖利率通常整個類股都有值，持股股利成長率則要有 5 年前的配息紀錄才算得出來。${excludedText.value}`
 })
 
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：殖利率以列入的類股中位數的中位數分高低，
@@ -93,9 +81,10 @@ const quadrants = computed(() =>
     title: `${group.title}（${group.rows.length} 個類股）`,
     rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median)], picks: [growthText(row.holdingDividendGrowthRate5y.median), growthText(row.holdingDividendGrowthRate3y.median), yieldText(row.yieldOnCost5y.median)] }))
   })))
-const groupAnswer = computed(() =>
+// 答句只講結果（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）：定義、算法與沒有列入的類股都在頁尾的注意事項。不提「圖」：手機上那個位置是四張表
+const latestAnswer = computed(() =>
   plotted.value.length
-    ? `下面把 ${plotted.value.length} 個類股分成四組：殖利率以這些類股的中位數 ${yieldText(yieldSplit.value)} 分高低，持股股利 5 年成長率以 0 分有沒有減少。${excludedText.value}`
+    ? `列入的 ${plotted.value.length} 個類股以殖利率中位數 ${yieldText(yieldSplit.value)} 分高低，殖利率較高、股利沒有減少的有 ${quadrants.value[0]!.rows.length} 個。`
     : null)
 
 // 標籤只在寬畫面顯示。實測（2026-09-30，30 個點、圖高 640px）：1440px 有 8 組標籤互相重疊、
@@ -183,8 +172,6 @@ const chartOption = computed(() => {
     <section class="stock-page-section" aria-labelledby="industries-overview-heading">
       <h2 id="industries-overview-heading" class="stock-page-section__title">各個類股的殖利率與股利成長長什麼樣？</h2>
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
-      <p v-if="chartAnswer" class="hub-answer app-wide-only">{{ chartAnswer }}</p>
-      <p v-if="groupAnswer" class="hub-answer app-narrow-only">{{ groupAnswer }}</p>
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card app-wide-only">
         <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與持股股利 5 年成長率中位數的散佈圖" />
       </el-card>
@@ -196,10 +183,13 @@ const chartOption = computed(() => {
       <p class="hub-answer">每個類股的逐項數字、公司家數與各自的公司一覽表，在<NuxtLink to="/industries" class="hub-inline-link">產業索引</NuxtLink>那一頁。</p>
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」） -->
-        <li>殖利率是一年份的現金股利除以收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
+        <li>殖利率是一年份的現金股利除以 {{ summary?.liveCashDividendYieldTradeDate ?? '' }} 收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
         <li>{{ HOLDER_DIVIDEND_NOTE }}</li>
         <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>兩個數字都用中位數，少數公司的極端數字不會把整個類股拉偏。</li>
+        <li>殖利率以列入類股的中位數 {{ yieldText(yieldSplit) }} 分高低，持股股利 5 年成長率以 0 分有沒有減少。</li>
+        <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股殖利率有值的公司數。</li>
+        <li v-if="excludedText">{{ excludedText }}</li>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>
     </section>

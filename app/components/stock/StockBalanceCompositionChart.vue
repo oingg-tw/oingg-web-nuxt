@@ -80,7 +80,7 @@ const table = computed(() => historyTableText({
   from: shown.value[0]?.label ?? '',
   to: shown.value.at(-1)?.label ?? ''
 }))
-const tableAnswer = computed(() => `${table.value.answer}${shareOfAssets.value ? '金額後面括號裡是占總資產的比率。' : isFlow.value ? '正的是收入、負的是支出，括號裡是占這一期全部收入或全部支出的比率。' : ''}期別與年限跟著上面的圖切換。`)
+const tableAnswer = computed(() => `${table.value.answer}${shareOfAssets.value ? '金額後面括號裡是占總資產的比率。' : isFlow.value ? '正的是收入、負的是支出，括號裡是占這一期全部收入或全部支出的比率。' : ''}`)
 type Row = (typeof rows.value)[number]
 const percent = (part: number, whole: number) => `${((part / whole) * 100).toFixed(1)}%`
 // 收入占全部收入、支出占全部支出（現金流量）；資產與負債占總資產

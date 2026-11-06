@@ -39,14 +39,13 @@ function dateSpan(key: 'tradeDate' | 'navDate'): string {
   return dates.length > 1 ? `${dates[0]}～${dates.at(-1)}` : (dates[0] ?? '')
 }
 const answer = computed(() => !rows.value.length ? '目前讀不到掛牌中的 REITs。' :
-  `台灣目前掛牌的不動產投資信託（REITs）有 ${rows.value.length} 檔。收盤價是 ${dateSpan('tradeDate')} 的收盤；每單位淨值是 ${dateSpan('navDate')} 的淨值，` +
-  '折溢價用淨值日當天的收盤價計算。近 12 個月分配是除息日在過去一年內的每單位現金分配合計，分配率是它除以收盤價。'
+  `台灣目前掛牌的不動產投資信託（REITs）有 ${rows.value.length} 檔，收盤價是 ${dateSpan('tradeDate')} 的收盤。`
 )
 
 const COLUMNS: SortableColumn<Reit>[] = [
   { key: 'name', label: 'REITs', sortValue: row => row.symbol },
   { key: 'close', label: '收盤價（元）', num: true, sortValue: row => row.close },
-  // 「每單位淨值」寫在上面那句；欄名照 ETF 篩選叫淨值（9 欄在 1440 寬剛好放得下）
+  // 「每單位淨值」寫在注意事項；欄名照 ETF 篩選叫淨值（9 欄在 1440 寬剛好放得下）
   { key: 'nav', label: '淨值（元）', num: true, sortValue: row => row.nav },
   { key: 'premium', label: '折溢價', num: true, sortValue: row => row.premiumDiscountPct },
   { key: 'distribution', label: '近 12 個月分配（元）', num: true, sortValue: row => row.trailing12MonthDistributionPerUnit },
@@ -92,8 +91,8 @@ const num = (value: number | null, digits: number) => (value === null ? '－' : 
     <section class="stock-page-section" aria-labelledby="reits-notes-heading">
       <h2 id="reits-notes-heading" class="stock-page-section__title">看這些數字要注意什麼？</h2>
       <ul class="reits-page__notes">
-        <li>折溢價是收盤價比每單位淨值高或低多少：負的是折價（收盤價低於淨值），正的是溢價。淨值比收盤晚一天公布，所以用同一天的收盤價配對。</li>
-        <li>分配率用過去 12 個月實際發放的分配計算，以後的分配不一定一樣；已經公告、還沒除息的那一次不算進去。</li>
+        <li>折溢價是收盤價比每單位淨值高或低多少：負的是折價（收盤價低於淨值），正的是溢價。每單位淨值是 {{ dateSpan('navDate') }} 的淨值；淨值比收盤晚一天公布，所以用淨值日當天的收盤價配對。</li>
+        <li>近 12 個月分配是除息日在過去一年內的每單位現金分配合計，分配率是它除以收盤價。以後的分配不一定一樣；已經公告、還沒除息的那一次不算進去。</li>
         <li>REITs 的收益分配來自租金等不動產收益，跟股票的股利不同；分配次數是過去一年實際分配了幾次，不是公告的配息頻率。</li>
       </ul>
       <p class="hub-answer hub-sources">資料來源：公開資訊觀測站（REITs 基本資料、每日淨值與收益分配公告）、臺灣證券交易所每日收盤行情。</p>

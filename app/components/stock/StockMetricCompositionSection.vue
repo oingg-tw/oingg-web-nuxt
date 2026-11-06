@@ -96,15 +96,15 @@ const order = computed<number[]>(() => {
 
 const numberText = (value: number): string => `${formatSignificantDigits(value, 4)}${unit.value}`
 
-// 答句就是最新一期的分解，由大到小。百分比用母項當分母——恆等式已經檢查過，所以四項加起來必然接近
-// 100%，不會出現「加起來 97%」那種讀者無法解釋的畫面。
+// 答句是最新一期的母項與最大的兩項（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」：每一項都在圖例與表格裡）。百分比用母項當分母——
+// 恆等式已經檢查過，所以各項加起來必然接近 100%，不會出現「加起來 97%」那種讀者無法解釋的畫面。
 const answer = computed(() => {
   const last = newest.value
   if (!last) return null
   const parts = order.value
     .map(i => ({ name: nameOf(props.partCodes[i]!), value: last.parts[i]! }))
     .map(part => `${part.name} ${numberText(part.value)}（${last.parent === 0 ? '－' : minusSign(`${((part.value / last.parent) * 100).toFixed(1)}%`)}）`)
-  return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，由${parts.join('、')}組成。`
+  return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，由${parts.slice(0, 2).join('、')}${parts.length > 2 ? '等' : ''}組成。`
 })
 
 // 這張表**不放母項那一欄**（2026-09-28「operating-expense 表格有重複資料請優化」）。同一頁下面的逐期表

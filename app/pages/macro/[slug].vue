@@ -54,17 +54,11 @@ const latestAnswer = computed(() => {
   return `${row.period} 的${page.topic}：${parts.join('、')}。同期加權股價指數收在 ${row.close.toLocaleString('zh-TW', { maximumFractionDigits: 0 })} 點。`
 })
 
-// Two wordings of the same fact: the page says「下圖」because the chart is right there, the meta
-// description cannot — in a search snippet there is no 下圖 to point at.
 const spanFacts = computed(() => {
   const list = rows.value
   if (list.length < 2) return null
   return `每月一點，共 ${list.length} 期，涵蓋 ${list[0]!.period} 至 ${list[list.length - 1]!.period}`
 })
-
-const spanAnswer = computed(() =>
-  spanFacts.value ? `下圖為${page.topic}與加權股價指數的對照，${spanFacts.value}。兩者起始時間不同，只畫兩邊都有資料的期間。` : null
-)
 
 const spanDescription = computed(() =>
   spanFacts.value ? `${page.topic}與加權股價指數的歷年對照，${spanFacts.value}。` : null
@@ -184,13 +178,14 @@ const chartOption = computed(() => {
 
     <section class="stock-page-section" aria-labelledby="macro-chart-heading">
       <h2 id="macro-chart-heading" class="stock-page-section__title">{{ page.topic }}與大盤走勢如何對照？</h2>
-      <p v-if="spanAnswer" class="hub-answer">{{ spanAnswer }}</p>
+      <p v-if="spanFacts" class="hub-answer">{{ spanFacts }}。</p>
       <el-card shadow="never" class="macro-page__card">
         <template v-if="rows.length > 1">
           <SharedChartLegend :groups="legendGroups" />
           <SharedChart class="app-chart macro-page__chart" :option="chartOption" autoresize />
         </template>
       </el-card>
+      <p v-if="spanFacts" class="hub-answer">兩者起始時間不同，只畫兩邊都有資料的期間。</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-table-heading">

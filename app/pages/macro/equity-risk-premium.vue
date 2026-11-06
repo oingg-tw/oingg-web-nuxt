@@ -28,6 +28,12 @@ const yearsText = (months: number): string => `約 ${(months / 12).toFixed(1)} �
 const latestAnswer = computed(() => {
   const window = full.value
   if (!window) return null
+  return `${window.windowStart} 到 ${window.windowEnd}，歷史法的股票風險溢酬是 ${pct(window.erpGeometric)}（幾何平均），供給面模型是 ${pct(window.supplySideErp)}，殖利率法是 ${pct(window.dividendYieldErp)}。`
+})
+// 搜尋結果的摘要要 60 字以上，比答句多寫窗口長度與算術平均
+const latestDescription = computed(() => {
+  const window = full.value
+  if (!window) return null
   return `以 ${window.windowStart} 到 ${window.windowEnd}（${window.months} 個月，${yearsText(window.months)}）計算，歷史法的股票風險溢酬是 ${pct(window.erpGeometric)}（幾何平均）或 ${pct(window.erpArithmetic)}（算術平均），供給面模型是 ${pct(window.supplySideErp)}，殖利率法是 ${pct(window.dividendYieldErp)}。`
 })
 
@@ -36,14 +42,14 @@ const spanAnswer = computed(() => {
   const shortest = windows.value[windows.value.length - 1]!
   const window = full.value
   if (!window) return null
-  return `下圖是同樣三種算法在四個窗口長度下的結果。歷史法從 ${pct(window.erpGeometric)}（${yearsText(window.months)}）變到 ${pct(shortest.erpGeometric)}（${yearsText(shortest.months)}），供給面模型從 ${pct(window.supplySideErp)} 變到 ${pct(shortest.supplySideErp)}，殖利率法從 ${pct(window.dividendYieldErp)} 變到 ${pct(shortest.dividendYieldErp)}。窗口越短，歷史法越容易被單一段行情主導；供給面模型的四個組成來自通膨、成長、股利殖利率與無風險利率，不直接反映那段期間的漲跌。`
+  return `窗口越短，歷史法越容易被單一段行情主導：從 ${pct(window.erpGeometric)}（${yearsText(window.months)}）變到 ${pct(shortest.erpGeometric)}（${yearsText(shortest.months)}），供給面模型從 ${pct(window.supplySideErp)} 變到 ${pct(shortest.supplySideErp)}。`
 })
 
 const componentsAnswer = computed(() => {
   const parts = components.value
   const window = full.value
   if (!parts || !window) return null
-  return `供給面模型把股票的長期報酬拆成四項，再減掉無風險利率：${pct(parts.expectedInflation)}（預期通膨）加 ${pct(parts.realEarningsGrowth)}（實質盈餘成長）加 ${pct(parts.dividendYield)}（股利殖利率）加 ${pct(parts.peGrowth)}（本益比成長）減 ${pct(parts.riskFreeRate)}（無風險利率），得到 ${pct(window.supplySideErp)}。`
+  return `四個組成相加，再減掉無風險利率：${pct(parts.expectedInflation)} 加 ${pct(parts.realEarningsGrowth)} 加 ${pct(parts.dividendYield)} 加 ${pct(parts.peGrowth)} 減 ${pct(parts.riskFreeRate)}，得到 ${pct(window.supplySideErp)}。`
 })
 
 // dividendYieldMarketCapCoverage 2026-09-30 起**不再顯示**：證交所把不配息公司的殖利率從 0.00
@@ -52,7 +58,7 @@ const componentsAnswer = computed(() => {
 // 裡，只是不印在畫面上。
 const { breadcrumbs } = useHubPageSeo({
   title: '台股股票風險溢酬：三種算法對照',
-  description: () => clampDescription(latestAnswer.value ?? '台股股票風險溢酬的歷史法、供給面模型與殖利率法結果，四個窗口長度並排，附供給面模型的四個組成。'),
+  description: () => clampDescription(latestDescription.value ?? '台股股票風險溢酬的歷史法、供給面模型與殖利率法結果，四個窗口長度並排，附供給面模型的四個組成。'),
   path: '/macro/equity-risk-premium',
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -133,7 +139,6 @@ const legendGroups = computed<ChartLegendGroup[]>(() => [{ items: chartOption.va
     <section class="stock-page-section" aria-labelledby="macro-erp-latest-heading">
       <h2 id="macro-erp-latest-heading" class="stock-page-section__title">股票比公債多賺多少？</h2>
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
-      <p class="hub-answer">歷史法是加權股價指數實際的年化報酬，減掉同期 10 年期公債的平均殖利率——回頭看那段期間實際發生了什麼。供給面模型照 Ibbotson &amp; Chen（2003）的做法，把股票報酬拆成通膨、實質盈餘成長、股利殖利率與本益比成長，再減掉無風險利率——從經濟的基本面推算。殖利率法是股利殖利率減掉實質無風險利率（無風險利率減預期通膨），等於供給面模型拿掉實質盈餘成長那一項，也就是假設盈餘不再實質成長，所以通常比較保守。三者算的是同一件事，方法不同。</p>
     </section>
 
     <section class="stock-page-section" aria-labelledby="macro-erp-window-heading">
@@ -215,6 +220,11 @@ const legendGroups = computed<ChartLegendGroup[]>(() => [{ items: chartOption.va
         <li>盈餘成長長期會因為新股發行稀釋而低於 GDP 成長，所以這一項可能被高估。</li>
         <li>股利殖利率只有最新一天的資料。表上其他窗口的供給面模型與殖利率法，殖利率那一項用的仍是最新交易日，跟該窗口的終點不是同一個時間點；殖利率法用的股利殖利率、無風險利率、預期通膨就是上表的三列。</li>
       </ul>
+    </section>
+
+    <section class="stock-page-section" aria-labelledby="macro-erp-methods-heading">
+      <h2 id="macro-erp-methods-heading" class="stock-page-section__title">三種算法差在哪裡？</h2>
+      <p class="hub-answer">歷史法是加權股價指數實際的年化報酬，減掉同期 10 年期公債的平均殖利率——回頭看那段期間實際發生了什麼。供給面模型照 Ibbotson &amp; Chen（2003）的做法，把股票報酬拆成通膨、實質盈餘成長、股利殖利率與本益比成長，再減掉無風險利率——從經濟的基本面推算。殖利率法是股利殖利率減掉實質無風險利率（無風險利率減預期通膨），等於供給面模型拿掉實質盈餘成長那一項，也就是假設盈餘不再實質成長，所以通常比較保守。三者算的是同一件事，方法不同。供給面模型的四個組成來自通膨、成長、股利殖利率與無風險利率，不直接反映那段期間的漲跌。</p>
       <p class="hub-answer hub-sources macro-erp-page__sources">資料來源：臺灣證券交易所加權股價指數與上市公司股利殖利率、中央銀行 10 年期公債殖利率、行政院主計總處消費者物價指數與國內生產毛額。模型依 Ibbotson, R. G. &amp; Chen, P. (2003), Long-Run Stock Returns: Participating in the Real Economy, Financial Analysts Journal 59(1)。</p>
     </section>
   </div>

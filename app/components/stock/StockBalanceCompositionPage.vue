@@ -67,33 +67,37 @@ const question = computed(() => (props.kind === 'cashFlow'
   : props.kind === 'intangible'
     ? `${stockShortName.value}（${code.value}）帳上有多少無形資產？`
     : `${stockShortName.value}（${code.value}）的${page.total}由哪些項目組成？`))
-// 現金流量：收入與支出各列最大的三項與占比，最後是現金增減。只陳述數字，不評價
-const flowAnswer = (period: BalanceCompositionPeriod | CashFlowCompositionPeriod, picked: { total: number; parts: Record<string, number> }) => {
+// 現金流量：收入與支出各列最大的幾項與占比（答句一項、meta description 三項），最後是現金增減。只陳述數字，不評價
+const flowAnswer = (period: BalanceCompositionPeriod | CashFlowCompositionPeriod, picked: { total: number; parts: Record<string, number> }, top: number) => {
   const side = (sign: 1 | -1) => {
     const keys = Object.keys(page.labels).filter(key => Math.sign(picked.parts[key] ?? 0) === sign).sort((a, b) => Math.abs(picked.parts[b]!) - Math.abs(picked.parts[a]!))
     const whole = keys.reduce((sum, key) => sum + Math.abs(picked.parts[key]!), 0)
-    return { whole, text: keys.slice(0, 3).map(key => `${page.labels[key]} ${share(Math.abs(picked.parts[key]!), whole)}`).join('、') }
+    return { whole, text: keys.slice(0, top).map(key => `${page.labels[key]} ${share(Math.abs(picked.parts[key]!), whole)}`).join('、') }
   }
   const income = side(1)
   const spending = side(-1)
-  return `${periodName(period)}現金收入 ${money(income.whole)}，${income.text}；支出 ${money(spending.whole)}，${spending.text}；現金${picked.total >= 0 ? '增加' : '減少'} ${money(Math.abs(picked.total))}。百分比是占全部收入或全部支出的比率。`
+  return `${periodName(period)}現金收入 ${money(income.whole)}，${income.text}；支出 ${money(spending.whole)}，${spending.text}；現金${picked.total >= 0 ? '增加' : '減少'} ${money(Math.abs(picked.total))}。`
 }
-// 答句講最新一季，由大到小，每一項附占比（資產與負債占總資產、淨值占淨值）
-const answer = computed(() => {
+// 答句講最新一季：合計與最大的兩項，附占比（資產與負債占總資產、淨值占淨值）。原本逐項列完（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」：
+// 每一項都在圖例與表格裡）；逐項的長句留給 meta description（搜尋結果的摘要要 50 字以上）
+function answerFor(detailed: boolean) {
   const period = latestPeriod.value
   const picked = period && pick(period)
   if (!period || !picked) return null
-  if (!('totalAssets' in period)) return flowAnswer(period, picked)
+  if (!('totalAssets' in period)) return flowAnswer(period, picked, detailed ? 3 : 1)
   if (props.kind === 'intangible') return `${period.fiscalYear} Q${period.fiscalQuarter} 的無形資產 ${money(picked.total)}，占總資產 ${share(picked.total, period.totalAssets)}。`
   const base = page.shareOfAssets ? period.totalAssets : picked.total
-  const parts = Object.keys(page.labels)
+  const keys = Object.keys(page.labels)
     .filter(key => (picked.parts[key] ?? 0) > 0)
     .sort((a, b) => picked.parts[b]! - picked.parts[a]!)
-    .map(key => `${page.labels[key]} ${money(picked.parts[key]!)}（${share(picked.parts[key]!, base)}）`)
-  return page.shareOfAssets
-    ? `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total} ${money(picked.total)}，占總資產 ${share(picked.total, period.totalAssets)}：${parts.join('、')}。括號裡是占總資產的比率。`
-    : `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total}（歸屬母公司權益）${money(picked.total)}：${parts.join('、')}。括號裡是占淨值的比率。`
-})
+  const head = page.shareOfAssets
+    ? `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total} ${money(picked.total)}，占總資產 ${share(picked.total, period.totalAssets)}`
+    : `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total}（歸屬母公司權益）${money(picked.total)}`
+  if (detailed) return `${head}：${keys.map(key => `${page.labels[key]} ${money(picked.parts[key]!)}（${share(picked.parts[key]!, base)}）`).join('、')}。`
+  const top = keys.slice(0, 2).map(key => `${page.labels[key]} ${share(picked.parts[key]!, base)}`).join('、')
+  return top ? `${head}，其中${top}。` : `${head}。`
+}
+const answer = computed(() => answerFor(false))
 const emptyAnswer = computed(() => (props.kind === 'intangible'
   ? `${stockShortName.value}近幾季的資產負債表沒有申報無形資產。`
   : props.kind === 'equity' || props.kind === 'cashFlow'
@@ -133,7 +137,7 @@ const earliestClause = computed(() => {
   if (props.kind !== 'intangible' || !first || !picked || !('totalAssets' in first) || first === latestPeriod.value) return ''
   return `資料最早的 ${first.fiscalYear} Q${first.fiscalQuarter} 是 ${money(picked.total)}，占總資產 ${share(picked.total, first.totalAssets)}；每季底的金額與占比列在表格裡。`
 })
-const description = computed(() => clampDescription(answer.value ? `${answer.value}${earliestClause.value}` : emptyAnswer.value))
+const description = computed(() => clampDescription(answer.value ? `${answerFor(true)}${earliestClause.value}` : emptyAnswer.value))
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: page.topic, titleKeywords: page.titleKeywords, pathSuffix: page.pathSuffix, stock, summary, description, sectorCode })
 </script>
@@ -157,7 +161,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       v-else-if="pending"
       :id="sectionId"
       :question="question"
-      :answer-skeleton="`${stockShortName}（${code}）2026 Q2 的合計為 0,000 億元，占總資產 00.0%，最大的一項是 00.0%，其次是 00.0%。`"
+      :answer-skeleton="`2026 Q2 的合計 0.000兆元，占總資產 00.0%，其中最大的一項 00.0%、第二大的一項 00.0%。`"
     >
       <SharedChartCard><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>

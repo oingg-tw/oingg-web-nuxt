@@ -125,7 +125,7 @@ const skeletonYearRows = computed(() => Array.from({ length: yearCountHint.value
 </script>
 
 <template>
-  <HoldingsPageShell title="報酬與大盤" subtitle="持股報酬與同期大盤" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="performancePending && !performance">
+  <HoldingsPageShell title="報酬與大盤" guest-title="登入後查看你的報酬" guest-text="持股與交易資料存在你的帳號裡，只有你看得到。" :pending="performancePending && !performance">
     <template #default="{ loading }">
 
       <HoldingsRangePicker :pending="performancePending" />

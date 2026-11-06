@@ -33,22 +33,23 @@ const paidYearsClause = computed(() => {
   const stockEntry = entry.value
   if (!stockEntry?.cashDividendObservedYears) return ''
   const missed = stockEntry.cashDividendMissedYears
-  return `；${stockEntry.cashDividendObservedFromYear} 年起的 ${stockEntry.cashDividendObservedYears} 個完整年度中有 ${stockEntry.cashDividendPaidYears} 年有配息${missed.length ? `，${missed.join('、')} 年沒配` : ''}`
+  return `；${stockEntry.cashDividendObservedFromYear} 年起的 ${stockEntry.cashDividendObservedYears} 個完整年度有 ${stockEntry.cashDividendPaidYears} 年配息${missed.length ? `，${missed.join('、')} 年沒配` : ''}`
 })
 
+// 累積型或非累積型是注意事項，不寫在卡片前（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）；搜尋結果的摘要照舊有這一句
 const answer = computed(() => {
   const stockEntry = entry.value
   if (!stockEntry || byYear.value === null) return null
   const paid = years.value.filter(row => row.amount !== null)
   const latest = paid.at(-1)
-  if (!latest) return `${shortName.value}（${code.value}）目前沒有除息紀錄；目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}。${skipConsequence.value}`
+  if (!latest) return `${shortName.value}（${code.value}）目前沒有除息紀錄；目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}。`
   const same = stockEntry.dividendRate !== null && Math.abs(latest.amount! - stockEntry.dividendRate) <= 0.01
-  return `${shortName.value}（${code.value}）最近一次配發在 ${latest.year} 年，合計 ${preferredYuan(latest.amount)}，${same ? '跟' : '不同於'}目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}${paidYearsClause.value}。${skipConsequence.value}`
+  return `${shortName.value}（${code.value}）最近配發在 ${latest.year} 年，合計 ${preferredYuan(latest.amount)}，${same ? '跟' : '不同於'}目前公告的每年股息 ${preferredYuan(stockEntry.dividendRate)}${same ? '一樣' : ''}${paidYearsClause.value}。`
 })
 </script>
 
 <template>
-  <PreferredStockPage :preferred="preferred" topic="實際配息紀錄" :description="answer">
+  <PreferredStockPage :preferred="preferred" topic="實際配息紀錄" :description="answer && `${answer}${skipConsequence}`">
     <StockQuestionSection id="preferred-dividends" :question="`${shortName}（${code}）實際配了多少？跟目前公告的股息一樣嗎？`" :answer="answer">
       <template v-if="years.length">
         <PreferredDividendChart :years="years" :dividend-rate="entry?.dividendRate ?? null" :short-name="shortName" />
@@ -67,6 +68,7 @@ const answer = computed(() => {
           </tbody>
         </SharedTable>
       </template>
+      <p v-if="skipConsequence" class="hub-answer">{{ skipConsequence }}</p>
       <p class="hub-answer">
         發行條件寫的每年股息不一定每年都一樣：有些特別股的股息每隔幾年會依利率重設；非累積型的特別股如果某一年沒有配發，之後也不補發。
         「沒有除息紀錄」可能是還沒發行、當年沒有配發，或資料還沒涵蓋到。

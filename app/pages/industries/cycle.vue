@@ -70,7 +70,7 @@ const leadAnswer = computed(() => {
   const a = counted.map(row => row.amplitude as number)
   const strong = r.filter(value => value >= STRONG).length
   const negative = r.filter(value => value < 0).length
-  return `${counted.length} 個類股裡，營收年增率跟景氣同時指標的相關係數在 ${STRONG} 以上的有 ${strong} 個、0 到 ${STRONG} 之間 ${counted.length - strong - negative} 個、0 以下 ${negative} 個；起伏幅度從 ${points(Math.min(...a))} 到 ${points(Math.max(...a))}。`
+  return `${counted.length} 個類股裡，營收年增率跟景氣同時指標的相關係數在 ${STRONG} 以上的有 ${strong} 個、0 以下 ${negative} 個；起伏幅度從 ${points(Math.min(...a))} 到 ${points(Math.max(...a))}。`
 })
 
 const isDesktop = useIsDesktop()

@@ -356,8 +356,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
          with a causal verb. Every fact was checked against the Wikipedia article named beside it. -->
     <StockQuestionSection id="macro-phases-context" question="每一段下跌的期間，當時發生了什麼？">
       <p class="hub-answer">
-        以下按時間順序列出每一段下跌期間內、有明確日期的公開事件，以及有正式宣告日期的重大事件中落在該段的項目。
-        這裡只記錄「同一段時間內發生了什麼」，不對事件與指數漲跌之間的關係做任何推論。
+        每一段下跌期間內有明確日期的公開事件，依時間排列。這裡只記錄同一段時間內發生了什麼，不推論事件與指數漲跌的關係。
       </p>
       <ol class="macro-phases-page__context-list">
         <li v-for="phase in phases" :id="`phase-${phase.peakPeriod}`" :key="phase.peakPeriod" class="macro-phases-page__context-item">
@@ -383,8 +382,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
          this page. Its own section with its own caption so nobody reads the two lists as one. -->
     <StockQuestionSection v-if="dailyPhases.length" id="macro-phases-fast" question="哪些是一兩個月內就跌完的急跌？">
       <p class="hub-answer">
-        上面的下跌段用月平均計算，一個月內急跌急彈的走勢會被平均削掉一半。這裡改用<strong>每日收盤</strong>再算一次，同樣的 {{ BEAR_THRESHOLD_PCT }}% 門檻，就抓得到那些走得快的。
-        日收盤資料從 {{ firstDay }} 起，比月平均晚十二年。兩張表的算法不同，同一段時期的數字不能互相比較。
+        改用<strong>每日收盤</strong>再算一次，同樣的 {{ BEAR_THRESHOLD_PCT }}% 門檻，抓得到一個月內急跌急彈的走勢；資料從 {{ firstDay }} 起。兩張表算法不同，數字不能互相比較。
       </p>
       <SharedSortableTable
         :rows="dailyPhases"

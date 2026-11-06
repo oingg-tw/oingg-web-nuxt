@@ -13,19 +13,24 @@ function undisclosed(composition: EtfDistributionComposition): string {
   return gap > 0.05 ? `${gap.toFixed(2)}%` : '－'
 }
 
-const answer = computed(() => {
+// 答句寫占比最大的那一項，每一項都在下面的表裡（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）；逐項的長句給搜尋結果
+function answerFor(detailed: boolean) {
   if (!events.value.length) return '目前沒有這檔 ETF 的配息紀錄。'
   const latest = events.value.find(event => hasEtfComposition(event.composition))
   if (!latest) return '投信還沒有公告過這檔 ETF 配息的組成。'
   const composition = latest.composition!
   const announced = events.value.filter(event => hasEtfComposition(event.composition)).length
+  const largest = [...ETF_DISTRIBUTION_PARTS].sort((a, b) => (composition[b.key] ?? 0) - (composition[a.key] ?? 0))[0]!
+  if (!detailed) return `${events.value.length} 次配息中 ${announced} 次有公告組成。最近一次 ${latest.exDividendDate} 除息，占比最大的是${largest.name} ${share(composition[largest.key])}（投信公告的預估比例）。`
   return `${events.value.length} 次配息中 ${announced} 次有公告組成。最近一次是 ${latest.exDividendDate} 除息：股利所得 ${share(composition.dividendIncomePct)}、利息所得 ${share(composition.interestIncomePct)}、收益平準金 ${share(composition.incomeEqualizationPct)}、已實現資本利得 ${share(composition.realizedCapitalGainPct)}（投信公告的預估比例）。`
-})
+}
+const answer = computed(() => answerFor(false))
+const description = computed(() => answerFor(true))
 const latestWarning = computed(() => events.value.find(event => event.distributionWarning)?.distributionWarning ?? null)
 </script>
 
 <template>
-  <EtfPage :etf-data="etfData" facet="composition" :description="answer">
+  <EtfPage :etf-data="etfData" facet="composition" :description="description">
     <StockQuestionSection id="etf-composition" :question="`${shortName}（${code}）配的錢從哪裡來？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="composition" />
       <SharedTable v-if="events.length" :label="`${shortName}歷次配息組成`" :caption="`${shortName} ${code} 歷次配息組成（投信公告的預估比例，新的在上）`">

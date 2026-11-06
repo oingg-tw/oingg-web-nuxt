@@ -57,7 +57,7 @@ const basis = ref<'TTM' | 'Q'>('Q')
 const basisLabel = computed(() => TIMEFRAME_LABELS[basis.value])
 const activeSeries = computed(() => (basis.value === 'Q' ? marginsData.value?.series : marginsData.value?.ttmSeries))
 const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || activeSeries.value === null))
-const answerSkeleton = computed(() => (marginsPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的財報三率（${basisLabel.value}）、毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
+const answerSkeleton = computed(() => (marginsPending.value ? `2026 Q2（${basisLabel.value}）毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
 
 // 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
@@ -160,8 +160,7 @@ const waterfallSteps = computed<WaterfallStep[]>(() => {
 const valueAnswer = computed(() => {
   if (!latest.value || !hasRates.value) return null
   return joinClauses([
-    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的財報三率（${basisLabel.value}）`,
-    `毛利率 ${fixedRateText(grossMargin.value)}`,
+    `${latestPeriodText.value}（${basisLabel.value}）毛利率 ${fixedRateText(grossMargin.value)}`,
     `營業利益率 ${fixedRateText(operatingMargin.value)}`,
     `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
     latest.value.values.grossMargin?.knowledgeDate ? `資料時間 ${latest.value.values.grossMargin.knowledgeDate}` : null
@@ -170,10 +169,7 @@ const valueAnswer = computed(() => {
 
 const relationAnswer = computed(() => {
   if (!hasRates.value || expenseTotal.value === null) return null
-  const middle = hasExpenseBreakdown.value
-    ? `扣掉推銷及管理費用率 ${fixedRateText(expenseRatio.value)} 與研發費用率 ${fixedRateText(rdIntensity.value)}`
-    : `扣掉合計 ${fixedRateText(expenseTotal.value)} 的營業費用`
-  return `三率的分母都是同一筆營收，所以可以逐項相減：${stockShortName.value}的毛利率 ${fixedRateText(grossMargin.value)}，${middle}後為營業利益率 ${fixedRateText(operatingMargin.value)}；再計入業外損益與所得稅 ${fixedSignedRateText(nonOperatingAndTax.value)} 後為稅後淨利率 ${fixedRateText(netProfitMargin.value)}。`
+  return `三率的分母都是同一筆營收，可以逐項相減：毛利率 ${fixedRateText(grossMargin.value)} 扣掉營業費用後是營業利益率 ${fixedRateText(operatingMargin.value)}，再計入業外損益與所得稅後是稅後淨利率 ${fixedRateText(netProfitMargin.value)}。`
 })
 
 const history = computed(() => {
@@ -245,7 +241,7 @@ const risingAnswer = computed(() => {
 
 const description = computed(() => {
   if (!hasRates.value) return null
-  return clampDescription(joinSentences([valueAnswer.value, relationAnswer.value]) ?? '')
+  return clampDescription(`${stockShortName.value}（${code.value}）${joinSentences([valueAnswer.value, relationAnswer.value]) ?? ''}`)
 })
 
 // noindex when this symbol has no three rates to relate — a financial, or a symbol whose history

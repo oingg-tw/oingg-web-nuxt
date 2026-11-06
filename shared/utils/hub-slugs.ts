@@ -143,8 +143,9 @@ export interface RankPageDefinition {
     unit?: string
     // 母體說明。**screener 頁面一定要給**：這一頁的答句原本寫「全市場有 X 資料的公司依數值排序」，
     // 而那句話對篩過族群的頁面是錯的——由虧轉盈那頁只收「去年同季虧損、本季獲利」的公司，
-    // 讀者不知道的話會把它讀成全市場的每股盈餘排行。
+    // 讀者不知道的話會把它讀成全市場的每股盈餘排行。寫在答句，要短；為什麼這樣收、怎麼讀寫在 populationNote（頁尾的注意事項）
     population: string
+    populationNote: string
   }
 }
 
@@ -214,7 +215,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
     filters: [{ field: 'epsPriorYear.Q', min: 0.5 }, { field: 'eps.Q', min: -10000 }],
     columns: ['epsGrowthRate.Q', 'eps.Q', 'epsPriorYear.Q'],
     sortField: 'epsGrowthRate.Q',
-    population: '只收去年同季每股盈餘達 0.5 元以上的公司：基期接近零時，年增率會被放大成不具意義的數字；去年同季虧損的公司也不在這裡，它們的「成長」另有一頁。'
+    population: '只收去年同季每股盈餘達 0.5 元以上的公司。',
+    populationNote: '基期接近零時，年增率會被放大成不具意義的數字；去年同季虧損的公司也不在這裡，它們的「成長」另有一頁。'
   } },
   // 由虧轉盈：去年同季虧損、本季獲利。**排的是幅度（元）不是年增率**——年增率在這個族群裡是
   // (今年 + |去年|) / |去年|，基期越接近零就越大，排出來會是「去年剛好差不多打平」而不是「轉得最多」。
@@ -228,7 +230,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
     columns: ['eps.Q', 'epsPriorYear.Q'],
     derivedMinus: ['eps.Q', 'epsPriorYear.Q'],
     unit: '元',
-    population: '只收去年同季虧損、本季獲利的公司，排的是兩者相差幾元。這不是獲利高低的排行：轉盈幅度大不代表現在賺得多。'
+    population: '只收去年同季虧損、本季獲利的公司，排的是兩者相差幾元。',
+    populationNote: '這不是獲利高低的排行：轉盈幅度大不代表現在賺得多。'
   } },
   // ETF 的排行（2026-10-21）。一樣只依一個欄位排序取前 50；說明的事實照 ETF 個別頁已有的寫法（基金月報、估算與完整年度）。
   { slug: 'etf-aum', universe: 'etf', category: 'etf-size', field: 'aum', direction: 'desc', label: '規模', unit: '億元', valueScale: 1e8, monthlyReport: true, note: '規模是投信投顧公會基金月報公布的月底淨資產，每月更新一次；規模跌破法定門檻、而且一段時間沒有回升的 ETF 可能依規定下市清算（以發行投信的公告為準）。' },

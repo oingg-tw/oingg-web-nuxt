@@ -53,7 +53,7 @@ export function historyTableText(options: { shortName: string; code: string; top
   const basis = options.basis ? `（${options.basis}）` : ''
   return {
     question: `${options.shortName}的${options.topic}歷年變化如何？`,
-    answer: `以下為 ${options.shortName} 由新到舊的${options.topic}${basis}，共 ${options.count} ${options.countUnit ?? '期'}，涵蓋 ${options.from} 至 ${options.to}。`,
+    answer: `${options.basis ?? ''}共 ${options.count} ${options.countUnit ?? '期'}，涵蓋 ${options.from} 至 ${options.to}。`,
     label: `${options.shortName} ${options.code} 的${options.topic}逐期數據${basis}`
   }
 }

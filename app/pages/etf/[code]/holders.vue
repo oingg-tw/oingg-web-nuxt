@@ -13,7 +13,15 @@ const rangeText = (minShares: number | null, maxShares: number | null) => {
   return `${groupThousands(minShares ?? 0)}～${groupThousands(maxShares)} 股`
 }
 
+// 答句寫比例最高的兩組，每一組都在下面的表裡（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）；全部列出的長句給搜尋結果
 const answer = computed(() => {
+  const week = latest.value
+  if (!week) return null
+  const [first, second] = [...week.groups].sort((a, b) => b.custodyPct - a.custodyPct)
+  if (!first) return null
+  return `${week.dataDate} 集保資料，比例最高的是 ${first.name} ${first.custodyPct.toFixed(2)}%${second ? `，其次是 ${second.name} ${second.custodyPct.toFixed(2)}%` : ''}。`
+})
+const description = computed(() => {
   const week = latest.value
   if (!week) return null
   const groups = week.groups.map(group => `${group.name} ${group.custodyPct.toFixed(2)}%`).join('、')
@@ -22,7 +30,7 @@ const answer = computed(() => {
 </script>
 
 <template>
-  <EtfPage :etf-data="etfData" facet="holders" :description="answer">
+  <EtfPage :etf-data="etfData" facet="holders" :description="description">
     <StockQuestionSection id="etf-holders" :question="`${shortName}（${code}）是誰在持有？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="holders" />
       <SharedTable v-if="levels.length" :label="`${shortName}最新一週的集保股權分散`" :caption="`${shortName} ${code} ${latest?.dataDate ?? ''} 集保股權分散表，15 個持股級距`">

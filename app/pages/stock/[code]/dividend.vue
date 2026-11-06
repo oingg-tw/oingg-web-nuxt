@@ -83,19 +83,12 @@ const footerLinks = computed(() => [
 const historyAnswer = computed(() => {
   const entries = history.value
   if (!entries.length) return null
-  const cash = entries.reduce((sum, entry) => sum + (entry.cashDividend ?? 0), 0)
-  const stockDividend = entries.reduce((sum, entry) => sum + (entry.stockDividend ?? 0), 0)
   const latest = [...entries].sort((a, b) => b.fiscalYear - a.fiscalYear)[0]!
   const latestClauses = joinClauses([
     latest.cashDividend !== null ? `現金股利 ${latest.cashDividend.toFixed(2)} 元` : null,
-    latest.payoutRatio !== null ? `現金股利發放率 ${latest.payoutRatio.toFixed(2)}%` : null,
-    latest.exDividendDate ? `除息日 ${latest.exDividendDate}` : null,
-    latest.paymentDate ? `發放日 ${latest.paymentDate}` : null,
-    // 配股的發放日（2026-10-20 起才有，那一年最後一次配股的）
-    latest.stockDividendDistributionDate ? `配股發放日 ${latest.stockDividendDistributionDate}` : null
+    latest.exDividendDate ? `除息日 ${latest.exDividendDate}` : null
   ])
-  const total = joinClauses([`合計現金股利 ${cash.toFixed(2)} 元`, stockDividend > 0 ? `股票股利 ${stockDividend.toFixed(2)} 元` : null])
-  return `${historyText.value.answer}${total ?? ''}${latestClauses ? `最近一個年度（${latest.fiscalYear} 年）：${latestClauses}` : ''}`
+  return `${historyText.value.answer}${latestClauses ? `最近一個年度（${latest.fiscalYear} 年）：${latestClauses}` : ''}`
 })
 const historyText = computed(() => {
   const years = history.value.map(entry => entry.fiscalYear)

@@ -153,7 +153,7 @@ const { breadcrumbs } = useStockPageSeo({
       :question="`${stockShortName}（${code}）有哪些數字可以看？`"
       :answer="normalizedQuery
         ? `搜尋「${query.trim()}」，${matches.length} 項符合。`
-        : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。上面的組名可以直接跳過去，或用搜尋找特定指標。`"
+        : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。`"
     >
       <!-- aria-label 是必要的，不是保險：el-input 的 placeholder 不構成可及名稱。 -->
       <el-input

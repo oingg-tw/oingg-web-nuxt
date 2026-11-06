@@ -26,7 +26,7 @@ const fundamentalsDate = computed(() => data.value?.companies.fundamentalsDate ?
 
 const answer = computed(() => {
   const dates = [quoteDate.value && `股價與估值為 ${quoteDate.value} 的收盤資料`, fundamentalsDate.value && `財報數據至 ${fundamentalsDate.value}`].filter(Boolean).join('，')
-  return `證交所歸在${sectorName}的上市櫃公司共 ${catalogCount.value} 家。有財報指標數值的 ${rows.value.length} 家列於下表，依代號排列（點表頭可以換排序）${dates ? `；${dates}` : ''}。點代號看該公司的個股頁。`
+  return `${sectorName}的上市櫃公司共 ${catalogCount.value} 家${rows.value.length < catalogCount.value ? `，有財報指標數值的 ${rows.value.length} 家列於下表` : ''}${dates ? `；${dates}` : ''}。`
 })
 
 // 數字在前，90 字以內（clampDescription 在子句邊界截斷）

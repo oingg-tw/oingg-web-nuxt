@@ -49,34 +49,27 @@ const excluded = computed(() => rows.value.filter(row => !plotted.value.includes
 
 // 四區與對角線的家數——描述分布，不點名排序
 const counts = computed(() => {
-  let both = 0; let revenueOnly = 0; let profitOnly = 0; let neither = 0; let aboveDiagonal = 0
+  let both = 0; let neither = 0; let aboveDiagonal = 0
   for (const row of plotted.value) {
     const x = row.revenueGrowthRate.median as number
     const y = row.netIncomeGrowthRate.median as number
     if (x >= 0 && y >= 0) both++
-    else if (x >= 0) revenueOnly++
-    else if (y >= 0) profitOnly++
-    else neither++
+    else if (x < 0 && y < 0) neither++
     if (y > x) aboveDiagonal++
   }
-  return { both, revenueOnly, profitOnly, neither, aboveDiagonal }
+  return { both, neither, aboveDiagonal }
 })
 
 const leadAnswer = computed(() => {
   if (!plotted.value.length) return null
   const c = counts.value
   // 不提「圖」與「對角線」：手機上那個位置是四張表（quadrants）
-  return `列入的 ${plotted.value.length} 個類股裡，營收與淨利中位數都比去年增加的有 ${c.both} 個、只有營收增加的 ${c.revenueOnly} 個、只有淨利增加的 ${c.profitOnly} 個、兩者都減少的 ${c.neither} 個；淨利成長比營收快的有 ${c.aboveDiagonal} 個。`
+  return `列入的 ${plotted.value.length} 個類股裡，營收與淨利中位數都比去年增加的有 ${c.both} 個、都減少的 ${c.neither} 個；淨利成長比營收快的有 ${c.aboveDiagonal} 個。`
 })
 
 const excludedText = computed(() => {
   const names = excluded.value.map(row => `${row.name}（營收 ${row.revenueGrowthRate.count} 家、淨利 ${row.netIncomeGrowthRate.count} 家）`)
   return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。` : ''
-})
-
-const chartAnswer = computed(() => {
-  if (!rows.value.length) return null
-  return `每一個點是一個類股：橫軸是營收近四季年增率的中位數，縱軸是淨利近四季年增率的中位數。點的大小是營收年增率有值的公司數。${excludedText.value}`
 })
 
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：兩個年增率各以 0 分增減，表內照類股代號排
@@ -90,8 +83,6 @@ const quadrants = computed(() =>
     title: `${group.title}（${group.rows.length} 個類股）`,
     rows: group.rows.map(row => ({ key: row.code, name: row.name, to: sectorPath(row.code), cells: [pct(row.revenueGrowthRate.median), pct(row.netIncomeGrowthRate.median)] }))
   })))
-const groupAnswer = computed(() =>
-  plotted.value.length ? `下面依兩個年增率中位數的正負，把類股分成四組。${excludedText.value}` : null)
 
 const isDesktop = useIsDesktop()
 const { resolvedMode, color: accentColorName } = useAppTheme()
@@ -175,8 +166,6 @@ const chartOption = computed(() => {
     <section class="stock-page-section" aria-labelledby="industries-growth-heading">
       <h2 id="industries-growth-heading" class="stock-page-section__title">各個類股的營收與獲利在成長嗎？</h2>
       <p v-if="leadAnswer" class="hub-answer">{{ leadAnswer }}</p>
-      <p v-if="chartAnswer" class="hub-answer app-wide-only">{{ chartAnswer }}</p>
-      <p v-if="groupAnswer" class="hub-answer app-narrow-only">{{ groupAnswer }}</p>
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card app-wide-only">
         <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股營收年增率中位數與淨利年增率中位數的散佈圖" />
       </el-card>
@@ -192,6 +181,8 @@ const chartOption = computed(() => {
         <li>兩個年增率都用近四季加總和去年同期比，避開單季的淡旺季。各公司的財報期別不一定相同，這是每家公司各自最新的近四季。</li>
         <li>去年基期接近零或是虧損的公司，年增率會很大或正負號沒有意義；用中位數可以減少這些公司對整個類股的影響。<span class="app-wide-only">中位數超過 ±100% 的類股畫在 ±100% 的邊界，以三角形表示。</span></li>
         <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。</li>
+        <li class="app-wide-only">圖上每一個點是一個類股，點的大小是營收年增率有值的公司數。</li>
+        <li v-if="excludedText">{{ excludedText }}</li>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊與各公司財報。母體為上市與上櫃普通股，不含興櫃。</p>
     </section>

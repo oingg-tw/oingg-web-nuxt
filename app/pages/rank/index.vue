@@ -41,7 +41,7 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
     <h1 class="app-page__title rank-index__title">台股排行：依單一指標排序的前 50 檔</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <RankNav />
-    <p class="hub-answer">{{ RANK_PAGES.length }} 份排行，各依一個指標排序。每張卡片切換同類的排行，先列前 5 名；點「看前 50 檔」看完整名單、資料日期與指標說明。</p>
+    <p class="hub-answer">{{ RANK_PAGES.length }} 份排行，各依一個指標排序，每張卡片先列前 5 名。</p>
     <div class="rank-index__cards">
       <section v-for="card in cards" :key="card.key" class="app-card rank-card" :aria-labelledby="`rank-card-${card.key}`">
         <div class="rank-card__head">

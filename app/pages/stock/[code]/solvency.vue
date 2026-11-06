@@ -45,7 +45,7 @@ const [{ data: filterSchema }, { data: solvencyData, error: solvencyError, statu
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (!!solvencyError.value || solvencyData.value?.series === null))
-const answerSkeleton = computed(() => (solvencyPending.value ? `${stockShortName.value}（${code.value}）2026 Q2 的償債能力比率（單季）、流動比率 000.00%、速動比率 000.00%、現金比率 000.00%、資料時間 2026-08-11。` : null))
+const answerSkeleton = computed(() => (solvencyPending.value ? `2026 Q2（單季）流動比率 000.00%、速動比率 000.00%、現金比率 000.00%、資料時間 2026-08-11。` : null))
 watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value ?? readFailed.value, refreshSolvencyData)
 
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
@@ -116,8 +116,7 @@ const liquiditySteps = computed<WaterfallStep[]>(() => {
 const valueAnswer = computed(() => {
   if (!latest.value || !hasLiquidity.value) return null
   return joinClauses([
-    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的償債能力比率（單季）`,
-    `流動比率 ${fixedRateText(currentRatio.value)}`,
+    `${latestPeriodText.value}（單季）流動比率 ${fixedRateText(currentRatio.value)}`,
     `速動比率 ${fixedRateText(quickRatio.value)}`,
     `現金比率 ${fixedRateText(cashRatio.value)}`,
     latest.value.values.currentRatio?.knowledgeDate ? `資料時間 ${latest.value.values.currentRatio.knowledgeDate}` : null
@@ -126,7 +125,7 @@ const valueAnswer = computed(() => {
 
 const ladderAnswer = computed(() => {
   if (!hasLiquidity.value) return null
-  return `這三個比率的分母都是同一筆流動負債，分子一層比一層嚴格：流動比率 ${fixedRateText(currentRatio.value)} 扣掉存貨 ${fixedRateText(Math.abs(inventoryShare.value!))} 後為速動比率 ${fixedRateText(quickRatio.value)}，再扣掉應收帳款等其他速動資產 ${fixedRateText(Math.abs(receivablesShare.value!))} 後為現金比率 ${fixedRateText(cashRatio.value)}。`
+  return `分母都是同一筆流動負債，分子一層比一層嚴格：流動比率 ${fixedRateText(currentRatio.value)} 扣掉存貨後是速動比率 ${fixedRateText(quickRatio.value)}，再扣掉應收帳款等是現金比率 ${fixedRateText(cashRatio.value)}。`
 })
 
 const structureAnswer = computed(() => {
@@ -144,7 +143,7 @@ const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value}
 
 const description = computed(() => {
   if (!hasLiquidity.value) return null
-  return clampDescription(joinSentences([valueAnswer.value, ladderAnswer.value]) ?? '')
+  return clampDescription(`${stockShortName.value}（${code.value}）${joinSentences([valueAnswer.value, ladderAnswer.value]) ?? ''}`)
 })
 
 const noindex = computed(() => !hasLiquidity.value)
