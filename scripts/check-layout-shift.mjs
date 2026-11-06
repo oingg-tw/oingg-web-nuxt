@@ -40,11 +40,12 @@ if (isDevServer) {
 for (const route of routes) await fetch(`${baseUrl}${route}`).catch(() => null)
 
 const browser = await chromium.launch()
-let blockedWrites = 0
+const blockedWrites = []
 const blockWrites = context => context.route('**/*', (route) => {
   const request = route.request()
   if (request.method() === 'GET' || READ_ONLY_POST.test(request.url().replace(/\?.*/, ''))) return route.continue()
-  blockedWrites++
+  // 路徑裡的代碼遮掉（分享連結的 token 不能印出來）
+  blockedWrites.push(`${request.method()} ${new URL(request.url()).pathname.replace(/[\w-]{16,}/g, ':id')}`)
   return route.abort()
 })
 let storageState
@@ -139,6 +140,6 @@ await browser.close()
 
 if (process.env.LAYOUT_SHIFT_REPORT) writeFileSync(process.env.LAYOUT_SHIFT_REPORT, JSON.stringify(results, null, 2))
 const failed = results.filter(result => result.total > CLS_LIMIT)
-console.log(`\n${results.length} 次載入，${failed.length} 次超過 ${CLS_LIMIT}${login ? `；登入模式擋下 ${blockedWrites} 次寫入` : ''}`)
+console.log(`\n${results.length} 次載入，${failed.length} 次超過 ${CLS_LIMIT}${login ? `；登入模式擋下 ${blockedWrites.length} 次寫入${blockedWrites.length ? `（${[...new Set(blockedWrites)].join('、')}）` : ''}` : ''}`)
 for (const result of [...failed].sort((a, b) => b.total - a.total)) console.log(`  ${result.total.toFixed(3)} ${result.width} ${result.route}`)
 process.exitCode = failed.length ? 1 : 0
