@@ -57,7 +57,8 @@ const VALUE_SAMPLE = '12.3%'
       </thead>
       <tbody role="rowgroup">
         <!-- key 帶序號：同一檔可能有好幾列（例如匯入時的多批期初部位） -->
-        <tr v-for="(row, index) in rows" :key="`${index}-${row.name}`" role="row" class="app-card holdings-card">
+        <!-- key 不放名稱（2026-11-06）：名稱讀到資料才補齊（報酬與大盤的起始日），key 跟著變，整列重建、骨架重畫一次 -->
+        <tr v-for="(row, index) in rows" :key="index" role="row" class="app-card holdings-card">
           <th scope="row" role="rowheader">
             <span v-if="loading && row.skeleton" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.name }}</span>
             <slot v-else name="name" :row="row">{{ row.name }}<span v-if="loading && row.nameSample" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.nameSample }}</span></slot>
