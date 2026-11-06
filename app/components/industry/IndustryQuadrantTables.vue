@@ -95,8 +95,8 @@ const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks
   padding-right: 8px;
 }
 
-/* 換數字時欄寬不跳：固定在最寬的「成本殖利率」連左右間距的 104px，殖利率那一欄才不會左右動 */
+/* 換數字時欄寬不跳：固定在最寬的「股利5年成長」連左右間距的 116px，殖利率那一欄才不會左右動 */
 .industry-quadrant-tables--picks :deep(.industry-quadrant-table :is(th, td):last-child) {
-  width: 6.5rem;
+  width: 7.25rem;
 }
 </style>

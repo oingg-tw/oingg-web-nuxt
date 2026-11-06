@@ -50,10 +50,10 @@ export function industryDistribution(data: IndustryPageData) {
 // /industries/dividend、/industry/[sector]/dividend 同一句
 export const HOLDER_DIVIDEND_NOTE = '持股股利 5 年成長率是 5 年前買進、一直抱著的人，每年領到的現金股利的年化成長率，配股、分割、減資造成的股數變化都算進去，跟股價無關；5 年前有配息、現在不配息的公司是 −100%。5 年前買進的成本殖利率是這個人現在一年領的現金股利，除以 5 年前那天的收盤價。股價漲得比股利快時，殖利率會變低，股利卻可能還在成長。'
 
-// 手機四張表最右欄的三個數字（方案 D）：label 同 /industries 手機分段鈕的「股利 5 年」，name 同詞彙表
+// 手機四張表最右欄的三個數字（方案 D）：label 要看得出是成長率（2026-11-06，使用者：原本的「股利 5 年」看不出來）；不留空格，同「近5年」，360 寬三顆才放得下一排（切換列黏在上方，兩排太占畫面）。name 同詞彙表
 export const HOLDER_DIVIDEND_PICKS = [
-  { label: '股利 5 年', name: '持股股利 5 年成長率' },
-  { label: '股利 3 年', name: '持股股利 3 年成長率' },
+  { label: '股利5年成長', name: '持股股利 5 年成長率' },
+  { label: '股利3年成長', name: '持股股利 3 年成長率' },
   { label: '成本殖利率', name: '5 年前買進的成本殖利率' }
 ]
 

@@ -72,7 +72,7 @@ const COLUMNS: SortableColumn<SectorRow>[] = [
 const shortAnswer = computed(() => (rows.value.length ? `${rows.value.length} 個類股、${coveredCount.value} 家上市櫃公司，照證交所的指數分成三組。格子上的數字是該類股的中位數，點格子看那個類股；怎麼算寫在頁面最後。` : null))
 const TILE_METRICS = [
   { key: 'yield', label: '殖利率' },
-  { key: 'dividendGrowth', label: '股利 5 年' },
+  { key: 'dividendGrowth', label: '股利成長' },
   { key: 'revenueGrowth', label: '營收年增' },
   { key: 'netIncomeGrowth', label: '淨利年增' }
 ] as const
