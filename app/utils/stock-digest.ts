@@ -342,7 +342,7 @@ const META_DESCRIPTION_MAX = 90
 // one metric's problem. It surfaced again on all six 總經特區 pages（every one of which leads with
 // a period like 2026-Q2 and a figure like 46,126）, which is what made the shared cause obvious.
 // That exclusion can now be revisited — not done here, since it needs its own measurement.
-function cjkWidth(text: string): number {
+export function cjkWidth(text: string): number {
   let width = 0
   for (const char of text) width += /[　-鿿＀-￯]/.test(char) ? 1 : 0.5
   return width

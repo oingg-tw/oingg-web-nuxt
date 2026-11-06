@@ -25,6 +25,8 @@ const props = defineProps<{
   // 表格說明；要藏起來（畫面上已有同義的句子）用 captionHidden
   caption?: string
   captionHidden?: boolean
+  // 交給 SharedTable 的 table-class：頁面要改 <table> 本身（例如固定欄寬）時掛這個
+  tableClass?: string
 }>()
 
 defineSlots<{ row: (props: { row: T }) => unknown }>()
@@ -61,7 +63,7 @@ const sortedRows = computed(() => {
 
 <template>
   <!-- 卡片、捲動區、<table> 與 caption 是 SharedTable 的（全站表格）；沒給 caption 時 SharedTable 用 label 當藏起來的 caption -->
-  <SharedTable :label="label" :caption="caption" :caption-visible="!!caption && !captionHidden">
+  <SharedTable :label="label" :caption="caption" :caption-visible="!!caption && !captionHidden" :table-class="tableClass">
     <thead>
       <tr>
         <th

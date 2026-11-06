@@ -77,8 +77,8 @@ watchLoadFailure('holdings-traits', () => traitsFailed.value, () => loadTraits()
 // 長出來。讀不到的不等，交給全站彈窗
 const firstPaintPending = computed(() => (pending.value && !holdings.value.length)
   || (holdings.value.length > 0 && !traits.value && !traitsFailed.value))
-watch(sectorTableRows, (rows) => {
-  if (rows.length && !firstPaintPending.value) sectorCountHint.value = rows.length
+watch([sectorTableRows, firstPaintPending], ([rows, waiting]) => {
+  if (rows.length && !waiting) sectorCountHint.value = rows.length
 })
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入

@@ -10,3 +10,13 @@ export function useLayoutHint(name: string, fallback: number) {
     }
   })
 }
+
+// 有時才有的一行字（未計入、交易日不足）：要資料到了才知道有沒有這一行、有多長，手機上還會折成幾行，晚出現就把下面全部推下去（/holdings 手機量到
+// 84px，2026-11-06，使用者：「這種會跳的版面以後看到就直接修」）。記下上次的寬度（中文字數），讀的時候畫同樣長的範例字，折行也一樣；空字串＝上次沒有這一行
+export function useLineHint(name: string) {
+  const width = useLayoutHint(name, 0)
+  return {
+    sample: computed(() => '字'.repeat(width.value)),
+    remember: (text: string) => { width.value = Math.ceil(cjkWidth(text)) }
+  }
+}

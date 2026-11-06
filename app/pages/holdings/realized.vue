@@ -117,6 +117,11 @@ const excludedText = computed(() => {
   return `${r.excludedSellCount} 筆賣出、共 ${groupThousands(r.excludedShares)} 股的取得成本不明（${names.slice(0, 5).join('、')}${names.length > 5 ? ' 等' : ''}）`
 })
 
+const { sample: excludedSample, remember: rememberExcluded } = useLineHint('holdings-realized-excluded')
+watch([realized, excludedText], ([value, text]) => {
+  if (value) rememberExcluded(text && `未計入：${text}`)
+})
+
 function directionClass(value: number | null): string {
   return priceDirectionClass(value === null ? null : Math.round(value))
 }
@@ -127,7 +132,7 @@ const tradeStatRows = computed(() => {
   if (firstLoad.value ? !realizedCountHint.value : !t || t.sellCount === 0) return []
   const text = (...args: Parameters<typeof holdingsMetricText>) => (t ? holdingsMetricText(...args) : '')
   return [
-    { name: '賣出筆數', value: t ? `${t.sellCount} 筆` : '', meaning: t ? `獲利 ${t.winCount} 筆、虧損 ${t.lossCount} 筆` : '' },
+    { name: '賣出筆數', value: t ? `${t.sellCount} 筆` : '', meaningSample: '獲利 3 筆、虧損 1 筆', meaning: t ? `獲利 ${t.winCount} 筆、虧損 ${t.lossCount} 筆` : '' },
     { name: '獲利筆數占比', value: text(t?.winRate, 'pct'), meaning: '獲利的賣出筆數 ÷ 全部賣出筆數' },
     { name: '平均每筆獲利', value: text(t?.averageWin, 'money', '沒有獲利的賣出'), meaning: '獲利的那幾筆，平均每筆的已實現損益' },
     { name: '平均每筆虧損', value: text(t?.averageLoss, 'money', '沒有虧損的賣出'), meaning: '虧損的那幾筆，平均每筆的已實現損益' },
@@ -198,7 +203,10 @@ const tradingRows = computed(() => {
             </template>
           </HoldingsSymbolTable>
 
-          <p v-if="!loading && excludedText" class="realized-page__note">未計入：{{ excludedText }}</p>
+          <p v-if="loading ? excludedSample : excludedText" class="realized-page__note">
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
+            <template v-else>未計入：{{ excludedText }}</template>
+          </p>
           <details class="app-disclosure realized-page__method">
             <summary>計算方式</summary>
             <ul class="realized-page__notes">

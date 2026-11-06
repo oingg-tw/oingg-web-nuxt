@@ -407,13 +407,6 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
-.stock-metric-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
-
 .stock-metric-page__line {
   margin: 8px 0 0;
   font-size: 1rem;

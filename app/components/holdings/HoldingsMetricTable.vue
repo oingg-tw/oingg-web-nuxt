@@ -5,8 +5,9 @@
 // 數值一律中性色（不用漲跌色暗示好壞，投信投顧法）。
 const props = withDefaults(defineProps<{
   caption: string
-  // skeleton：骨架列（列數不定的表在資料到之前用），整列都畫成骨架
-  rows: { name: string; value: string; market?: string; meaning?: string; skeleton?: boolean }[]
+  // skeleton：骨架列（列數不定的表在資料到之前用），整列都畫成骨架。meaningSample：意思要資料到了才知道的列（例如「2026-01-15 高點 → …」），
+  // 讀的時候放這句範例字：窄的時候意思自己一行，空著的話資料到了這張卡片長高，下面全部被推下去。nameSample 同理，接在名稱後面
+  rows: { name: string; value: string; market?: string; meaning?: string; meaningSample?: string; nameSample?: string; skeleton?: boolean }[]
   valueLabel?: string
   // 有給才多一欄（例如「同期加權指數」）
   marketLabel?: string
@@ -22,7 +23,7 @@ const props = withDefaults(defineProps<{
 }>(), { valueLabel: '你的持股', marketLabel: undefined, nameLabel: '指標', meaningLabel: '意思', loading: false, widths: undefined })
 
 // 第一欄可以換成自己的內容（例如連到個股頁的名稱）：<template #name="{ row }">…</template>
-defineSlots<{ name?: (props: { row: { name: string; value: string; market?: string; meaning?: string; skeleton?: boolean } }) => unknown }>()
+defineSlots<{ name?: (props: { row: { name: string; value: string; market?: string; meaning?: string; meaningSample?: string; nameSample?: string; skeleton?: boolean } }) => unknown }>()
 
 const hasMeaning = computed(() => props.rows.some(row => row.meaning != null))
 // 寬的時候欄寬一律固定、不照內容算（2026-10-20，使用者：「然後不要閃動」）：骨架的範例字跟真的數值長短不同（例如沒有交易時是
@@ -39,12 +40,19 @@ const VALUE_SAMPLE = '12.3%'
        丟掉，明寫 role 才保得住（<table> 的 role 在 SharedTable）。 -->
   <div class="holdings-metric-table">
     <SharedTable :label="caption" :ssr="false" :scrollable="false" table-class="holdings-metric-table__table" class="holdings-metric-table__card">
+      <!-- 欄寬寫在 colgroup，不寫在表頭：HTML 收到一半、表頭只到第二格時，瀏覽器會先照兩欄畫（量到 0.006，表頭從 927 跳回 516）。colgroup 在表頭前面，畫第一格時欄寬就定了 -->
+      <colgroup>
+        <col :style="{ width: columnWidths[0] }">
+        <col :style="{ width: columnWidths[1] }">
+        <col v-if="marketLabel" :style="{ width: columnWidths[2] }">
+        <col v-if="hasMeaning" :style="{ width: columnWidths[marketLabel ? 3 : 2] }">
+      </colgroup>
       <thead role="rowgroup">
         <tr role="row">
-          <th scope="col" role="columnheader" :style="{ width: columnWidths[0] }">{{ nameLabel }}</th>
-          <th scope="col" role="columnheader" class="seo-table__num" :style="{ width: columnWidths[1] }">{{ valueLabel }}</th>
-          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num" :style="{ width: columnWidths[2] }">{{ marketLabel }}</th>
-          <th v-if="hasMeaning" scope="col" role="columnheader" :style="{ width: columnWidths[marketLabel ? 3 : 2] }">{{ meaningLabel }}</th>
+          <th scope="col" role="columnheader">{{ nameLabel }}</th>
+          <th scope="col" role="columnheader" class="seo-table__num">{{ valueLabel }}</th>
+          <th v-if="marketLabel" scope="col" role="columnheader" class="seo-table__num">{{ marketLabel }}</th>
+          <th v-if="hasMeaning" scope="col" role="columnheader">{{ meaningLabel }}</th>
         </tr>
       </thead>
       <tbody role="rowgroup">
@@ -52,7 +60,7 @@ const VALUE_SAMPLE = '12.3%'
         <tr v-for="(row, index) in rows" :key="`${index}-${row.name}`" role="row" class="app-card holdings-card">
           <th scope="row" role="rowheader">
             <span v-if="loading && row.skeleton" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.name }}</span>
-            <slot v-else name="name" :row="row">{{ row.name }}</slot>
+            <slot v-else name="name" :row="row">{{ row.name }}<span v-if="loading && row.nameSample" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.nameSample }}</span></slot>
           </th>
           <!-- 有兩個數值欄時，窄卡片上兩個都標欄名（例如「權重：53.3%」「風險貢獻：54.0%」），否則分不出哪個是哪個 -->
           <td role="cell" class="seo-table__num holdings-metric-table__value holdings-card__value" :data-value-label="marketLabel ? valueLabel : undefined">
@@ -64,7 +72,7 @@ const VALUE_SAMPLE = '12.3%'
             <template v-else>{{ row.market ?? '－' }}</template>
           </td>
           <td v-if="hasMeaning" role="cell" class="holdings-metric-table__meaning">
-            <span v-if="loading && row.skeleton" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.meaning }}</span>
+            <span v-if="loading && (row.skeleton || row.meaningSample)" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ row.meaningSample ?? row.meaning }}</span>
             <template v-else>{{ row.meaning }}</template>
           </td>
         </tr>
@@ -94,6 +102,10 @@ const VALUE_SAMPLE = '12.3%'
   :deep(.holdings-metric-table__table) {
     display: block;
     background: none;
+  }
+
+  .holdings-metric-table__table colgroup {
+    display: none;
   }
 
   .holdings-metric-table__table thead {

@@ -129,12 +129,17 @@ function toggle(symbol: string, event?: MouseEvent) {
     <!-- 骨架表：el-table 在伺服器不畫列（欄位要 mount 才登記），所以自己畫一張。欄寬照 el-table 的分法、表頭與列高照它的樣式，
          列高靠同一顆「明細」按鈕撐出來（觸控裝置按鈕 44px 時一起變高）。兩張都放在全站表格的卡片裡（SharedTable） -->
     <SharedTable v-if="skeletonRows" :ssr="false" :scrollable="false" table-class="symbol-table__skeleton" class="view-table" aria-hidden="true">
+      <colgroup>
+        <col :style="{ width: skeletonShare(NAME_MIN_WIDTH) }">
+        <col v-for="column in columns" :key="column.key" :style="{ width: skeletonShare(column.minWidth) }">
+        <col v-if="slots.detail" :style="{ width: skeletonShare(DETAIL_MIN_WIDTH) }">
+      </colgroup>
       <thead>
         <tr>
           <!-- 排序欄的表頭後面留 el-table 排序箭頭的寬（24px），靠右的欄名才在同一個位置 -->
-          <th :style="{ width: skeletonShare(NAME_MIN_WIDTH) }">名稱<span class="symbol-table__skeleton-caret" /></th>
-          <th v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num" :style="{ width: skeletonShare(column.minWidth) }">{{ column.label }}<span class="symbol-table__skeleton-caret" /></th>
-          <th v-if="slots.detail" :style="{ width: skeletonShare(DETAIL_MIN_WIDTH) }">明細</th>
+          <th>名稱<span class="symbol-table__skeleton-caret" /></th>
+          <th v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num">{{ column.label }}<span class="symbol-table__skeleton-caret" /></th>
+          <th v-if="slots.detail">明細</th>
         </tr>
       </thead>
       <tbody>
@@ -152,7 +157,8 @@ function toggle(symbol: string, event?: MouseEvent) {
              免得同一件事有兩個開關 -->
         <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
           <template #default="{ row }">
-            <slot name="detail" :row="tableRow<T>(row)" :variant="'table'" />
+            <!-- el-table 沒展開的列也會畫這一格：不擋的話每一列都掛著看不見的明細（交易紀錄的讀取遮罩） -->
+            <slot v-if="expanded.includes(tableRow<T>(row).symbol)" name="detail" :row="tableRow<T>(row)" :variant="'table'" />
           </template>
         </el-table-column>
         <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH" sortable :sort-method="compareBy('symbol')">
@@ -198,7 +204,7 @@ function toggle(symbol: string, event?: MouseEvent) {
       <!-- 骨架卡片：跟下面同一套排法，欄名與「明細」照畫，名稱與數字是骨架 -->
       <template v-if="skeletonRows">
         <li v-for="index in skeletonRows" :key="index" class="app-card symbol-table__card holdings-card" aria-hidden="true">
-          <div class="symbol-table__name"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /></div>
+          <div class="symbol-table__name"><span class="app-skeleton app-skeleton--flow">台積電 2330</span></div>
           <dl v-if="summaryColumns.length" class="holdings-card__rows">
             <div v-for="column in summaryColumns" :key="column.key" class="holdings-card__row">
               <dt>{{ column.label }}</dt>
@@ -293,10 +299,11 @@ function toggle(symbol: string, event?: MouseEvent) {
   text-align: right;
 }
 
+/* 同 el-table 的排序箭頭（element-plus.css 的 24×24）：表頭的高是它撐出來的，矮了資料到的時候整張表下面跳 3px */
 .symbol-table__skeleton-caret {
   display: inline-block;
   width: 24px;
-  height: 14px;
+  height: 24px;
   vertical-align: middle;
 }
 

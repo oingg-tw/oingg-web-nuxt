@@ -89,12 +89,18 @@ const sameFlowsOversold = computed(() => !!sameFlows.value && sameFlows.value.en
 const firstLoad = computed(() => !performance.value)
 const metricText = (...args: Parameters<typeof holdingsMetricText>) => (report.value ? holdingsMetricText(...args) : '')
 
+// 持股晚於期間開始時，名稱後面多一段起始日，折成兩行把下面推下去（2026-11-06 量到 0.0082）：上次有就先畫同樣長的骨架
+const comparisonStart = computed(() => (comparison.value?.start && comparison.value.start > range.value[0] ? `（${comparison.value.start} 起）` : ''))
+const startHint = useLayoutHint('holdings-performance-start', 0)
+watch(report, (value) => {
+  if (value) startHint.value = comparisonStart.value ? 1 : 0
+})
+
 const pairRows = computed(() => {
   const result = report.value
   if (!result && !firstLoad.value) return []
-  const start = comparison.value?.start && comparison.value.start > range.value[0] ? `（${comparison.value.start} 起）` : ''
   return [
-    { name: `時間加權報酬${start}`, value: metricText(result?.twr, 'signedPct', '－', 2), market: !result ? '' : comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－', meaning: '看選股；大盤是同一段期間' },
+    { name: `時間加權報酬${comparisonStart.value}`, nameSample: startHint.value ? '（2026-01-05 起）' : undefined, value: metricText(result?.twr, 'signedPct', '－', 2), market: !result ? '' : comparison.value ? holdingsSignedPct(comparison.value.benchmark) : '－', meaning: '看選股；大盤是同一段期間' },
     { name: '資金加權報酬', value: metricText(result?.mwr, 'signedPct', '－', 2), market: metricText(sameFlows.value?.mwr, 'signedPct', '－', 2), meaning: '看實際的錢，含進出時機；大盤是同樣的錢、同樣的日子買賣' }
   ]
 })

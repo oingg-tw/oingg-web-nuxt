@@ -325,13 +325,6 @@ const { breadcrumbs } = useStockPageSeo({
 </template>
 
 <style scoped>
-.stock-badge-page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
 .stock-badge-page__line {
   margin: 0 0 8px;
   font-size: 1rem;

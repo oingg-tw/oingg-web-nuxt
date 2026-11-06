@@ -47,7 +47,7 @@ const drawdownRows = computed(() => {
   const d = ledgerDrawdown.value
   if (!d && performance.value) return []
   return [
-    { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
+    { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaningSample: '2026-01-15 高點 → 2026-04-09 低點，2026-07-20 回到前高', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
     { name: '低於前高的天數', value: d ? `${d.underwaterDays} 天` : '', meaning: '收盤低於前高的交易日合計' },
     { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
     { name: '目前距前高', value: !d ? '' : d.currentDrawdown === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
@@ -183,6 +183,10 @@ const contributionLegend = computed<ChartLegendGroup[]>(() => [{
 
 // 統計天數不足時照實說，不下結論
 const fewDays = computed(() => (report.value ? report.value.tradingDays : 0))
+const FEW_DAYS_NOTE = '交易日少於 60 天，波動度的統計誤差較大。'
+const PARTIAL_NOTE = '期間中才有股價（之前的比例分給其他持股）：'
+const { sample: fewDaysSample, remember: rememberFewDays } = useLineHint('holdings-risk-few-days')
+const { sample: partialSample, remember: rememberPartial } = useLineHint('holdings-risk-partial')
 
 const partialHoldings = computed(() => (report.value?.holdings ?? [])
   .filter(holding => holding.coverage !== 'full')
@@ -193,6 +197,13 @@ const partialHoldings = computed(() => (report.value?.holdings ?? [])
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
+// 公司名稱晚一點才到，長度跟著名稱更新
+watch([report, partialHoldings], ([value]) => {
+  if (!value) return
+  rememberFewDays(fewDays.value < 60 ? FEW_DAYS_NOTE : '')
+  rememberPartial(partialHoldings.value.length ? `${PARTIAL_NOTE}${partialCoverageText(partialHoldings.value)}` : '')
+})
+
 watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadRisk()
@@ -262,9 +273,13 @@ watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
             <!-- 會改變數字的缺口才留在外面，一行（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單） -->
             <!-- 統計天數不足時照實說，不下結論；少於 120 天時，波動占比與分散化比率的格子自己寫「樣本不足」。放在表格下面
                  （2026-10-20）：資料到了才知道要不要這一行，原本在最上面，出現時把兩段一起往下推（正式建置量到 0.038） -->
-            <p v-if="!loading && fewDays < 60" class="risk-page__note">交易日少於 60 天，波動度的統計誤差較大。</p>
-            <p v-if="partialHoldings.length" class="risk-page__note">
-              期間中才有股價（之前的比例分給其他持股）：{{ partialCoverageText(partialHoldings) }}
+            <p v-if="loading ? fewDaysSample : fewDays < 60" class="risk-page__note">
+              <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ fewDaysSample }}</span>
+              <template v-else>{{ FEW_DAYS_NOTE }}</template>
+            </p>
+            <p v-if="loading ? partialSample : partialHoldings.length" class="risk-page__note">
+              <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ partialSample }}</span>
+              <template v-else>{{ PARTIAL_NOTE }}{{ partialCoverageText(partialHoldings) }}</template>
             </p>
           </section>
 

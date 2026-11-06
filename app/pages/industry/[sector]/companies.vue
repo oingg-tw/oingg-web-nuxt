@@ -55,6 +55,7 @@ const description = computed(() => {
         :label="`${sectorName}公司名單`"
         :caption="`${sectorName}上市櫃公司的股價、本益比、股價淨值比、殖利率、近四季 ROE 與單季負債比率`"
         caption-hidden
+        table-class="industry-companies__table"
       >
         <template #row="{ row }">
           <th scope="row"><NuxtLink :to="`/stock/${row.symbol}`" class="seo-table__link">{{ row.symbol }}</NuxtLink></th>
@@ -88,6 +89,22 @@ const description = computed(() => {
 </template>
 
 <style scoped>
+/* 半導體業兩百多列，瀏覽器邊收 HTML 邊畫：欄寬照內容算的話，後面的列一到整欄左右移（量到 0.011）。寬度夠時欄寬固定，窄的時候照舊左右捲 */
+@media (min-width: 768px) {
+  #industry-companies :deep(.industry-companies__table) {
+    table-layout: fixed;
+    min-width: 56rem;
+  }
+
+  #industry-companies :deep(.industry-companies__table th:nth-child(1)) {
+    width: 9%;
+  }
+
+  #industry-companies :deep(.industry-companies__table th:nth-child(2)) {
+    width: 19%;
+  }
+}
+
 .industry-companies__subtitle {
   margin: 0;
   font-size: 1.125rem;
