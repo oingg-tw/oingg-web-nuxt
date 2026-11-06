@@ -692,7 +692,7 @@ html:has(body.has-bottom-nav-bar) {
 
 /* 讀取失敗的右下角提示（AppLoadFailureDialog）坐在導覽列上方，不蓋住它（2026-10-11 手機截圖量到） */
 body.has-bottom-nav-bar .load-failure-notice {
-  bottom: calc(64px + env(safe-area-inset-bottom));
+  bottom: calc(64px + env(safe-area-inset-bottom) + var(--app-consent-height, 0px));
 }
 
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
@@ -710,7 +710,7 @@ body.has-bottom-nav-bar .load-failure-notice {
   }
 
   body.has-bottom-nav-bar .load-failure-notice {
-    bottom: calc(16px + env(safe-area-inset-bottom));
+    bottom: calc(16px + env(safe-area-inset-bottom) + var(--app-consent-height, 0px));
   }
 }
 

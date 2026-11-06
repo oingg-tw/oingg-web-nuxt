@@ -221,7 +221,8 @@ function goHome() {
 .load-failure-notice {
   position: fixed;
   right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  /* --app-consent-height：Cookie 說明在的時候坐在它上面，不然關閉鈕被蓋住按不到（2026-11-06，check-load-failure 在 DEV 量到；本機不問 Cookie 所以測不到） */
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px) + var(--app-consent-height, 0px));
   z-index: 2000;
   max-width: min(520px, calc(100vw - 32px));
 }
