@@ -21,9 +21,9 @@ export function useSystemHealth() {
 
   // 2026-09-14（「我剛searchbar沒反應，就以為是網站掛掉，實際上是連線問題... 用戶不會知道區別」）：只靠 30 秒輪詢，故障開始後
   // 最長 30 秒橫幅都不會出現，而各 composable 的請求失敗只會靜默回 null。apiFetch（打業務中台的唯一入口）在請求失敗時呼叫這裡，
-  // 立刻重查一次；check() 走同一條 /api/system-health，誤報會在同一輪自我修正。
+  // 立刻重查一次。重查確定了才出現橫幅（2026-11-06，DEV 量到）：原本先設成不健康再查，一支請求失敗、上游其實好好的，
+  // 橫幅就出現 2 秒，整頁往下推 66px 又拉回來（手機位移 0.135），還說了一句不實的「目前連不上」。真的斷線時最多晚 8 秒（CHECK_TIMEOUT_MS）
   function reportFailure() {
-    healthy.value = false
     check(true)
   }
 

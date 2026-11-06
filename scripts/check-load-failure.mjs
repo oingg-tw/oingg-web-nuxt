@@ -1,5 +1,6 @@
 // 讀取失敗提示的行為檢查（2026-10-11，使用者：「太容易跳出來了，而且也不會自關掉」）。對著跑著的 `pnpm run dev`：
 //   node scripts/check-load-failure.mjs            （LOAD_FAILURE_URL／LOAD_FAILURE_WIDTH 可覆寫）
+// Cookie 說明只有正式建置才出現（useAnalyticsConsent 的 asks）：提示有沒有讓開它，要把 LOAD_FAILURE_URL 指到正式建置才驗得到。
 // 只能攔瀏覽器發出的請求，所以每個情境挑的都是瀏覽器端的讀取：個股子頁「客戶端換頁」時的 /api/stock/…、
 // ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /securities；連不上伺服器的橫幅是假造 /api/system-health。
 // 時間點跟著 LOAD_FAILURE_GRACE_MS（8 秒）與第一次退避（5 秒）走，改了那兩個要一起改這裡。
@@ -43,6 +44,14 @@ async function openStock(page) {
   await page.goto(`${baseUrl}/stock/2330`, { waitUntil: 'networkidle', timeout: 120_000 })
 }
 
+// 公司索引：桌機的搜尋框一開頁就抓；手機的搜尋收在按鈕後面（AppMobileHeader），打開才抓，打開後關回來才按得到頁面上的東西
+async function loadCompanyIndex(page) {
+  if (width >= 1280) return
+  await page.locator('button[title="搜尋區塊"]:visible').click()
+  await wait(1_000)
+  await page.keyboard.press('Escape')
+}
+
 await scenario('一次 502 後恢復：寬限期內默默重試，什麼都不顯示', async ({ page, dialog, notice }) => {
   await openStock(page)
   let hits = 0
@@ -68,6 +77,7 @@ await scenario('次要資料持續失敗：只有右下角提示，不開阻斷�
   // 公司索引 2026-10-16 起只有 GET /securities 一個來源（useCompanyIndex；原本是三個，這裡沒跟著改，之後這個情境一直是假失敗）
   await page.route(url => url.pathname === '/api/cached/securities', fail502)
   await openStock(page)
+  await loadCompanyIndex(page)
   await notice.waitFor({ state: 'visible', timeout: GRACE_MS + 8_000 })
   expect(!(await dialog.isVisible()), '次要資料開了阻斷彈窗')
   expect((await notice.getAttribute('role')) === 'status', '提示沒有 role="status"')
@@ -155,6 +165,32 @@ await scenario('連不上伺服器的橫幅：晚出現也把頁面往下推、�
   await banner.waitFor({ state: 'hidden', timeout: 2_000 })
   const height = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--app-banner-height').trim())
   expect(height === '0px', `關掉後 --app-banner-height 是 ${height}`)
+})
+
+// 一支請求失敗不等於連不上（2026-11-06，DEV 的 /holdings/statistics 手機位移 0.135）：原本先出橫幅再重查，上游好好的也出現 2 秒，
+// 整頁被推下去又拉回來
+await scenario('一支請求失敗、重查是好的：不出現橫幅', async ({ page }) => {
+  await page.addInitScript(() => {
+    const tick = () => {
+      if (document.querySelector('.app-system-health-banner')) window.__bannerSeen = true
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+  let failed = 0
+  await page.route(url => url.pathname === '/api/cached/securities', (route) => {
+    failed++
+    return fail502(route)
+  })
+  await page.route('**/api/system-health**', async (route) => {
+    await wait(1_500)
+    await route.fulfill({ json: { ok: true } })
+  })
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
+  await loadCompanyIndex(page)
+  await wait(3_000)
+  expect(failed > 0, '公司索引沒有送出，這個情境沒驗到東西')
+  expect(!(await page.evaluate(() => window.__bannerSeen)), '出現了橫幅')
 })
 
 await browser.close()
