@@ -62,7 +62,7 @@ function choose(value: AnalyticsConsent) {
   align-items: center;
   justify-content: center;
   gap: 12px 24px;
-  padding: 16px;
+  padding: 16px calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
   border-top: 1px solid var(--app-divider);
   background: var(--el-bg-color-overlay);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);

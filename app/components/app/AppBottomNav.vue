@@ -93,10 +93,8 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
   background: var(--el-bg-color-overlay);
   border-top: 1px solid var(--app-divider);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);
-  /* nuxt.config 沒有 viewport-fit=cover，所以 env() 現在是 0、iOS 自己會把固定元素放在安全區之上。刻意不加 cover：
-     加了之後 iPhone 橫拿時整站內容會延伸到瀏海底下，頁首與頁面左右都沒有對應的 safe-area 留白。這一行是為了
-     哪天真的加 cover 時這條不用再改。 */
-  padding-bottom: env(safe-area-inset-bottom);
+  /* 鍵盤打開時這一條留在鍵盤後面就好，所以讀手勢條，不讀 --app-bottom-inset */
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom) env(safe-area-inset-left, 0px);
 }
 
 /* 整條都是按鈕，所以由它撐 48px 觸控目標 */

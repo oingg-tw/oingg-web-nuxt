@@ -13,11 +13,22 @@ body {
   scrollbar-gutter: stable;
 }
 
+/* iPhone 橫拿時不自己放大文字（2026-11-07）。100% 而不是 none：none 會擋掉使用者自己的放大 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* 全站對話框上限 85vh＋內部捲動：2026-09-15 手機（390×780）量到 F-Score 徽章對話框 840px 高、關閉鈕在摺線下按不到。寫在全域不寫
    各自的 scoped：append-to-body 把對話框 teleport 出帶 scope 屬性的祖先，:deep(.el-dialog) 永遠配不到。flex column＋min-height: 0 是
-   __body 的 overflow-y: auto 在 flex 容器裡生效的條件。 */
+   __body 的 overflow-y: auto 在 flex 容器裡生效的條件。鍵盤打開時彈窗在鍵盤以上的空間置中，高度也扣掉鍵盤（--app-keyboard-inset） */
+.el-overlay-dialog {
+  box-sizing: border-box;
+  padding-bottom: var(--app-keyboard-inset, 0px);
+}
+
 .el-dialog {
-  max-height: 85vh;
+  max-height: calc(85dvh - var(--app-keyboard-inset, 0px));
   display: flex;
   flex-direction: column;
   /* 彈窗內文的字級：Element Plus 預設 14px，彈窗裡自己寫的說明文字（例如觀察清單備註的「只有你自己看得到」）都因此是 14px，
@@ -38,12 +49,31 @@ body {
   min-height: 0;
 }
 
+/* 彈窗、下拉選單捲到底，不帶動後面的頁面（2026-11-07，手機上最明顯） */
+.el-dialog__body,
+.el-popper .el-scrollbar__wrap {
+  overscroll-behavior: contain;
+}
+
 /* Element Plus 只把 --el-font-family 套在自己的元件上，本站自己的標記要明寫；body 的 UA 預設 8px 邊距歸零（版面都從視窗邊算位移，
-   2026-09-02 發現每個位移都差 8px）。tabular-nums 全站套（2026-09-04，全域設計 §3.2）：只影響數字字形寬度，CJK 不受影響。 */
+   2026-09-02 發現每個位移都差 8px）。tabular-nums 全站套（2026-09-04，全域設計 §3.2）：只影響數字字形寬度，CJK 不受影響。
+   左右內距：viewport-fit=cover 之後 iPhone 橫拿時內容會進瀏海底下（固定在畫面上的頁首、導覽各自避開） */
 body {
   margin: 0;
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
   font-family: var(--el-font-family);
   font-variant-numeric: tabular-nums;
+}
+
+/* 連按按鈕不會觸發雙擊放大（2026-11-07）；雙指放大不受影響（WCAG 1.4.4） */
+a,
+button,
+summary,
+label,
+input,
+select,
+textarea {
+  touch-action: manipulation;
 }
 
 /* 全站鍵盤焦點環（2026-09-04，全域設計的缺口）：Element Plus 只給自己部分元件 focus-visible 樣式，本站的條件標籤、PresetFolder 分頁、
@@ -667,6 +697,8 @@ html[data-text-scale='120'] { font-size: 120%; }
      下面的媒體查詢。改頁首的內距或按鈕高度就要改這裡：57px（32px 圓鈕時代）沒跟著改過一次（CLS 0.011），2026-10-21 頁首重新設計由
      68 改 60 時又量到一次（手機每一頁 0.008） */
   --app-header-height: calc(60px + env(safe-area-inset-top));
+  /* 畫面底部被佔掉的高度：手勢條，或蓋過它的鍵盤（--app-keyboard-inset，plugins/keyboard-inset.client.ts）。貼底又可能跟鍵盤同時出現的用這個 */
+  --app-bottom-inset: max(env(safe-area-inset-bottom, 0px), var(--app-keyboard-inset, 0px));
   /* 預設 0（沒有橫幅）：AppSystemHealthBanner 掛載時量自己的高度覆寫，AppNavRail 與版面的內容 padding 跟著下移 */
   --app-banner-height: 0px;
   --app-sidebar-width: 240px;
@@ -692,7 +724,7 @@ html:has(body.has-bottom-nav-bar) {
 
 /* 讀取失敗的右下角提示（AppLoadFailureDialog）坐在導覽列上方，不蓋住它（2026-10-11 手機截圖量到） */
 body.has-bottom-nav-bar .load-failure-notice {
-  bottom: calc(64px + env(safe-area-inset-bottom) + var(--app-consent-height, 0px));
+  bottom: calc(64px + var(--app-bottom-inset) + var(--app-consent-height, 0px));
 }
 
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
@@ -710,7 +742,7 @@ body.has-bottom-nav-bar .load-failure-notice {
   }
 
   body.has-bottom-nav-bar .load-failure-notice {
-    bottom: calc(16px + env(safe-area-inset-bottom) + var(--app-consent-height, 0px));
+    bottom: calc(16px + var(--app-bottom-inset) + var(--app-consent-height, 0px));
   }
 }
 

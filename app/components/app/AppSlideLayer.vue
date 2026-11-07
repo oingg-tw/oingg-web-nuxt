@@ -155,6 +155,8 @@ function onKeydown(event: KeyboardEvent) {
      it, since overlay scrollbars take no space and the gutter never materialises, but any desktop
      browser at a narrow width does, which is also how this gets reviewed. */
   width: 100vw;
+  box-sizing: border-box;
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -204,7 +206,7 @@ function onKeydown(event: KeyboardEvent) {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
   border-bottom: 1px solid var(--app-divider);
   background: var(--el-bg-color-overlay);
 }
@@ -228,8 +230,9 @@ function onKeydown(event: KeyboardEvent) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
-  /* Clears the iOS home indicator when the last row sits at the screen edge. */
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  /* Clears the iOS home indicator and the keyboard when the last row sits at the screen edge. */
+  padding-bottom: calc(16px + var(--app-bottom-inset));
 }
 </style>

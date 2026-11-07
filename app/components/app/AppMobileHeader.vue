@@ -61,7 +61,7 @@ useHeaderHeightMeasure(barRef)
   align-items: center;
   gap: 8px;
   /* 60px：44px 的控制項上下各 8px，同桌機頁首 */
-  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  padding: calc(8px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right, 0px)) 8px calc(16px + env(safe-area-inset-left, 0px));
   /* 純色，同 AppHeaderMenu（2026-10-21「背景不要 再有 樣式 改成純色就好」） */
   background: var(--el-bg-color);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);

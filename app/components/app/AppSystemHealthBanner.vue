@@ -72,7 +72,7 @@ onUnmounted(() => {
   gap: 8px;
   /* 左右各 64px＝按鈕 44 ＋ 右邊距 12 ＋ 8 的呼吸空間（56 時實測訊息右緣與按鈕貼在一起，間距 0）。2026-09-19 因為關閉鈕帶了文字而放寬到 100px，2026-09-30 按鈕
      改回純 X 之後收回來——100px 在 375px 的畫面上吃掉 200px，訊息只剩 136px、被擠成四行。 */
-  padding: 8px 64px;
+  padding: 8px calc(64px + env(safe-area-inset-right, 0px)) 8px calc(64px + env(safe-area-inset-left, 0px));
   /* 字、圖示、底線都是 --el-color-warning，它自己分模式（淺 #8a6823、深 #e6a23c）。2026-10-21（使用者：「背景與網站主題背景顏色太近了
      難以區別輪廓 是否 符合 a11y?」）：原本寫死淺色的 #8a6823，深色模式的底上只有 3.06:1，不到 1.4.3 的 4.5:1；底色跟淺色頁面底
      只差 1.01:1，橫幅的下緣看不出來，所以加一條底線（上緣有頁首的陰影）。 */
@@ -90,7 +90,7 @@ onUnmounted(() => {
    之後若又想加回文字不必重新挑色）。 */
 .app-system-health-banner__close {
   position: absolute;
-  right: 12px;
+  right: calc(12px + env(safe-area-inset-right, 0px));
   top: 50%;
   transform: translateY(-50%);
   display: inline-flex;

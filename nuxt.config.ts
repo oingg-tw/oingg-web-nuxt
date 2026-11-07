@@ -132,7 +132,9 @@ export default defineNuxtConfig({
       // every request, not just after client hydration). Setting them here too would just
       // create a second, conflicting source for the same attributes.
       htmlAttrs: { lang: 'zh-Hant' },
-      // viewport 用 Nuxt 的預設（width=device-width, initial-scale=1）。不要加 maximum-scale／user-scalable：WCAG 1.4.4 要能放大到 200% 以上。
+      // viewport-fit=cover：畫面用到實體邊緣，避開瀏海、手勢條由 CSS 的 env(safe-area-inset-*) 負責（2026-11-07）。
+      // 不要加 maximum-scale／user-scalable：WCAG 1.4.4 要能放大到 200% 以上。
+      viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
       // referrer：瀏覽器的預設值，寫出來是為了蓋掉 Nitro 錯誤頁（所有 404）固定送的 `referrer-policy: no-referrer`（2026-10-22）。Firebase 的
       // Browser key 只收自己網站送來的請求，沒有 Referer 的會被擋；單頁應用整段沿用第一頁的政策，從壞連結進到 404 頁再點站內連結的人，之後登入
       // 都會失敗。meta 會更新文件的政策，跨站只送網域、不送路徑（分享頁的 token 照樣不外洩）

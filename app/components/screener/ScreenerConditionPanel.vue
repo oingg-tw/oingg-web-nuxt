@@ -121,6 +121,7 @@ const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.cat
 .condition-panel-overlay .el-overlay-dialog {
   display: flex;
   align-items: flex-end;
+  padding-bottom: 0;
 }
 
 .el-dialog.condition-panel {
@@ -130,8 +131,8 @@ const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.cat
   max-width: none;
   max-height: 92dvh;
   margin: 0;
-  /* 手機底部的安全區留在面板最下緣（設定範圍那一步最下面是按鈕列，不是內容區） */
-  padding-bottom: calc(var(--el-dialog-padding-primary, 16px) + env(safe-area-inset-bottom));
+  /* 手機底部的安全區留在面板最下緣（設定範圍那一步最下面是按鈕列，不是內容區）；鍵盤打開時按鈕列在鍵盤上方，內容區變矮 */
+  padding-bottom: calc(var(--el-dialog-padding-primary, 16px) + var(--app-bottom-inset));
   border-radius: 16px 16px 0 0;
 }
 
