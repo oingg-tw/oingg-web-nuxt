@@ -41,7 +41,6 @@ const footer = {
     :code="code"
     :stock="stock"
     :pending="pending || (!!error && !notFound)"
-    :is-emerging="null"
     :short-name="shortName"
     :topic="facet.label"
     subject="REITs"

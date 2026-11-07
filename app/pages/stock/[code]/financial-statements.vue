@@ -43,7 +43,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :code="code"
     :stock="stock"
     :pending="stockPending"
-    :is-emerging="profile?.isEmerging ?? null"
     :short-name="stockShortName"
     topic="三大財務報表"
     :breadcrumbs="breadcrumbs"

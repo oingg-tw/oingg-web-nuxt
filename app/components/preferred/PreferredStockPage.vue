@@ -44,7 +44,6 @@ const footer = {
     :code="code"
     :stock="stock"
     :pending="pending || (!!error && !notFound)"
-    :is-emerging="null"
     :short-name="shortName"
     :topic="topic"
     subject="特別股"

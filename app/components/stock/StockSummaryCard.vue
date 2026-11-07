@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { Star, StarFilled, Share } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/stock/useStocks'
-import type { NormalizedCompanyProfile } from '~/composables/stock/useCompanyProfile'
 
+// 摘要卡不放說明文字（2026-11-08，使用者：「Summary不該放說明文字」）：代號、名稱、全名、股價與漲跌，加上帶日期的狀態（停止買賣、下市）。
+// 面額那句（「名稱後的 *：每股面額 2.5 元，不是一般的 10 元」，2026-10-22 起）與興櫃那句（「興櫃股票以議價方式交易，這是最後一筆成交價…」）同日拿掉
 const props = defineProps<{
   stock: Stock
-  // 興櫃三態（見 useCompanyProfile 的註解）。只有 `true` 才會寫出「沒有行情」的原因——
-  // `null` 代表上游還沒送這個欄位，那時候任何原因都是猜的。
-  isEmerging?: boolean | null
   // Added 2026-09-15 per direct request ("Summary占太多空間了，名稱可以用短名嗎？比如台積電") —
   // stock.name is the full legal registered name (e.g. "台灣積體電路製造股份有限公司"), which on
   // a phone-width card routinely wraps to 2 lines and eats a lot of the card's own vertical
@@ -39,19 +37,6 @@ const { data: logoData } = await useAsyncData(
   { watch: [logoSymbol], default: () => null, lazy: true, getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
 )
 const logo = computed(() => logoData.value?.logo ?? null)
-
-// 面額不是 10 元的公司寫出實際面額（2026-10-22，使用者選「頁尾一句＋摘要卡寫面額」）：簡稱後面的 * 就是這個意思（強生* 是 5 元）。
-// 讀頁面已經抓好的公司資料（useCompanyProfile 的同一個 key），不另外發請求；ETF、特別股頁沒有這份資料就不顯示
-const { data: companyProfile } = useNuxtData<NormalizedCompanyProfile | null>(`company-profile-${props.stock.code}`)
-// 單位看面額的幣別（2026-11-04）：台幣寫「元」，美元寫「美元」（外國公司，4157 每股 0.001 美元），其他照幣別代碼。
-// 沒有幣別就不寫：面額、幣別都是 null 的是無面額股或沒有資料，上游還分不出來
-const PAR_VALUE_UNITS: Record<string, string> = { TWD: '元', USD: '美元' }
-const parValueText = computed(() => {
-  const par = companyProfile.value?.parValue
-  const currency = companyProfile.value?.parValueCurrency
-  if (par == null || !currency || (currency === 'TWD' && par === 10)) return null
-  return `${par} ${PAR_VALUE_UNITS[currency] ?? currency}`
-})
 
 const haltText = computed(() => tradingHaltText(props.stock.tradingHalt))
 const delistText = computed(() => delistingText(props.stock.delisting))
@@ -210,26 +195,17 @@ const qrDialogVisible = ref(false)
         <span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
-      <p v-if="parValueText" class="summary-card__par-value">{{ shortName.includes('*') ? '名稱後的 *：' : '' }}每股面額 {{ parValueText }}，不是一般的 10 元</p>
       <!-- Price stacked above change/percent at mobile width (2026-09-16, "股價變動放在股價下面"),
            side by side on one baseline at desktop width — same two elements, CSS only. -->
       <!-- 沒有股價就整塊不渲染，而不是印「－」與「－ (－%)」（2026-10-01）。三個破折號看起來像壞掉，
-           而且會讓讀者以為我們有這個數字只是沒載到。
-           原因只在 `isEmerging === true` 時才寫得出來（同日下午上游補了那個欄位）。`null` 不寫、
-           `false` 不寫——前者是上游還沒送，後者的沒有行情可能是長期停止買賣或當天 ingest 缺漏，
-           而那兩種我現在分不出來。寧可不解釋，也不要給一個可能錯的解釋：讀者會相信它。 -->
+           而且會讓讀者以為我們有這個數字只是沒載到。 -->
       <div v-if="stock.price !== null" class="summary-card__price">
         <span class="summary-card__price-value">{{ formatStockValue(stock, 'price') }}</span>
         <span class="summary-card__price-change" :class="priceDirectionClass(stock.change)">
           {{ formatStockValue(stock, 'change') }} ({{ formatStockValue(stock, 'changePercent') }}%)
         </span>
       </div>
-      <!-- 興櫃 2026-10-24 接上櫃買中心的興櫃行情（analysis-ts c7b786f7）：收盤是最後一筆成交價，沒成交的日子沿用前一次，所以有股價時
-           也說它是什麼；還沒成交過的才沒有股價。原本寫「本站目前沒有這類公司的成交價」，接上之後就不對了 -->
-      <p v-if="isEmerging === true" class="summary-card__status">
-        {{ stock.price === null ? '興櫃股票以議價方式交易，這一檔目前還沒有成交價。' : '興櫃股票以議價方式交易，這是最後一筆成交價，可能是幾天前成交的。' }}
-      </p>
-      <!-- 停止買賣、下市（2026-10-22，使用者：「做吧」「好」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。同興櫃那句的灰字 -->
+      <!-- 停止買賣、下市（2026-10-22，使用者：「做吧」「好」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。是帶日期的狀態，不是說明 -->
       <p v-if="haltText" class="summary-card__status">{{ haltText }}</p>
       <p v-if="delistText" class="summary-card__status">{{ delistText }}</p>
     </div>
@@ -498,13 +474,6 @@ html.dark .summary-card__favorite-btn.is-plain {
   color: var(--el-text-color-secondary);
 }
 
-.summary-card__par-value {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
 /* 股價與漲跌同一行（2B）；放不下才折 */
 .summary-card__price {
   grid-column: 1 / -1;
@@ -614,7 +583,6 @@ html.dark .summary-card__favorite-btn.is-plain {
     display: block;
   }
 
-  .summary-card__par-value,
   .summary-card__status {
     grid-column: 2;
   }

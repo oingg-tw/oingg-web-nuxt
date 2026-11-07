@@ -53,7 +53,6 @@ const footer = computed(() => ({
     :code="code"
     :stock="stock"
     :pending="pending || (!!error && !notFound)"
-    :is-emerging="null"
     :short-name="shortName"
     :topic="topic"
     subject=" ETF"

@@ -22,8 +22,6 @@ defineProps<{
   code: string
   stock: Stock | null | undefined
   pending: boolean
-  // 興櫃三態，見 StockSummaryCard
-  isEmerging: boolean | null
   shortName: string
   // 摘要卡標題（唯一的 <h1>）後半：「台積電 2330 {topic}」
   topic: string
@@ -60,7 +58,7 @@ defineProps<{
     <SharedStockNotFound v-else-if="!stock" :subject="subject" />
     <template v-else>
       <div class="stock-page-shell__head">
-        <StockSummaryCard :stock="stock" :is-emerging="isEmerging" :short-name="shortName" :topic="topic" />
+        <StockSummaryCard :stock="stock" :short-name="shortName" :topic="topic" />
         <slot name="nav">
           <StockPageNav :code="code" />
         </slot>
@@ -88,7 +86,7 @@ defineProps<{
   gap: 16px;
 }
 
-/* 讀取中的骨架：摘要卡同高（多數股票實測手機 163px、601px 以上 131px；多一行面額註記的會再高一點）、麵包屑 48px */
+/* 讀取中的骨架：摘要卡同高（多數股票實測手機 163px、601px 以上 131px；停止買賣、下市的會多一行）、麵包屑 48px */
 .stock-page-shell__card-skeleton {
   height: 163px;
 }

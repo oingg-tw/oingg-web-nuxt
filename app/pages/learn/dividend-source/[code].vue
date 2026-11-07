@@ -51,7 +51,7 @@ const { breadcrumbs } = useStockPageSeo({
 <template>
   <div v-loading="stockPending" class="app-page stock-dividend-source-page">
     <template v-if="stock">
-      <StockSummaryCard :stock="stock" :is-emerging="profile?.isEmerging ?? null" :short-name="stockShortName" :topic="TOPIC" />
+      <StockSummaryCard :stock="stock" :short-name="stockShortName" :topic="TOPIC" />
       <LearnNav active-to="/learn/dividends" />
       <StockBreadcrumb :items="breadcrumbs" />
 

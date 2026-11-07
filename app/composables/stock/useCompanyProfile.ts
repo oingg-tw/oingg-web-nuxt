@@ -1,18 +1,6 @@
 // 只留頁面真的會讀的欄位（2026-10-08 盤點刪了 22 個沒人讀的：董事長、發言人、地址、電話、股務代理…）：這份物件
 // 會進每個個股頁的 SSR payload。metricDataType 留著（2026-09-22 的決定，見下）。
 export interface NormalizedCompanyProfile {
-  // 興櫃。**三態，`null` 不是疏漏**（業務中台 2026-10-01）：上游正式環境還沒部署這個欄位，缺席時
-  // 業務中台 給 `null` 而不是 `false`——`false` 會把興櫃說成「不是興櫃」，那是一個**錯的標籤**，而錯的
-  // 標籤比缺一個標籤糟（它會讓我們宣稱「這家公司有單季資料」而它永久沒有）。
-  //
-  //   true  → 興櫃。可以寫「這類公司沒有這個數字」
-  //   false → 不是興櫃。單季為空就是真的尚無資料
-  //   null  → 上游還沒送。**不要斷言任何事**，維持沒有這個欄位時的行為
-  //
-  // 刻意不用 `Boolean(raw.isEmerging)` 收斂成兩態：那會把 null 變成 false，正是上面要避免的。
-  // 也刻意只接受真正的布林值——字串 `"false"` 用 truthy 判斷會變成 true（業務中台 那一層也加了
-  // 同樣的守衛）。
-  isEmerging: boolean | null
   name: string | null
   shortName: string | null
   // 證交所類股（生態系詞彙表：代碼一律叫 sectorCode、名稱 sectorName，中文「類股」；2026-10-11 內部名稱也跟著改）。
@@ -36,11 +24,7 @@ export interface NormalizedCompanyProfile {
   // here — 20 symbols sampled the day it shipped were all "2", with their backfill still running,
   // so treat a "1" as expected-but-unseen rather than confirmed.
   metricDataType: string | null
-  // 每股面額。不是 10 元的公司，證交所、櫃買中心會在簡稱後面加 *（強生* 是 5 元），摘要卡寫出實際面額（2026-10-22）。
-  // 沒有資料是 null（創新板的幾家；無面額股目前也是 null，分不出來，上游之後會另給 hasParValue）
-  parValue: number | null
-  // 面額的幣別（業務中台 4e8f630，2026-11-04）："TWD"、"USD"（外國公司，例如 4157 每股 0.001 美元）；面額是 null 時也是 null
-  parValueCurrency: string | null
+  // 面額（parValue、parValueCurrency、isNoParValue）2026-11-08 不讀了：唯一的讀者是摘要卡那句，使用者「Summary不該放說明文字」
 }
 
 function toDate(value: unknown): Date | null {
@@ -52,12 +36,10 @@ function toDate(value: unknown): Date | null {
 // Real backend responses can't carry Date over JSON, so the raw payload arrives
 // as ISO date strings — hydrate it into the typed shape here.
 function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyProfile {
-  // 全名 companyFullName、簡稱 companyName；興櫃看 market 的 TYPEK（rotc），market 是 null 時照樣三態的 null
+  // 全名 companyFullName、簡稱 companyName
   const name = raw.companyFullName
   const shortName = raw.companyName
-  const emerging = raw.market === 'rotc' ? true : raw.market === 'sii' || raw.market === 'otc' ? false : null
   return {
-    isEmerging: emerging,
     // 不再用 String()：null 會變成字面上的 "null" 名稱（業務中台 f750e92）
     name: typeof name === 'string' ? name : null,
     shortName: typeof shortName === 'string' ? shortName : null,
@@ -65,9 +47,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     sectorName: (raw.sectorName as string | null) ?? null,
     establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
-    metricDataType: (raw.metricDataType as string | null) ?? null,
-    parValue: typeof raw.parValue === 'number' ? raw.parValue : null,
-    parValueCurrency: typeof raw.parValueCurrency === 'string' ? raw.parValueCurrency : null
+    metricDataType: (raw.metricDataType as string | null) ?? null
   }
 }
 

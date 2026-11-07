@@ -110,7 +110,6 @@ const exDividendAnswer = computed(() => {
     :code="code"
     :stock="stock"
     :pending="stockPending"
-    :is-emerging="profile?.isEmerging ?? null"
     :short-name="stockShortName"
     topic="配股配息"
     :breadcrumbs="breadcrumbs"
