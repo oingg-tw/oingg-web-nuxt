@@ -293,6 +293,8 @@ export function useUniverseScreener(source: UniverseSource) {
       tab.results = []
       tab.total = 0
       tab.totalPages = 0
+      // 不算查過：檔數不寫 0 檔、也不說「沒有符合」，失敗由下面的提示說（同普通股的 clearRunResult）
+      tab.searched = false
       // 4xx 重試也不會好，請用戶調整；其他交給全站讀取失敗彈窗
       if (classifyApiError(error).kind === 'client') showErrorMessage(SEARCH_REJECTED_TEXT)
       else searchFailure.value = { tabId: tab.id, error }

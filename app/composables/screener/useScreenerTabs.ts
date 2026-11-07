@@ -226,6 +226,16 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     tab.total = result.count
   }
 
+  // 查詢失敗：結果與檔數一起清掉，也不算查過——只清結果的話「符合上述條件 N 檔」還是上一次的、表格卻是空的；檔數歸零又會說「沒有符合」。
+  // 失敗本身由提示或讀取失敗彈窗說
+  function clearRunResult(tab: ScreenerTab) {
+    tab.results = []
+    tab.resultColumns = []
+    tab.total = 0
+    tab.totalPages = 0
+    tab.searched = false
+  }
+
   // Writes the tab's current on-screen columns/results back into its own cache slot —
   // call this after anything that changes what's displayed for the active column-preset,
   // so switching away and back reflects the latest edit without needing to refetch.
@@ -248,29 +258,36 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // count). Debounced so typing a number doesn't fire a request per keystroke, and
   // cancellable so a pending one doesn't fire after its tab is gone.
   const autoSearchControllers = new Map<string, { stopWatch: () => void; trigger: { cancel: () => void } }>()
+  // 監看掛在這一頁的 scope 上（2026-11-07）：開頁在 await 之後、新增頁籤在點擊裡才登記，那時沒有目前的 scope，監看會活過這一頁。
+  // 離開再回來，一次編輯就查兩次、各自以為自己是最新的，晚到的舊失敗把新結果清掉（使用者看到「符合上述條件 48 檔」，表格卻是空的）
+  const pageScope = getCurrentScope()
 
   function watchTabForAutoSearch(tab: ScreenerTab) {
-    // handleSearch itself re-checks currentUser before doing anything — no need to gate on
-    // it here too.
-    const trigger = debounce(() => handleSearch(tab), AUTO_SEARCH_DELAY_MS)
+    stopAutoSearch(tab.id)
+    if (!pageScope?.active) return
+    pageScope.run(() => {
+      // handleSearch itself re-checks currentUser before doing anything — no need to gate on
+      // it here too.
+      const trigger = debounce(() => handleSearch(tab), AUTO_SEARCH_DELAY_MS)
 
-    const stopWatch = watch(
-      () =>
-        // 類股也是一個條件（values＋exclude），所以同一個 JSON 就涵蓋：包含半導體與排除半導體的代碼一樣、exclude 不同
-        JSON.stringify(tab.slots
-          .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
-          .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude, values: slot.values }))),
-      () => trigger()
-    )
+      const stopWatch = watch(
+        () =>
+          // 類股也是一個條件（values＋exclude），所以同一個 JSON 就涵蓋：包含半導體與排除半導體的代碼一樣、exclude 不同
+          JSON.stringify(tab.slots
+            .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
+            .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude, values: slot.values }))),
+        () => trigger()
+      )
 
-    // 排序記在這一組上（2026-10-23，業務中台 c9e2208；使用者：「screener 也要儲存用戶上次的排序 這樣用戶才不用每次點」）：換排序、
-    // 取消排序、換欄位組合把排序清掉都存回去。未登入、還沒存的頁籤不存（排序只在網址）。打開時照存的值開，不算改
-    const stopSortWatch = watch(() => [tab.sortField, tab.sortOrder], () => {
-      if (!currentUser.value || tab.unsaved) return
-      void update(tab.id, sortPatchOf(tab))
+      // 排序記在這一組上（2026-10-23，業務中台 c9e2208；使用者：「screener 也要儲存用戶上次的排序 這樣用戶才不用每次點」）：換排序、
+      // 取消排序、換欄位組合把排序清掉都存回去。未登入、還沒存的頁籤不存（排序只在網址）。打開時照存的值開，不算改
+      const stopSortWatch = watch(() => [tab.sortField, tab.sortOrder], () => {
+        if (!currentUser.value || tab.unsaved) return
+        void update(tab.id, sortPatchOf(tab))
+      })
+
+      autoSearchControllers.set(tab.id, { stopWatch: () => { stopWatch(); stopSortWatch() }, trigger })
     })
-
-    autoSearchControllers.set(tab.id, { stopWatch: () => { stopWatch(); stopSortWatch() }, trigger })
   }
 
 
@@ -379,8 +396,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
               cacheCurrentColumnView(tab)
               if (searchFailure.value?.tab.id === tab.id) searchFailure.value = null
             } else if (!append) {
-              tab.results = []
-              tab.resultColumns = []
+              clearRunResult(tab)
               if (!reportSearchFailure(tab, page, lastError.value)) showErrorMessage('搜尋失敗，請稍後再試')
             } else {
               showErrorMessage('載入更多失敗，請稍後再試')
@@ -441,8 +457,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
             // An append failure (load-more) leaves the already-accumulated rows on screen
             // as-is — clearing them here would wipe out everything the user has scrolled
             // through just because loading the NEXT batch failed.
-            tab.results = []
-            tab.resultColumns = []
+            clearRunResult(tab)
             if (!reportSearchFailure(tab, page, lastError.value)) showErrorMessage(SEARCH_REJECTED_TEXT)
           } else {
             showErrorMessage('載入更多失敗，請稍後再試')

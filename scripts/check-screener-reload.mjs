@@ -1,7 +1,8 @@
 // 三組篩選重新整理前後，顯示欄位不能跑掉（2026-11-05，使用者：「screener 顯示欄位重新整理以後會跑掉」）：改欄位 → 記下兩個下拉、表頭順序 →
 // 重新整理 → 要一模一樣。原本 21 條流程有多條不一樣：換欄位組合時表格的順序跟存的不同（SharedMetricTable）、普通股訪客的總覽有被藏起來的舊指標、
 // 未儲存的那組變成「請選擇」、沒有條件的已存篩選跳回「全部」、套用官方欄位組合時舊指標要到下次開頁才換、沒有欄位可顯示的組合（空白或全被上游拿掉）變「請選擇」，
-// ETF、特別股只剩代號與名稱、帳號有了第一組之後其他篩選停在「請選擇」、別的篩選用的組合被刪掉之後表格還是舊的欄位、特別股的排序沒有存、普通股晚到的舊結果蓋掉新的。
+// ETF、特別股只剩代號與名稱、帳號有了第一組之後其他篩選停在「請選擇」、別的篩選用的組合被刪掉之後表格還是舊的欄位、特別股的排序沒有存、普通股晚到的舊結果蓋掉新的、
+// 離開普通股再回來之後一次編輯查兩次（晚到的失敗清掉表格、檔數還是上一次的）。
 // 登入的流程用測試帳號，但篩選與欄位組合全是這支腳本假的（記得住狀態，存了下次讀得到）：帳號裡什麼都不會變，其他寫入一律擋下。訪客的流程是真的查。
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-screener-reload.mjs [流程名稱的一部分]（要 A11Y_TEST_EMAIL／PASSWORD；BASE_URL 可換 DEV）
 import { chromium } from 'playwright'
@@ -47,6 +48,7 @@ const mock = async (ctx, saved) => {
         const columns = known.length ? known : ['liveMarketCap.EOD', 'roe.TTM']
         // 代號跟著條件數變，舊結果蓋掉新的看得出來
         const symbol = String(2330 + target.filters.length)
+        if (saved.failRun === target.filters.length) return route.fulfill({ status: 504, json: { type: 'about:blank', title: 'Gateway Timeout', status: 504, detail: 'The analysis service timed out' } })
         if (saved.slowRun === target.filters.length) await new Promise(resolve => setTimeout(resolve, 3000))
         return route.fulfill({ json: { screener: { count: 1, page: 1, pageSize: 20, totalPages: 1, columns: columns.map(field => ({ field, metricName: field, fieldName: '', unit: '' })), results: [{ symbol, name: '台積電', values: {} }] }, columnPresetId: known.length ? columnSet.id : null, preset: target } })
       }
@@ -184,6 +186,41 @@ for (const key of Object.keys(UNIVERSES)) {
     console.log(`  ${same ? 'PASS' : 'FAIL'}  ${flow.name}${same ? '' : `\n        前 ${JSON.stringify(before)}\n        後 ${JSON.stringify(after)}`}`)
     await ctx.close()
   }
+}
+
+// 離開再回來，一次編輯只查一次；查失敗不留上一次的檔數（2026-11-07：開頁時登記的自動查詢活過了那一頁，回來後一次編輯查兩次，
+// 晚到的舊失敗把新結果清掉，畫面寫「符合上述條件 48 檔」，表格卻是空的）
+if (!only || '離開再回來'.includes(only)) {
+  console.log('\n== common 離開再回來')
+  const saved = { presets: [preset('p1', '高 ROE', [range('roe.TTM', 15), range('debtRatio.Q', 1), range('eps.TTM', 1)])], sets: UNIVERSES.common.sets() }
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+  await mock(ctx, saved)
+  let runs = 0
+  ctx.on('request', (req) => { if (/\/screener\/presets\/[^/]+\/run$/.test(new URL(req.url()).pathname)) runs++ })
+  const page = await ctx.newPage()
+  await page.goto(`${base}/screener/common`, { waitUntil: 'networkidle', timeout: 180000 })
+  await settled(page)
+  for (const path of ['/calendar', '/screener/common']) {
+    await page.evaluate(target => window.useNuxtApp().$router.push(target), path)
+    await page.waitForTimeout(2500)
+  }
+  await settled(page)
+  runs = 0
+  await page.locator('.condition-pill__remove').first().click()
+  await page.waitForTimeout(3000)
+  // 檔數要讀得到：讀不到的話，下面「沒有檔數」那條就白過了
+  const counted = (await page.locator('.screener-shell__count').textContent()).trim()
+  const once = runs === 1 && counted.includes('檔')
+  if (!once) failures++
+  console.log(`  ${once ? 'PASS' : 'FAIL'}  改一個條件只查一次（${runs} 次，畫面「${counted}」）`)
+  saved.failRun = 1
+  await page.locator('.condition-pill__remove').first().click()
+  await page.waitForTimeout(3000)
+  const shown = await page.evaluate(() => ({ count: document.querySelector('.screener-shell__count')?.textContent.trim() ?? '', rows: document.querySelectorAll('.smt-table-view .el-table__body tbody tr.el-table__row').length }))
+  const cleared = shown.rows === 0 && !shown.count.includes('檔')
+  if (!cleared) failures++
+  console.log(`  ${cleared ? 'PASS' : 'FAIL'}  查詢失敗不留上一次的檔數（「${shown.count}」，表格 ${shown.rows} 列）`)
+  await ctx.close()
 }
 
 await browser.close()
