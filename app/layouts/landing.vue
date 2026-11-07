@@ -65,7 +65,8 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
         <slot />
       </main>
 
-      <LazySharedFooter hydrate-on-visible />
+      <!-- 頁尾跟著頁面一起接手：理由見 layouts/default.vue 同一段 -->
+      <SharedFooter />
     </div>
 
     <AppSlideLayer side="left" label="功能選單" :open="openLayer === 'menu'" @close="close">
