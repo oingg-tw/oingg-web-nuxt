@@ -242,7 +242,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-return-1y', universe: 'etf', category: 'etf-return', short: '近1年報酬', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
   { slug: 'etf-return-ytd', universe: 'etf', category: 'etf-return', field: 'returnYtd', direction: 'desc', label: '今年以來報酬率', short: '今年以來', unit: '%', monthlyReport: true, note: '今年以來報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
   { slug: 'etf-expense-ratio-low', universe: 'etf', category: 'etf-return', field: 'expenseRatio', direction: 'asc', label: '總費用率', unit: '%', fullYear: true, note: '總費用率是投信投顧公會公布的最近完整年度全年數字，從淨值裡扣、不另外收；它含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。今年才成立的 ETF 還沒有完整年度，不在列（近 12 個月的估算看各檔的「費用」頁）。' },
-  { slug: 'etf-premium', universe: 'etf', category: 'etf-return', field: 'premiumDiscountPct', direction: 'desc', label: '折溢價率', short: '折溢價', unit: '%', dateField: 'tradeDate', note: '折溢價率是收盤價相對每單位淨值高或低多少：正數是溢價（收盤價高於淨值），負數是折價；以各檔最近一個交易日為準，每個交易日更新。' }
+  // 由低到高（2026-11-07，使用者：「應該是哪個對用戶有利要放前面吧」）：同總費用率，對買進的人有利的排前面。原本由高到低，前 50 名全是溢價，折價的看不到
+  { slug: 'etf-premium', universe: 'etf', category: 'etf-return', field: 'premiumDiscountPct', direction: 'asc', label: '折溢價率', short: '折溢價', unit: '%', dateField: 'tradeDate', note: '折溢價率是收盤價相對每單位淨值高或低多少：負數是折價（買進比淨值便宜），正數是溢價（買進比淨值貴）；以各檔最近一個交易日為準，每個交易日更新。' }
 ]
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
