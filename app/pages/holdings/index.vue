@@ -590,7 +590,7 @@ async function submit() {
             <el-checkbox v-if="form.action === 'BUY'" v-model="form.costUnknown" size="large" class="holdings-form__cost-unknown">不知道成本（例如很久以前買的）</el-checkbox>
             <p v-if="form.action === 'BUY'" :id="hintId.price" class="holdings-form__hint">
               <template v-if="form.costUnknown">庫存照算，這批股票賣出時的損益不計入績效。</template>
-              <template v-else>除權配股會自動入帳，不用自己記。</template>
+              <template v-else>多數配股會自動入帳；分割與減資請對照券商紀錄。</template>
             </p>
           </el-form-item>
           <el-form-item v-if="!(form.action === 'BUY' && form.costUnknown)" label="手續費（元）" prop="fee">
