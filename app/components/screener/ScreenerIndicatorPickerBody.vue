@@ -354,6 +354,8 @@ const CATEGORY_ICONS_BY_KEY: Record<string, Component> = {
   valuation: Money,
   // 普通股的「類股」條件（2026-10-15，證交所類股改成類別型條件）
   sector: OfficeBuilding,
+  // 普通股的基本資料（市場別、交易狀態、最新財報季別），同 ETF 的基本資料（identity）
+  profile: Postcard,
   // ETF（/etf-screener/filters 的 categoryKey）與特別股（usePreferredSource）的分類，2026-10-15 三組共用這個面板；同一組裡不重複
   identity: Postcard,
   sizeAndFlow: Wallet,
