@@ -117,9 +117,10 @@ const excludedText = computed(() => {
   return `${r.excludedSellCount} 筆賣出、共 ${groupThousands(r.excludedShares)} 股的取得成本不明（${names.slice(0, 5).join('、')}${names.length > 5 ? ' 等' : ''}）`
 })
 
+const namesReady = useCompanyNamesReady()
 const { sample: excludedSample, remember: rememberExcluded } = useLineHint('holdings-realized-excluded')
-watch([realized, excludedText], ([value, text]) => {
-  if (value) rememberExcluded(text && `未計入：${text}`)
+watch([realized, excludedText, namesReady], ([value, text, ready]) => {
+  if (value && ready) rememberExcluded(text && `未計入：${text}`)
 })
 
 function directionClass(value: number | null): string {
@@ -203,8 +204,8 @@ const tradingRows = computed(() => {
             </template>
           </HoldingsSymbolTable>
 
-          <p v-if="loading ? excludedSample : excludedText" class="realized-page__note">
-            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
+          <p v-if="loading || !namesReady ? excludedSample : excludedText" class="realized-page__note">
+            <span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
             <template v-else>未計入：{{ excludedText }}</template>
           </p>
           <details class="app-disclosure realized-page__method">

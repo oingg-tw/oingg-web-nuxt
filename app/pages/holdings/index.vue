@@ -124,9 +124,10 @@ const excludedText = computed(() => [
   excludedClause(dayTotals.value.staleCount, '今日漲跌尚未更新', row => !!row.dayInput.date && !!dayDate.value && row.dayInput.date < dayDate.value && dayChange(row.dayInput).pct !== null)
 ].filter(Boolean).join('；'))
 
+const namesReady = useCompanyNamesReady()
 const { sample: excludedSample, remember: rememberExcluded } = useLineHint('holdings-excluded')
-watch([excludedText, pending], ([text, reading]) => {
-  if (!reading) rememberExcluded(text && `未計入：${text}`)
+watch([excludedText, pending, namesReady], ([text, reading, ready]) => {
+  if (!reading && ready) rememberExcluded(text && `未計入：${text}`)
 })
 
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
@@ -466,8 +467,8 @@ async function submit() {
           </dl>
           <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
                計算口徑全部收進最下面的「計算方式」。 -->
-          <p v-if="loading ? excludedSample : excludedText" class="holdings-page__excluded">
-            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
+          <p v-if="loading || !namesReady ? excludedSample : excludedText" class="holdings-page__excluded">
+            <span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
             <template v-else>未計入：{{ excludedText }}</template>
           </p>
         </section>

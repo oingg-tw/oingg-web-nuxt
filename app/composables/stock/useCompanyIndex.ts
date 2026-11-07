@@ -69,6 +69,14 @@ export function useCompanyIndex() {
   return result
 }
 
+// 公司目錄讀完了沒（讀不到也算）。目錄在瀏覽器才抓，重新整理時比持股資料晚到：要等名稱才知道長度的一行字（「未計入」列的公司），骨架要留到這時候，
+// 不然先畫只有代號的短句，名稱一到又變長，把下面推下去（2026-11-07，DEV /holdings 手機 0.0100）。觀察清單的分段也要等它才知道每檔是哪一類
+export function useCompanyNamesReady() {
+  const { data, status } = useCompanyIndex()
+  // 有資料就算好，不只看 status：晚掛載的元件（延後 hydration 的頁首搜尋）再叫一次時 status 會回到 pending 一下，只看它的話畫面會退回骨架再回來
+  return computed(() => data.value.length > 0 || status.value === 'success' || status.value === 'error')
+}
+
 // 持股頁的「代號 → 公司」對照（2026-10-17：5 頁原本各自從目錄建一份）。目錄查不到的代號會逐檔打 GET /stocks/{code}/profile 補簡稱，
 // 這是業務中台的建議（已下市的也查得到）。查不到的情況有兩種：
 // - 已下市。

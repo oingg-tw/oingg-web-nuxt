@@ -61,11 +61,13 @@ const STUBS = {
   '/api/core/watchlist': { items: SYMBOLS.map((symbol, index) => ({ id: `i${index}`, watchlistId: 'w-a', symbol, note: null })) }
 }
 const blocked = []
-const stub = context => context.route('**/*', (route) => {
+const stub = context => context.route('**/*', async (route) => {
   const request = route.request()
   const path = new URL(request.url()).pathname
+  // 公司目錄晚到（DEV 的常態，本機太快看不出來）：等名稱的那幾行要照舊是骨架（2026-11-07，DEV /holdings 手機 0.0100）
+  if (path === '/api/cached/securities') await new Promise(resolve => setTimeout(resolve, 1500))
   if (request.method() === 'GET' && STUBS[path]) return route.fulfill({ json: STUBS[path] })
-  if (request.method() === 'GET' || /identitytoolkit|securetoken|\/screener\/values/.test(request.url())) return route.continue()
+  if (request.method() === 'GET' || /identitytoolkit|securetoken|\/screener\/values|\/etf-screener$/.test(request.url())) return route.continue()
   blocked.push(`${request.method()} ${path}`)
   return route.abort()
 })

@@ -187,6 +187,7 @@ const FEW_DAYS_NOTE = '交易日少於 60 天，波動度的統計誤差較大�
 const PARTIAL_NOTE = '期間中才有股價（之前的比例分給其他持股）：'
 const { sample: fewDaysSample, remember: rememberFewDays } = useLineHint('holdings-risk-few-days')
 const { sample: partialSample, remember: rememberPartial } = useLineHint('holdings-risk-partial')
+const namesReady = useCompanyNamesReady()
 
 const partialHoldings = computed(() => (report.value?.holdings ?? [])
   .filter(holding => holding.coverage !== 'full')
@@ -198,10 +199,10 @@ const partialHoldings = computed(() => (report.value?.holdings ?? [])
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
 // 公司名稱晚一點才到，長度跟著名稱更新
-watch([report, partialHoldings], ([value]) => {
+watch([report, partialHoldings, namesReady], ([value, , ready]) => {
   if (!value) return
   rememberFewDays(fewDays.value < 60 ? FEW_DAYS_NOTE : '')
-  rememberPartial(partialHoldings.value.length ? `${PARTIAL_NOTE}${partialCoverageText(partialHoldings.value)}` : '')
+  if (ready) rememberPartial(partialHoldings.value.length ? `${PARTIAL_NOTE}${partialCoverageText(partialHoldings.value)}` : '')
 })
 
 watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => {
@@ -277,8 +278,8 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
               <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ fewDaysSample }}</span>
               <template v-else>{{ FEW_DAYS_NOTE }}</template>
             </p>
-            <p v-if="loading ? partialSample : partialHoldings.length" class="risk-page__note">
-              <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ partialSample }}</span>
+            <p v-if="loading || !namesReady ? partialSample : partialHoldings.length" class="risk-page__note">
+              <span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ partialSample }}</span>
               <template v-else>{{ PARTIAL_NOTE }}{{ partialCoverageText(partialHoldings) }}</template>
             </p>
           </section>
