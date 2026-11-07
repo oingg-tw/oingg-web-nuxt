@@ -21,9 +21,11 @@ const props = defineProps<{
   label: string
   items: PresetSelectItem[]
   // 「＋新增」的可及名稱：「新增篩選」「新增欄位組合」
-  addLabel: string
+  addLabel?: string
   // 目前這一組未儲存時的按鈕文字：「存成我的篩選」「存成我的欄位組合」
-  saveLabel: string
+  saveLabel?: string
+  // 只選不管理（觀察清單的顯示欄位：組合的新增、改名、刪除都在篩選）：沒有「＋新增」與「管理」
+  pickOnly?: boolean
   // 外框（container）窄於 720px 時標籤收進選單框裡當前綴、「＋新增」只留「＋」、「存成…」換到下一行：結果區的「顯示欄位」用「欄位」
   //（2026-10-22 操作區方案 A），設定區的「我的篩選」用「篩選」（同日設定區方案 B）
   compactLabel?: string
@@ -62,10 +64,10 @@ function optionLabel(item: PresetSelectItem) {
       </template>
       <el-option v-for="item in items" :key="item.id" :label="optionLabel(item)" :value="item.id" />
     </el-select>
-    <el-button v-if="activeItem?.unsaved" type="primary" class="screener-preset-select__button screener-preset-select__save" @click="emit('save')">{{ saveLabel }}</el-button>
-    <el-button class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
-    <el-button class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
-    <ScreenerPresetManageDialog v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
+    <el-button v-if="activeItem?.unsaved && !pickOnly" type="primary" class="screener-preset-select__button screener-preset-select__save" @click="emit('save')">{{ saveLabel }}</el-button>
+    <el-button v-if="!pickOnly" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
+    <el-button v-if="!pickOnly" class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
+    <ScreenerPresetManageDialog v-if="!pickOnly" v-model:open="manageOpen" :label="label" :items="items" @save="changes => emit('manage', changes)" />
   </div>
 </template>
 

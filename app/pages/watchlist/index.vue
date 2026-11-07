@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { ScreenerResultTableColumn } from '~/components/shared/SharedMetricTable.vue'
 import type { ColumnDraft } from '~/components/shared/SharedColumnSettings.vue'
-import type { WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
+import type { WatchlistKind, WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
 // index, and out of the sitemap via nuxt.config's own sitemap.exclude.
@@ -29,100 +28,46 @@ watch(() => activeWatchlist.value?.id, (id) => {
 })
 
 // ---- 欄位 ----
-// 跟篩選器同一個模型：一份有順序的 {field, label} 清單，全部可以拖、可以移除。field 是型錄 id
-// （metricCode.basis）；「漲跌」「下次除權息」是這一頁自己算的假欄位（見 useWatchlistStocks）。
-// 預設就是 2026-09 以來那幾欄，加上下次除權息；漲跌金額與幅度合一欄，讓預設維持 7 欄（1920 寬放大 200%
-// 還放得下）。殖利率是內建但預設不開的那一欄，用 ＋ 從型錄加回來（近 12 個月現金股利殖利率，2026-10-24 從交易所公布值換過來，
-// 見 app/utils/replaced-metrics.ts；存過的欄位讀回來時一起換成留下來的那一支，跟篩選器一樣）。
-const BUILTIN_COLUMNS: ScreenerResultTableColumn[] = [
-  { field: 'stock.price', label: '收盤價' },
-  { field: WATCHLIST_CHANGE, label: '漲跌' },
-  { field: 'exchangePeRatio.EOD', label: '本益比' },
-  { field: 'livePbRatio.EOD', label: '股價淨值比' },
-  { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放' },
-  { field: 'liveCashDividendYield.EOD', label: '殖利率' }
-]
-const DEFAULT_FIELDS = BUILTIN_COLUMNS.slice(0, 5).map(column => column.field)
-const defaultColumns = () => BUILTIN_COLUMNS.filter(column => DEFAULT_FIELDS.includes(column.field))
-
-// 欄位存在帳號裡（GET／PUT /users/me/watchlist-columns，業務中台 9a2eeff）。存的是整張表、照顯示順序；null ＝
-// 從沒存過，用預設。免費方案上限 8 欄（預設 5＋自己的 3），付費無上限，每個方案硬上限 20（使用者 2026-10-06
-// 的決定，業務中台 執行）。超過時 PUT 回 quota，這裡把欄位退回上次存的樣子並說明——存檔不先查額度再擋，因為
-// 「重排」「刪欄」在降級後也必須能存，那個判斷 業務中台 已經做了（只有清單變長才擋）。只有「新增」先擋（欄位設定彈窗的 limit）。
-const { fetchColumns, saveColumns } = useUserWatchlist()
+// 依類別分段，每一段的欄位是那一類篩選的欄位組合（useWatchlistColumns，2026-11-06）：收盤價、漲跌、除息／發放固定在前面，後面是選的那一組；
+// 欄位設定、表頭的移動與移除都改那一組，篩選也跟著變。欄位設定所有清單共用一套（使用者的決定）。
+const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns } = useWatchlistColumns()
+await useFilterSchema()
 const currentUser = useCurrentUser()
-const serializeColumns = (list: ScreenerResultTableColumn[]) => JSON.stringify(list.map(({ field, label }) => ({ field, label })))
-// 內建欄位用程式裡的定義（標籤之後改了也跟得上），自訂欄位照存的
-const fromSaved = (saved: { field: string; label: string }[]) =>
-  saved.map(item => BUILTIN_COLUMNS.find(column => column.field === replacedField(item.field)) ?? { field: replacedField(item.field), label: item.label })
-// 欄位的副本放在 cookie（2026-10-20，使用者：「然後不要閃動」）：帳號裡那份要等登入還原才讀得到，原本重新整理先畫預設的欄位、讀到才換成
-// 自己的；有副本時伺服器的第一個畫面就是自己的欄位。只在這台瀏覽器登入過（auth-hint）時用；讀到帳號裡的那份照樣以它為準
-const columnsHint = useCookie<{ field: string; label: string }[] | null>('watchlist-columns-hint', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
-const authHint = useCookie<boolean | null>('auth-hint')
-const columns = useState<ScreenerResultTableColumn[]>('watchlist-columns', () => (authHint.value && columnsHint.value?.length ? fromSaved(columnsHint.value) : defaultColumns()))
-watch(columns, (value) => {
-  columnsHint.value = value.map(({ field, label }) => ({ field, label }))
-}, { deep: true })
-let lastSaved = serializeColumns(columns.value)
-let saveTimer: ReturnType<typeof setTimeout> | undefined
-
-async function loadColumns() {
-  const saved = await fetchColumns()
-  if (saved === undefined) return
-  const next = saved === null ? defaultColumns() : fromSaved(saved)
-  lastSaved = serializeColumns(next)
-  columns.value = next
-}
-
 onMounted(() => {
-  watch(currentUser, user => { if (user) void loadColumns() }, { immediate: true })
-  // 拖、加、刪、重設都只改 columns；停手 600ms 後整份送一次。跟上次存的一樣就不送（含剛載入的那一次）。
-  watch(columns, value => {
-    clearTimeout(saveTimer)
-    saveTimer = setTimeout(async () => {
-      const serialized = serializeColumns(value)
-      if (!currentUser.value || serialized === lastSaved) return
-      const result = await saveColumns(JSON.parse(serialized))
-      if (result === 'ok') {
-        lastSaved = serialized
-        return
-      }
-      columns.value = fromSaved(JSON.parse(lastSaved))
-      if (result === 'quota') showQuotaReached('watchlistColumns')
-      else showErrorMessage('欄位設定沒有存到，已回到上次存的樣子')
-    }, 600)
-  }, { deep: true })
+  watch(currentUser, (user) => {
+    if (user) void loadColumns()
+    else clearColumns()
+  }, { immediate: true })
 })
-// 送去 /screener/values 的型錄欄位（濾掉假欄位與型錄裡已經沒有的，見 watchlistCatalogFields）
-const catalogFields = computed(() => watchlistCatalogFields(columns.value, schema.value.categories))
+const fieldsByKind = computed(() => ({
+  common: columnsOf('common').map(column => column.field),
+  etf: columnsOf('etf').map(column => column.field),
+  preferred: columnsOf('preferred').map(column => column.field)
+}))
 
-// 欄位的新增、移除、換順序、重設都在「欄位設定」彈窗裡（SharedColumnSettings，篩選器共用；2026-10-22 從就地展開改成彈窗，
-// 改的是草稿、按「儲存」才換）。重設預設欄位（2026-10-06）是把「漲跌」「下次除權息」找回來的路：它們不在指標型錄裡、用 ＋ 加不回來。
-// 挑指標的那一頁是目錄＋「類股」（基本資料裡、市場別後面，同篩選器；2026-10-22 使用者：「要」，只當欄位用、不需要類股清單）。
-// 新增前先擋額度（寫在彈窗裡）：原本加上去約 0.6 秒後被 PUT 的 403 收回。只擋新增——重排、刪欄在降級後照樣要能存（見 columns 上面的註解）
-const { data: schema } = await useFilterSchema()
-const pickerCategories = computed(() => withSectorCondition(schema.value.categories, []))
-const columnLimit = computed(() => {
-  const max = quotaOf('watchlistColumns')
-  return typeof max === 'number' ? { max, what: '觀察清單欄位' } : null
-})
-const defaultDrafts = defaultColumns().map(({ field, label }) => ({ field, label }))
-// 表頭拖曳與表頭的欄位選單（SharedSheetGrid）照樣直接換順序
-function reorderColumns(fields: string[]) {
-  columns.value = fields.map(field => columns.value.find(column => column.field === field)!).filter(Boolean)
+// 欄位設定（SharedColumnSettings，篩選共用）：改的是草稿、按「儲存」才換。挑指標的那一頁是那一類的型錄，普通股多一個類股
+const settingsKind = ref<WatchlistKind>('common')
+const columnSettingsOpen = ref(false)
+function openColumnSettings(kind: WatchlistKind) {
+  if (!member.value) {
+    openLogin('免費註冊或登入後，就能設定觀察清單的欄位。')
+    return
+  }
+  settingsKind.value = kind
+  columnSettingsOpen.value = true
+}
+async function saveColumnSettings(drafts: ColumnDraft[], close: () => void) {
+  if (await saveFields(settingsKind.value, drafts.map(draft => draft.field))) close()
+}
+// 表頭拖曳與表頭的欄位選單（SharedSheetGrid）照樣直接換順序；固定欄不在組合裡
+function reorderColumns(kind: WatchlistKind, fields: string[]) {
+  void saveFields(kind, fields.filter(field => !WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)))
 }
 // 表頭的欄位選單「移除這一欄」：馬上拿掉、10 秒內可以復原（全站「可以復原的動作不先確認」）
-function removeColumn(field: string) {
-  const previous = columns.value
-  const column = previous.find(item => item.field === field)
-  columns.value = previous.filter(item => item.field !== field)
-  undoToast(`已移除「${column?.label ?? field}」欄`, () => { columns.value = previous }, () => {})
-}
-function saveColumnSettings(drafts: ColumnDraft[], close: () => void) {
-  columns.value = drafts.map(draft => columns.value.find(column => column.field === draft.field)
-    ?? BUILTIN_COLUMNS.find(column => column.field === draft.field)
-    ?? { field: draft.field, label: draft.label })
-  close()
+function removeColumn(kind: WatchlistKind, field: string) {
+  const previous = columnsOf(kind)
+  void saveFields(kind, previous.map(column => column.field).filter(item => item !== field))
+  undoToast(`已移除「${previous.find(column => column.field === field)?.label ?? field}」欄`, () => { void saveFields(kind, previous.map(column => column.field)) }, () => {})
 }
 
 // 訪客（確定沒登入）先看市值最大的 10 家（2026-10-16 使用者：「未註冊用戶看到的觀察清單可不可以就選市場上最知名的幾間公司?」，
@@ -141,7 +86,7 @@ watch(isGuest, guest => { if (guest && !marketCapRanking.value) void loadMarketC
 const guestListLoading = computed(() => isGuest.value && !marketCapRanking.value && marketCapStatus.value !== 'error')
 const listCodes = computed(() => (isGuest.value ? (marketCapRanking.value?.rows ?? []).slice(0, GUEST_LIST_SIZE).map(row => row.symbol) : watchlistCodes.value))
 
-const { rows, pending, priceDate } = useWatchlistStocks(listCodes, catalogFields)
+const { rows, pending, priceDate, kindsReady } = useWatchlistStocks(listCodes, fieldsByKind, sources)
 // 清單、報價到齊才一起畫，之前是轉圈（2026-10-20，使用者：「重新整理的時候會閃動，好像其他畫面也有」）：伺服器不知道是誰，原本先畫
 //「還沒有追蹤任何股票」，登入還原、清單讀到後換成只有名稱的表格，報價到了數字才補上——重新整理一次換三種畫面。清單是 app.vue 的
 // useWatchlistSync 讀的：synced 在開始讀時就是 true，讀完要看 sync-pending；讀不到時 synced 退回 false，轉圈留在全站彈窗底下等重試
@@ -149,17 +94,42 @@ const hasHydrated = useHasHydrated()
 const synced = useState('watchlist-synced-from-server', () => false)
 const syncPending = useState('watchlist-sync-pending', () => false)
 const firstPaintPending = computed(() => !hasHydrated.value || !authResolved.value
-  || (currentUser.value ? !synced.value || syncPending.value : guestListLoading.value)
-  || (pending.value && !priceDate.value))
+  || (currentUser.value ? !synced.value || syncPending.value || !columnsLoaded.value : guestListLoading.value)
+  || (pending.value && !priceDate.value)
+  || (listCodes.value.length > 0 && !kindsReady.value))
 // 分享鈕從第一個畫面就在（登入過的瀏覽器）：它在工具列裡，手機上晚出現會多長一行（member 見上面的 useMemberGate）
-// 骨架的列數＝上次看到的檔數（useLayoutHint）；0＝上次是空的
-const rowCountHint = useLayoutHint('watchlist-rows', 5)
-watch(() => (firstPaintPending.value ? null : listCodes.value.length), (count) => {
-  if (count !== null) rowCountHint.value = count
+// 骨架的段數與列數＝上次看到的（useLayoutHint）；0＝上次是空的
+const rowHints: Record<WatchlistKind, WritableComputedRef<number>> = {
+  common: useLayoutHint('watchlist-rows', 5),
+  etf: useLayoutHint('watchlist-rows-etf', 0),
+  preferred: useLayoutHint('watchlist-rows-preferred', 0)
+}
+const rowCountHint = computed(() => WATCHLIST_KINDS.reduce((total, kind) => total + rowHints[kind].value, 0))
+// 有備註的列多一行，高 8px：骨架沒有的話，資料到了下面一段被推下去（2026-11-07，/watchlist 位移 0.019）。畫在哪幾列不重要，總高度對就好
+const noteHints: Record<WatchlistKind, WritableComputedRef<number>> = {
+  common: useLayoutHint('watchlist-notes', 0),
+  etf: useLayoutHint('watchlist-notes-etf', 0),
+  preferred: useLayoutHint('watchlist-notes-preferred', 0)
+}
+watch(() => (firstPaintPending.value ? null : rows.value), (list) => {
+  if (!list) return
+  for (const kind of WATCHLIST_KINDS) {
+    const ofKind = list.filter(row => row.kind === kind)
+    rowHints[kind].value = ofKind.length
+    noteHints[kind].value = ofKind.filter(row => watchlistNotes.value[row.code]).length
+  }
 })
-const skeletonRows = computed<WatchlistRow[]>(() => Array.from({ length: rowCountHint.value }, (_, index) => ({
-  code: `skeleton-${index}`, name: '', kind: 'common', values: {}, change: null, changePercent: null, nextDividendEvent: null
-})))
+// 骨架列的代號要跟真的一樣短：表格拿它估欄寬（原本 skeleton-common-0，第一欄撐到 194px，資料到了整張表左移 118px，2026-11-07）
+const skeletonCode = (kind: WatchlistKind, index: number) => `${kind[0]}${index}`
+const skeletonNotes = computed<Record<string, string>>(() => Object.fromEntries(WATCHLIST_KINDS.flatMap(kind => Array.from({ length: noteHints[kind].value }, (_, index) => [skeletonCode(kind, index), '為什麼想追蹤這一檔']))))
+const skeletonRowsOf = (kind: WatchlistKind) => Array.from({ length: rowHints[kind].value }, (_, index): WatchlistRow => ({
+  code: skeletonCode(kind, index), name: '', kind, values: {}, change: null, changePercent: null, nextDividendEvent: null
+}))
+// 只有這一類有列才有這一段；只有一段時不寫標題，就是一張表
+const sections = computed(() => WATCHLIST_KINDS.flatMap((kind) => {
+  const sectionRows = firstPaintPending.value ? skeletonRowsOf(kind) : rows.value.filter(row => row.kind === kind)
+  return sectionRows.length ? [{ kind, label: WATCHLIST_KIND_LABELS[kind], rows: sectionRows, columns: [...WATCHLIST_FIXED_COLUMNS, ...columnsOf(kind)] }] : []
+}))
 const { keyword, fetchSuggestions, firstMatch } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
@@ -194,11 +164,12 @@ const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' &&
 
 // 表格與卡片怎麼畫在 WatchlistTable（2026-10-19 抽出來，分享頁 /share/[token] 也用）；這一頁留資料、欄位設定、備註與移除。
 // 操作欄（備註、移除）只有登入後才有
-const columnSettingsOpen = ref(false)
 
-// 分享連結（2026-10-19，SharedShareButton）：可以一起分享的是表格上現在的欄位；備註原本「只有你自己看得到」，預設不分享
+// 分享連結（2026-10-19，SharedShareButton）：可以一起分享的是表格上現在的欄位；備註原本「只有你自己看得到」，預設不分享。
+// 多段時欄名前面寫類別：普通股與特別股都有「殖利率」，勾選時要分得開（分享頁的表頭照型錄，看不到這個前綴）
 const shareColumns = computed(() => [
-  ...columns.value.map(column => ({ key: column.field, label: column.label })),
+  ...WATCHLIST_FIXED_COLUMNS.map(column => ({ key: column.field, label: column.label })),
+  ...sections.value.flatMap(({ kind, label }) => columnsOf(kind).map(column => ({ key: column.field, label: sections.value.length > 1 ? `${label}・${column.label}` : column.label }))),
   { key: 'note', label: '備註', sensitive: true }
 ])
 
@@ -266,38 +237,53 @@ async function submitNote() {
     <!-- 讀的時候表頭、卡片的欄名照畫，列是骨架、列數照上次（2026-10-20）；上次是空的就直接是空狀態 -->
     <div class="watchlist-page__content" :aria-busy="firstPaintPending">
       <el-empty v-if="firstPaintPending ? !rowCountHint : !listCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
-      <WatchlistTable
-        v-else
-        :loading="firstPaintPending"
-        :rows="firstPaintPending ? skeletonRows : rows"
-        :columns="columns"
-        :notes="watchlistNotes"
-        :order-label="isGuest ? '市值順序' : '加入順序'"
-        :actions="!isGuest"
-        movable
-        @reorder="reorderColumns"
-        @remove-column="removeColumn"
-      >
-        <template #toolbar>
-          <!-- 靠右的一組：分享鈕讀到連結狀態後才出現，放在最左邊，出現時欄位設定不會被推動 -->
-          <div class="watchlist-toolbar__end">
-            <SharedShareButton
-              v-if="member && (firstPaintPending || activeWatchlist)"
-              kind="watchlist"
-              :target-id="activeWatchlist?.id ?? ''"
-              :name="activeWatchlist?.name ?? ''"
-              :columns="shareColumns"
-              sensitive-heading="只有你看得到的，預設不分享"
-            />
-            <el-button class="watchlist-toolbar__settings" @click="columnSettingsOpen = true">欄位設定</el-button>
-          </div>
-        </template>
-        <template #actions="{ row, view, loading }">
-          <!-- 卡片上是頁尾的文字鈕（2026-10-22 方案頁 4B）：沒有框，移除只用紅字 -->
-          <el-button v-if="loading || watchlistIds[row.code]" :disabled="loading" :link="view === 'table'" :text="view === 'card'" type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
-          <el-button :link="view === 'table'" :text="view === 'card'" type="danger" :aria-label="`從觀察清單移除 ${row.name}`" :disabled="loading" @click="removeStock(row.code)">移除</el-button>
-        </template>
-      </WatchlistTable>
+      <template v-else>
+        <section v-for="(section, index) in sections" :key="section.kind" class="watchlist-section" :aria-label="section.label">
+          <WatchlistTable
+            :loading="firstPaintPending"
+            :rows="section.rows"
+            :columns="section.columns"
+            :label="sections.length > 1 ? `${section.label}的觀察清單` : '觀察清單'"
+            :storage-key="`watchlist-${section.kind}`"
+            :notes="firstPaintPending ? skeletonNotes : watchlistNotes"
+            :order-label="isGuest ? '市值順序' : '加入順序'"
+            :actions="!isGuest"
+            :movable="member"
+            @reorder="fields => reorderColumns(section.kind, fields)"
+            @remove-column="field => removeColumn(section.kind, field)"
+          >
+            <template #toolbar>
+              <h2 v-if="sections.length > 1" class="watchlist-section__title">{{ section.label }}<span class="watchlist-section__count">{{ section.rows.length }} 檔</span></h2>
+              <!-- 靠右的一組：分享鈕讀到連結狀態後才出現，放在最左邊，出現時後面不會被推動。分享的是整份清單，只放在第一段 -->
+              <div class="watchlist-toolbar__end">
+                <SharedShareButton
+                  v-if="index === 0 && member && (firstPaintPending || activeWatchlist)"
+                  kind="watchlist"
+                  :target-id="activeWatchlist?.id ?? ''"
+                  :name="activeWatchlist?.name ?? ''"
+                  :columns="shareColumns"
+                  sensitive-heading="只有你看得到的，預設不分享"
+                />
+                <ScreenerPresetSelect
+                  v-if="member"
+                  pick-only
+                  label="顯示欄位"
+                  :items="setItemsOf(section.kind)"
+                  :active-id="activeIdOf(section.kind)"
+                  @update:active-id="id => selectColumnSet(section.kind, id)"
+                />
+                <el-button class="watchlist-toolbar__settings" :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openColumnSettings(section.kind)">欄位設定</el-button>
+                <NuxtLink v-if="member" :to="SCREENER_PATHS[section.kind]" class="watchlist-toolbar__manage">到{{ section.label }}篩選管理</NuxtLink>
+              </div>
+            </template>
+            <template #actions="{ row, view, loading }">
+              <!-- 卡片上是頁尾的文字鈕（2026-10-22 方案頁 4B）：沒有框，移除只用紅字 -->
+              <el-button v-if="loading || watchlistIds[row.code]" :disabled="loading" :link="view === 'table'" :text="view === 'card'" type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
+              <el-button :link="view === 'table'" :text="view === 'card'" type="danger" :aria-label="`從觀察清單移除 ${row.name}`" :disabled="loading" @click="removeStock(row.code)">移除</el-button>
+            </template>
+          </WatchlistTable>
+        </section>
+      </template>
     </div>
     <!-- 訪客說明在清單下面（2026-10-18）：要等登入狀態確定才知道該不該顯示，原本放在清單上面，出現時把清單往下推（全站量測手機 0.030）；
          反過來先顯示的話換成登入的人看到它閃一下再被收走。清單下面只剩頁尾，而頁尾一開始就在畫面外，這裡晚出現不推動任何看得到的東西。
@@ -309,11 +295,10 @@ async function submitNote() {
 
     <SharedColumnSettings
       v-model:open="columnSettingsOpen"
-      :columns="columns"
+      :columns="columnsOf(settingsKind)"
       :label-of="column => column.label"
-      :categories="pickerCategories"
-      :limit="columnLimit"
-      :defaults="defaultDrafts"
+      :categories="categoriesOf(settingsKind)"
+      :defaults="basicColumns(settingsKind).map(({ field, label }) => ({ field, label }))"
       @save="saveColumnSettings"
     />
 
@@ -393,8 +378,67 @@ async function submitNote() {
   min-height: 44px;
 }
 
+.watchlist-toolbar__manage {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--el-color-primary-dark-2);
+}
+
+.watchlist-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* 分段標題跟工具列同一列 */
+.watchlist-section__title {
+  order: -1;
+  align-self: center;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.watchlist-section__count {
+  margin-left: 8px;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-regular);
+}
+
 .watchlist-note-dialog__label {
   display: block;
   margin-bottom: 8px;
+}
+
+/* 卡片版面（同 WatchlistTable 的切換點）：標題一行，選單與按鈕一行，選單吃掉剩下的寬度。寬度固定，分享鈕晚出現也不算位移 */
+@media (max-width: 1279px) {
+  .watchlist-section__title {
+    flex-basis: 100%;
+  }
+
+  .watchlist-toolbar__end {
+    display: flex;
+    flex: 1 1 100%;
+    align-items: flex-end;
+    gap: 8px 12px;
+  }
+
+  .watchlist-toolbar__end > :first-child {
+    margin-left: 0;
+  }
+
+  .watchlist-toolbar__end > :deep(.screener-preset-select) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* 手機放不下：組合的管理在篩選頁，從選單也走得到 */
+@media (max-width: 767px) {
+  .watchlist-toolbar__manage {
+    display: none;
+  }
 }
 </style>

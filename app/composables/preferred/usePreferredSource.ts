@@ -182,7 +182,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
       const hit = holders(symbol).some(portfolio => heldFilter!.values!.map(String).includes(portfolio.portfolioId))
       return heldFilter!.exclude ? !hit : hit
     }
-    const rows = list.filter(entry => query.filters.every(filter => (filter === heldFilter ? heldMatch(entry.symbol) : matches(entry, filter))))
+    const rows = list.filter(entry => (!query.symbols || query.symbols.includes(entry.symbol)) && query.filters.every(filter => (filter === heldFilter ? heldMatch(entry.symbol) : matches(entry, filter))))
     return {
       rows: rows.map((entry) => {
         const row = toRow(entry)

@@ -236,6 +236,7 @@ export function useEtfSource(): UniverseSource {
     body.sortField = sort.field
     body.order = sort.order
     const response = await (currentUser.value ? authedFetch : apiFetch)<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
+    if (query.symbols) body.symbols = query.symbols
     return { rows: response.results.map(toRow), total: response.count, totalPages: response.totalPages }
   }
 

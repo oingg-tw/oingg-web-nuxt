@@ -1,7 +1,7 @@
 import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
 import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 import type { ScreenerFieldValue, UpstreamFieldValue } from '~/composables/screener/useFilterSearch'
-import type { MetricCategory } from '~/composables/screener/useFilterSchema'
+import type { UniverseSource } from '~/composables/screener/useUniverseScreener'
 
 // 觀察清單每一列的資料（2026-10-06 重寫，「設計觀察清單頁面」）。
 //
@@ -20,7 +20,8 @@ import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 // 除息參考價，所以除息當天的漲跌含配息的那一跌（跟券商 App 的「漲跌」不同，那是對參考價）。
 //
 // ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price 與
-// previousClose 都有值；估值欄位是 null（交易所不對它們公布），畫面照實顯示。
+// previousClose 都有值。普通股型錄的 325 個欄位它們幾乎都沒有值（2026-11-06 量：ETF 0 個、特別股 1 個），所以清單依類別分段，
+// 各段讀自己篩選的欄位（見 useWatchlistColumns）：ETF、特別股的欄位走各自的 UniverseSource.run，只要清單上的代號。
 //
 // 沒有股價的那一檔**不丟掉**，照樣列出、數字欄是空的：使用者自己加進來的東西不能在畫面上消失，
 // 那會像是沒存到（舊版的 droppedCount 就是這個問題的補丁）。
@@ -30,20 +31,10 @@ import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 // 值分別是漲跌幅與除權息日——排序就照這兩個值排。
 
 export type WatchlistKind = CompanyIndexEntry['kind']
+export type WatchlistSources = Record<Exclude<WatchlistKind, 'common'>, UniverseSource>
 
 export const WATCHLIST_CHANGE = 'watchlist.change'
 export const WATCHLIST_EX_DIVIDEND = 'watchlist.exDividend'
-
-// 表格上的欄位裡，要送去 /screener/values 的型錄欄位（/watchlist 與分享頁共用）。假欄位（watchlist.*）是這裡自己算的；
-// stock.* 與類股（sector.code，2026-10-22）是 業務中台 自己填的，不在型錄裡也要送。
-// 型錄裡已經不存在的欄位（指標改名，業務中台 提醒存的是 JSON、不跟型錄連動）先濾掉：一個未知欄位會讓整個請求 400、
-// 整張表都沒有數字。那一欄照樣顯示，值是空的。
-export function watchlistCatalogFields(columns: { field: string }[], categories: MetricCategory[]): string[] {
-  return columns
-    .map(column => column.field)
-    .filter(field => !field.startsWith('watchlist.'))
-    .filter(field => field.startsWith('stock.') || field === SECTOR_FIELD_ID || !categories.length || !!locateFieldInSchema(categories, field))
-}
 
 export interface WatchlistRow {
   code: string
@@ -84,7 +75,7 @@ function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent 
 }
 
 
-// 不論表格上有哪些欄位都要抓的：股價（收盤日也從這裡來）與前一日收盤（算漲跌）
+// 不論表格上有哪些欄位都要抓的：股價（收盤日也從這裡來）與前一日收盤（算漲跌）。三種類別都有
 const ALWAYS_FIELDS = ['stock.price', 'stock.previousClose']
 // ponytail: /screener/values 一次 200 檔、ex-dividend-notices 一次 100 檔；超過的那幾檔數字是空的。
 // 觀察清單目前的額度遠低於此，真的有人超過再分批。
@@ -93,9 +84,12 @@ const NOTICE_MAX = 100
 
 const synthetic = (value: string | number | null): ScreenerFieldValue => ({ value, knowledgeDate: '', nullReason: null })
 
-// fields：表格上的型錄欄位（固定的與使用者加的）。全部擠在同一次 /screener/values，多一欄不多一個請求。
-export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) {
+// fields：每一類表格上的欄位。普通股的全部擠在同一次 /screener/values，多一欄不多一個請求。
+export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<Record<WatchlistKind, string[]>>, sources: WatchlistSources) {
   const { data: companies } = useCompanyIndex()
+  // 分段看這份目錄：讀到之前分不出 ETF，畫出來會在普通股段，目錄一到就跳到別段
+  const kindsReady = useCompanyNamesReady()
+  const kindOf = (code: string) => companies.value.find(entry => entry.code === code)?.kind
 
   type Quote = Pick<WatchlistRow, 'values' | 'change' | 'changePercent' | 'nextDividendEvent'>
   const quotes = ref<Record<string, Quote>>({})
@@ -105,13 +99,21 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
   watchLoadFailure('watchlist-quotes', () => quotesFailed.value, () => load(), { scope: 'section' })
   let loadedFields = ''
 
+  const codesOfKind = (kind: 'etf' | 'preferred', list: string[]) => list.filter(code => kindOf(code) === kind)
+  async function universeRows(kind: 'etf' | 'preferred', symbols: string[]) {
+    if (!symbols.length) return []
+    const { rows } = await sources[kind].run({ filters: [], columns: fields.value[kind].map(snapshotField), sort: null, page: 1, pageSize: QUOTE_MAX, symbols })
+    return rows
+  }
+
   async function load() {
     // 伺服器端不抓：SSR 不會等這個請求（不是 useAsyncData），抓了也只是白打一次。分享頁的清單在 SSR 就知道，名稱先畫、數字到瀏覽器再補
-    if (import.meta.server) return
+    // 目錄到了才開始：要知道每檔是哪一類才知道問誰，畫面本來也在等它分段（2026-11-07：原本分不出的先全部問 ETF，ETF 讀不到時整批數字都沒了）
+    if (import.meta.server || !kindsReady.value) return
     // 欄位組合變了（加／刪欄）就每一檔都重抓：快取是照「代號」存的，不知道少了哪一欄。但**舊的值留在畫面上**
     // 直到新的回來——原本是先清空，加一欄整張表就全部變「－」約一秒（2026-10-06 截圖時看到的）。
-    const requested = [...new Set([...ALWAYS_FIELDS, ...fields.value])]
-    const fieldsKey = requested.join(',')
+    const requested = [...new Set([...ALWAYS_FIELDS, ...fields.value.common])]
+    const fieldsKey = JSON.stringify([requested, fields.value.etf, fields.value.preferred])
     const fieldsChanged = fieldsKey !== loadedFields
     loadedFields = fieldsKey
     // 欄位沒變就只抓還沒有的：移除、排序、改備註都不該重抓整份
@@ -122,9 +124,19 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
       return
     }
     pending.value = true
-    const [screener, notices] = await Promise.all([
+    const etfCodes = codesOfKind('etf', missing)
+    const preferredCodes = codesOfKind('preferred', missing)
+    const [screener, etfRows, preferredRows, notices] = await Promise.all([
       fetchScreenerValues<UpstreamFieldValue>(missing.slice(0, QUOTE_MAX), requested).catch((error: unknown) => {
         devWarn('watchlist', 'POST /screener/values unavailable', error)
+        return null
+      }),
+      universeRows('etf', etfCodes).catch((error: unknown) => {
+        devWarn('watchlist', 'POST /etf-screener unavailable', error)
+        return null
+      }),
+      universeRows('preferred', preferredCodes).catch((error: unknown) => {
+        devWarn('watchlist', 'GET /stocks/preferred-stocks unavailable', error)
         return null
       }),
       apiFetch<{ notices: Record<string, ExDividendNotice[]> }>('/stocks/ex-dividend-notices', { baseURL: BUSINESS_CACHED_BASE, query: { symbols: missing.slice(0, NOTICE_MAX).join(',') } }).catch((error: unknown) => {
@@ -133,14 +145,16 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
       })
     ])
     pending.value = false
-    quotesFailed.value = screener === null
-    // 失敗的那一批不寫進快取，下一次 load 會再試；等待期間欄位又變了的話這一批也作廢
+    quotesFailed.value = screener === null || etfRows === null || preferredRows === null
+    // 失敗的那一批不寫進快取，下一次 load 會再試；等待期間欄位又變了的話這一批也作廢。ETF 或特別股讀不到時只有那一類等重試，別的類照常顯示
     if (screener === null || fieldsKey !== loadedFields) return
 
     const bySymbol = new Map(screener.results.map(row => [row.symbol, row.values]))
+    const universeValues = new Map([...etfRows ?? [], ...preferredRows ?? []].map(row => [row.symbol, row.values]))
+    const retry = new Set([...(etfRows ? [] : etfCodes), ...(preferredRows ? [] : preferredCodes)])
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
     const next = { ...quotes.value }
-    for (const code of missing) {
+    for (const code of missing.filter(item => !retry.has(item))) {
       const raw = Object.fromEntries(Object.entries(bySymbol.get(code) ?? {}).map(([field, cell]) => [field, joinedCell(cell)]))
       const price = numericValue(raw['stock.price']?.value)
       const previous = numericValue(raw['stock.previousClose']?.value)
@@ -150,6 +164,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
       next[code] = {
         values: {
           ...raw,
+          ...universeValues.get(code),
           [WATCHLIST_CHANGE]: synthetic(changePercent),
           [WATCHLIST_EX_DIVIDEND]: synthetic(nextDividendEvent?.date ?? null)
         },
@@ -161,7 +176,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     quotes.value = next
   }
 
-  watch([codes, fields], load, { immediate: true })
+  watch([codes, fields, kindsReady], load, { immediate: true })
 
   const rows = computed<WatchlistRow[]>(() =>
     codes.value.map(code => {
@@ -184,5 +199,5 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<string[]>) 
     rows.value.map(row => row.values['stock.price']?.knowledgeDate).filter((date): date is string => !!date).sort().at(-1) ?? null
   )
 
-  return { rows, pending, quotesFailed, priceDate }
+  return { rows, pending, quotesFailed, priceDate, kindsReady }
 }

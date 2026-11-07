@@ -3,9 +3,10 @@
 //   - /holdings/columns「新增指標」：搜「ROE」挑近四季 → 存成 =METRIC("roe.TTM")、百分比、2 位；2330 顯示 15.20%、0056（ETF 沒有）是「－」；
 //     焦點在新表頭；再挑一次同一個只提示、不存；對話框 axe 0；手機滿版、沒有橫向捲動、Esc 後焦點回到按鈕
 //   - /watchlist 欄位設定彈窗的「＋ 新增欄位」（2026-10-22 起）：同一個挑選器本體在彈窗裡換一頁（不疊彈窗），挑了回到清單、按「儲存」
-//     才存進觀察清單欄位；額度已滿時說明（含看方案）寫在彈窗裡、不換到挑指標
+//     才存進欄位組合（2026-11-06 起跟篩選共用，分段與額度見 check-watchlist-sections）
 // 持股、觀察清單、欄位設定、方案全是攔截的假資料；寫入一律擋下並記錄（PUT 的內容拿來比對）。
-// 2026-11-01 起 /holdings/columns 先隱藏（導回 /holdings）：這支的持股那幾項會失敗，只看觀察清單那幾項；頁面恢復時一起恢復
+// 2026-11-01 起 /holdings/columns 先隱藏（導回 /holdings）：持股那兩段不跑（HOLDINGS_COLUMNS），頁面恢復時打開。原本照跑，第一段就逾時當掉，
+// 後面的觀察清單從來沒跑到
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-metric-columns.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
 import { chromium } from 'playwright'
@@ -22,21 +23,27 @@ const ROE_LABEL = `${roe.nameSuffix ? `${roe.nameSuffix} ${roe.name}` : roe.name
 
 const puts = []
 const blocked = []
-const mock = async (ctx, { watchlistColumnQuota = 8 } = {}) => {
+const mock = async (ctx) => {
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
-    if (p === '/api/core/billing/entitlement' && m === 'GET') return route.fulfill({ json: { tier: 'FREE', source: 'none', status: null, currentPeriodEnd: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, watchlistColumns: watchlistColumnQuota, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 3 }, usage: {} } })
+    if (p === '/api/core/billing/entitlement' && m === 'GET') return route.fulfill({ json: { tier: 'FREE', source: 'none', status: null, currentPeriodEnd: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 3 }, usage: {} } })
     if (p === '/api/core/portfolios' && m === 'GET') return route.fulfill({ json: { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
     if (p === '/api/core/holdings' && m === 'GET') return route.fulfill({ json: { holdings: [{ symbol: '2330', quantity: 1000, costUnknownQuantity: 0, averageCost: '580.0000', totalCost: '580000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' }, { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '36.5100', totalCost: '73020', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', previousClose: '98' }] } })
     if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: [] } })
     if (p === '/api/core/users/me/holding-columns' && m === 'GET') return route.fulfill({ json: { holdingColumns: { columns: null } } })
-    if (p === '/api/core/users/me/watchlist-columns' && m === 'GET') return route.fulfill({ json: { watchlistColumns: { columns: null } } })
+    if (p === '/api/core/screener/column-presets' && m === 'GET') return route.fulfill({ json: { columnPresets: [] } })
+    if (p === '/api/core/screener/column-presets' && m === 'POST') {
+      const body = JSON.parse(req.postData() ?? '{}')
+      puts.push({ path: p, universe: body.universe, columns: body.columns })
+      return route.fulfill({ json: { columnPreset: { id: 'set-1', name: body.name, isDefault: false, columns: body.columns } } })
+    }
+    if (p.startsWith('/api/core/screener/column-presets/') && m === 'PATCH') return route.fulfill({ json: { columnPreset: { id: 'set-1', name: '觀察清單欄位', isDefault: true, columns: puts.at(-1)?.columns ?? [] } } })
     if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, sourceShareToken: null, createdAt: '2026-10-01T00:00:00Z' }] } })
     if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items: ['2330', '0056'].map(symbol => ({ id: `i-${symbol}`, watchlistId: 'w-1', symbol, note: null, createdAt: 'x', updatedAt: 'y' })) } })
-    if ((p === '/api/core/users/me/holding-columns' || p === '/api/core/users/me/watchlist-columns') && m === 'PUT') {
+    if (p === '/api/core/users/me/holding-columns' && m === 'PUT') {
       const body = JSON.parse(req.postData() ?? '{}')
       puts.push({ path: p, columns: body.columns })
-      return route.fulfill({ json: p.endsWith('holding-columns') ? { holdingColumns: { columns: body.columns } } : { watchlistColumns: { columns: body.columns } } })
+      return route.fulfill({ json: { holdingColumns: { columns: body.columns } } })
     }
     // 公開的讀取 POST：ROE 2330 是 15.2（%）、0056（ETF）沒有；報價一律 100
     if (p === '/api/core/screener/values' && m === 'POST') {
@@ -44,7 +51,7 @@ const mock = async (ctx, { watchlistColumnQuota = 8 } = {}) => {
       const valueOf = (symbol, field) => (field.startsWith('roe.') ? (symbol === '2330' ? '15.2' : null) : field === 'stock.previousClose' ? '98' : '100')
       return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: valueOf(symbol, field), knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
     }
-    if (m === 'GET' || /identitytoolkit|securetoken/.test(url.host + p)) return route.continue()
+    if (m === 'GET' || p === '/api/core/etf-screener' || /identitytoolkit|securetoken/.test(url.host + p)) return route.continue()
     blocked.push(`${m} ${p}`)
     return route.abort()
   })
@@ -78,6 +85,8 @@ const pickRoe = async (page, dialog) => {
   await dialog.locator('.indicator-dialog__item', { hasText: ROE_LABEL }).first().click(); await page.waitForTimeout(1500)
 }
 
+const HOLDINGS_COLUMNS = false
+if (HOLDINGS_COLUMNS) {
 console.log(`自訂欄位「新增指標」（1440；預期欄名「${ROE_LABEL}」）`)
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
@@ -128,36 +137,25 @@ console.log('自訂欄位「新增指標」（375）')
   await ctx.close()
 }
 
+}
+
 console.log('觀察清單「＋ 新增欄位」（1440）')
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx)
   const page = await open(ctx, '/watchlist')
-  await page.getByRole('button', { name: '欄位設定' }).click(); await page.waitForTimeout(500)
+  await page.getByRole('button', { name: '普通股的欄位設定' }).click(); await page.waitForTimeout(500)
   await page.getByRole('button', { name: '＋ 新增欄位' }).click(); await page.waitForTimeout(800)
   const dialog = page.getByRole('dialog', { name: '新增欄位' })
   check(await dialog.isVisible() && await page.locator('.el-dialog:visible').count() === 1, '欄位設定的「＋ 新增欄位」在同一個彈窗換成挑指標（不疊彈窗）')
   await pickRoe(page, dialog)
   const settings = page.getByRole('dialog', { name: '欄位設定' })
   check(await settings.locator('.column-settings__row', { hasText: ROE_LABEL }).count() === 1, '挑了回到清單、多一列')
-  check(!puts.some(put => put.path.endsWith('watchlist-columns')), '還沒按「儲存」就不存')
+  check(!puts.some(put => put.path.endsWith('column-presets')), '還沒按「儲存」就不存')
   await settings.getByRole('button', { name: '儲存' }).click(); await page.waitForTimeout(1500)
-  const saved = puts.filter(put => put.path.endsWith('watchlist-columns')).at(-1)?.columns ?? []
-  check(saved.some(column => column.field === 'roe.TTM' && column.label === ROE_LABEL), `存進觀察清單欄位：roe.TTM「${ROE_LABEL}」（${saved.map(column => column.field).join('、')}）`)
-  await ctx.close()
-}
-
-console.log('觀察清單：額度已滿（5 欄）')
-{
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
-  await mock(ctx, { watchlistColumnQuota: 5 })
-  const page = await open(ctx, '/watchlist')
-  await page.getByRole('button', { name: '欄位設定' }).click(); await page.waitForTimeout(500)
-  await page.getByRole('button', { name: '＋ 新增欄位' }).click(); await page.waitForTimeout(800)
-  const settings = page.getByRole('dialog', { name: '欄位設定' })
-  check(await settings.isVisible() && !(await settings.locator('.indicator-dialog').count())
-    && (await settings.textContent()).includes('觀察清單欄位已達目前方案的上限') && await settings.getByRole('link', { name: /看方案/ }).count() === 1,
-  '先擋：說明（含看方案）寫在彈窗裡、不換到挑指標（不再加上去又被收回）')
+  const saved = puts.filter(put => put.path.endsWith('column-presets')).at(-1)
+  check(saved?.universe === 'common' && saved.columns.some(column => column.field === 'roe.TTM'), `存進普通股的欄位組合：roe.TTM（${saved?.columns.map(column => column.field).join('、')}）`)
+  check(await page.locator('th[role="columnheader"]', { hasText: ROE_LABEL }).count() === 1, `表頭是「${ROE_LABEL}」`)
   await ctx.close()
 }
 

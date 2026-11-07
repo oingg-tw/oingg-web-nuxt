@@ -16,13 +16,15 @@ const props = withDefaults(defineProps<{
   orderLabel: string
   // 欄寬存在瀏覽器裡的鍵（SharedSheetGrid）；分享頁另用一個，不動到自己清單的欄寬
   storageKey?: string
+  // 表格的可及名稱（分段時每張表要分得開）
+  label?: string
   // 拖表頭換欄位順序（emit reorder，呼叫端決定存不存）
   movable?: boolean
   actions?: boolean
   // 資料還沒到（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」「然後不要閃動」）：rows 是呼叫端給的空列（列數照上次），
   // 表頭、卡片上的欄名照畫，名稱與數字是骨架；操作鈕由呼叫端依 slot 的 loading 停用
   loading?: boolean
-}>(), { notes: () => ({}), storageKey: 'watchlist', movable: false, actions: false, loading: false })
+}>(), { notes: () => ({}), storageKey: 'watchlist', label: '觀察清單', movable: false, actions: false, loading: false })
 const emit = defineEmits<{ reorder: [fields: string[]], removeColumn: [field: string] }>()
 defineSlots<{
   toolbar?: () => unknown
@@ -49,10 +51,11 @@ const exDividendText = (row: WatchlistRow) => {
   const label = event.kind === 'stock' ? '配股發放' : event.kind === 'pay' ? '發放' : EX_TYPE_LABELS[event.exType] ?? event.exType
   return `${date} ${label}${event.amount !== null ? ` ${Number(event.amount.toFixed(4))} 元` : ''}`
 }
-// 卡片用：同一套格式化（型錄欄位走 formatScreenerValue，跟表格一致）
-function cellText(row: WatchlistRow, field: string): string {
+// 表格與卡片同一套格式化：ETF、特別股的欄位帶自己的 format（來源同篩選），普通股走 formatScreenerValue
+function cellText(row: WatchlistRow, { field, format }: ScreenerResultTableColumn): string {
   if (field === WATCHLIST_CHANGE) return changeText(row)
   if (field === WATCHLIST_EX_DIVIDEND) return exDividendText(row)
+  if (format) return format(row.values[field]?.value)
   const located = locateFieldInSchema(schema.value.categories, field)
   return formatScreenerValue(row.values[field]?.value, located?.field.unit, field, located?.metric.options)
 }
@@ -61,24 +64,29 @@ function cellText(row: WatchlistRow, field: string): string {
 // 貼進 Excel 是真的數字）。漲跌一格裡有金額與漲跌幅兩個數，複製照畫面上的字。操作欄不複製。
 const rawNumber = (row: WatchlistRow, field: string) => numericValue(row.values[field]?.value)
 const sheetColumns = computed<SheetColumn<WatchlistRow>[]>(() => [
-  { key: 'code', label: '代號', frozen: true, text: row => row.code, sortValue: row => row.code },
+  // 這三欄的 widthSample：骨架沒有內容，欄寬只看欄名，資料到了才撐開會讓後面整排左右移；每一段的固定欄也才對得齊
+  { key: 'code', label: '代號', frozen: true, text: row => row.code, widthSample: '00631L', sortValue: row => row.code },
   { key: 'name', label: '名稱', frozen: true, rowHeader: true, width: 190, text: row => row.name, sortValue: row => row.name },
   ...props.columns.map((column): SheetColumn<WatchlistRow> => {
-    // 表頭的欄位選單（2026-10-22）：自己的清單（movable）每一欄都能從選單移除；分享頁只能排序
-    const removable = props.movable
+    // 收盤價、漲跌、除息／發放是固定欄（2026-11-06）：排在最前面、不能移動或移除，後面才是選的欄位組合。不凍結：左邊只凍結代號與名稱，
+    // 五欄都凍結的話 1440 寬只剩 440px 捲動，移除鈕要捲很遠
+    const pinned = WATCHLIST_FIXED_COLUMNS.some(fixed => fixed.field === column.field)
+    // 表頭的欄位選單（2026-10-22）：自己的清單（movable）從選單移除；分享頁只能排序
+    const removable = props.movable && !pinned
     // 複製給漲跌幅的比例（Excel 是真的數字、格式 0.00%）：畫面上那串「+85.00 (+2.04%)」開頭是正負號，貼進 Excel 會被當成公式
-    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, removable, numeric: true, text: changeText, widthSample: '-00.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
-    if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, removable, text: exDividendText, sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
+    if (column.field === WATCHLIST_CHANGE) return { key: column.field, label: column.label, pinned, removable, numeric: true, text: changeText, widthSample: '-000.00 (-0.00%)', value: row => (row.changePercent === null ? null : row.changePercent / 100), excelFormat: '0.00%', sortValue: row => row.changePercent }
+    if (column.field === WATCHLIST_EX_DIVIDEND) return { key: column.field, label: column.label, pinned, removable, text: exDividendText, widthSample: '00/00 除息 0.0000 元', sortValue: row => row.nextDividendEvent?.date ?? null, sortFirst: 'ascending' }
     const located = locateFieldInSchema(schema.value.categories, column.field)
     const unit = located?.field.unit
     const percent = unit === '%'
     return {
       key: column.field,
       label: column.label,
+      pinned,
       removable,
       description: located?.field.description || located?.metric.description || undefined,
       numeric: props.rows.some(row => rawNumber(row, column.field) !== null),
-      text: row => formatScreenerValue(row.values[column.field]?.value, unit, column.field, located?.metric.options),
+      text: row => cellText(row, column),
       value: (row) => {
         const value = rawNumber(row, column.field)
         return value === null ? null : percent ? value / 100 : value
@@ -136,7 +144,7 @@ const sortedCards = computed(() => {
       :rows="rows"
       :columns="sheetColumns"
       :row-key="row => row.code"
-      label="觀察清單"
+      :label="label"
       :storage-key="storageKey"
       enter-action="activate"
       :movable="movable"
@@ -149,7 +157,10 @@ const sortedCards = computed(() => {
         <div v-if="column.key === '__actions'" class="watchlist-row-actions">
           <slot name="actions" :row="row" view="table" :loading="loading" />
         </div>
-        <span v-else-if="loading" class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" />
+        <template v-else-if="loading">
+          <span class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" />
+          <p v-if="column.key === 'name' && notes[row.code]" class="watchlist-note" aria-hidden="true"><span class="app-skeleton app-skeleton--flow">{{ notes[row.code] }}</span></p>
+        </template>
         <template v-else-if="column.key === 'name'">
           <div class="watchlist-name">
             <NuxtLink :to="linkOf(row)" :title="row.name" class="stock-name-link">{{ row.name }}</NuxtLink>
@@ -173,12 +184,15 @@ const sortedCards = computed(() => {
         <span class="watchlist-name__code">{{ row.code }}</span>
         <el-tag v-if="KIND_TAG[row.kind]" size="small" effect="plain">{{ KIND_TAG[row.kind] }}</el-tag>
       </div>
-      <p v-if="notes[row.code]" class="watchlist-note">{{ notes[row.code] }}</p>
+      <p v-if="notes[row.code]" class="watchlist-note">
+        <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ notes[row.code] }}</span>
+        <template v-else>{{ notes[row.code] }}</template>
+      </p>
       <dl class="holdings-card__rows">
         <div v-for="column in columns" :key="column.field" class="holdings-card__row">
           <dt>{{ column.label }}</dt>
           <dd v-if="loading"><span class="app-skeleton app-skeleton--inline watchlist-skeleton" aria-hidden="true" /></dd>
-          <dd v-else :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column.field) }}</dd>
+          <dd v-else :class="column.field === WATCHLIST_CHANGE ? priceDirectionClass(row.change) : undefined">{{ cellText(row, column) }}</dd>
         </div>
       </dl>
       <div v-if="actions" class="watchlist-card__foot">
@@ -248,7 +262,9 @@ const sortedCards = computed(() => {
   display: none;
 }
 
+/* 卡片版面排在工具列最後：先選欄位，再選排序 */
 .watchlist-card-sort {
+  order: 1;
   flex-wrap: wrap;
   gap: 8px 12px;
 }

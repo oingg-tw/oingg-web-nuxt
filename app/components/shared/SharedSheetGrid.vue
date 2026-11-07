@@ -16,6 +16,8 @@ export interface SheetColumn<Row> {
   sortFirst?: 'ascending' | 'descending'
   // 凍結在左邊（只看最前面連續的幾欄）
   frozen?: boolean
+  // 排在凍結欄後面、不能移動，但跟著捲動（觀察清單的固定欄；只看緊接在凍結欄後面連續的幾欄）
+  pinned?: boolean
   // 這一列的名稱：螢幕報讀念每一格時會帶上它
   rowHeader?: boolean
   // false：不複製這一欄（操作按鈕）
@@ -556,15 +558,20 @@ const menu = reactive<{ open: boolean, key: string | null }>({ open: false, key:
 const menuIndex = computed(() => props.columns.findIndex(column => column.key === menu.key))
 const menuColumn = computed(() => props.columns[menuIndex.value] ?? null)
 const menuAnchor = computed(() => (menuIndex.value >= 0 ? headerCells.value[menuIndex.value] ?? null : null))
-// 能移動的範圍：凍結欄之後、不複製的那幾欄（操作欄）之外
+// 能移動的範圍：凍結欄與固定欄之後、不複製的那幾欄（操作欄）之外
+const lockedCount = computed(() => {
+  let count = frozenCount.value
+  while (count < props.columns.length && props.columns[count]!.pinned) count++
+  return count
+})
 const movableRange = computed(() => {
-  const indexes = props.columns.flatMap((column, index) => (index >= frozenCount.value && column.copyable !== false ? [index] : []))
+  const indexes = props.columns.flatMap((column, index) => (index >= lockedCount.value && column.copyable !== false ? [index] : []))
   return { first: indexes[0] ?? -1, last: indexes.at(-1) ?? -1 }
 })
 const menuSort = computed(() => (menuColumn.value?.sortValue ? (sort.value?.key === menu.key ? sort.value.order : null) : undefined))
 const menuMoves = computed(() => {
   const index = menuIndex.value
-  if (!props.movable || index < frozenCount.value || menuColumn.value?.copyable === false) return undefined
+  if (!props.movable || index < lockedCount.value || menuColumn.value?.copyable === false) return undefined
   return { left: index > movableRange.value.first, right: index < movableRange.value.last }
 })
 function openMenu(column: SheetColumn<R>) {
@@ -635,16 +642,16 @@ function onCopy(event: ClipboardEvent) {
 
 // ---- 拖表頭換欄（凍結欄不動）：useColumnDrag，跟 SharedMetricTable 同一份 ----
 const headerCells = ref<HTMLElement[]>([])
-const movableColumns = computed(() => (props.movable ? props.columns.slice(frozenCount.value).map(column => ({ field: column.key })) : []))
+const movableColumns = computed(() => (props.movable ? props.columns.slice(lockedCount.value).map(column => ({ field: column.key })) : []))
 const { headerClassFor } = useColumnDrag({
-  headerCells: () => headerCells.value.slice(frozenCount.value),
+  headerCells: () => headerCells.value.slice(lockedCount.value),
   columns: movableColumns,
   readonly: () => !props.movable,
   headerClass: 'sheet__draggable',
   canDrag: () => !resizeHandlePressed,
-  onReorder: updated => emit('reorder', [...props.columns.slice(0, frozenCount.value).map(column => column.key), ...updated.map(item => item.field)])
+  onReorder: updated => emit('reorder', [...props.columns.slice(0, lockedCount.value).map(column => column.key), ...updated.map(item => item.field)])
 })
-const dragClass = (c: number) => (props.movable && c >= frozenCount.value ? headerClassFor(movableColumns.value[c - frozenCount.value]!, c - frozenCount.value) : '')
+const dragClass = (c: number) => (props.movable && c >= lockedCount.value ? headerClassFor(movableColumns.value[c - lockedCount.value]!, c - lockedCount.value) : '')
 
 // ---- 每一格的樣式：框選、作用中、複製虛線、凍結、參照外框 ----
 function cellClasses(r: number, c: number, column: SheetColumn<R>) {

@@ -38,11 +38,6 @@ export type AddWatchlistResult =
   // duplicate：後端已經有了，本地照樣顯示；unknown：代號不存在，要把本地那一筆收回去
   | { ok: false; reason: 'duplicate' | 'unknown' | 'quota' | 'offline' }
 
-export interface WatchlistColumn {
-  field: string
-  label: string
-}
-
 // 同步失敗不彈錯誤訊息（跟主題偏好同一個理由）：本地已經改好了，失敗只代表這一次沒存到帳號，下一次成功的同步會蓋回去。
 // 加入／刪除的**語意性**失敗（重複、代號不存在、超過配額）另外由回傳值表達，那些要讓使用者知道。
 export function useUserWatchlist() {
@@ -72,7 +67,7 @@ export function useUserWatchlist() {
       const status = businessErrorStatus(error)
       if (status === 409) return { ok: false, reason: 'duplicate' }
       if (status === 404) return { ok: false, reason: 'unknown' }
-      // 看 code 不看狀態碼（同 holding-columns、watchlist-columns）：403 不一定是額度
+      // 看 code 不看狀態碼（同 holding-columns）：403 不一定是額度
       if (businessErrorCode(error) === 'quota_exceeded') return { ok: false, reason: 'quota' }
       devWarn('user-watchlist', 'POST /watchlist failed', error)
       return { ok: false, reason: 'offline' }
@@ -180,34 +175,5 @@ export function useUserWatchlist() {
     }
   }
 
-  // GET／PUT /users/me/watchlist-columns（業務中台 9a2eeff，2026-10-06）。存的是整張表的欄位、照顯示順序，
-  // 包含預設那 5 欄——所以免費方案的上限是 8（5＋3）。field 會對型錄驗證；兩個假欄位 watchlist.change／
-  // watchlist.exDividend 是 業務中台 特別放行的字面值。
-  // 回傳 null ＝ 從沒存過（用預設欄位）；undefined ＝ 這次沒問到（不要覆蓋本地狀態）。
-  async function fetchColumns(): Promise<WatchlistColumn[] | null | undefined> {
-    if (!currentUser.value) return undefined
-    try {
-      const response = await authedFetch<{ watchlistColumns: { columns: WatchlistColumn[] | null } }>('/users/me/watchlist-columns')
-      return response.watchlistColumns?.columns ?? null
-    } catch (error) {
-      devWarn('user-watchlist', 'GET /users/me/watchlist-columns failed', error)
-      return undefined
-    }
-  }
-
-  // 整份覆蓋。quota：403 quota_exceeded（只在清單變長時才會擋，降級的人仍可以重排或刪）。
-  async function saveColumns(columns: WatchlistColumn[]): Promise<'ok' | 'quota' | 'failed'> {
-    if (!currentUser.value) return 'failed'
-    try {
-      await authedFetch('/users/me/watchlist-columns', { method: 'PUT', body: { columns } })
-      return 'ok'
-    } catch (error) {
-      // 看 code 不看狀態碼，同持股頁的 holding-columns
-      if (businessErrorCode(error) === 'quota_exceeded') return 'quota'
-      devWarn('user-watchlist', 'PUT /users/me/watchlist-columns failed', error)
-      return 'failed'
-    }
-  }
-
-  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchColumns, saveColumns, fetchWatchlists, saveWatchlistName, createWatchlistWithItems, deleteWatchlist, reorderWatchlists }
+  return { fetchWatchlist, addToWatchlist, removeFromWatchlist, updateNote, fetchWatchlists, saveWatchlistName, createWatchlistWithItems, deleteWatchlist, reorderWatchlists }
 }

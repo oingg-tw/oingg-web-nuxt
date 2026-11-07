@@ -67,6 +67,8 @@ export interface UniverseQuery {
   sort: { field: string; order: 'asc' | 'desc' } | null
   page: number
   pageSize: number
+  // 只要這幾檔（觀察清單的 ETF、特別股段）；不給是整個母體
+  symbols?: string[]
 }
 
 export interface UniverseResult {

@@ -2,6 +2,7 @@
 import type { ShareColumn } from '~/composables/share/useShares'
 import type { PublicHolding } from '~/components/holdings/HoldingsSharedView.vue'
 import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
+import type { WatchlistKind } from '~/composables/watchlist/useWatchlistStocks'
 
 // 分享出去的觀察清單或持股（2026-10-19，SharedShareButton 建的連結）：有連結就能看、免登入，內容即時——每次打開都讀
 // 業務中台 的公開 API（GET /public/shares/{token}），只回分享時勾的欄位推得出來的東西；擁有者是誰不顯示。不給搜尋引擎收錄、
@@ -37,12 +38,24 @@ const watchlist = computed(() => (share.value.kind === 'watchlist' ? share.value
 const holdings = computed(() => (share.value.kind === 'holdings' ? share.value : null))
 
 // ---- 觀察清單 ----
-// 分享時存的欄位也換成留下來的那一支（replaced-metrics.ts，例如殖利率 2026-10-24 改讀自算），同觀察清單
-const columns = computed(() => (watchlist.value?.columns ?? []).filter(column => column.key !== 'note').map(column => ({ field: replacedField(column.key), label: column.label })))
+// 分享時存的欄位也換成留下來的那一支（replaced-metrics.ts，例如殖利率 2026-10-24 改讀自算），同觀察清單。分段同 /watchlist：
+// 固定欄每一段都有，其餘的欄位看 id 是哪一類的（useWatchlistColumnCatalog），表頭照型錄
+const { sources, columnOf, belongsTo } = useWatchlistColumnCatalog()
+const sharedColumns = computed(() => (watchlist.value?.columns ?? []).filter(column => column.key !== 'note').map(column => ({ field: replacedField(column.key), label: column.label })))
+const fixedColumns = computed(() => sharedColumns.value.filter(({ field }) => WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)))
+const columnsOfKind = (kind: WatchlistKind) => sharedColumns.value.flatMap(({ field }) => (belongsTo(kind, field) ? [columnOf(kind, field)] : []))
 const notes = computed(() => Object.fromEntries((watchlist.value?.items ?? []).flatMap(item => (item.note ? [[item.symbol, item.note]] : []))))
 const codes = computed(() => (watchlist.value?.items ?? []).map(item => item.symbol))
-const { data: schema } = await useFilterSchema()
-const { rows, priceDate } = useWatchlistStocks(codes, computed(() => watchlistCatalogFields(columns.value, schema.value.categories)))
+await useFilterSchema()
+const { rows, priceDate } = useWatchlistStocks(codes, computed(() => ({
+  common: columnsOfKind('common').map(column => column.field),
+  etf: columnsOfKind('etf').map(column => column.field),
+  preferred: columnsOfKind('preferred').map(column => column.field)
+})), sources)
+const sections = computed(() => WATCHLIST_KINDS.flatMap((kind) => {
+  const sectionRows = rows.value.filter(row => row.kind === kind)
+  return sectionRows.length ? [{ kind, label: WATCHLIST_KIND_LABELS[kind], rows: sectionRows, columns: [...fixedColumns.value, ...columnsOfKind(kind)] }] : []
+}))
 
 // ---- 標題列：檔數與收盤日 ----
 const count = computed(() => (holdings.value ? holdings.value.holdings.length : codes.value.length))
@@ -124,13 +137,31 @@ onMounted(() => {
       <h2 v-if="holdings.traits" class="share-page__section-title">持有哪幾檔？</h2>
       <HoldingsSharedView :columns="holdings.columns" :holdings="holdings.holdings" />
     </template>
-    <WatchlistTable v-else :rows="rows" :columns="columns" :notes="notes" order-label="清單順序" storage-key="watchlist-share" />
+    <div v-else class="share-page__sections">
+      <section v-for="section in sections" :key="section.kind" :aria-label="section.label">
+        <h2 v-if="sections.length > 1" class="share-page__section-title">{{ section.label }}</h2>
+        <WatchlistTable
+          :rows="section.rows"
+          :columns="section.columns"
+          :label="sections.length > 1 ? `${section.label}的觀察清單` : '觀察清單'"
+          :notes="notes"
+          order-label="清單順序"
+          :storage-key="`watchlist-share-${section.kind}`"
+        />
+      </section>
+    </div>
 
     <p v-if="count" class="share-page__hint">只想追蹤其中幾檔？點名稱進個股頁，按星號加入。</p>
   </div>
 </template>
 
 <style scoped>
+.share-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
 /* 頁首：同持股管理的頁首（標題在左、動作在右，放不下就換行） */
 .share-page__header {
   display: flex;

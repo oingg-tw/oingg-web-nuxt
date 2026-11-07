@@ -6,7 +6,7 @@
 //
 // null ＝ 還沒問到或未登入；quotas 裡的 null ＝ 不限。
 
-export type QuotaResource = 'watchlistItems' | 'watchlists' | 'watchlistColumns' | 'portfolios' | 'customHoldingColumns' | 'screenerPresets' | 'columnPresets'
+export type QuotaResource = 'watchlistItems' | 'watchlists' | 'portfolios' | 'customHoldingColumns' | 'screenerPresets' | 'columnPresets'
 
 // 每一種額度的名稱與單位：個人資料頁的用量表、方案對照表（SharedPlanCompare）、額度彈窗（AppQuotaDialog）共用。
 // 觀察清單組數與持股帳戶 2026-10-24 補上（業務中台 的 plans／entitlement／usage 早就有這兩項，這裡漏了）。
@@ -14,7 +14,6 @@ export type QuotaResource = 'watchlistItems' | 'watchlists' | 'watchlistColumns'
 export const QUOTA_ROWS: readonly { resource: QuotaResource; label: string; unit: string }[] = [
   { resource: 'watchlistItems', label: '觀察清單', unit: '檔' },
   { resource: 'watchlists', label: '觀察清單組數', unit: '組' },
-  { resource: 'watchlistColumns', label: '觀察清單欄位', unit: '欄' },
   { resource: 'portfolios', label: '持股帳戶', unit: '個' },
   { resource: 'customHoldingColumns', label: '持股欄位', unit: '欄' },
   { resource: 'screenerPresets', label: '我的篩選（普通股、特別股、ETF 合計）', unit: '個' },
