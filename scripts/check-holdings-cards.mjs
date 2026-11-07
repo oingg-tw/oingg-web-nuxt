@@ -19,7 +19,11 @@ const tx = (id, symbol, action, quantity, price, tradeDate, note = null) => ({ i
 // 2330 的紀錄夠多，展開後比 700px 的畫面高——收合時卡片頂已經捲出畫面
 const transactions = {
   2330: [tx('t1', '2330', 'SELL', 500, '1050', '2026-06-20'), ...Array.from({ length: 8 }, (_, i) => tx(`b${i}`, '2330', 'BUY', 100, String(500 + i * 10), `2024-0${i + 1}-12`, i === 0 ? '第一次買' : null))],
-  '0056': [tx('t4', '0056', 'BUY', 2000, '36.5', '2023-11-02')]
+  '0056': [
+    { ...tx('s1', '0056', 'REDUCE', 1000, '0', '2025-06-18'), source: 'split-event', splitEvent: { heldBefore: 1000, heldAfter: 2000, oldShares: 1, newShares: 2, kind: 'etf_split' } },
+    { ...tx('s2', '0056', 'REDUCE', 200, '0', '2024-06-18'), source: 'split-event', splitEvent: { heldBefore: 800, heldAfter: 1000, oldShares: 4, newShares: 5, kind: 'par_value_change' } },
+    tx('t4', '0056', 'BUY', 800, '36.5', '2023-11-02')
+  ]
 }
 const blocked = []
 const mock = async (ctx) => {
@@ -93,6 +97,14 @@ const before = await card.evaluate(el => Math.round(el.getBoundingClientRect().t
 await toggle.click(); await page.waitForTimeout(600)
 const after = await card.evaluate(el => ({ top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom, header: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-header-height')) }))
 check(before < 0 && after.top >= after.header && after.bottom <= 700, `捲到底才收合（卡片頂在 ${before}）：卡片捲回頁首下面（${Math.round(after.top)}～${Math.round(after.bottom)}）`)
+
+// 分割自動入帳的列（業務中台 source "split-event"）：寫出是哪一種、前後股數，不能改也不能刪
+const splitCard = page.locator('.symbol-table__card', { hasText: '0056' })
+await splitCard.locator('.symbol-table__toggle').click(); await page.waitForTimeout(1500)
+const ledgerRows = await splitCard.locator('.ledger__item').allInnerTexts()
+check(ledgerRows.some(text => text.includes('分割（自動）') && text.includes('1,000 → 2,000 股')), '分割列寫出類型與前後股數')
+check(ledgerRows.some(text => text.includes('面額變更（自動）') && text.includes('800 → 1,000 股')), '面額變更列寫出類型與前後股數')
+check(await splitCard.locator('.ledger__item', { hasText: '（自動）' }).getByRole('button').count() === 0, '自動入帳的列沒有編輯、刪除')
 
 console.log('已實現損益 375')
 await open('/holdings/realized')

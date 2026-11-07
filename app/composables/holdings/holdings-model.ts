@@ -60,6 +60,8 @@ export interface Transaction {
   // 減資列才有：減資前後股數、退還股款（元，4 位小數；彌補虧損是 0，金額不明的混合式是 null）、每仟股換發股數、
   // 種類（cash_refund／loss_offset／mixed／other，開放的列舉）。note 另有一句中文說明
   capitalReduction?: { heldBefore: number; heldAfter: number; refund: number | null; newSharesPerThousand: number; kind: string } | null
+  // source "split-event"：分割與面額變更自動入帳的列（2026-11-07 使用者決定），一樣是 REDUCE 的虛擬列。kind 是開放列舉
+  splitEvent?: { heldBefore: number; heldAfter: number; oldShares: number; newShares: number; kind: string } | null
 }
 
 export interface TransactionInput {
