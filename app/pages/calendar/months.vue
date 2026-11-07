@@ -61,9 +61,9 @@ const days = computed(() => groupByDay(rows.value))
 // 在這個月找代號或名稱（2026-11-02，手機方案 A＋B 的搜尋）：7 月 805 檔，原本要一天一天打開才找得到某一檔。符合的日子全部展開；
 // 答句與最多的那一天照舊用整個月算
 const query = ref('')
-const needle = computed(() => query.value.trim().toLowerCase())
+const needle = computed(() => searchKey(query.value))
 const shownDays = computed(() => (needle.value
-  ? groupByDay(rows.value.filter(row => row.symbol.toLowerCase().includes(needle.value) || row.name.toLowerCase().includes(needle.value)))
+  ? groupByDay(rows.value.filter(row => searchKey(row.symbol).includes(needle.value) || searchKey(row.name).includes(needle.value)))
   : days.value))
 const searchResult = computed(() => {
   if (!needle.value) return ''

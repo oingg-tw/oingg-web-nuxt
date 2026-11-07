@@ -32,18 +32,7 @@ export function useStockSearch() {
 
   const keyword = ref('')
 
-  function searchUniverse(query: string): CompanyIndexEntry[] {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return []
-    // Real bug caught live while verifying preferred-stock search ("1101B" typed as "1101b"
-    // returned nothing) — every common-stock code is pure digits, so this case-sensitivity gap
-    // was invisible until preferred-stock codes (which end in a letter, e.g. "1101B") joined the
-    // index. `needle` is already lowercased above; `company.code` wasn't, so a mixed-case code
-    // could only ever match an exact-case query.
-    return companies.value
-      .filter(company => company.code.toLowerCase().startsWith(needle) || company.name.toLowerCase().includes(needle))
-      .sort((a, b) => a.code.localeCompare(b.code))
-  }
+  const searchUniverse = (query: string): CompanyIndexEntry[] => searchStocks(companies.value, query)
 
   function fetchSuggestions(query: string, callback: (results: StockSuggestion[]) => void) {
     const matches = searchUniverse(query)
