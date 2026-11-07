@@ -18,7 +18,7 @@ export function useHoldings() {
   const loadFailed = useState('holdings-load-failed', () => false)
   const loadedFor = useState<string | null>('holdings-loaded-for', () => null)
   const { market, quotesFailed, etfWindow, marketYield, applyHoldingMarket, loadQuotes, loadMarketYield } = useHoldingsMarket()
-  const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache } = useHoldingsReports()
+  const { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache, ledgerVersion } = useHoldingsReports()
   // 帳戶（2026-10-19）：讀取帶 scopeQuery（全部帳戶就不帶），loadedFor 記的是「誰＋哪個帳戶」，寫入一定帶 portfolioId
   const { portfolios, selected, scopeQuery, holdingsScope, writeTarget, ensurePortfolio } = useHoldingsPortfolios()
 
@@ -90,8 +90,14 @@ export function useHoldings() {
   }
 
   // 寫入之後的唯一真相來源是伺服器重算的結果：重新抓持股，以及（有打開的話）那一檔的紀錄。
+  // 帳本改了：持股重讀，舊報表作廢，開著的報表頁跟著重讀（ledgerVersion）。每一條寫入都走這裡
+  async function reloadAfterWrite() {
+    ledgerVersion.value++
+    await load()
+  }
+
   async function refreshAfterWrite(symbol: string) {
-    await Promise.all([load(), symbol in transactions.value ? loadTransactions(symbol) : null])
+    await Promise.all([reloadAfterWrite(), symbol in transactions.value ? loadTransactions(symbol) : null])
   }
 
   // 新增與編輯**不做樂觀更新**：對話框本來就有等待狀態，而股數與均價只有伺服器算得出來。
@@ -228,7 +234,7 @@ export function useHoldings() {
         }
       })
       if (!dryRun) {
-        await Promise.all([load(), reloadLoadedTransactions()])
+        await Promise.all([reloadAfterWrite(), reloadLoadedTransactions()])
         if (result.importId) announceImport(result.importId, result.inserted)
       }
       return { kind: 'ok', result }
@@ -251,7 +257,7 @@ export function useHoldings() {
           ? '無法撤銷：撤銷會讓之後手動記的賣出超過持有股數，所以一筆都沒有刪除。請先刪掉那幾筆手動交易。'
           : '撤銷失敗，這次匯入的交易仍保留')
       }
-      await Promise.all([load(), reloadLoadedTransactions()])
+      await Promise.all([reloadAfterWrite(), reloadLoadedTransactions()])
     }, () => {})
   }
 
@@ -278,7 +284,7 @@ export function useHoldings() {
       pendingDeletes.delete(CLEAR_ALL_KEY)
       if (undone) return
       const failure = await sendClearAll(portfolioId)
-      await load()
+      await reloadAfterWrite()
       if (failure) showErrorMessage(failure)
     })
     pendingDeletes.set(CLEAR_ALL_KEY, () => instance.close())
@@ -327,7 +333,7 @@ export function useHoldings() {
   })
 
   return {
-    holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield,
-    load, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchDividends, fetchTraits, fetchPerformance, fetchRisk, fetchColumns, saveColumns
+    holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield, ledgerVersion,
+    load, reloadAfterWrite, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchDividends, fetchTraits, fetchPerformance, fetchRisk, fetchColumns, saveColumns
   }
 }

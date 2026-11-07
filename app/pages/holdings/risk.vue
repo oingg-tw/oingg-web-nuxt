@@ -20,7 +20,7 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { fetchRisk, fetchPerformance } = useHoldings()
+const { fetchRisk, fetchPerformance, ledgerVersion } = useHoldings()
 
 // 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
 const range = useHoldingsRange()
@@ -204,7 +204,7 @@ watch([report, partialHoldings], ([value]) => {
   rememberPartial(partialHoldings.value.length ? `${PARTIAL_NOTE}${partialCoverageText(partialHoldings.value)}` : '')
 })
 
-watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
+watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadRisk()
   else {

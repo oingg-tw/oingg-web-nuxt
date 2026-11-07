@@ -10,7 +10,7 @@ import type { HoldingDividendEvent, HoldingDividendsResult } from '~/composables
 useSeoMeta({ title: '配息日程', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { fetchDividends } = useHoldings()
+const { fetchDividends, ledgerVersion } = useHoldings()
 const { routeFor } = useStockSearch()
 
 const result = ref<HoldingDividendsResult | null>(null)
@@ -29,7 +29,7 @@ async function load() {
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
-watch([authResolved, holdingsScope], ([resolved, uid]) => {
+watch([authResolved, holdingsScope, ledgerVersion], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) load()
   else result.value = null

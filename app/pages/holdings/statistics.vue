@@ -10,7 +10,7 @@ import type { PerformanceOutcome } from '~/composables/holdings/holdings-model'
 useSeoMeta({ title: '績效統計', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { fetchPerformance } = useHoldings()
+const { fetchPerformance, ledgerVersion } = useHoldings()
 
 const range = useHoldingsRange()
 // 進到這一頁時期間湊不到 120 個交易日（別頁選了近三個月、上半年的今年以來）就換成近一年（2026-10-23，使用者：「如果績效統計數字
@@ -34,7 +34,7 @@ async function loadPerformance() {
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
-watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
+watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadPerformance()
   else performance.value = null

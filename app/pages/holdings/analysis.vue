@@ -14,7 +14,7 @@ import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 useSeoMeta({ title: '持股分析', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchTraits } = useHoldings()
+const { holdings, pending, loadFailed, market, load, ensureLoaded, clear, fetchTraits, ledgerVersion } = useHoldings()
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog，2026-10-08），畫面上不再各自出訊息
 watchLoadFailure('holdings', () => loadFailed.value, load)
 
@@ -83,7 +83,7 @@ watch([sectorTableRows, firstPaintPending], ([rows, waiting]) => {
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
-watch([authResolved, holdingsScope], ([resolved, uid]) => {
+watch([authResolved, holdingsScope, ledgerVersion], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) {
     ensureLoaded()

@@ -12,7 +12,7 @@ import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolT
 useSeoMeta({ title: '已實現損益', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { fetchRealized, fetchPerformance, transactions, loadTransactions, market, quotesFailed, loadQuotes } = useHoldings()
+const { ledgerVersion, fetchRealized, fetchPerformance, transactions, loadTransactions, market, quotesFailed, loadQuotes } = useHoldings()
 const { routeFor } = useStockSearch()
 
 const range = useHoldingsRange()
@@ -41,7 +41,7 @@ async function loadRealized() {
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
-watch([authResolved, holdingsScope, range], ([resolved, uid]) => {
+watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadRealized()
   else {

@@ -6,6 +6,13 @@
 useSeoMeta({ title: '帳戶管理', robots: 'noindex, nofollow' })
 
 const { portfolios, createPortfolio, renamePortfolio, hidePortfolio, deletePortfolio, reorderPortfolios } = useHoldingsPortfolios()
+const { reloadAfterWrite } = useHoldings()
+// 帳戶連同交易一起刪了，帳本變了：看全部帳戶時 holdingsScope 不變，各頁不會自己重讀，持股與報表會停在舊數字（2026-11-07）
+async function removeAccount(id: string) {
+  const removed = await deletePortfolio(id)
+  if (removed) await reloadAfterWrite()
+  return removed
+}
 // 讀的時候畫上次那麼多列骨架（2026-10-20，useLayoutHint，帳戶數由側欄 HoldingsNav 記）；0＝上次一個帳戶都沒有，直接是那句說明
 const accountCountHint = useLayoutHint('holdings-accounts', 1)
 </script>
@@ -31,7 +38,7 @@ const accountCountHint = useLayoutHint('holdings-accounts', 1)
         :create="createPortfolio"
         :rename="renamePortfolio"
         :hide="hidePortfolio"
-        :remove="deletePortfolio"
+        :remove="removeAccount"
         :reorder="reorderPortfolios"
       />
     </template>

@@ -13,10 +13,17 @@ export function useHoldingsReports() {
   const { scopeQuery, selected } = useHoldingsPortfolios()
   const scoped = (key: string) => `${selected.value?.id ?? 'all'}|${key}`
 
+  // 帳本的版本（2026-11-07，使用者：「更新交易的時候連動數字也要重算 我想確保這件事情不出錯」）：寫入成功才加（useHoldings 的 reloadAfterWrite），
+  // 開著的報表頁看它重讀。例：刪一檔持股的 10 秒內換頁，換頁才送出 DELETE，同時報表頁已經開始讀，讀到的是刪除前的帳本。
+  // 還在路上的那一份也不算數：原本會寫回剛清空的快取，舊數字一直留著，直到下一次寫入
+  const ledgerVersion = useState('holdings-ledger-version', () => 0)
+
   async function cachedPeriod<T extends { ok?: boolean } | object | null>(key: string, fetcher: () => Promise<T>, keep: (value: T) => boolean): Promise<T> {
     const scopedKey = scoped(key)
     if (scopedKey in periodCache.value) return periodCache.value[scopedKey] as T
+    const version = ledgerVersion.value
     const value = await fetcher()
+    if (version !== ledgerVersion.value) return cachedPeriod(key, fetcher, keep)
     if (keep(value)) periodCache.value = { ...periodCache.value, [scopedKey]: value }
     return value
   }
@@ -90,7 +97,7 @@ export function useHoldingsReports() {
   // 大盤沒有資料時是 null。怎麼寫、怎麼貼標籤在 utils/holdings-traits.ts。
   const fetchTraits = () => scopedReport<HoldingsTraitsResult>('traits')
 
-  return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache }
+  return { fetchPerformance, fetchRisk, fetchRealized, fetchDividends, fetchTraits, clearPeriodCache, ledgerVersion }
 }
 
 // 持股各頁共用的期間（2026-10-07 交易績效拆成「報酬與大盤／已實現損益／績效統計」三頁之後）：切頁時期間不重設。
