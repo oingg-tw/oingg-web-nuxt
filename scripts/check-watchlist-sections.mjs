@@ -3,7 +3,9 @@
 //   - 只有一種類別時沒有分段標題；ETF 只問清單上的 ETF，一次 200 檔；不再碰 /users/me/watchlist-columns
 //   - 顯示欄位：選一組＝那一類的 isDefault，選基本欄位＝清掉；欄位設定：有組合就改那一組，基本欄位就新增一組並設成預設，額度滿了開額度彈窗
 //   - ETF 讀不到時只有 ETF 那一段空著，普通股照常顯示
-//   - 訪客沒有選單，欄位設定是登入；手機是卡片、沒有橫向捲動；分享頁同樣分段、不送已經持有
+//   - 訪客沒有選單，欄位設定是登入；手機是對齊的四欄表、沒有橫向捲動；分享頁同樣分段、不送已經持有
+// 2026-11-07 改版（使用者看過方案頁選 A，再加 B 的「今天」）：每一類的工具收成一顆「欄位」選單（顯示欄位、欄位設定、到篩選管理），
+// 手機的最右欄用晶片換、點表頭排序，備註與移除收進「編輯」，清單上面一塊寫漲跌與接下來的除息、發放
 // 清單、欄位組合、方案、分享是攔截的假資料（寫入記下來比對），報價、ETF、特別股讀真的本機業務中台。
 //
 // Run: 本機 dev（:3000）與業務中台開著，node --env-file=.env scripts/check-watchlist-sections.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；
@@ -122,11 +124,15 @@ const cellOf = async (section, rowName, header) => {
   const row = section.locator('tbody tr', { hasText: rowName })
   return (await row.locator('th, td').nth(headers.findIndex(text => sameHeader(text, header))).innerText()).trim()
 }
+const openMenu = async (section) => {
+  await section.locator('.watchlist-columns__button').click()
+  return section.locator('.watchlist-columns__panel')
+}
 const pick = async (page, section, name) => {
-  await section.locator('.screener-preset-select .el-select__wrapper').click()
-  await page.locator('.el-select-dropdown__item:visible', { hasText: name }).click()
+  await (await openMenu(section)).getByRole('button', { name, exact: true }).click()
   await page.waitForTimeout(1500)
 }
+const openSettings = async section => (await openMenu(section)).getByRole('button', { name: '欄位設定', exact: true }).click()
 
 console.log('混合清單（1440）')
 {
@@ -152,6 +158,24 @@ console.log('混合清單（1440）')
   check(state.oldApi === 0, '不再碰 /users/me/watchlist-columns')
   await shot(page, 'mixed-1440')
 
+  // 清單上面一塊：漲跌與接下來的除息、發放
+  const today = (await page.locator('.watchlist-today').innerText()).replace(/\s+/g, '')
+  check(/上漲\d+檔/.test(today) && /下跌\d+檔/.test(today) && /平盤\d+檔/.test(today), `漲跌家數（${today.slice(0, 40)}）`)
+  check(today.includes('接下來'), '接下來的除息、發放')
+  // 備註與移除收進編輯
+  check(await page.locator('.view-table .watchlist-row-actions').count() === 0, '平常沒有備註、移除')
+  await page.getByRole('button', { name: '編輯', exact: true }).click()
+  check(await page.locator('.view-table .watchlist-row-actions').count() === 3, '按編輯才有備註、移除')
+  await page.getByRole('button', { name: '完成', exact: true }).click()
+  check(await page.locator('.view-table .watchlist-row-actions').count() === 0, '按完成收起來')
+  // 欄位選單：寫著現在用哪一組；Esc 關掉、焦點回到按鈕
+  const menuButton = common.locator('.watchlist-columns__button')
+  check((await menuButton.innerText()).includes('欄位：基本欄位'), `按鈕寫著現在用哪一組（${(await menuButton.innerText()).trim()}）`)
+  await menuButton.click()
+  check(await menuButton.getAttribute('aria-expanded') === 'true' && await common.locator('.watchlist-columns__panel').isVisible(), '欄位選單打開')
+  await page.keyboard.press('Escape')
+  check(await menuButton.getAttribute('aria-expanded') === 'false' && await menuButton.evaluate(el => el === document.activeElement), 'Esc 關掉、焦點回到按鈕')
+
   await pick(page, etf, '看配息與成本')
   check(state.writes.at(-1) === 'PATCH e1 {"isDefault":true}', `選組合＝設成預設（${state.writes.at(-1)}）`)
   check((await headersOf(etf)).includes('折溢價率') && !(await headersOf(etf)).some(text => sameHeader(text, '規模')), '選了組合，欄位跟著換')
@@ -160,7 +184,7 @@ console.log('混合清單（1440）')
   check(state.writes.at(-1) === 'PATCH e1 {"isDefault":false}', `選基本欄位＝清掉預設（${state.writes.at(-1)}）`)
 
   // 基本欄位沒有組合：欄位設定新增一組並設成預設
-  await preferred.getByRole('button', { name: '特別股的欄位設定' }).click()
+  await openSettings(preferred)
   const dialog = page.getByRole('dialog', { name: '欄位設定' })
   await dialog.waitFor({ state: 'visible' })
   await dialog.getByRole('button', { name: /移除「最差殖利率 YTW」/ }).click()
@@ -172,7 +196,7 @@ console.log('混合清單（1440）')
 
   // 已經有組合：改那一組，不新增
   await pick(page, etf, '看配息與成本')
-  await etf.getByRole('button', { name: 'ETF的欄位設定' }).click()
+  await openSettings(etf)
   await dialog.waitFor({ state: 'visible' })
   await dialog.getByRole('button', { name: /移除「折溢價率」/ }).click()
   await dialog.getByRole('button', { name: '儲存' }).click()
@@ -181,7 +205,7 @@ console.log('混合清單（1440）')
 
   // 額度滿了：開額度彈窗，表格不變
   state.quotaFull = true
-  await common.getByRole('button', { name: '普通股的欄位設定' }).click()
+  await openSettings(common)
   await dialog.waitFor({ state: 'visible' })
   await dialog.getByRole('button', { name: /移除「本益比」/ }).click()
   await dialog.getByRole('button', { name: '儲存' }).click()
@@ -212,7 +236,7 @@ console.log('只有一種類別')
   await mock(ctx, state)
   const page = await open(ctx, '/watchlist')
   check(await page.locator('.watchlist-section').count() === 1 && await page.locator('.watchlist-section__title').count() === 0, '一段、沒有標題')
-  check(await page.getByRole('button', { name: '欄位設定' }).count() === 1, '工具列照舊')
+  check(await page.locator('.watchlist-columns__button').count() === 1, '一顆欄位選單')
   check(state.etfBodies.length === 0, `清單沒有 ETF 就不問（${state.etfBodies.length} 次）`)
   await ctx.close()
 }
@@ -226,9 +250,21 @@ console.log('手機（375）')
   check(await page.locator('.watchlist-section').count() === 3, '三段')
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   check(overflow <= 0, `沒有橫向捲動（多 ${overflow}px）`)
-  const etfCard = sectionOf(page, 'ETF').locator('.watchlist-card').first()
-  const labels = (await etfCard.locator('dt').allInnerTexts()).join('、')
-  check(labels.startsWith('收盤價、漲跌、除息／發放') && labels.includes('規模'), `卡片先固定欄、再 ETF 欄位（${labels}）`)
+  const etf = sectionOf(page, 'ETF')
+  const heads = async () => (await etf.locator('.watchlist-compact thead th').allInnerTexts()).map(text => text.trim())
+  const first = await heads()
+  check(first.length === 4 && first.slice(0, 3).join('、') === '名稱、收盤價、漲跌', `對齊的四欄（${first.join('、')}）`)
+  const chips = (await etf.locator('.watchlist-picks__chip').allInnerTexts()).map(text => text.trim())
+  check(chips.some(text => sameHeader(text, '規模')) && chips.at(-1) === '除息／發放', `最右欄換 ETF 的欄位，除息／發放排最後（${chips.join('、')}）`)
+  await etf.locator('.watchlist-picks__chip').last().click()
+  check((await heads()).at(-1) === '除息／發放' && await etf.locator('.watchlist-picks__chip').last().getAttribute('aria-pressed') === 'true', '按晶片換最右欄')
+  await etf.locator('.watchlist-compact thead th').nth(2).locator('button').click()
+  check(await etf.locator('.watchlist-compact thead th').nth(2).getAttribute('aria-sort') === 'descending', '點表頭排序（漲跌由大到小）')
+  await page.getByRole('button', { name: '編輯', exact: true }).click()
+  const editing = await heads()
+  check(editing.join('、') === '名稱、收盤價、操作' && await etf.locator('.watchlist-compact .watchlist-row-actions').count() === 1, `編輯：漲跌讓位給備註、移除（${editing.join('、')}）`)
+  await shot(page, 'mixed-375-edit')
+  await page.getByRole('button', { name: '完成', exact: true }).click()
   const violations = (await new AxeBuilder({ page }).include('.watchlist-page').analyze()).violations
   check(violations.length === 0, `axe ${violations.map(item => `${item.id}(${item.nodes.length})`).join('、') || '0'}`)
   await shot(page, 'mixed-375')
@@ -242,7 +278,7 @@ console.log('訪客')
   await mock(ctx, state)
   const page = await open(ctx, '/watchlist')
   check(await page.locator('.watchlist-section').count() === 1, '市值前 10 大是一段')
-  check(await page.getByRole('combobox', { name: '顯示欄位' }).count() === 0, '沒有顯示欄位選單')
+  check(await page.locator('.watchlist-columns').count() === 0 && await page.getByRole('button', { name: '編輯', exact: true }).count() === 0, '沒有欄位選單、沒有編輯')
   await page.getByRole('button', { name: '欄位設定' }).click()
   await page.locator('#firebaseui-auth-container').waitFor({ state: 'attached', timeout: 10000 })
   check(await page.getByRole('dialog', { name: '欄位設定' }).count() === 0, '欄位設定是登入')

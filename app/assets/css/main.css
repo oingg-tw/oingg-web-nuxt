@@ -461,8 +461,8 @@ textarea {
   list-style: none;
 }
 
-/* 全站的晶片（2026-11-06）：可點的短標籤，44px 高、膠囊形，框是控制項的 3:1。目前這一個（aria-current）實心主色，同分段鈕選中的樣子。
-   排行的換指標、更新紀錄的篩選、指標總覽的跳轉、大師徽章的段落、速覽的挑指標都是它，各頁只補自己的版面 */
+/* 全站的晶片（2026-11-06）：可點的短標籤，44px 高、膠囊形，框是控制項的 3:1。目前這一個（連結是 aria-current，切換鈕是 aria-pressed）實心主色，
+   同分段鈕選中的樣子。排行的換指標、更新紀錄的篩選、指標總覽的跳轉、大師徽章的段落、速覽的挑指標、觀察清單手機的最右欄都是它，各頁只補自己的版面 */
 .hub-chip {
   display: inline-flex;
   align-items: center;
@@ -491,7 +491,8 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
-.hub-chip[aria-current='page'] {
+.hub-chip[aria-current='page'],
+.hub-chip[aria-pressed='true'] {
   border-color: var(--el-color-primary);
   background: var(--el-color-primary);
   color: var(--el-bg-color);

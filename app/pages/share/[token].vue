@@ -145,7 +145,6 @@ onMounted(() => {
           :columns="section.columns"
           :label="sections.length > 1 ? `${section.label}的觀察清單` : '觀察清單'"
           :notes="notes"
-          order-label="清單順序"
           :storage-key="`watchlist-share-${section.kind}`"
         />
       </section>

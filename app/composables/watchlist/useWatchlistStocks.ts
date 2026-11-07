@@ -56,6 +56,12 @@ export interface DividendEvent {
   amount: number | null
 }
 
+// 「除息／發放」的字，表格那一欄與清單上面的「接下來」共用：還沒除息的寫除息日，已除息、還沒發放的寫發放日（2026-10-06 上游補上 realized 那幾筆之後
+// 才寫得出來）——除息日與發放日分開標，現金大約在除息後 3～4 週才入帳（conductor 知識庫「配息月曆結算時序」）。
+export const dividendEventLabel = (event: DividendEvent) => (event.kind === 'stock' ? '配股發放' : event.kind === 'pay' ? '發放' : EX_TYPE_LABELS[event.exType] ?? event.exType)
+// 金額最多四位小數：上游的浮點數會帶雜訊（2330 回 7.00000137，MOPS 原值未四捨五入）
+export const dividendEventAmount = (event: DividendEvent) => (event.amount !== null ? `${Number(event.amount.toFixed(4))} 元` : null)
+
 function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent | null {
   return notices
     // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）

@@ -199,7 +199,7 @@ console.log('分享鈕出現的時機')
   await ctx.close()
 }
 {
-  // /shares 晚 2 秒才回：分享鈕出現時，欄位設定不動、沒有版面位移
+  // /shares 晚 2 秒才回：分享鈕出現時，旁邊的編輯不動、沒有版面位移
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await ctx.addInitScript(() => {
     // dev 才有的 Nuxt devtools 浮動鈕會自己挪幾 px，先藏起來，免得算進去
@@ -211,7 +211,7 @@ console.log('分享鈕出現的時機')
   await ctx.route('**/api/core/shares', async (route) => { await new Promise(resolve => setTimeout(resolve, 6000)); await route.fulfill({ json: { shares: [] } }) })
   const page = await ctx.newPage()
   await page.goto(`${base}/watchlist`, { waitUntil: 'domcontentloaded', timeout: 180000 })
-  const settings = page.locator('.watchlist-toolbar__settings').first()
+  const settings = page.locator('.watchlist-page__edit').first()
   await settings.waitFor({ state: 'visible', timeout: 60000 })
   // 報價等其他東西先穩定下來，只量分享鈕出現的那一刻
   await page.waitForTimeout(3000)
@@ -222,7 +222,7 @@ console.log('分享鈕出現的時機')
   await page.waitForTimeout(500)
   const after = await settings.boundingBox()
   const clsAfter = await page.evaluate(() => window.__cls)
-  check(before.x === after.x && before.y === after.y, `分享鈕出現時欄位設定不動（${before.x},${before.y} → ${after.x},${after.y}）`)
+  check(before.x === after.x && before.y === after.y, `分享鈕出現時編輯不動（${before.x},${before.y} → ${after.x},${after.y}）`)
   check(clsAfter - clsBefore === 0, `分享鈕出現沒有版面位移（CLS 增加 ${(clsAfter - clsBefore).toFixed(4)}）`)
   await ctx.close()
 }
@@ -256,7 +256,7 @@ for (const [width, withNote] of [[1440, false], [375, true]]) {
   check((await page.locator('h1').innerText()).startsWith('存股名單'), `${width}：h1 是清單名`)
   check(await page.title() === '存股名單・分享的觀察清單｜安盈選股', `${width}：分頁標題`)
   check(await page.locator('meta[name="robots"]').getAttribute('content') === 'noindex, nofollow', `${width}：noindex`)
-  const visibleRows = await page.locator(width >= 1280 ? '.view-table tbody tr' : '.watchlist-cards li').count()
+  const visibleRows = await page.locator(width >= 1280 ? '.view-table tbody tr' : '.watchlist-compact tbody tr').count()
   check(visibleRows === 6, `${width}：6 檔（實得 ${visibleRows}）`)
   check(await page.getByText('等法說會再看').count() === (withNote ? (width >= 1280 ? 1 : 2) : 0), `${width}：${withNote ? '分享了備註才顯示' : '沒分享備註就沒有'}`)
   check(await page.locator('.watchlist-row-actions').count() === 0, `${width}：沒有操作欄`)
