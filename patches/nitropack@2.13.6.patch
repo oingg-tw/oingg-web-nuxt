@@ -1,5 +1,5 @@
 diff --git a/dist/runtime/internal/cache.mjs b/dist/runtime/internal/cache.mjs
-index ecbf53cfa514c2fbd3f7dc88f0de97990f7deb12..e08e8d29667d6a1ba86b4f1fd02f891e4632fc7c 100644
+index 897f3a4..d1cb9ba 100644
 --- a/dist/runtime/internal/cache.mjs
 +++ b/dist/runtime/internal/cache.mjs
 @@ -9,6 +9,7 @@ import {
@@ -10,7 +10,7 @@ index ecbf53cfa514c2fbd3f7dc88f0de97990f7deb12..e08e8d29667d6a1ba86b4f1fd02f891e
  import { hash } from "./hash.mjs";
  function defaultCacheOptions() {
    return {
-@@ -106,7 +107,7 @@ export function defineCachedFunction(fn, opts = {}) {
+@@ -114,7 +115,7 @@ export function defineCachedFunction(fn, opts = {}) {
        key,
        () => fn(...args),
        shouldInvalidateCache,
