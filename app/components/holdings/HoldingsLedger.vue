@@ -36,7 +36,7 @@ const sorted = computed(() => (Array.isArray(props.entries) ? [...props.entries]
 // 自動入帳的除權配股（source "stock-dividend"）是 業務中台 依除權息行事曆即時算的虛擬列：不能改也不能刪，
 // note 寫著配發比例與除權前持股。成本不明的取得（costUnknown）也標出來，不讓它看起來像一筆價格 0 的買進。
 // 減資（action REDUCE，2026-10-23，使用者：減資「要」列在交易紀錄）同樣是虛擬列：股數寫「減資前 → 減資後」、沒有成交價，
-// 退還股款在 note（業務中台寫好的一句，例如「…1000 股 → 400 股，退還股款 6,000 元」）
+// 退還股款在 note（業務中台寫好的一句，例如「…1,000 股 → 400 股，退還股款 6,000 元」）
 const isVirtual = (transaction: Transaction) => transaction.source === 'stock-dividend' || transaction.action === 'REDUCE'
 // 分割與面額變更（2026-11-07，使用者決定自動入帳）也是 REDUCE 的虛擬列，股數一樣寫前 → 後，只是沒有退還股款。kind 是開放列舉，沒看過的就寫「分割」
 const SPLIT_WORDS: Record<string, string> = { par_value_change: '面額變更', etf_split: '分割', etf_reverse_split: '反分割' }
