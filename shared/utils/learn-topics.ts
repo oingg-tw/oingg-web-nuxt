@@ -134,7 +134,7 @@ export const LEARN_GROUPS: LearnGroup[] = [
     question: '現在貴不貴？',
     answer: '用股價跟獲利、淨值、營收相比，看市場現在替這家公司付多少錢。',
     categories: ['valuation'],
-    core: [{ metric: 'peRatio' }, { metric: 'pbRatio' }, { metric: 'psr' }, { metric: 'pegRatio' }]
+    core: [{ metric: 'peRatio' }, { metric: 'pbRatio' }, { metric: 'psr' }, { metric: 'livePegRatio' }, { metric: 'livePegyRatio' }]
   },
   {
     slug: 'cash-quality',

@@ -91,7 +91,7 @@ const props = withDefaults(defineProps<{
 // Price, not Price ÷ Earnings), so a higher number is still "better/cheaper" there, same as
 // every other descending-first metric.
 // 挑選器只留交易所／即時那一支之後（2026-10-21，ScreenerIndicatorPickerBody 的 PICKER_HIDDEN_METRICS），留下的那幾支也要在這裡
-const ASCENDING_FIRST_METRICS = new Set(['peRatio', 'pbRatio', 'pegRatio', 'psr', 'evEbitda', 'exchangePeRatio', 'livePeRatio', 'exchangePbRatio', 'livePbRatio', 'livePegRatio', 'grahamNumber', 'liveGrahamNumber'])
+const ASCENDING_FIRST_METRICS = new Set(['peRatio', 'pbRatio', 'pegRatio', 'psr', 'evEbitda', 'exchangePeRatio', 'livePeRatio', 'exchangePbRatio', 'livePbRatio', 'livePegRatio', 'livePegyRatio', 'grahamNumber', 'liveGrahamNumber'])
 
 function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
   const metricKey = field.split('.')[0]

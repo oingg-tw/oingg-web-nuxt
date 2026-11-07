@@ -87,6 +87,8 @@ export interface MetricCopy {
   }
   limitations?: string[]
   misreadings?: string[]
+  // 指向另一支指標的一句話，放在 /learn 的「相關指標與功能」：上面幾段是純文字，帶不了連結
+  seeAlso?: { text: string; metric: string }
 }
 
 export const METRIC_COPY: Record<string, MetricCopy> = {
@@ -373,7 +375,29 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     misreadings: [
       '常聽到的「PEG 小於 1」是林區的經驗法則，不是估值理論。',
       '成長率很高的公司 PEG 會很低，但那個成長率未必延續得下去；成長率接近零的公司 PEG 會爆炸性放大，失去意義。'
-    ]
+    ],
+    seeAlso: { text: '本益成長比不算股利，配息高的公司可以對照：', metric: 'livePegyRatio' }
+  },
+
+  livePegyRatio: {
+    pin: 'da96deed5110',
+    definition:
+      '把股利也算進去的本益成長比：本益比除以「每股盈餘的五年年均成長率加現金股利殖利率」。每個交易日更新。',
+    reading: {
+      up: '同樣的本益比換到的成長加股利變少。可能是股價漲，也可能是成長率放慢或配息減少。',
+      down: '股價跌，或是獲利成長加速、配息增加。',
+      compare: '跟本益成長比一起看。配息越高的公司，這個數字比本益成長比低得越多；近 12 個月沒配息的公司，兩個數字一樣。'
+    },
+    limitations: [
+      '需要五年的年度每股盈餘，而且頭尾兩年都要獲利。近四季虧損、上市未滿五年或從沒公告過股利的公司都沒有數值，所以有數值的公司不多。',
+      '成長率用的是過去五年的實際成長，殖利率用的是過去 12 個月的配息，都不是對未來的預估。之後如果減少配息，這個數字不會事先反映。'
+    ],
+    misreadings: [
+      '成長率是負的時候，只要加上殖利率後大於 0 仍然有數值。這時數字主要反映股利，不代表公司在成長。',
+      '分母接近零時數字會爆炸性放大，失去意義。',
+      '林區書中常被引用的寫法是倒過來的：（成長率＋殖利率）÷ 本益比，數字大小的方向跟這裡相反。'
+    ],
+    seeAlso: { text: '不算股利的版本：', metric: 'livePegRatio' }
   },
 
   liveGrahamNumber: {

@@ -46,6 +46,11 @@ const hasFullText = computed(() => !!topic || (guide.value.definition.length > 0
 const indexable = !!topic || (isIndexableMetricSlug(slug) && hasFullText.value)
 
 const siblings = computed(() => category.value?.metrics.filter(item => item.key !== code) ?? [])
+const seeAlso = computed(() => {
+  const item = topic ? null : findMetricCopy(code)?.seeAlso
+  const target = item && findMetricInSchema(catalog.value?.categories ?? [], item.metric)?.metric
+  return item && target ? { text: item.text, to: metricPath(item.metric), name: metricDisplayName(target) } : null
+})
 const rankPages = RANK_PAGES.filter(page => page.metricCode === code)
 const templatePages = computed(() => (topic ? [] : templates.value.filter(template => template.slug && template.status === 'AVAILABLE' && template.filters.some(filter => filter.field.split('.')[0] === code))))
 
@@ -117,7 +122,8 @@ const { breadcrumbs } = useHubPageSeo({
       <p v-if="siblings.length" class="hub-answer">
         同屬「{{ category!.name }}」的指標：<template v-for="(item, index) in siblings" :key="item.key"><template v-if="index">、</template><NuxtLink :to="metricPath(item.key)" class="hub-inline-link">{{ metricDisplayName(item) }}</NuxtLink></template>。
       </p>
-      <ul v-if="rankPages.length || templatePages.length || badge" class="learn-page__related">
+      <ul v-if="seeAlso || rankPages.length || templatePages.length || badge" class="learn-page__related">
+        <li v-if="seeAlso">{{ seeAlso.text }}<NuxtLink :to="seeAlso.to" class="hub-inline-link">{{ seeAlso.name }}</NuxtLink></li>
         <li v-for="page in rankPages" :key="page.slug"><NuxtLink :to="rankPath(page.slug)" class="hub-inline-link">台股{{ page.label }}排行</NuxtLink></li>
         <li v-for="template in templatePages" :key="template.id"><NuxtLink :to="screenerTemplatePath(template.slug!)" class="hub-inline-link">「{{ template.name }}」篩選條件說明</NuxtLink></li>
         <li v-if="badge">此指標在大師徽章系統中有對應徽章：<NuxtLink :to="`/guru-indicators#guru-badge-${code}`" class="hub-inline-link">看大師徽章</NuxtLink></li>
