@@ -78,6 +78,10 @@ for (const category of catalog.categories ?? []) {
 
 const drifted = []
 const holes = []
+const comparePin = (label, metric, pinned) => {
+  const live = pinOf(metric)
+  if (live !== pinned) drifted.push(`${label} pin ${pinned} → ${live}\n      公式 ${metric.formulaLatex ?? '（無）'}\n      單位 ${metric.unit ?? '（無）'}`)
+}
 for (const page of pages) {
   const metric = byCode.get(page.metricCode)
   if (!metric) { holes.push(`${page.slug}（${page.metricCode}）不在 /metrics 目錄裡`); continue }
@@ -91,10 +95,16 @@ for (const page of pages) {
     continue
   }
 
-  const live = pinOf(metric)
-  if (live !== pinned) {
-    drifted.push(`${page.slug}（${page.metricCode}）pin ${pinned} → ${live}\n      公式 ${metric.formulaLatex ?? '（無）'}\n      單位 ${metric.unit ?? '（無）'}`)
-  }
+  comparePin(`${page.slug}（${page.metricCode}）`, metric, pinned)
+}
+
+// 文案沒有專頁的也要對：/learn 讀同一份文案（本益成長比的專頁 2026-09-28 刪了，文案還在），公式改了一樣會過時
+const paged = new Set(pages.map(page => page.metricCode))
+for (const [code, pinned] of pins) {
+  if (paged.has(code)) continue
+  const metric = byCode.get(code)
+  if (metric) comparePin(code, metric, pinned)
+  else holes.push(`${code} 有文案，但不在 /metrics 目錄裡`)
 }
 
 console.log(`指標專頁 ${pages.length} 頁，前端自有文案 ${pins.size} 支`)
