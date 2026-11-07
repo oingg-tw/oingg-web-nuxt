@@ -232,7 +232,7 @@ const bandPalette = computed(() => {
 
 const formatMultiple = (value: number): string => `${value.toFixed(1)}倍`
 
-// 提示框的「河道位置」：名稱＋倍數範圍（2026-10-21 加名稱，同篩選器的河道位置欄位）。河外的兩塊也寫出來——原本低於最下面那條線
+// 提示框的「河流圖」：名稱＋倍數範圍（2026-10-21 加名稱，同篩選器的河流圖欄位；2026-11-07 使用者：「河道位置 幫我改成 河流圖」）。河外的兩塊也寫出來——原本低於最下面那條線
 // 什麼都不寫、高於最上面那條線算成最上面那條河道
 function bandTextFor(value: number): string | null {
   const multiples = levels.value
@@ -295,7 +295,7 @@ const chartOption = computed(() => ({
         ${point.price !== null ? row('收盤價', `${groupThousands(point.price.toFixed(2))} 元`) : row('收盤價', '尚無資料', true)}
         ${point.base !== null ? row(baseLabel.value, `${groupThousands(point.base.toFixed(2))} 元`) : ''}
         ${point.ratio !== null ? row(spec.value.ratioLabel, formatMultiple(point.ratio)) : row(spec.value.ratioLabel, '尚無資料', true)}
-        ${band ? row('河道位置', band, true) : ''}
+        ${band ? row('河流圖', band, true) : ''}
       </div>`
     }
   },
