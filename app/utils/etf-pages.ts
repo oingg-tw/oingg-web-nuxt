@@ -28,7 +28,7 @@ export const etfFacetPath = (code: string, key: EtfFacetKey) => `${etfPath(code)
 // 不在這裡：整列本來就連到速覽
 const FIELD_FACETS: [RegExp, EtfFacetKey][] = [
   [/^(aum|holders|netFlow|dcaAmount|marketShareRate|statutoryAumThreshold|belowStatutoryThreshold)$/, 'size'],
-  [/^(nav|close|premiumDiscountPct|tradeDate)$/, 'premium'],
+  [/^(nav|navDate|close|premiumDiscountPct|tradeDate)$/, 'premium'],
   [/^return/, 'returns'],
   [/^(trailing12MonthDistributionYieldPct|distributionFrequency|exDividendMonths)$/, 'distributions'],
   [/^(expenseRatio|trailing12MonthExpenseRatio)|FeeRate$|^(commissionRate|transactionTaxRate)$/, 'expenses']

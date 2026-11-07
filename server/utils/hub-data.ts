@@ -488,7 +488,7 @@ async function runScreenerRanking(definition: RankPageDefinition): Promise<Ranki
 }
 
 // ETF 的排行（2026-10-21）：ETF 篩選同一支 POST /etf-screener，依一個欄位排序，去掉沒有值的取前 50。
-// 上游的 ETF 篩選結果不帶日期：基金月報的欄位用第一名的月報月份（每檔 ETF 頁同一支 /etfs/{代號}），其他欄位不寫日期。
+// 基金月報的欄位用每一列帶的月報月份 yearMonth（數據中台 e8d5cab，2026-11-07 上 DEV；一次回應每列都是同一個月），其他欄位不寫日期。
 // 基金類型的簡易篩選（同日，使用者：「總費用率 rank要給簡易篩選 因為債券明顯費用率比較低」；實測總費用率前 50 檔有 43 檔債券）：
 // groups 是每一類自己的前 50 檔、名次從 1 起算，所以全部 ETF 都要拿（約 340 檔，上游每頁最多 200）。類型照上游 fundType（投信投顧公會
 // 基金類型的第二層，analysis-ts 8dad5785、業務中台 6db5156，2026-10-21 上 DEV），跟 ETF 篩選的「基金類型」同一組。原本用 assetClass：
@@ -500,7 +500,7 @@ const ETF_FUND_TYPE_ORDER = ['股票型', '債券型', '槓桿型／反向型', 
 
 async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPageData> {
   // companyName 沒有值：原本 ""，業務中台第 3 批起 null，名稱改用代號
-  type EtfResult = { symbol: string; companyName: string | null; values: Record<string, string | number | boolean | null> }
+  type EtfResult = { symbol: string; companyName: string | null; yearMonth: string | null; values: Record<string, string | number | boolean | null> }
   const results: EtfResult[] = []
   for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
     const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
@@ -525,12 +525,12 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   const groups = [...new Set(ranked.map(entry => entry.result.values.fundType).filter((name): name is string => typeof name === 'string'))]
     .sort((a, b) => typeOrder(a) - typeOrder(b))
     .map(name => ({ name, rows: toRows(ranked.filter(entry => entry.result.values.fundType === name)) }))
-  // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
-  //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
-  const leader = (definition.monthlyReport || definition.fullYear) && rows[0] ? await businessFetch<{ yearMonth?: string; values?: Record<string, unknown> }>(`/etfs/${rows[0].symbol}`) : null
-  const reportMonth = definition.monthlyReport ? leader?.yearMonth ?? null : null
+  const reportMonth = definition.monthlyReport ? results[0]?.yearMonth ?? null : null
   // 全年數字（總費用率）是哪一年的：上游直接給 expenseRatioYear（數據中台 b7a196e，2026-11-04；原本在 expenseRatio{年} 裡找跟它
   // 一樣的那一年）。第一名沒有就不標，不猜
+  // 直接打 /etfs/{代號}，不用 screener-data.ts 的 cachedEtf：那個檔案讀這裡的 TTL_STATIC，互相 import 時模組初始化順序會撞
+  //（Cannot access 'TTL_STATIC' before initialization，2026-10-21 量到）；整份排行本來就快取，多一次呼叫一天一次
+  const leader = definition.fullYear && rows[0] ? await businessFetch<{ values?: Record<string, unknown> }>(`/etfs/${rows[0].symbol}`) : null
   const leaderYear = leader?.values?.[`${definition.field}Year`]
   const valueYear = definition.fullYear && typeof leaderYear === 'number' ? leaderYear : null
   return {

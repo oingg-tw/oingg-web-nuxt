@@ -92,7 +92,7 @@ await page.waitForTimeout(800)
 check(patches.join(' | ') === 'e-a {"lastColumnPresetId":null}', '選內建的「基本欄位」→ 這一組的記憶清掉（null）', patches.join(' | '))
 await choose(1, '上游拿掉一欄')
 const heads = (await page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()).join('、')
-check(heads === '代號、名稱、規模', '欄位組合裡上游拿掉的欄位不畫（表頭不是欄位 id）', heads)
+check(/^代號、名稱、規模( \d{4}-\d{2})?$/.test(heads), '欄位組合裡上游拿掉的欄位不畫（表頭不是欄位 id）', heads)
 check(!pageErrors.length, '沒有 page error', pageErrors.join(' | '))
 
 await browser.close()

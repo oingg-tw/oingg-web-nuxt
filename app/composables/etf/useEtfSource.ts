@@ -36,6 +36,8 @@ interface EtfScreenerRow {
   companyName: string | null
   issuerName: string
   category: string | null
+  // 基金月報的月份（"2026-09"）；一次回應每列都是同一個月
+  yearMonth?: string | null
   values: Record<string, EtfValue | ExpenseRatioYear[]>
 }
 
@@ -127,6 +129,8 @@ function formatValue(field: EtfFilterField | undefined, raw: string | number | n
 export function useEtfSource(): UniverseSource {
   const catalog = useState<EtfFilterCategory[] | null>('etf-screener-catalog', () => null)
   const catalogFailure = shallowRef<unknown>(null)
+  // 記在 cookie：欄寬照欄名估，月份晚到的話欄名先短後長，整排欄位左右移（/watchlist 重新整理時）
+  const reportMonth = useCookie<string | null>('etf-report-month', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
 
   async function loadCatalog() {
     try {
@@ -170,10 +174,15 @@ export function useEtfSource(): UniverseSource {
     if (field === HELD_FIELD_ID) return { field: fieldId, label: '持有帳戶', format: raw => (raw === null || raw === undefined ? '－' : String(raw)), sortable: 'client' }
     const year = EXPENSE_RATIO_YEAR.exec(field)?.[1]
     const meta = fieldsByKey.value.get(field)
+    const name = year ? `總費用率 ${year}` : meta ? displayLabel(meta) : LABEL_OVERRIDES[field] ?? field
+    const facet = etfFieldFacet(field)
     return {
       field: fieldId,
       // 不用「（2025）」：表格在「顯示資料時間」關閉時會拿掉結尾的括號（那是普通股的期別）
-      label: year ? `總費用率 ${year}` : meta ? displayLabel(meta) : LABEL_OVERRIDES[field] ?? field,
+      // 基金月報的欄位（規模與資金、報酬率）寫上月份，才不會跟逐日的收盤價看成同一天。月份要等查詢回來，欄位物件早就建好了，所以用 getter
+      get label() {
+        return reportMonth.value && (facet === 'size' || facet === 'returns') ? `${name} ${reportMonth.value}` : name
+      },
       format: raw => formatValue(meta ?? (year ? { field, label: '', kind: 'numeric', unit: '%' } : undefined), raw),
       sortable: year ? 'client' : 'server',
       ascendingFirst: ASCENDING_FIRST.test(field)
@@ -227,6 +236,7 @@ export function useEtfSource(): UniverseSource {
     const filters = query.filters.filter(filter => filter !== held)
     if (filters.length) body.filters = filters.map(toEtfFilter)
     if (held?.values?.length) body[held.exclude ? 'excludeHeldPortfolioIds' : 'heldPortfolioIds'] = held.values.map(String)
+    if (query.symbols) body.symbols = query.symbols
     // 預設順序是規模由大到小（2026-10-31，使用者：「ETF 篩選 希望預設排序按照規模」）：沒選排序就照規模排，表頭不標箭頭。業務中台只排
     // 請求裡有的欄位（sortField 不在 columns 回 400），這一組的欄位沒有規模時多帶這一欄，畫面上不會多出來
     // 某一年的總費用率不能當 sortField（上游回 400）：存檔或舊書籤帶著的，照預設的規模排（畫面上那幾欄只排已載入的列）；上游拿掉的欄位一樣
@@ -236,7 +246,7 @@ export function useEtfSource(): UniverseSource {
     body.sortField = sort.field
     body.order = sort.order
     const response = await (currentUser.value ? authedFetch : apiFetch)<EtfScreenerResponse>('/etf-screener', { method: 'POST', body })
-    if (query.symbols) body.symbols = query.symbols
+    reportMonth.value = response.results[0]?.yearMonth ?? reportMonth.value
     return { rows: response.results.map(toRow), total: response.count, totalPages: response.totalPages }
   }
 
