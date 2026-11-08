@@ -144,20 +144,6 @@ const noteHints: Record<WatchlistKind, WritableComputedRef<number>> = {
   preferred: useLayoutHint('watchlist-notes-preferred', 0)
 }
 
-// ---- 清單上面的一塊：漲跌與接下來的除息、發放（2026-11-07，改版方案頁 B 的「今天」，使用者選 A 再加這一塊）----
-// 一進來先回答「今天怎麼樣、哪一檔快除息」，原本要一列一列看。漲跌照每一列的漲跌（沒有報價的不算）；接下來是每一檔最近一個還沒到的除息或發放
-//（useWatchlistStocks 的 nextDividendEvent）照日期排，最多 5 檔，其餘看表格的「除息／發放」。標題的日子：收盤日是今天寫「今天」，週末、盤中寫那一天
-const UPCOMING_MAX = 5
-const moveItems = computed(() => [
-  { label: '上漲', count: rows.value.filter(row => (row.change ?? 0) > 0).length, class: 'is-up' },
-  { label: '下跌', count: rows.value.filter(row => (row.change ?? 0) < 0).length, class: 'is-down' },
-  { label: '平盤', count: rows.value.filter(row => row.change === 0).length, class: '' }
-])
-const movesTitle = computed(() => (priceDate.value === new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }) ? '今天漲跌' : `${priceDate.value?.slice(5).replace('-', '/') ?? ''} 漲跌`))
-const upcoming = computed(() => rows.value.flatMap(row => (row.nextDividendEvent ? [{ row, event: row.nextDividendEvent }] : [])).sort((a, b) => a.event.date.localeCompare(b.event.date)))
-// 「接下來」有幾行（沒有的那一句也算一行）：骨架照上次畫一樣多行，資料到了下面的表格不會被推動
-const eventLines = computed(() => Math.max(1, Math.min(upcoming.value.length, UPCOMING_MAX) + (upcoming.value.length > UPCOMING_MAX ? 1 : 0)))
-const eventLinesHint = useLayoutHint('watchlist-event-lines', 1)
 watch(() => (firstPaintPending.value ? null : rows.value), (list) => {
   if (!list) return
   for (const kind of WATCHLIST_KINDS) {
@@ -165,7 +151,6 @@ watch(() => (firstPaintPending.value ? null : rows.value), (list) => {
     rowHints[kind].value = ofKind.length
     noteHints[kind].value = ofKind.filter(row => watchlistNotes.value[row.code]).length
   }
-  eventLinesHint.value = eventLines.value
 })
 // 骨架列的代號要跟真的一樣短：表格拿它估欄寬（原本 skeleton-common-0，第一欄撐到 194px，資料到了整張表左移 118px，2026-11-07）
 const skeletonCode = (kind: WatchlistKind, index: number) => `${kind[0]}${index}`
@@ -178,7 +163,7 @@ const sections = computed(() => WATCHLIST_KINDS.flatMap((kind) => {
   const sectionRows = firstPaintPending.value ? skeletonRowsOf(kind) : rows.value.filter(row => row.kind === kind)
   return sectionRows.length ? [{ kind, label: WATCHLIST_KIND_LABELS[kind], rows: sectionRows, columns: [...WATCHLIST_FIXED_COLUMNS, ...columnsOf(kind)] }] : []
 }))
-const { keyword, fetchSuggestions, firstMatch, routeFor } = useStockSearch()
+const { keyword, fetchSuggestions, firstMatch } = useStockSearch()
 // el-autocomplete 在沒有反白項目時把 aria-activedescendant 指到不存在的 "…-item--1"（axe critical），同頁首搜尋的處理
 const addInputRef = ref<{ $el?: Node, close?: () => void } | null>(null)
 useAutocompleteActiveDescendantFix(addInputRef)
@@ -298,41 +283,6 @@ async function submitNote() {
     <div class="watchlist-page__content" :aria-busy="firstPaintPending">
       <el-empty v-if="firstPaintPending ? !rowCountHint : !listCodes.length" description="還沒有追蹤任何股票，用上面的搜尋框加入第一檔" :image-size="64" />
       <template v-else>
-        <section class="app-card watchlist-today" aria-label="清單的漲跌與接下來的除息、發放">
-          <div class="watchlist-today__part">
-            <h2 class="watchlist-today__title">
-              <span v-if="firstPaintPending" class="app-skeleton app-skeleton--flow" aria-hidden="true">10/20 漲跌</span>
-              <template v-else>{{ movesTitle }}</template>
-            </h2>
-            <dl class="watchlist-today__moves">
-              <div v-for="item in moveItems" :key="item.label">
-                <dt>{{ item.label }}</dt>
-                <dd :class="item.class">
-                  <span v-if="firstPaintPending" class="app-skeleton app-skeleton--flow" aria-hidden="true">0 檔</span>
-                  <template v-else>{{ item.count }} 檔</template>
-                </dd>
-              </div>
-            </dl>
-          </div>
-          <div class="watchlist-today__part">
-            <h2 class="watchlist-today__title">接下來</h2>
-            <ul v-if="firstPaintPending" class="watchlist-today__events" aria-hidden="true">
-              <li v-for="index in eventLinesHint" :key="index" class="watchlist-today__event"><span class="app-skeleton app-skeleton--flow">11/11 發放 元大高股息 0056</span></li>
-            </ul>
-            <ul v-else-if="upcoming.length" class="watchlist-today__events">
-              <li v-for="{ row, event } in upcoming.slice(0, UPCOMING_MAX)" :key="row.code">
-                <NuxtLink :to="routeFor({ code: row.code, name: row.name, kind: row.kind })" class="watchlist-today__event">
-                  <span class="watchlist-today__date">{{ event.date.slice(5).replace('-', '/') }}</span>
-                  <span>{{ dividendEventLabel(event) }}</span>
-                  <span class="watchlist-today__name">{{ row.name }} <span class="watchlist-today__code">{{ row.code }}</span></span>
-                  <span class="watchlist-today__amount">{{ dividendEventAmount(event) ?? '－' }}</span>
-                </NuxtLink>
-              </li>
-              <li v-if="upcoming.length > UPCOMING_MAX" class="watchlist-today__event watchlist-today__more">還有 {{ upcoming.length - UPCOMING_MAX }} 檔，看表格的「除息／發放」</li>
-            </ul>
-            <p v-else class="watchlist-today__event watchlist-today__more">目前沒有已公告、還沒到的除息或發放</p>
-          </div>
-        </section>
         <section v-for="section in sections" :key="section.kind" class="watchlist-section" :aria-label="section.label">
           <WatchlistTable
             :loading="firstPaintPending"
@@ -505,106 +455,6 @@ async function submitNote() {
   display: flex;
   flex-direction: column;
   gap: 32px;
-}
-
-/* 漲跌與接下來：電腦版左右兩半，手機上下疊；每一行 44px，骨架照上次的行數畫，資料到了高度不變 */
-.watchlist-today {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  padding: 0;
-}
-
-.watchlist-today__part {
-  padding: 12px 16px;
-}
-
-.watchlist-today__part + .watchlist-today__part {
-  border-left: 1px solid var(--app-divider);
-}
-
-.watchlist-today__title {
-  margin: 0 0 4px;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.watchlist-today__moves {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-}
-
-.watchlist-today__moves dt {
-  color: var(--el-text-color-regular);
-}
-
-.watchlist-today__moves dd {
-  margin: 0;
-  font-size: 1.375rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.watchlist-today__events {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.watchlist-today__events > li + li {
-  border-top: 1px solid var(--app-divider);
-}
-
-.watchlist-today__event {
-  display: grid;
-  grid-template-columns: 3.25em auto minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 8px;
-  min-height: 44px;
-  margin: 0;
-  color: var(--el-text-color-primary);
-  text-decoration: none;
-  font-variant-numeric: tabular-nums;
-}
-
-a.watchlist-today__event:hover .watchlist-today__name {
-  color: var(--el-color-primary-dark-2);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* 骨架與只有一句話的行不分欄 */
-.watchlist-today__event:not(a) {
-  display: flex;
-}
-
-.watchlist-today__more {
-  color: var(--el-text-color-regular);
-}
-
-.watchlist-today__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.watchlist-today__code {
-  color: var(--el-text-color-secondary);
-}
-
-.watchlist-today__amount {
-  text-align: right;
-}
-
-@media (max-width: 767px) {
-  .watchlist-today {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .watchlist-today__part + .watchlist-today__part {
-    border-top: 1px solid var(--app-divider);
-    border-left: 0;
-  }
 }
 
 /* 分段標題跟工具列同一列 */

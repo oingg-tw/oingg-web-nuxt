@@ -104,7 +104,7 @@ const reorderFromSheet = (keys: string[]) => emit('reorder', keys.filter(key => 
 // ---- 1279px 以下：對齊的四欄（2026-11-07，使用者看過觀察清單改版方案頁，選 A）----
 // 原本一檔一張卡片、欄名一列一項（10/22 方案頁 4B），每張卡片重複同一組欄名，5 檔就 2,787px 高；11/04 使用者說這種排法「亂亂的」。
 // 現在同 /industries/dividend 的手機表（IndustryQuadrantTables）：名稱｜收盤價｜漲跌｜一欄可以換，欄名只在表頭；點表頭排序（SharedSortableTable，
-// 取代原本的排序選單）。可以換的是這一類的欄位組合，除息／發放排最後（/watchlist 上面的「接下來」已經列出最近的除息與發放）
+// 取代原本的排序選單）。可以換的是這一類的欄位組合，除息／發放排最後：預設的那一欄要每列都有值，除息／發放只有已公告、還沒到的才有，其他列是「－」（11-08 上面那塊「接下來」拿掉時重看過，順序不動）
 const picks = computed(() => [...props.columns.filter(column => !isFixed(column.field)), ...props.columns.filter(column => column.field === WATCHLIST_EX_DIVIDEND)])
 const pickedField = ref('')
 const picked = computed(() => picks.value.find(column => column.field === pickedField.value) ?? picks.value[0])

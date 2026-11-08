@@ -5,7 +5,7 @@
 //   - ETF 讀不到時只有 ETF 那一段空著，普通股照常顯示
 //   - 訪客沒有選單，欄位設定是登入；手機是對齊的四欄表、沒有橫向捲動；分享頁同樣分段、不送已經持有
 // 2026-11-07 改版（使用者看過方案頁選 A，再加 B 的「今天」）：每一類的工具收成一顆「欄位」選單（顯示欄位、欄位設定、到篩選管理），
-// 手機的最右欄用晶片換、點表頭排序，備註與移除收進「編輯」，清單上面一塊寫漲跌與接下來的除息、發放
+// 手機的最右欄用晶片換、點表頭排序，備註與移除收進「編輯」（「今天」那一塊 2026-11-08 拿掉：使用者「觀察清單移除summary」）
 // 清單、欄位組合、方案、分享是攔截的假資料（寫入記下來比對），報價、ETF、特別股讀真的本機業務中台。
 //
 // Run: 本機 dev（:3000）與業務中台開著，node --env-file=.env scripts/check-watchlist-sections.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；
@@ -158,10 +158,6 @@ console.log('混合清單（1440）')
   check(state.oldApi === 0, '不再碰 /users/me/watchlist-columns')
   await shot(page, 'mixed-1440')
 
-  // 清單上面一塊：漲跌與接下來的除息、發放
-  const today = (await page.locator('.watchlist-today').innerText()).replace(/\s+/g, '')
-  check(/上漲\d+檔/.test(today) && /下跌\d+檔/.test(today) && /平盤\d+檔/.test(today), `漲跌家數（${today.slice(0, 40)}）`)
-  check(today.includes('接下來'), '接下來的除息、發放')
   // 備註與移除收進編輯
   check(await page.locator('.view-table .watchlist-row-actions').count() === 0, '平常沒有備註、移除')
   await page.getByRole('button', { name: '編輯', exact: true }).click()
