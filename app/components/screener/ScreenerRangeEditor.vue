@@ -144,8 +144,7 @@ function reset() {
           v-for="option in periods"
           :key="option.fieldId"
           type="button"
-          class="range-editor__period"
-          :class="{ 'is-active': option.fieldId === currentFieldId }"
+          class="hub-chip"
           :aria-pressed="option.fieldId === currentFieldId"
           @click="emit('update:fieldId', option.fieldId)"
         >{{ option.label }}</button>
@@ -295,33 +294,11 @@ function reset() {
   gap: 8px;
 }
 
+/* 期別是全站的晶片（.hub-chip，選中的實心主色），一列 8px（2026-11-08：原本自己畫、間距 6px） */
 .range-editor__periods {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-}
-
-.range-editor__period {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--el-text-color-regular);
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.range-editor__period:hover {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
-.range-editor__period.is-active {
-  border-color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  font-weight: 600;
+  gap: 8px;
 }
 
 .range-editor__mode {

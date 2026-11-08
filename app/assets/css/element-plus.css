@@ -450,8 +450,10 @@ html .el-dialog {
   --el-dialog-border-radius: 12px;
 }
 
+/* 內距同對話框 16px（2026-11-08）：Element 預設 12px，「存成我的篩選」的取名框比旁邊的面板窄一圈 */
 html .el-message-box {
   --el-messagebox-border-radius: 12px;
+  --el-messagebox-padding-primary: 16px;
 }
 
 html .el-popover {

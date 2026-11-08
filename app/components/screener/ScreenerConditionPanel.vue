@@ -136,12 +136,15 @@ const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.cat
   border-radius: 16px 16px 0 0;
 }
 
-/* 內距只留焦點框的位置：面板本身已有 16px，內容區再給 16px 就是兩層（2026-10-23，手機上內容被縮成兩邊各 32px） */
+/* 內距只留焦點框的位置：面板本身已有 16px，內容區再給 16px 就是兩層（2026-10-23，手機上內容被縮成兩邊各 32px）。那 4px 用負的
+   margin 退回去：內容跟標題、下面的按鈕對齊在 16px（原本內縮到 20px，2026-11-08 使用者：「篩選 UI 組合的間距跑掉了」），捲動框裡照樣
+   留得下焦點框 */
 .el-dialog.condition-panel .el-dialog__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 4px;
+  margin: -4px;
 }
 
 .el-dialog.condition-panel .el-dialog__headerbtn {

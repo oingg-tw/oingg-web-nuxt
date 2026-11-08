@@ -55,6 +55,13 @@ html {
   overscroll-behavior: contain;
 }
 
+/* 並排的按鈕相隔 8px，同站上自己排的按鈕列（2026-11-08，使用者：「篩選 UI 組合的間距跑掉了」）：直接放進彈窗頁尾、確認框的按鈕原本吃
+   Element 的 .el-button + .el-button 12px，「取消／儲存」比面板裡「上一步／完成」寬一截。只管直接放進去的；自己包一層排版的照它自己的 gap */
+.el-dialog__footer > .el-button + .el-button,
+.el-message-box__btns > .el-button + .el-button {
+  margin-left: 8px;
+}
+
 /* Element Plus 只把 --el-font-family 套在自己的元件上，本站自己的標記要明寫；body 的 UA 預設 8px 邊距歸零（版面都從視窗邊算位移，
    2026-09-02 發現每個位移都差 8px）。tabular-nums 全站套（2026-09-04，全域設計 §3.2）：只影響數字字形寬度，CJK 不受影響。
    左右內距：viewport-fit=cover 之後 iPhone 橫拿時內容會進瀏海底下（固定在畫面上的頁首、導覽各自避開） */
@@ -474,7 +481,10 @@ textarea {
   color: var(--el-text-color-primary);
   background: var(--el-fill-color-blank);
   text-decoration: none;
+  /* 切換鈕是 <button>：瀏覽器給按鈕自己的字型，不繼承 */
+  font: inherit;
   font-size: 1rem;
+  cursor: pointer;
 }
 
 .hub-chip:hover,

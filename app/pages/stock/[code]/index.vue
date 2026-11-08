@@ -594,11 +594,6 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   list-style: none;
 }
 
-.stock-quick-view-page__picker-item {
-  font: inherit;
-  cursor: pointer;
-}
-
 /* 已加入：實心底＋勾號，不只靠顏色 */
 .stock-quick-view-page__picker-item.is-pinned {
   border-color: var(--el-color-primary-dark-2);

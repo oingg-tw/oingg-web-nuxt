@@ -273,8 +273,6 @@ const compactColumns = computed<SortableColumn<WatchlistRow>[]>(() => [
 .watchlist-picks__chip {
   flex-shrink: 0;
   white-space: nowrap;
-  font-family: inherit;
-  cursor: pointer;
 }
 
 .watchlist-compact__name,

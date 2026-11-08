@@ -849,11 +849,13 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin-bottom: 12px;
 }
 
-/* flex-start：「存成我的欄位組合」出現時顯示欄位那一組會換成兩行，欄位設定對齊第一行的選單 */
+/* flex-start：「存成我的欄位組合」出現時顯示欄位那一組會換成兩行，欄位設定對齊第一行的選單。
+   相鄰的控制項一律 8px（2026-11-02 排序／大到小，使用者：「排序與 大到小 中間的間距 要調整」；2026-11-08 管理／欄位設定原本 12px，
+   使用者：「篩選 UI 組合的間距跑掉了」）：scripts/check-screener-spacing.mjs */
 .smt-toolbar__row {
   display: flex;
   align-items: flex-start;
-  gap: 8px 12px;
+  gap: 8px;
 }
 
 /* 同寬（「欄位設定」四個字的寬度）：兩列右邊的按鈕上下對齊 */
@@ -867,8 +869,6 @@ watch(() => props.loading, (loading, wasLoading) => {
    用滑鼠看手機版面時比旁邊的按鈕高一截（2026-10-22，使用者：「手機版 排序 小到大 高度不對」）。觸控時全站規則把 select 撐到 44px */
 .smt-toolbar__row.smt-toolbar__sort {
   align-items: stretch;
-  /* 排序欄位和方向是同一組，跟上一列「欄位 總覽 ＋ 管理」一樣 8px（2026-11-02，使用者：「排序與 大到小 中間的間距 要調整」） */
-  column-gap: 8px;
 }
 
 .smt-sort {
@@ -936,8 +936,11 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin: 0;
 }
 
+/* pretty：欄名太長要折行時不留一兩個字在第二行。ETF 的「近1年報酬率 2026-09」原本折成「…2026-」與「09」（2026-11-08 量到，
+   Chrome 在中文裡會在連字號後面斷），「近12個月總費用率估算」的「算」也不再自己一行 */
 .smt-card__value dt {
   color: var(--el-text-color-secondary);
+  text-wrap: pretty;
 }
 
 .smt-card__value dd {
