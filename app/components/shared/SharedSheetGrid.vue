@@ -124,15 +124,22 @@ function toggleSort(column: SheetColumn<R>) {
 const ariaSort = (column: SheetColumn<R>) => (sort.value?.key === column.key ? sort.value.order : column.sortValue && !props.toolbarSort ? 'none' : undefined)
 
 // ---- 欄寬 ----
-// 預設照內容估（伺服器與瀏覽器算出同一個數）；拖過或自動貼合過的存在這個瀏覽器
+// 預設照內容估（伺服器與瀏覽器算出同一個數）；拖過或自動貼合過的存在這個瀏覽器。
+// 表頭在欄寬裡折行、最多兩行（2026-11-08，使用者：「watchlist 表格可以就讓它折行嗎? 比照篩選那邊呈現」）：欄寬照值估、凍結欄以外至少
+// 104px，同篩選結果表的方案 1B（SharedMetricTable 的 minWidthFor）。原本表頭一行，「近12個月總費用率估算」一欄就 208px。
+// 不像篩選那樣不限行數：這裡的排序箭頭跟字同一行，104px 只剩三個字寬，長表頭會折成四行。fit 照舊一行（欄寬交給瀏覽器）
 const PADDING = 24
 const MAX_WIDTH = 480
+const VALUE_MIN_WIDTH = 104
+const HEADER_LINES = 2
 const widths = reactive<Record<string, number>>({})
 const minWidthOf = (column: SheetColumn<R>) => column.minWidth ?? 56
 const estimated = computed(() => Object.fromEntries(props.columns.map((column) => {
-  const header = estimateTextWidth(column.label) + (column.sortValue ? 20 : 0)
+  const label = estimateTextWidth(column.label)
+  const header = (props.fit ? label : Math.ceil(label / HEADER_LINES) + 8) + (column.sortValue ? 20 : 0)
   const cells = props.rows.reduce((max, row) => Math.max(max, estimateTextWidth(column.text(row))), column.widthSample ? estimateTextWidth(column.widthSample) : 0)
-  return [column.key, Math.min(MAX_WIDTH, Math.max(minWidthOf(column), Math.max(header, cells) + PADDING))]
+  const floor = props.fit || column.frozen ? minWidthOf(column) : Math.max(minWidthOf(column), VALUE_MIN_WIDTH)
+  return [column.key, Math.min(MAX_WIDTH, Math.max(floor, Math.max(header, cells) + PADDING))]
 })))
 const widthOf = (column: SheetColumn<R>) => widths[column.key] ?? column.width ?? estimated.value[column.key]!
 const tableWidth = computed(() => props.columns.reduce((sum, column) => sum + widthOf(column), 0))
@@ -824,6 +831,15 @@ const cellStyle = (c: number, column: SheetColumn<R>) => ({
 
 .sheet__header-cell.is-sortable {
   cursor: pointer;
+}
+
+/* 表頭在欄寬裡折行、對齊底部（2026-11-08，同篩選結果表；欄寬見 estimated）。兩行平均分（balance），不會只剩一個字掉到第二行
+  （「股價淨值／比」）。fit 的欄寬交給瀏覽器，表頭照舊一行 */
+.sheet__table:not(.sheet__table--fit) .sheet__header-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  vertical-align: bottom;
 }
 
 .sheet__cell.is-numeric {
