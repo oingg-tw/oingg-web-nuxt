@@ -1,9 +1,12 @@
 // 「一圖一表」的規則（2026-10-15 從 check-stock-pages 搬出來，篩選區的 ETF、特別股個別頁也用同一條）。
 // 圖＝SharedChartCard（SSR 就有的 el-card，不用等水合）；表＝不是審計的 data-ssr-table（計算依據標 data-ssr-table="audit"，不算）。
+// 卡片裡只有一份事實清單（SharedFactList，2026-11-08 起清單放進卡片：ETF 費用、特別股股息、REIT 與個股的基本資料）不是圖
+
+const FACT_CARD = /\bshared-chart-card\b[^>]*>(?:<!--[^>]*-->)*<div class="el-card__body"[^>]*>(?:<!--[^>]*-->)*<dl class="fact-list"/g
 
 export function pageShape(html) {
   return {
-    charts: (html.match(/<div class="el-card[^"]*\bshared-chart-card\b/g) ?? []).length,
+    charts: (html.match(/<div class="el-card[^"]*\bshared-chart-card\b/g) ?? []).length - (html.match(FACT_CARD) ?? []).length,
     tables: (html.match(/<table[^>]*data-ssr-table(?!="audit")/g) ?? []).length
   }
 }

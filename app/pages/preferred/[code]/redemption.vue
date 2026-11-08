@@ -19,15 +19,30 @@ const dateText = computed(() => {
   return stockEntry.redeemable ? '條款未寫日期' : '未知'
 })
 
-const answer = computed(() => {
+const premiumText = (premiumRatePct: number) => `${premiumRatePct >= 0 ? '高' : '低'} ${preferredPct(Math.abs(premiumRatePct))}`
+
+// meta description 寫完整；卡片前的答句只留收回日、溢價與收回殖利率（2026-11-08：清單放進卡片後，卡片前文字檢查量到 96～99 字，上限 80），
+// 收盤價與發行價卡片裡都有
+const description = computed(() => {
   const stockEntry = entry.value
   if (!stockEntry) return null
   if (stockEntry.redeemable === false) return `${shortName.value}（${code.value}）的發行條件沒有讓發行公司收回的條款。`
   const parts = [`${shortName.value}（${code.value}）最早可收回日：${dateText.value}`]
   if (stockEntry.issuePrice !== null && price.value !== null && stockEntry.premiumRatePct !== null) {
-    parts.push(`；${priceDate.value ?? '最新'}收盤價 ${preferredYuan(price.value)}，比發行價 ${preferredYuan(stockEntry.issuePrice)}${stockEntry.premiumRatePct >= 0 ? '高' : '低'} ${preferredPct(Math.abs(stockEntry.premiumRatePct))}`)
+    parts.push(`；${priceDate.value ? `${priceDate.value} ` : '最新'}收盤價 ${preferredYuan(price.value)}，比發行價 ${preferredYuan(stockEntry.issuePrice)}${premiumText(stockEntry.premiumRatePct)}`)
   }
   if (stockEntry.ytcPct !== null) parts.push(`，假設被收回的收回殖利率 ${preferredPct(stockEntry.ytcPct)}`)
+  return `${parts.join('')}。`
+})
+
+const answer = computed(() => {
+  const stockEntry = entry.value
+  if (!stockEntry || stockEntry.redeemable === false) return description.value
+  const status = redemptionStatus(stockEntry, today)
+  const when = status === 'passed' ? `${stockEntry.redemptionDate} 起可收回，還沒收回` : status === 'upcoming' ? `${stockEntry.redemptionDate} 起可收回` : `最早可收回日：${dateText.value}`
+  const parts = [`${shortName.value}（${code.value}）${when}`]
+  if (price.value !== null && stockEntry.premiumRatePct !== null) parts.push(`；收盤價比發行價${premiumText(stockEntry.premiumRatePct)}`)
+  if (stockEntry.ytcPct !== null) parts.push(`，被收回的收回殖利率 ${preferredPct(stockEntry.ytcPct)}`)
   return `${parts.join('')}。`
 })
 
@@ -53,9 +68,9 @@ const facts = computed<FactItem[]>(() => {
 </script>
 
 <template>
-  <PreferredStockPage :preferred="preferred" topic="收回條款與溢價" :description="answer">
+  <PreferredStockPage :preferred="preferred" topic="收回條款與溢價" :description="description">
     <StockQuestionSection id="preferred-redemption" :question="`${shortName}（${code}）什麼時候可能被收回？用高於發行價的價格買會怎樣？`" :answer="answer">
-      <SharedFactList :items="facts" :label="`${shortName}的收回條款與溢價`" />
+      <SharedChartCard><SharedFactList :items="facts" :label="`${shortName}的收回條款與溢價`" /></SharedChartCard>
       <p class="hub-answer">
         最早可收回日只是發行公司「可以」收回的日子，不代表一定會收回。被收回時拿回的是發行價：例如發行價 50 元、用 60 元買進，被收回就少拿回 10 元。
         溢價很高時，收回殖利率可能是負的。

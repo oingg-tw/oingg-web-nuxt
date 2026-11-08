@@ -10,7 +10,7 @@ const answer = computed(() => {
   const item = reit.value
   if (!item) return null
   const parts: string[] = []
-  if (item.nav !== null) parts.push(`${item.navDate ?? '最新'}淨值 ${reitYuan(item.nav)}${item.premiumDiscountPct === null ? '' : `，當天折溢價 ${reitSignedPct(item.premiumDiscountPct)}`}`)
+  if (item.nav !== null) parts.push(`${item.navDate ? `${item.navDate} ` : '最新'}淨值 ${reitYuan(item.nav)}${item.premiumDiscountPct === null ? '' : `，當天折溢價 ${reitSignedPct(item.premiumDiscountPct)}`}`)
   const lastYear = months.value.slice(0, 12)
   const highs = lastYear.flatMap(row => row.premiumHighest ?? [])
   const lows = lastYear.flatMap(row => row.premiumLowest ?? [])
