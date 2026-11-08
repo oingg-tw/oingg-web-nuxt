@@ -56,7 +56,9 @@ function choose(value: AnalyticsConsent) {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 2100;
+  /* 頁首、底部導覽列（10）上面，側滑層（20）與 Element 的對話框、下拉選單（2000 起）底下：打開的面板蓋住橫幅，不是橫幅蓋住面板
+     （原本 2100，2026-11-08 check-screener-spacing 在 DEV 量到：手機的篩選條件面板底部被它蓋住，條件點不到；本機不問 Cookie 所以測不到） */
+  z-index: 15;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
