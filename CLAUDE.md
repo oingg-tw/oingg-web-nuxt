@@ -112,3 +112,34 @@ A site-wide rule for `/stock/[code]` pages is changed in its owner, never page b
 A new chart component renders `<SharedChartCard>` itself and forwards a `#header` slot. If it has a time axis, it gets its state from `useChartPeriod` and passes `:period`. A new stock page renders `<StockPageShell>`. If a new rule has no owner yet, create the owner first, then move callers onto it.
 
 A screener page renders `<ScreenerPageShell :universe :screener>` and nothing else of its own; the three differ only in their data (`useScreenerTabs` for 普通股, `useUniverseScreener` with `useEtfSource` / `usePreferredSource`). Per-symbol ETF pages render `<EtfPage>`; per-symbol preferred pages render `<PreferredStockPage>`; per-REIT pages render `<ReitPage>`; per-sector pages render `<IndustryPage>`. `scripts/check-screener-consistency.mjs` asserts the three stay the same.
+
+## Working agreements and standing decisions
+
+Moved here on 2026-11-08 from one session's private memory (the user's「寫 好」), so every session reads them. Dated lines are snapshots: check them before relying on them.
+
+### How to work
+
+- Reply to the user in 繁體中文 (Taiwan usage), the first reply after a context summary too (the user's「說中文」, 2026-11-07). Code identifiers, commands and paths stay as they are.
+- Local is local (the user's「Local永遠接local」, 2026-11-04): the dev server on :3000 talks to the local 業務中台 on :5400, never to DEV. When the local 業務中台 is stale or down, get it restarted at its HEAD (it belongs to the oingg-business-rust session). To check DEV, point the check scripts at the DEV URL.
+- Before reporting a fix, check the sibling paths of the same class and fix them (the user's「還沒處理或沒查?」, 2026-11-05: three items left unchecked were real bugs). A closing "not handled or not checked" list is not a hand-off: name something as unchecked only when it truly can't be checked from here, and say why. This fits the standing「千萬不可以跟我說沒壞就不改…只要不合理就改掉」.
+- A layout that jumps (late data pushing content, a skeleton of the wrong size, a flash on reload) is fixed on sight without asking (the user's「要修，這種會跳的版面以後看到就直接修 不需要等我授權」, 2026-11-06). Commits, pushes and writes to DEV still wait for the user.
+- How data is computed belongs to 數據中台 (oingg-data-rust): this repo states the need and checks who does what; it doesn't design formulas or trial-compute them over the market. When data is too shallow, ask upstream and build once it arrives (the user's「有關數據怎麼處理是數據中台的責任 你這邊能做的就是把你的需求提給他來核對分工」「如果資料深度不足就跟上游提需求 等資料足夠再來做功能」, 2026-11-05). A request says what the reader must see, the site's constraints (`compliance-words.ts`, the owner rows above, earlier decisions) and what was measured where.
+
+### UI decisions
+
+- Phone tables stay aligned: each number sits in a column with its label only in the header, never in label-and-value lines repeated under every row (the user's「亂亂的」, 2026-11-04). If the numbers don't fit, reuse the /industries tiles or the /rank card with a segmented switch, and look at it at 375 and 320 before showing it.
+- The three screeners' phone result cards stay as they are (the user's「篩選結果的手機不用動」, 2026-11-07): the aligned phone table is /watchlist's alone.
+
+### Facts the code doesn't show
+
+- There is no web PRD (checked 2026-11-05): oingg.com is a Squarespace「Coming Soon」page, and `wrangler.jsonc` only has the Worker `oingg-web-nuxt-dev`, which talks to 業務中台 DEV. An upstream PRD deploy reaches no visitor, so never relay one as「上線後網站會變」. `main` stopped at 2026-10-13 and still PATCHes columns on every search, so a future PRD is cut from `development`, and it needs data-rust PRD at 5e788d4 or later (ETF `adjustedClose`, `yearMonth` on /etf-screener rows).
+- Ledger numbers the user typed are correct by definition (the user's「不管歷史數據，那是用戶自己輸入的數字，就是絕對正確的數字」「我也不預期用戶會持有這麼久以前的數據」, 2026-11-07): never write copy or logic saying a typed number may be wrong because our data is short, and build nothing for holdings older than about 2019. A gap in our data only touches what the system adds itself (automatic 配股, 減資, 分割, dividends received).
+- Share counts are not complete, so never say they are (as of 2026-11-07): splits auto-post on DEV, but newly listed events, stock dividends before 2019 and capital reductions announced before 2026-08-23 are still missing upstream. The approved hint stays (holdings form and realized note:「多數配股會自動入帳；分割與減資請對照券商紀錄」); change it only when 數據中台 says a gap is closed. An on-screen「可能少算」notice was rejected (「怎麼可能需要加這一行文字?」): don't propose it again.
+- DEV's test account holds a regression data set on purpose (since 2026-11-04, the user's「都要」): the account「回歸測試」, the list「回歸測試清單」, a holdings share of that account, and the saved screens「回歸測試：處置中」and「回歸測試：三種條件值」. Don't delete it; reuse it for real-data checks on DEV. Writing more to DEV needs the user's own approval, and the account's credentials and the share token are never printed.
+- Building production locally while the dev server keeps :3000: extract `git archive HEAD`, the working-tree diff and the untracked files into a scratch folder, link node_modules with a PowerShell junction, and delete `<repo>/node_modules/.cache/nuxt/.nuxt` first (a second build through the junction fails with "Received protocol 'c:'"). Node: `nuxt build`, then `PORT=3100 node --env-file=<repo>/.env .output/server/index.mjs`. Workers: build with `NITRO_PRESET=cloudflare_module NUXT_SITE_ENV=preview`, then `pnpm dlx wrangler@4 dev --ip 127.0.0.1 --port 8787 --var NUXT_BUSINESS_BASE:http://127.0.0.1:9`, like CI. Clean up by deleting the junction first (`(Get-Item).Delete()`). Stopping a background shell leaves node, wrangler and workerd running, and `.wrangler` stays locked until they exit.
+
+### Waiting on data
+
+- Convertible bonds in the screener wait for the data (the user's「等資料齊全，再來做」, 2026-11-02): 業務中台's `GET /convertible-bonds` has issuance terms only, with no trading price and no current conversion price. Once both arrive, it becomes the fourth universe on `ScreenerPageShell`.
+- A per-stock 景氣循環度 page (the user's request of 2026-11-05, from their guide《景氣循環股識別指南》) waits for 數據中台's data, backfilled to 2013Q1. The user chose its own page under 指標總覽's 組成 perspective, not a badge (no published source or threshold fits the score). The holdings tag「景氣循環型」stays commented out until it gets a threshold of its own.
+- 產業盈餘發放率 (as of 2026-11-08, the user's「等接到資料再開發再推」) is built once 數據中台's `dividendPayoutRatio` distribution reaches DEV through 業務中台, as 方案 A plus the sector page of https://claude.ai/artifact/9C1Go34LxegryCVFdiJaBo. The working tree holds uncommitted industry-page edits that ship with it (股利3年成長 and 成本殖利率 removed, the screener picker's `PICKER_UNLISTED_METRICS`): keep them out of other commits. Until that release is deployed, upstream keeps `holdingDividendGrowthRate3y` and `yieldOnCost5y` in the sector summary; tell 數據中台 and 業務中台 once it is. Delete this item when it ships.
