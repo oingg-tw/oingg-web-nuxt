@@ -34,7 +34,8 @@ const limitOf = (tier: PlanQuotas['tier'], row: (typeof QUOTA_ROWS)[number]) =>
       <tr v-for="row in QUOTA_ROWS" :key="row.resource" :class="{ 'plan-compare__hit': row.resource === highlight }">
         <th scope="row">{{ row.label }}</th>
         <td v-for="tier in TIERS" :key="tier">
-          <span v-if="plans === undefined" class="app-skeleton app-skeleton--inline" aria-hidden="true">10 {{ row.unit }}</span>
+          <!-- --flow：範例字透明，只借它的寬度（原本 --inline 會把「10 次」這種假額度露出來，2026-11-08） -->
+          <span v-if="plans === undefined" class="app-skeleton app-skeleton--flow" aria-hidden="true">10 {{ row.unit }}</span>
           <template v-else>{{ limitOf(tier, row) }}</template>
         </td>
       </tr>

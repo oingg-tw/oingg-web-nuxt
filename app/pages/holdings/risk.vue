@@ -234,8 +234,9 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
             <div class="app-card risk-ulcer">
               <p class="risk-ulcer__value">
                 <span class="risk-ulcer__label">潰瘍指數</span>
-                <span v-if="loading" class="risk-ulcer__number app-skeleton app-skeleton--inline" aria-hidden="true">6.8%</span>
-                <span v-else class="risk-ulcer__number">{{ ulcerText }}</span>
+                <!-- 外層撐住大數字的行高，骨架只在裡面（骨架直接當這一格時只有 1em 高，數字到了下面往下跳 7px，2026-11-08 DEV 量到）；
+                     --flow 的範例字是透明的，不會先露出假數字 -->
+                <span class="risk-ulcer__number"><span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">6.8%</span><template v-else>{{ ulcerText }}</template></span>
               </p>
               <div class="risk-ulcer__compare">
                 <div v-for="bar in loading ? ULCER_SKELETON : ulcerBars" :key="bar.name" class="risk-ulcer__row">
@@ -244,7 +245,7 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
                     <span class="risk-ulcer__bar" :class="{ 'app-skeleton': loading }" :style="{ width: bar.width, background: loading ? undefined : bar.color }" />
                   </span>
                   <span class="risk-ulcer__text">
-                    <span v-if="loading" class="app-skeleton app-skeleton--inline" aria-hidden="true">6.8%</span>
+                    <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">6.8%</span>
                     <template v-else>{{ bar.text }}</template>
                   </span>
                 </div>
@@ -262,10 +263,9 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
             <div class="app-card risk-page__chart-card">
               <p class="risk-volatility">
                 <span>年化波動度</span>
-                <span v-if="loading" class="risk-volatility__number app-skeleton app-skeleton--inline" aria-hidden="true">28.8%</span>
-                <span v-else class="risk-volatility__number">{{ volatilityText }}</span>
+                <span class="risk-volatility__number"><span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">28.8%</span><template v-else>{{ volatilityText }}</template></span>
                 <span class="risk-volatility__market">大盤
-                  <span v-if="loading" class="app-skeleton app-skeleton--inline" aria-hidden="true">27.2%</span>
+                  <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">27.2%</span>
                   <template v-else>{{ volatilityMarketText }}</template>
                 </span>
               </p>
