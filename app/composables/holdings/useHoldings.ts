@@ -128,7 +128,8 @@ export function useHoldings() {
     } catch (error) {
       const status = businessErrorStatus(error)
       const message = describeBusinessError(error)
-      if (businessErrorCode(error) === LEDGER_OVERSOLD) return { ok: false, reason: 'oversold', message }
+      // 超賣帶原文（英文）：oversoldMessage 從裡面讀日期與股數，自己寫中文
+      if (businessErrorCode(error) === LEDGER_OVERSOLD) return { ok: false, reason: 'oversold', message: businessErrorDetail(error) }
       if (status === 404 && !id) return { ok: false, reason: 'unknown', message }
       if (status === 404) {
         await refreshAfterWrite(input.symbol)

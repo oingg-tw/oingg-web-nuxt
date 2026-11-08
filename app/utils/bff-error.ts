@@ -7,11 +7,12 @@
 // 中間每一層都可能不是物件（網路層的失敗根本沒有 data）。少一層就會在那種失敗上丟 TypeError，
 // 而這些呼叫端的契約正是「同步失敗不要把畫面弄壞」。
 //
-// 回傳 null 而不是一個預設字串：呼叫端要分得出「上游給了理由」與「這是一次沒有理由的失敗」，
-// 前者可以顯示給使用者，後者只能寫進 console。
+// 回傳 null 而不是一個預設字串：呼叫端要分得出「上游給了理由」與「這是一次沒有理由的失敗」。
 // 2026-10-08 業務中台 改成 RFC 9457 problem+json（5fb972b）：訊息在最外層的 `detail`，舊的 `error.message`
 // 過渡期仍會帶、等我們切過去 業務中台 就拿掉。`detail` 優先，兩邊都認。
-export function describeBusinessError(error: unknown): string | null {
+//
+// 這是原文，給程式讀（超賣的日期與股數，oversoldMessage）；要顯示給使用者的用下面的 describeBusinessError
+export function businessErrorDetail(error: unknown): string | null {
   if (!error || typeof error !== 'object' || !('data' in error)) return null
   const data = (error as { data?: unknown }).data
   if (!data || typeof data !== 'object') return null
@@ -22,6 +23,15 @@ export function describeBusinessError(error: unknown): string | null {
   if (!inner || typeof inner !== 'object' || !('message' in inner)) return null
   const message = (inner as { message?: unknown }).message
   return typeof message === 'string' ? message : null
+}
+
+// 給使用者看的那句，只收中文：業務中台的 detail 都是英文，正式環境的 502 也照帶「Could not reach the analysis service」
+// （2026-11-08 查過；業務中台 同一天起讀不到減資或分割事件時，持股的讀寫也回這個 502），放進提示就是一句看不懂的英文。
+// null 時呼叫端用自己的中文預設句。
+// ponytail: 認的是「有沒有漢字」，業務中台哪天帶了不該給人看的中文也會照顯示；要更嚴就改成依 businessErrorCode 對照中文
+export function describeBusinessError(error: unknown): string | null {
+  const detail = businessErrorDetail(error)
+  return detail && /\p{Script=Han}/u.test(detail) ? detail : null
 }
 
 // 同一個錯誤的 HTTP 狀態碼。2026-10-05 從 useUserWatchlist.ts 搬過來：持股管理是第二個需要分辨
