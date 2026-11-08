@@ -11,7 +11,7 @@ export interface NormalizedCompanyProfile {
   listedDate: Date | null
   // financialReportType／financialReportTypeName 2026-10-10 刪掉：從來沒有地方讀它們，而上游同日改名成 declaredDataType 時
   // 編碼方向也反了（舊的交易所代碼 "1"＝合併，新的 MOPS 編號 "2"＝合併，跟 metricDataType 同向）。要顯示「合併／個別」時
-  // 讀 raw.declaredDataType，"2"＝合併、"1"＝個別——別照舊欄位的方向寫。
+  // 讀 declaredDataTypeName（useCompanyProfileDetail 已經在讀）：代碼 declaredDataType 業務中台 506f4ff 拿掉了（2026-11-09）。
   // Which basis this company's METRICS were computed on, added 2026-09-22 (21fdd2d4). Distinct
   // from the two fields above, which describe what the company FILES: 249 companies file only
   // individual statements and so had no computed metrics at all until analysis-ts started deriving
