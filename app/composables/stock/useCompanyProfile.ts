@@ -3,13 +3,11 @@
 export interface NormalizedCompanyProfile {
   name: string | null
   shortName: string | null
-  // 證交所類股（生態系詞彙表：代碼一律叫 sectorCode、名稱 sectorName，中文「類股」；2026-10-11 內部名稱也跟著改）。
-  // 上游 2026-10-10 起上櫃公司的 sectorName 也有值（原本一律 null）。listedDate 讀的是上游的 listingDate。
+  // 證交所類股代碼（生態系詞彙表：sectorCode，中文「類股」；2026-10-11 內部名稱也跟著改），類股名稱查 SECTORS。listedDate 讀的是上游的 listingDate。
   // 實收資本、股數那四個欄位與 auditingFirm 2026-11-03 拿掉：沒有地方讀，卻用 BigInt()／String() 轉了一遍（String(null) 還會變成 "null"）
+  // sectorName、establishedDate 2026-11-08 拿掉：一樣沒有地方讀（數據中台盤點 /companies/profile 的讀者時查到）
   // 沒有類股是 null（原本 String(null) 會變成字面上的 "null"）
   sectorCode: string | null
-  sectorName: string | null
-  establishedDate: Date | null
   listedDate: Date | null
   // financialReportType／financialReportTypeName 2026-10-10 刪掉：從來沒有地方讀它們，而上游同日改名成 declaredDataType 時
   // 編碼方向也反了（舊的交易所代碼 "1"＝合併，新的 MOPS 編號 "2"＝合併，跟 metricDataType 同向）。要顯示「合併／個別」時
@@ -44,15 +42,13 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     name: typeof name === 'string' ? name : null,
     shortName: typeof shortName === 'string' ? shortName : null,
     sectorCode: typeof raw.sectorCode === 'string' && raw.sectorCode ? raw.sectorCode : null,
-    sectorName: (raw.sectorName as string | null) ?? null,
-    establishedDate: toDate(raw.establishedDate),
     listedDate: toDate(raw.listingDate),
     metricDataType: (raw.metricDataType as string | null) ?? null
   }
 }
 
 // GET /stocks/{symbol}/profile（業務中台 2026-09-02 以 2330／8299 實測；欄位名與 NormalizedCompanyProfile 一致）。404＝兩個市場都
-// 沒有這檔的公司資料，不記錄為錯誤；TPEx 的 englishAddress 一律 null（來源資料沒有這欄）。讀取失敗往上丟（不捏造董事長／
+// 沒有這檔的公司資料，不記錄為錯誤。讀取失敗往上丟（不捏造董事長／
 // 會計師／統編那類看起來像真的資料（以前真的這樣渲染過隨機值））；404 才回 null。
 // 參數是路由上的 symbol ref（2026-09-14 起），不再要求先有一個已解析的 Stock 物件。
 // 2026-09-19 起走本站的快取直通 /api/cached（server/api/cached），同路徑同形狀，伺服器快取 24 小時。
