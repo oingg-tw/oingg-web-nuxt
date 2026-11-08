@@ -9,7 +9,9 @@ const TOPIC = '基本資料'
 
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 // 等它到了才畫（同一支快取端點，跟摘要卡的公司資料幾乎同時到）：先畫四段標題再補表格，換頁時表格會把下面推動
-const { data: detail } = await useCompanyProfileDetail(code)
+const { data: detail, status } = await useCompanyProfileDetail(code)
+// 404（數據中台的公司目錄沒有這家，例如已經離開櫃買名單）：說沒有資料，不收錄這一頁
+const missing = computed(() => status.value === 'success' && !detail.value)
 // 伺服器算的「今天」帶到瀏覽器，年數在 hydration 時不會差一天
 const today = useState('taipei-today', () => holdingsTaipeiDate())
 
@@ -72,7 +74,8 @@ const { breadcrumbs } = useStockPageSeo({
   pathSuffix: '/profile',
   stock,
   description,
-  sectorCode: computed(() => profile.value?.sectorCode ?? null)
+  sectorCode: computed(() => profile.value?.sectorCode ?? null),
+  noindex: missing
 })
 
 const footer = computed(() => ({
@@ -106,5 +109,6 @@ const footer = computed(() => ({
         <SharedChartCard><SharedFactList :items="facts.contact" :label="`${stockShortName}的聯絡方式`" /></SharedChartCard>
       </StockQuestionSection>
     </template>
+    <p v-else-if="missing" class="hub-answer">目前沒有{{ stockShortName }}的基本資料。</p>
   </StockPageShell>
 </template>

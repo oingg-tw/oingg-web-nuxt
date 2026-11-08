@@ -39,7 +39,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 
 // 基本資料卡（2026-11-08，使用者：「這個卡片要跟指標一樣 可以自選」）：釘了才讀公司資料的完整那份；格子裡是 8 列的表格卡片。
 // 「今天」從伺服器帶到瀏覽器（同基本資料頁），上市櫃幾年在 hydration 時不會差一天
-const { data: profileDetail } = useCompanyProfileDetail(code, () => pinnedSlugs.value.includes('profile'))
+const { data: profileDetail, status: profileStatus } = useCompanyProfileDetail(code, () => pinnedSlugs.value.includes('profile'))
 const taipeiToday = useState('taipei-today', () => holdingsTaipeiDate())
 const profileFacts = computed(() => (profileDetail.value ? profileCardFacts(profileDetail.value, taipeiToday.value) : []))
 const profileDateText = computed(() => (profileDetail.value?.generatedDate ? `資料日期 ${profileDetail.value.generatedDate}` : '整頁內容'))
@@ -371,7 +371,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <SharedChartCard v-else-if="item.spec.kind === 'profile'" class="stock-quick-view-page__profile">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" value="" @remove="removeRow(item.slug, item.label)" /></template>
           <SharedFactList v-if="profileFacts.length" :items="profileFacts" :label="`${stockShortName}的基本資料`" class="stock-quick-view-page__facts" />
-          <div v-else class="stock-quick-view-page__facts-placeholder app-skeleton" aria-hidden="true" />
+          <!-- 查完是 404（數據中台的公司目錄沒有這家，例如已經離開櫃買名單）：同其他卡片說沒有資料，不留一塊永遠在載入的骨架 -->
+          <p v-else-if="profileStatus === 'success'" class="stock-quick-view-page__chart-empty">目前沒有這家公司的基本資料。</p>
+          <div v-else-if="profileStatus !== 'error'" class="stock-quick-view-page__facts-placeholder app-skeleton" aria-hidden="true" />
         </SharedChartCard>
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
