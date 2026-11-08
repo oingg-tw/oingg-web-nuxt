@@ -37,6 +37,13 @@ const { data: schema } = useNuxtData<{ categories: Parameters<typeof locateField
 
 const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 
+// 基本資料卡（2026-11-08，使用者：「這個卡片要跟指標一樣 可以自選」）：釘了才讀公司資料的完整那份；格子裡是 8 列的表格卡片。
+// 「今天」從伺服器帶到瀏覽器（同基本資料頁），上市櫃幾年在 hydration 時不會差一天
+const { data: profileDetail } = useCompanyProfileDetail(code, () => pinnedSlugs.value.includes('profile'))
+const taipeiToday = useState('taipei-today', () => holdingsTaipeiDate())
+const profileFacts = computed(() => (profileDetail.value ? profileCardFacts(profileDetail.value, taipeiToday.value) : []))
+const profileDateText = computed(() => (profileDetail.value?.generatedDate ? `資料日期 ${profileDetail.value.generatedDate}` : '整頁內容'))
+
 // 釘選的是「頁面」（slug），不是指標欄位。對應成 /screener/values 的欄位：
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
 //   - 徽章頁：BADGE_PAGES 的 metricCode＋chartTimeframe（沒寫就近四季）
@@ -199,7 +206,7 @@ const pickerGroups = STOCK_METRIC_INDEX
 
 // 河流圖與互動卡片自己讀資料；其餘的圖跟它那一頁讀同一支端點（Nitro 快取的同一份），有釘那一種才抓。以 kind 為鍵：
 // metric-pages.ts 新增一種 kind 而這裡漏接，typecheck 會報。配股配息 2026-10-15 起畫這檔自己的殖利率走勢（全市場分布留在那一頁）
-const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric'>, string> = {
+const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric' | 'profile'>, string> = {
   'dividend': 'dividend-yield-history',
   'monthly-revenue': 'monthly-revenue',
   'monthly-revenue-growth': 'monthly-revenue',
@@ -360,6 +367,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         >
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockMetricHistoryChartInteractive>
+        <!-- 基本資料是表格卡片（2026-11-08）：不比圖表卡高，見 .stock-quick-view-page__facts -->
+        <SharedChartCard v-else-if="item.spec.kind === 'profile'" class="stock-quick-view-page__profile">
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" value="" @remove="removeRow(item.slug, item.label)" /></template>
+          <SharedFactList v-if="profileFacts.length" :items="profileFacts" :label="`${stockShortName}的基本資料`" class="stock-quick-view-page__facts" />
+          <div v-else class="stock-quick-view-page__facts-placeholder app-skeleton" aria-hidden="true" />
+        </SharedChartCard>
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>
@@ -431,7 +444,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <tr v-for="(row, index) in rows" :key="row.slug">
             <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
             <td class="seo-table__num">{{ riverKindOf(row.slug) ? riverValueText(riverLatestOfRow(row.slug), row.field) : valueText(row.field, row.slug) || '－' }}</td>
-            <td data-label="期別">{{ riverKindOf(row.slug) ? riverPeriodText(row.slug) : periodText(row.field) }}</td>
+            <td data-label="期別">{{ row.slug === 'profile' ? profileDateText : riverKindOf(row.slug) ? riverPeriodText(row.slug) : periodText(row.field) }}</td>
             <td class="stock-quick-view-page__order">
               <div class="stock-quick-view-page__order-buttons">
               <button :id="`quick-view-up-${row.slug}`" type="button" class="stock-quick-view-page__move" :disabled="index === 0" :aria-label="`${row.label} 上移`" @click="moveRow(row.slug, -1, row.label)">
@@ -490,6 +503,43 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   .stock-quick-view-page__placeholder {
     height: calc(32px + 8px + 320px);
   }
+}
+
+/* 基本資料卡（2026-11-08，使用者：「我比較擔心他在電腦版 會把別的圖表比例撐高」）：不比圖表卡高（454px＝標題 64＋上下 12＋框線）。
+   8 列各一行、每列 44px 加分隔線，自己 450px；太長的值結尾「…」，完整的在基本資料頁。同一列時是它把 8 列平均撐開去配合圖表卡 */
+.stock-quick-view-page__profile {
+  display: flex;
+  flex-direction: column;
+}
+
+.stock-quick-view-page__profile :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+}
+
+.stock-quick-view-page__facts.fact-list {
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: 1fr;
+}
+
+.stock-quick-view-page__facts :deep(.fact-list__item) {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0;
+}
+
+.stock-quick-view-page__facts :deep(.fact-list__value) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stock-quick-view-page__facts-placeholder {
+  flex: 1;
+  min-height: calc(8 * (2.75rem + 1px));
 }
 
 /* 虛線外框＝空位，跟實心的圖表卡片一眼分得出來；同一列裡會被 grid 撐到跟旁邊的卡片一樣高 */

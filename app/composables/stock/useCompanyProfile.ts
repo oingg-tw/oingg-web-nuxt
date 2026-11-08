@@ -52,24 +52,138 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
 // 會計師／統編那類看起來像真的資料（以前真的這樣渲染過隨機值））；404 才回 null。
 // 參數是路由上的 symbol ref（2026-09-14 起），不再要求先有一個已解析的 Stock 物件。
 // 2026-09-19 起走本站的快取直通 /api/cached（server/api/cached），同路徑同形狀，伺服器快取 24 小時。
+async function fetchProfile(symbol: string): Promise<Record<string, unknown> | null> {
+  try {
+    return await apiFetch<Record<string, unknown>>(`/stocks/${symbol}/profile`, { baseURL: BUSINESS_CACHED_BASE })
+  } catch (error) {
+    // 只有 404 是「沒有這檔」；其他失敗往上丟，交給全站讀取失敗彈窗（2026-10-11）。
+    // 原本一律回 null，讀不到時每一個個股頁都說「找不到這檔股票」。
+    if (classifyApiError(error).status === 404) return null
+    devWarn('company-profile', `GET /api/cached/stocks/${symbol}/profile unavailable`, error)
+    throw error
+  }
+}
+
 export function useCompanyProfile(symbol: Ref<string | undefined>) {
   return useAsyncData<NormalizedCompanyProfile | null>(
     () => `company-profile-${symbol.value ?? 'none'}`,
     async () => {
       const current = symbol.value
       if (!current) return null
-
-      try {
-        const raw = await apiFetch<Record<string, unknown>>(`/stocks/${current}/profile`, { baseURL: BUSINESS_CACHED_BASE })
-        return hydrateCompanyProfile(raw)
-      } catch (error) {
-        // 只有 404 是「沒有這檔」；其他失敗往上丟，交給 useStockDetailSummary 報給全站讀取失敗彈窗（2026-10-11）。
-        // 原本一律回 null，讀不到時每一個個股頁都說「找不到這檔股票」。
-        if (classifyApiError(error).status === 404) return null
-        devWarn('company-profile', `GET /api/cached/stocks/${current}/profile unavailable`, error)
-        throw error
-      }
+      const raw = await fetchProfile(current)
+      return raw && hydrateCompanyProfile(raw)
     },
     { watch: [symbol] }
   )
+}
+
+// 基本資料卡（指標速覽）與基本資料頁讀的欄位（2026-11-08，使用者確認的清單；設計頁 https://claude.ai/artifact/56HsmA1SowvPxnZ4vJzha4）。
+// 只有這兩處讀，所以另成一份，不併進上面那份（那份會進每個個股頁的 SSR payload）。日期是 YYYY-MM-DD 字串，怎麼寫在 utils/company-profile.ts
+export interface CompanyOfficer {
+  role: 'chairman' | 'general_manager' | 'spokesperson' | 'deputy_spokesperson'
+  // 法人董事沒寫代表人時是 null，只能顯示法人名稱
+  name: string | null
+  title: string | null
+  isActing: boolean
+  corporationName: string | null
+}
+
+export interface CompanyProfileDetail {
+  companyFullName: string | null
+  englishShortName: string | null
+  sectorCode: string | null
+  // sii 上市、otc 上櫃、rotc 興櫃
+  market: string | null
+  listingDate: string | null
+  establishedDate: string | null
+  taxId: string | null
+  // 外國企業（KY）才有
+  foreignRegistrationCountryName: string | null
+  // 數據中台的一人一列（2026-11-08 跟業務中台對過的形狀：法人名稱、職稱、代理分開，一欄多人拆開）。null＝上游還沒有這個鍵（過渡期
+  // 業務中台會回 null），讀下面的字串欄（原文照登）；[] 才是真的沒有負責人。role 是開放列舉，沒見過的值略過
+  officers: CompanyOfficer[] | null
+  chairman: string | null
+  generalManager: string | null
+  spokesperson: string | null
+  spokespersonTitle: string | null
+  deputySpokesperson: string | null
+  paidInCapitalNtd: number | null
+  issuedShares: number | null
+  numberOfPreferenceShares: number | null
+  privatePlacementShares: number | null
+  declaredDataTypeName: string | null
+  auditingFirm: string | null
+  auditor1: string | null
+  auditor2: string | null
+  // 有中文用中文，沒有才用 englishAddress（上櫃、興櫃的來源目前只有英文）
+  address: string | null
+  phone: string | null
+  faxNumber: string | null
+  website: string | null
+  email: string | null
+  stockTransferAgency: string | null
+  transferAgencyPhone: string | null
+  transferAgencyAddress: string | null
+  generatedDate: string | null
+}
+
+const OFFICER_ROLES = new Set<string>(['chairman', 'general_manager', 'spokesperson', 'deputy_spokesperson'])
+const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
+const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null)
+
+function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfileDetail {
+  const officers = Array.isArray(raw.officers)
+    ? (raw.officers as Record<string, unknown>[]).flatMap(item => (item && OFFICER_ROLES.has(item.role as string) && (text(item.name) || text(item.corporationName))
+      ? [{ role: item.role as CompanyOfficer['role'], name: text(item.name), title: text(item.title), isActing: item.isActing === true, corporationName: text(item.corporationName) }]
+      : []))
+    : null
+  return {
+    companyFullName: text(raw.companyFullName),
+    englishShortName: text(raw.englishShortName),
+    sectorCode: text(raw.sectorCode),
+    market: text(raw.market),
+    listingDate: text(raw.listingDate),
+    establishedDate: text(raw.establishedDate),
+    taxId: text(raw.taxId),
+    foreignRegistrationCountryName: text(raw.foreignRegistrationCountryName),
+    officers,
+    chairman: text(raw.chairman),
+    generalManager: text(raw.generalManager),
+    spokesperson: text(raw.spokesperson),
+    spokespersonTitle: text(raw.spokespersonTitle),
+    deputySpokesperson: text(raw.deputySpokesperson),
+    paidInCapitalNtd: count(raw.paidInCapitalNtd),
+    issuedShares: count(raw.issuedShares),
+    numberOfPreferenceShares: count(raw.numberOfPreferenceShares),
+    privatePlacementShares: count(raw.privatePlacementShares),
+    declaredDataTypeName: text(raw.declaredDataTypeName),
+    auditingFirm: text(raw.auditingFirm),
+    auditor1: text(raw.auditor1),
+    auditor2: text(raw.auditor2),
+    address: text(raw.address) ?? text(raw.englishAddress),
+    phone: text(raw.phone),
+    faxNumber: text(raw.faxNumber),
+    website: text(raw.website),
+    email: text(raw.email),
+    stockTransferAgency: text(raw.stockTransferAgency),
+    transferAgencyPhone: text(raw.transferAgencyPhone),
+    transferAgencyAddress: text(raw.transferAgencyAddress),
+    generatedDate: text(raw.generatedDate)
+  }
+}
+
+// enabled：指標速覽只有釘了基本資料卡才讀（沒釘的人不多一支請求、payload 也不多帶這份）
+export function useCompanyProfileDetail(symbol: Ref<string | undefined>, enabled: () => boolean = () => true) {
+  const result = useAsyncData<CompanyProfileDetail | null>(
+    () => `company-profile-detail-${symbol.value ?? 'none'}`,
+    async () => {
+      const current = symbol.value
+      if (!current || !enabled()) return null
+      const raw = await fetchProfile(current)
+      return raw && hydrateCompanyProfileDetail(raw)
+    },
+    { watch: [symbol, enabled] }
+  )
+  watchLoadFailure(() => `company-profile-detail:${symbol.value}`, () => result.error.value, result.refresh)
+  return result
 }

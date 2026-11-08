@@ -32,7 +32,8 @@
 // family. Financials render both with no numbers（no comparable 營業收入 line on one, no
 // 流動／非流動 split on the other）and self-noindex, the same soft-404-ish condition several of
 // these suffixes already have per symbol.
-const INDEXABLE_SUFFIXES = ['', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+// /profile（基本資料）joined 2026-11-08 the same way: one suffix per symbol, every listed company has one.
+const INDEXABLE_SUFFIXES = ['', '/profile', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
 // catalog `description` is null (StockMetricDetailPage.vue's own `noindex` computed), and listing

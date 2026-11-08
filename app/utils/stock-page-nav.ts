@@ -75,6 +75,15 @@ export const STOCK_NAV_ITEMS: StockNavNode[] = [
 // ——先給答案再給推導（退休族最先問的是「分我多少」「用得好不好」，原本排第九第十要捲到底）；股價倍數第一（2026-09-26 使用者指定）。
 // 命名一律 2–4 字名詞不帶標點；關係頁（dupont／margins／solvency／cash-cycle／equity-source）固定拿視角「組成」排母項第一列。
 export const STOCK_METRIC_INDEX: StockNavNode[] = [
+  // 公司（2026-11-08，使用者：「這個卡片要跟指標一樣 可以自選」）：基本資料不是指標，但在指標速覽是一張可以自選的表格卡片，所以進目錄、
+  // 能釘，側邊欄也就從自選指標進得去。排第一組：先知道這是什麼公司（設計頁 https://claude.ai/artifact/56HsmA1SowvPxnZ4vJzha4）
+  {
+    label: '公司',
+    answer: '這家公司是什麼、誰在經營、股本多大、誰簽證財報、怎麼聯絡。',
+    children: [
+      { label: '基本資料', to: code => `/stock/${code}/profile`, hook: '上市多久、董事長是誰、資本額多大' }
+    ]
+  },
   // 分子是**股價**不是財報科目，所以自成一組（它們共用型錄的 EOD-only 資料牆，見 METRIC_PAGES 為何指向 peRatio／pbRatio）。
   // 葛拉漢倍數與 PEG 2026-09-21 移出導覽（「更忠於財報，避免複合運算、徽章性質遠勝於指標性質的」）：PER×PBR 比 22.5、PER÷成長率
   // 比 1 都是「比率的比率、為了跟一條規則比而存在」；PER／PBR／PSR 是股價÷一個申報數字，離報表一步，留下。那兩頁連同 /f-score

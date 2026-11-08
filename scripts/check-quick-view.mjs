@@ -77,6 +77,21 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     await dialog.waitFor({ state: 'hidden' })
   }
 
+  // 基本資料卡（2026-11-08）：預設第一張、8 列表格；桌機兩欄時不比旁邊的圖表卡高（使用者：「我比較擔心他在電腦版 會把別的圖表比例撐高」）。
+  // 兩張都先取消拉伸量自己的高度，同一列被拉成一樣高的話比不出來
+  const first = page.locator('.stock-quick-view-page__grid > *').first()
+  expect(code, '預設第一張是基本資料', await waitFor(async () => (await first.locator('h3 a').textContent().catch(() => ''))?.trim() === '基本資料'))
+  expect(code, '基本資料卡 8 列', await waitFor(async () => (await first.locator('.fact-list__item').count()) === 8))
+  await waitFor(async () => hasChart(page.locator('.stock-quick-view-page__grid > *').nth(1)))
+  const heights = await page.evaluate(() => {
+    const [profileCard, neighbor] = document.querySelectorAll('.stock-quick-view-page__grid > *')
+    for (const card of [profileCard, neighbor]) card.style.alignSelf = 'start'
+    const sizes = [profileCard, neighbor].map(card => Math.round(card.getBoundingClientRect().height))
+    for (const card of [profileCard, neighbor]) card.style.alignSelf = ''
+    return sizes
+  })
+  expect(code, '基本資料卡不比旁邊的圖表卡高', heights[0] <= heights[1], `${heights[0]} / ${heights[1]}`)
+
   for (const labels of BATCHES) {
     await pinOnly(page, labels)
     // 資料到之前每一支都是只有標題的空卡：等請求都回來（連續 1 秒沒有進行中的）再看，否則「資料到了反而整格消失」會被提早放行。

@@ -271,7 +271,7 @@ export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' | 'intangible' }
-  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
@@ -282,6 +282,8 @@ function compositionChart(parentSlug: string): QuickViewChart {
 // 有自己路由檔、沒有登記表的頁。topic：related 的目的地標籤由擁有那一頁的登記表給，呼叫端不寫字——改名不會在別人的頁上留下舊標籤
 // （它們正因為不是單一指標才最常被當成 related 目的地）。chart：指標速覽畫哪張圖，沒寫的是純表格頁，不能釘。
 const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart }> = {
+  // 基本資料（2026-11-08，使用者：「這個卡片要跟指標一樣 可以自選」）：不是圖，是一張表格卡片，但跟指標一樣能釘
+  profile: { topic: '基本資料', chart: { kind: 'profile' } },
   dividend: { topic: '配股配息', chart: { kind: 'dividend' } },
   margins: { topic: '財報三率', chart: { kind: 'margins' } },
   solvency: { topic: '安全韌性的組成', chart: { kind: 'solvency' } },
