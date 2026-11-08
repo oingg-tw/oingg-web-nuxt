@@ -81,7 +81,7 @@ const distributionOption = computed(() => {
 const scatterRows = computed(() => industryScatterRows(props.data))
 const scatterAtFloor = computed(() => Math.min(...scatterRows.value.map(row => row.holdingDividendGrowthRate5y as number)) < -80)
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」：兩百多個點在手機上擠成一團）：殖利率以這些公司的
-// 中位數分高低，持股股利 5 年成長率以 0 分有沒有減少；表內照代號排。3 年成長率與成本殖利率在最右欄的分段鈕裡（IndustryQuadrantTables 的 picks，順序同 HOLDER_DIVIDEND_PICKS）
+// 中位數分高低，持股股利 5 年成長率以 0 分有沒有減少；表內照代號排。最右欄是持股股利 5 年成長率（3 年那一支與成本殖利率 2026-11-08 拿掉）
 const yieldSplit = computed(() => medianOf(scatterRows.value.map(row => row.dividendYield as number)) ?? 0)
 const quadrants = computed(() =>
   quadrantGroups(
@@ -91,7 +91,7 @@ const quadrants = computed(() =>
     ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 家）`,
-    rows: group.rows.map(row => ({ key: row.symbol, name: row.name, code: row.symbol, to: securityPath(row.symbol), cells: [industryPct(row.dividendYield)], picks: [industryGrowthPct(row.holdingDividendGrowthRate5y), industryGrowthPct(row.holdingDividendGrowthRate3y), industryPct(row.yieldOnCost5y)] }))
+    rows: group.rows.map(row => ({ key: row.symbol, name: row.name, code: row.symbol, to: securityPath(row.symbol), cells: [industryPct(row.dividendYield), industryGrowthPct(row.holdingDividendGrowthRate5y)] }))
   })))
 type ScatterRow = (typeof scatterRows)['value'][number]
 interface ScatterParam { data?: { row: ScatterRow } }
@@ -105,9 +105,7 @@ const scatterOption = computed(() => ({
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
         // 自算的現金殖利率：0 不寫「不配息」（2026-10-24，理由見 dividend-event.ts 的 ZERO_YIELD_TEXT）
         + `<div>殖利率 ${industryPct(row.dividendYield)}</div>`
-        + `<div>持股股利 5 年成長率 ${industryGrowthPct(row.holdingDividendGrowthRate5y)}</div>`
-        + `<div>持股股利 3 年成長率 ${industryGrowthPct(row.holdingDividendGrowthRate3y)}</div>`
-        + `<div>5 年前買進的成本殖利率 ${industryPct(row.yieldOnCost5y)}</div></div>`
+        + `<div>持股股利 5 年成長率 ${industryGrowthPct(row.holdingDividendGrowthRate5y)}</div></div>`
     }
   },
   // 成長率最低就是 −100%（現在不配息），自動刻度會畫到不可能的 −120%
@@ -153,7 +151,7 @@ const scatterOption = computed(() => ({
     </SharedChartCard>
     <div class="industry-facet-chart__quadrants app-narrow-only">
       <slot name="header" />
-      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率']" :picks="HOLDER_DIVIDEND_PICKS" collapsed />
+      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率', HOLDER_DIVIDEND_LABEL]" collapsed />
       <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，持股股利 5 年成長率以 0 分有沒有減少，分成四組。</p>
     </div>
   </template>

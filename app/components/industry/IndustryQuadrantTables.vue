@@ -3,38 +3,23 @@
 // 小表，看得見的表名就是那一組。分組用 quadrantGroups（shared/utils/quadrants.ts）；列照頁面給的順序（產業頁照代號，不做排行）。
 // 用的頁：/industries/dividend、/industries/growth、/industry/[sector]/dividend。
 // collapsed：每組收成一列（全站的 app-disclosure），點開才是表——類股頁一個類股可到兩百多家，四張表攤開有七千多 px 長。
-// picks：放不下的數字不寫在列底下，最右欄用分段鈕換，四張表一起換（2026-11-04，使用者看過設計圖選 D：列底下的「標籤＋數字」每列重複、
-// 數字沒有對齊，「看起來都亂亂的」）。每一列一行，數字都在欄裡
-export interface QuadrantTableRow { key: string; name: string; code?: string; to: string | null; cells: string[]; picks?: string[] }
+// 每一列一行，數字都在欄裡（2026-11-04，使用者看過設計圖選 D：列底下的「標籤＋數字」每列重複、數字沒有對齊，「看起來都亂亂的」）。
+// 殖利率頁的最右欄原本用分段鈕換三個數字，2026-11-08 只留持股股利 5 年成長率（使用者：「3年拿掉，成本殖利率也拿掉，因為不夠直觀」），分段鈕跟著拿掉
+export interface QuadrantTableRow { key: string; name: string; code?: string; to: string | null; cells: string[] }
 export interface QuadrantTable { title: string; rows: QuadrantTableRow[] }
-// label 寫在分段鈕與表頭，name 是全名，寫在分段鈕底下
-export interface QuadrantPick { label: string; name: string }
 
-const props = defineProps<{ groups: QuadrantTable[]; columns: readonly string[]; collapsed?: boolean; picks?: readonly QuadrantPick[] }>()
-
-const picked = ref(0)
-const pick = computed(() => props.picks?.[picked.value])
-const heads = computed(() => (pick.value ? [...props.columns, pick.value.label] : props.columns))
-const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks[picked.value] ?? '－'] : row.cells)
+defineProps<{ groups: QuadrantTable[]; columns: readonly string[]; collapsed?: boolean }>()
 </script>
 
 <template>
-  <div class="industry-quadrant-tables" :class="{ 'industry-quadrant-tables--picks': picks }">
-    <template v-if="pick">
-      <div class="app-sticky-bar">
-        <el-radio-group v-model="picked" aria-label="最右欄的數字" class="app-radio-fill">
-          <el-radio-button v-for="(item, index) in picks" :key="item.label" :value="index">{{ item.label }}</el-radio-button>
-        </el-radio-group>
-      </div>
-      <p class="industry-quadrant-tables__pick">{{ pick.name }}</p>
-    </template>
+  <div class="industry-quadrant-tables">
     <template v-for="group in groups" :key="group.title">
       <component :is="collapsed ? 'details' : 'div'" v-if="group.rows.length" :class="{ 'app-disclosure': collapsed }">
         <summary v-if="collapsed">{{ group.title }}</summary>
         <SharedTable :label="group.title" :caption-visible="!collapsed" table-class="industry-quadrant-table">
           <thead>
             <tr>
-              <th v-for="(column, index) in heads" :key="column" scope="col" :class="{ 'seo-table__num': index > 0 }">{{ column }}</th>
+              <th v-for="(column, index) in columns" :key="column" scope="col" :class="{ 'seo-table__num': index > 0 }">{{ column }}</th>
             </tr>
           </thead>
           <tbody>
@@ -46,7 +31,7 @@ const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks
                   <span v-if="row.code" class="industry-quadrant-tables__code">{{ row.code }}</span>
                 </span>
               </th>
-              <td v-for="(cell, index) in cellsOf(row)" :key="index" class="seo-table__num">{{ cell }}</td>
+              <td v-for="(cell, index) in row.cells" :key="index" class="seo-table__num">{{ cell }}</td>
             </tr>
           </tbody>
         </SharedTable>
@@ -60,12 +45,6 @@ const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-/* 全名緊貼切換列：清單的間距 16px 收回一半 */
-.industry-quadrant-tables__pick {
-  margin: -8px 0 0;
-  color: var(--el-text-color-regular);
 }
 
 /* 名稱與代號之間 8px；320 寬放不下時代號換到下一行，靠左對齊名稱 */
@@ -93,10 +72,5 @@ const cellsOf = (row: QuadrantTableRow) => (row.picks ? [...row.cells, row.picks
 
 .industry-quadrant-tables :deep(.industry-quadrant-table :is(th, td):not(:last-child)) {
   padding-right: 8px;
-}
-
-/* 換數字時欄寬不跳：固定在最寬的「股利5年成長」連左右間距的 116px，殖利率那一欄才不會左右動 */
-.industry-quadrant-tables--picks :deep(.industry-quadrant-table :is(th, td):last-child) {
-  width: 7.25rem;
 }
 </style>

@@ -36,7 +36,7 @@ if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類
 // **兩軸都用中位數**（2026-09-30 使用者拍板）。原本 Y 軸指定用平均，我提的論點被接受了：一個點的
 // Y 是平均、X 是中位數解釋起來不漂亮，而成長率那一軸非用中位數不可——34 個類股裡有 8 個的 mean
 // 與 median 正負號相反（食品、電機機械、建材營造、電腦及週邊設備、電子零組件、其他電子、文化創意、
-// 運動休閒），而正負號就是那個軸在講的整句話。mean 欄位上游仍然保留，要換回去不必改規格。
+// 運動休閒），而正負號就是那個軸在講的整句話。mean 欄位業務中台 138bc66 拿掉了（2026-11-09），要換回去得先跟上游要。
 //
 // **殖利率含不配息的公司（0% 算進去）**，2026-09-30 改的。證交所從 2026-08-28 起把沒配息的公司
 // 從 0.00 改成空白，使用者決定那之後的空白一律當 0，於是上市與上櫃的寫法一致了。所以文案**不能**
@@ -69,7 +69,7 @@ const excludedText = computed(() => {
 })
 
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：殖利率以列入的類股中位數的中位數分高低，
-// 持股股利 5 年成長率以 0 分有沒有減少；表內照類股代號排。3 年成長率與成本殖利率在最右欄的分段鈕裡（IndustryQuadrantTables 的 picks，順序同 HOLDER_DIVIDEND_PICKS）
+// 持股股利 5 年成長率以 0 分有沒有減少；表內照類股代號排。類股名稱連到那個類股的殖利率頁（2026-11-08：殖利率要跟同業比，那一頁就是同類股的公司比較）
 const yieldSplit = computed(() => medianOf(plotted.value.map(row => row.liveCashDividendYield.median as number)) ?? 0)
 const quadrants = computed(() =>
   quadrantGroups(
@@ -79,7 +79,7 @@ const quadrants = computed(() =>
     ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 個類股）`,
-    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median)], picks: [growthText(row.holdingDividendGrowthRate5y.median), growthText(row.holdingDividendGrowthRate3y.median), yieldText(row.yieldOnCost5y.median)] }))
+    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode) && industryFacetPath(row.sectorCode, 'dividend'), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.holdingDividendGrowthRate5y.median)] }))
   })))
 // 答句只講結果（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）：定義、算法與沒有列入的類股都在頁尾的注意事項。不提「圖」：手機上那個位置是四張表
 const latestAnswer = computed(() =>
@@ -114,8 +114,6 @@ const chartOption = computed(() => {
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.sectorName}</div>`
           + `<div>殖利率中位數 ${yieldText(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
           + `<div>持股股利 5 年成長率中位數 ${growthText(row.holdingDividendGrowthRate5y.median)}（${row.holdingDividendGrowthRate5y.count} 家）</div>`
-          + `<div>持股股利 3 年成長率中位數 ${growthText(row.holdingDividendGrowthRate3y.median)}（${row.holdingDividendGrowthRate3y.count} 家）</div>`
-          + `<div>5 年前買進的成本殖利率中位數 ${yieldText(row.yieldOnCost5y.median)}（${row.yieldOnCost5y.count} 家）</div>`
           + `<div style="color:${CHART_TOOLTIP_INK.secondary}">類股共 ${row.companyCount} 家</div></div>`
       }
     },
@@ -175,7 +173,7 @@ const chartOption = computed(() => {
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card app-wide-only">
         <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與持股股利 5 年成長率中位數的散佈圖" />
       </el-card>
-      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率']" :picks="HOLDER_DIVIDEND_PICKS" />
+      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率', HOLDER_DIVIDEND_LABEL]" />
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
@@ -188,6 +186,10 @@ const chartOption = computed(() => {
         <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>兩個數字都用中位數，少數公司的極端數字不會把整個類股拉偏。</li>
         <li>殖利率以列入類股的中位數 {{ yieldText(yieldSplit) }} 分高低，持股股利 5 年成長率以 0 分有沒有減少。</li>
+        <!-- 2026-11-08 查過殖利率分析的做法後加的兩條：配息政策因產業而異（Michel 1979 起；台灣的公司也向同業看齊），殖利率要跟同業比；
+             景氣循環股不適合用一年份的殖利率看（存股著作與研究都這樣提醒） -->
+        <li>各產業的配息習慣本來就不同，類股之間殖利率的高低，多半反映的是這個差異。要看一家公司配得多不多，要跟同類股的公司比：每個類股都有自己的殖利率頁，把同類股的公司畫在一起。</li>
+        <li>景氣循環類股的股利跟著景氣起落：景氣好的那一年配得多，之後算出來的一年份殖利率會偏高。各類股的營收跟著景氣怎麼走，在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</li>
         <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股殖利率有值的公司數。</li>
         <li v-if="excludedText">{{ excludedText }}</li>
       </ul>

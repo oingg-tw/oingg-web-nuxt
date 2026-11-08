@@ -65,8 +65,8 @@ const searchQuery = ref('')
 // here would silently put categories back in the wrong, stale order. props.categories is used
 // directly, unsorted, trusting the API's own array position as authoritative for this one level.
 // 同名的幾支只留一支能挑（2026-10-21）：不列的那幾支與留下來的是哪一支、理由，都在 app/utils/replaced-metrics.ts（存過的條件與欄位
-// 也照那張表換掉，2026-10-22）
-const PICKER_HIDDEN_METRICS = new Set(Object.keys(REPLACED_METRICS))
+// 也照那張表換掉，2026-10-22）；只藏不換的（PICKER_UNLISTED_METRICS，2026-11-08）在同一個檔案
+const PICKER_HIDDEN_METRICS = new Set([...Object.keys(REPLACED_METRICS), ...PICKER_UNLISTED_METRICS])
 // 選條件時（hidePeriod）也不列只能當欄位的（Metric.columnOnly）
 const sortedCategories = computed(() => props.categories.map(category => ({
   ...category,

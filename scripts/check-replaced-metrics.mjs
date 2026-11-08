@@ -1,7 +1,7 @@
 // 被藏起來的指標 → 留下來的那一支（app/utils/replaced-metrics.ts）要對得上型錄：兩邊都還在、單位一樣（條件的數字照搬才有意義）。
 // 上游改名（例如等著要改名的那 9 支）時這支會先紅。Run: 本機 dev（:3000）開著，node scripts/check-replaced-metrics.mjs
 import assert from 'node:assert/strict'
-import { REPLACED_METRICS, replacedFields } from '../app/utils/replaced-metrics.ts'
+import { PICKER_UNLISTED_METRICS, REPLACED_METRICS, replacedFields } from '../app/utils/replaced-metrics.ts'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
 const catalog = await (await fetch(`${base}/api/hub/filter-schema`)).json()
@@ -14,6 +14,8 @@ for (const [hidden, target] of Object.entries(REPLACED_METRICS)) {
   assert.ok(to, `${target} 不在型錄裡`)
   assert.ok(from.fields.every(field => field.unit === to.unit), `${hidden}（${from.fields.map(field => field.unit)}）跟 ${target}（${to.unit}）單位不同`)
 }
+// 只藏不換的也要還在型錄裡：上游改名或拿掉時，表上的名字就過期了
+for (const key of PICKER_UNLISTED_METRICS) assert.ok(metrics.get(key), `${key} 不在型錄裡`)
 // 官方欄位範本是業務中台的資料，這張表一改就可能過期（11-01 改留即時股價淨值比，範本舊了四天才發現）。沒有欄位組合的帳號（新帳號的第一個畫面）直接
 // 讀總覽範本，網站換不到，紅了要請業務中台改範本（同它的 migration 0013）
 const { templates } = await (await fetch(`${base}/api/core/screener/column-preset-templates`)).json()

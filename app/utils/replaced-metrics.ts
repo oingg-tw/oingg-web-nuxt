@@ -37,6 +37,10 @@ export const REPLACED_METRICS: Record<string, string> = {
   stockPrice: 'liveStockPrice.EOD'
 }
 
+// 只藏、不換的指標（2026-11-08，使用者：「篩選指標藏起來」，跟產業頁拿掉 3 年成長與成本殖利率同一個理由：「不夠直觀」，成長率本身就是用
+// 買進價算的）：挑選器不列，存過的條件與欄位照舊能用（型錄裡還在）。不放進上面那張表：那張表會把存過的換成右邊，3 年換 5 年意思就變了
+export const PICKER_UNLISTED_METRICS = ['holdingDividendGrowthRate3y', 'yieldOnCost3y', 'yieldOnCost5y']
+
 export const replacedField = (fieldId: string): string => REPLACED_METRICS[fieldId.split('.')[0] ?? ''] ?? fieldId
 
 // 欄位清單換完去掉重複：舊的跟留下來的那支都在時，只留前面那一個位置

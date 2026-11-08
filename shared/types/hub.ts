@@ -42,12 +42,11 @@ export interface SectorCompanyRow {
   dividendYieldDate: string | null
   roe: number | null
   debtRatio: number | null
-  // 持股股利成長率與 5 年前買進的成本殖利率（2026-11-04 取代每股、不還原的股利 3 年成長率，使用者要「對應用戶的持股體感」：股價漲得比
-  // 股利快，殖利率變低，抱著的人其實領得更多）。產業頁公司版散佈圖的 X 軸是 5 年那一支，軸跟 /industries/dividend 的類股版一樣，讀者
-  // 從總覽點進來看到的是同一張圖換一個層級。同一次 screener POST 多帶的欄，沒有多一次請求。5 年前沒有配息紀錄的公司是 null，不是錯誤
+  // 持股股利 5 年成長率（2026-11-04 取代每股、不還原的股利 3 年成長率，使用者要「對應用戶的持股體感」：股價漲得比股利快，殖利率變低，
+  // 抱著的人其實領得更多）。產業頁公司版散佈圖的 X 軸，軸跟 /industries/dividend 的類股版一樣，讀者從總覽點進來看到的是同一張圖換一個
+  // 層級。同一次 screener POST 多帶的欄，沒有多一次請求。5 年前沒有配息紀錄的公司是 null，不是錯誤。3 年那一支與 5 年前買進的成本殖利率
+  // 2026-11-08 拿掉（使用者：「3年拿掉，成本殖利率也拿掉，因為不夠直觀」：成長率本身就是用買進價算的，看得出長期持有的體驗）
   holdingDividendGrowthRate5y: number | null
-  holdingDividendGrowthRate3y: number | null
-  yieldOnCost5y: number | null
   // 營收與淨利的近四季年增率（2026-10-09，產業成長座標圖）：同一次 screener POST 多帶兩欄，沒有多一次請求。
   revenueGrowthRate: number | null
   netIncomeGrowthRate: number | null
@@ -404,10 +403,9 @@ export interface EquityRiskPremiumPageData {
 // 有值 38 家、（舊的 3 年）成長率只有 5 家。兩軸都有值的涵蓋率中位數 60%、最低 10.9%。所以 count 一定要進畫面
 // （點大小＋門檻），不能把 n=2 的點畫得跟 n=161 一樣。
 //
-// companyCount **不是** mean/median 的分母，各軸自己的 count 才是。拿它反推總額會算錯。
+// companyCount **不是** median 的分母，各軸自己的 count 才是。拿它反推總額會算錯。平均不讀，業務中台 138bc66 起也不送（2026-11-08）
 export interface SectorStatPair {
   count: number
-  mean: number | null
   median: number | null
 }
 
@@ -416,12 +414,10 @@ export interface SectorDividendSummary {
   sectorName: string
   companyCount: number
   // 殖利率讀自算的那一軸（2026-10-25，analysis-ts 3abf17c0 新增；使用者選「全站改自算、沒配息算 0%」）：近 12 個月沒有配息紀錄的算 0，
-  // 14 天內沒成交的不算。同一支端點還有交易所值的 dividendYield（詞彙表裡 dividendYield 專指交易所），這裡不讀
+  // 14 天內沒成交的不算。交易所值的 dividendYield（詞彙表裡 dividendYield 專指交易所）網站沒讀過，業務中台 138bc66 起也不送
   liveCashDividendYield: SectorStatPair
-  // 持股股利成長率、5 年前買進的成本殖利率（2026-11-04，數據中台 89cc594；只收 14 天內的值）。上游另有 yieldOnCost3y，網站不讀
+  // 持股股利 5 年成長率（2026-11-04，數據中台 89cc594；只收 14 天內的值）。上游另有 3 年那一支與成本殖利率，網站 2026-11-08 起不讀
   holdingDividendGrowthRate5y: SectorStatPair
-  holdingDividendGrowthRate3y: SectorStatPair
-  yieldOnCost5y: SectorStatPair
 }
 
 export interface SectorDividendSummaryPageData {

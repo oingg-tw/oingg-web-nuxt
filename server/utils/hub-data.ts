@@ -130,8 +130,8 @@ const companyNameOf = (row: ScreenerResultRow) => row.companyName ?? row.symbol
 // so this pages in 100s.
 const SECTOR_POPULATION_FIELD = 'debtRatio.Q'
 // 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者「現在就換」，同篩選與排行，理由見 app/utils/replaced-metrics.ts）；
-// 股價淨值比讀即時版（2026-11-01，同上）；股利成長讀持股股利成長率與 5 年前買進的成本殖利率（2026-11-04，理由見 SectorCompanyRow）
-const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'livePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'holdingDividendGrowthRate5y.EOD', 'holdingDividendGrowthRate3y.EOD', 'yieldOnCost5y.EOD', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
+// 股價淨值比讀即時版（2026-11-01，同上）；股利成長讀持股股利 5 年成長率（2026-11-04，理由見 SectorCompanyRow）
+const SECTOR_COLUMNS = ['stock.price', 'exchangePeRatio.EOD', 'livePbRatio.EOD', 'liveCashDividendYield.EOD', 'roe.TTM', 'debtRatio.Q', 'holdingDividendGrowthRate5y.EOD', 'revenueGrowthRate.TTM', 'netIncomeGrowthRate.TTM']
 const SECTOR_PAGE_SIZE = 100
 const SECTOR_MAX_PAGES = 30
 
@@ -203,8 +203,6 @@ export const getSectorCompanies = defineCachedFunction(
           roe: number('roe.TTM'),
           debtRatio: number('debtRatio.Q'),
           holdingDividendGrowthRate5y: number('holdingDividendGrowthRate5y.EOD'),
-          holdingDividendGrowthRate3y: number('holdingDividendGrowthRate3y.EOD'),
-          yieldOnCost5y: number('yieldOnCost5y.EOD'),
           revenueGrowthRate: number('revenueGrowthRate.TTM'),
           netIncomeGrowthRate: number('netIncomeGrowthRate.TTM')
         })
