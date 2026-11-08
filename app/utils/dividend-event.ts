@@ -12,5 +12,19 @@ export const ANNUAL_CASH_DIVIDEND_BASIS = '季配、半年配的公司加總近 
 // 所以不寫「不配息」，也不寫「近 12 個月沒有除息」（決議不配的公司可能幾個月前才除過息）
 export const ZERO_YIELD_TEXT = '目前沒有可計入殖利率的現金股利'
 
+// 配息月曆的日期都是台北日期 YYYY-MM-DD：星期與加減天數用 UTC 算，不受瀏覽器時區影響
+const weekdayOf = (day: string) => new Date(`${day}T00:00:00Z`).getUTCDay()
+export const addDays = (day: string, n: number): string => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
+// 「11/8」與「11/8（日）」
+export const monthDay = (day: string): string => `${Number(day.slice(5, 7))}/${Number(day.slice(8))}`
+export const shortDayLabel = (day: string): string => `${monthDay(day)}（${'日一二三四五六'[weekdayOf(day)]}）`
+
 // 這些日期（YYYY-MM-DD）有沒有週六、週日：沒有的話配息月曆不畫那兩欄（main.css 的 .app-calendar--weekdays，理由寫在那裡）
-export const hasWeekendDate = (days: Iterable<string>): boolean => [...days].some(day => [0, 6].includes(new Date(`${day}T00:00:00Z`).getUTCDay()))
+export const hasWeekendDate = (days: Iterable<string>): boolean => [...days].some(day => [0, 6].includes(weekdayOf(day)))
+
+// 手機週檢視的那一週，週一到週五（2026-11-08）：週六、週日打開時是下一週。除權息日都在交易日（同上，量過 0 筆在週末），所以不畫六日
+export function tradingWeekOf(day: string): string[] {
+  const weekday = weekdayOf(day)
+  const monday = addDays(day, weekday === 0 ? 1 : weekday === 6 ? 2 : 1 - weekday)
+  return [0, 1, 2, 3, 4].map(n => addDays(monday, n))
+}

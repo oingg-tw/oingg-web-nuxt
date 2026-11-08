@@ -809,6 +809,81 @@ body.has-bottom-nav-bar .load-failure-notice {
   display: none;
 }
 
+/* 配息月曆的今天（2026-11-08，使用者：「配息月曆看不出來 今天是哪一天」；方案頁 https://claude.ai/artifact/6YyybXzyv6XVYfhDULZUjy）。
+   原本只有 Element 的 is-today 把數字染成主色；週末今天那一欄根本不畫（上一條），翻月後 Element 的「選取日」淡底又落在別天，看起來像今天。
+   現在：今天的日號是實心圓（主色底、反白字，同選中的膠囊，七種主題、深淺色都過 AA），768px 起旁邊寫「今天」（手機格子放不下，只給螢幕閱讀器）；
+   過去的日子淡底、次要字色，週末也看得出現在在哪；標頭寫「今天 11/8（日）」。今天由元件給（台北日期），不用 Element 的瀏覽器時間。
+   格線用列線的 --app-divider，不再是 3:1 的控制項灰。html 前綴：Element 的元件樣式排在本檔之後 */
+html .el-calendar {
+  --el-calendar-border: 1px solid var(--app-divider);
+}
+
+html .el-calendar-table td.is-today {
+  color: inherit;
+}
+
+html .el-calendar-table td.is-selected {
+  background-color: transparent;
+}
+
+.el-calendar-table td:has(.app-calendar-day--past) {
+  background-color: var(--el-fill-color-lighter);
+}
+
+.app-calendar-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.app-calendar-today {
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+
+.app-calendar-day__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-calendar-day__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  margin-inline-start: -0.25rem;
+  border-radius: 999px;
+}
+
+.app-calendar-day--past .app-calendar-day__num {
+  color: var(--el-text-color-secondary);
+}
+
+.app-calendar-day--today .app-calendar-day__num {
+  background: var(--el-color-primary);
+  color: var(--el-bg-color);
+  font-weight: 700;
+}
+
+.app-calendar-day__today {
+  color: var(--el-color-primary);
+  font-weight: 700;
+}
+
+@media (max-width: 767px) {
+  .app-calendar-day__today {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* 收起來的 <details>（持股頁的計算方式、各檔數字、逐月報酬、持股特色的計算方式；除權息月覽的每一天）。2026-10-08 起靠原生三角形表示
    可以展開（三處各寫 display:flex 時三角形不見，看起來像普通標題）；2026-10-21 換成自己畫的箭頭（使用者：「計算方式看起來就像是沒設計過」——
    原生的是黑色小三角，大小、顏色都跟站上不搭）：收起來朝右、展開朝下，跟著字的顏色；文字段落的行寬留在好讀的範圍 */

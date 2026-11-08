@@ -5,7 +5,7 @@ import type { HoldingDividendEvent } from '~/composables/holdings/holdings-model
 // 除權息日（「除息／除權／除權息」）與現金發放日（「發放」，只配股的「權」沒有，上游沒有配股入帳日）。種類用字寫出來，不只靠顏色。
 // 點有事件的那一天，對話框列出當天的事件、每股、股數與應收。
 //
-// ponytail: 月格的寫法（el-calendar＋按鈕格＋手機只放筆數）跟全市場的 DashboardDividendCalendarCard 各寫一份。那一個自己抓全市場資料、
+// ponytail: 月格的寫法（el-calendar＋自己畫的標頭＋按鈕格＋手機只放筆數）跟全市場的 DashboardDividendCalendarCard 各寫一份。那一個自己抓全市場資料、
 // 有篩選與資料起點的提示，跟這裡共用的只有月格；第三個月曆出現時再抽元件。
 interface CalendarEvent extends HoldingDividendEvent {
   key: string
@@ -22,6 +22,10 @@ const props = defineProps<{
 }>()
 
 const month = ref(new Date(`${props.asOf}T00:00:00`))
+// 標頭自己畫（2026-11-08，同全市場的配息月曆）：月份旁邊寫今天是哪一天；今天也是 asOf
+function shiftMonth(months: number) {
+  month.value = new Date(month.value.getFullYear(), month.value.getMonth() + months, 1)
+}
 
 interface DayItem { key: string; kind: 'ex' | 'pay'; label: string; event: CalendarEvent }
 const itemsByDay = computed(() => {
@@ -48,18 +52,38 @@ function openDetail(day: string) {
 <template>
   <div class="holdings-dividend-calendar">
     <el-calendar v-model="month" :class="{ 'app-calendar--weekdays': !hasWeekendDate(Object.keys(itemsByDay)) }">
+      <template #header="{ date }">
+        <span class="app-calendar-title">
+          <span class="el-calendar__title">{{ date }}</span>
+          <span class="app-calendar-today">今天 {{ shortDayLabel(asOf) }}</span>
+        </span>
+        <div class="el-calendar__button-group">
+          <el-button-group>
+            <el-button size="small" @click="shiftMonth(-1)">上個月</el-button>
+            <el-button size="small" @click="month = new Date(`${asOf}T00:00:00`)">今天</el-button>
+            <el-button size="small" @click="shiftMonth(1)">下個月</el-button>
+          </el-button-group>
+        </div>
+      </template>
       <!-- 有事件的格子是按鈕（點了看明細），沒有的是 div。aria-label 寫出日期與每一件事，螢幕閱讀器不必打開對話框。
-           手機只放筆數：375px 的格子約 45px 寬，名稱放不下；768px 起才顯示名稱 -->
+           手機只放筆數：375px 的格子約 45px 寬，名稱放不下；768px 起才顯示名稱。今天與過去的日子用 main.css 的 .app-calendar-day 那一組 -->
       <template #date-cell="{ data }">
         <component
           :is="itemsFor(data.day).length ? 'button' : 'div'"
           :type="itemsFor(data.day).length ? 'button' : undefined"
           class="holdings-dividend-calendar__cell"
-          :class="{ 'holdings-dividend-calendar__cell--events': itemsFor(data.day).length }"
-          :aria-label="itemsFor(data.day).length ? `${dayLabel(data.day)}：${itemsFor(data.day).map(item => `${item.event.name}${item.label}`).join('、')}` : undefined"
+          :class="{
+            'holdings-dividend-calendar__cell--events': itemsFor(data.day).length,
+            'app-calendar-day--today': data.day === asOf,
+            'app-calendar-day--past': data.day < asOf
+          }"
+          :aria-label="itemsFor(data.day).length ? `${dayLabel(data.day)}${data.day === asOf ? '（今天）' : ''}：${itemsFor(data.day).map(item => `${item.event.name}${item.label}`).join('、')}` : undefined"
           @click="itemsFor(data.day).length && openDetail(data.day)"
         >
-          <span class="holdings-dividend-calendar__day">{{ data.day.split('-').pop() }}</span>
+          <span class="app-calendar-day__head">
+            <span class="holdings-dividend-calendar__day app-calendar-day__num">{{ data.day.split('-').pop() }}</span>
+            <span v-if="data.day === asOf" class="app-calendar-day__today">今天</span>
+          </span>
           <template v-if="itemsFor(data.day).length">
             <span class="holdings-dividend-calendar__count">{{ itemsFor(data.day).length }} 筆</span>
             <span class="holdings-dividend-calendar__chips">

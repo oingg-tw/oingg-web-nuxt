@@ -5,6 +5,7 @@
 //   2. a realised day's dialog names its 發放日 / 年度, an announced one says 尚未除息
 //   3. the coverage note appears only for months before 2026-03
 //   4. both statuses render in the same month (2026-09 is genuinely mixed: 97 + 10)
+// 2026-11-08 起也驗今天與手機的一週：標頭寫今天、桌機沒有一週、手機預設一週五天、「顯示其餘」展開、切到月格
 //
 // Run: node scripts/check-dividend-calendar-history.mjs   (dev server must be up)
 import { chromium } from 'playwright'
@@ -101,6 +102,35 @@ if (noteCount) {
   check(text.includes('2026-03'), '警語點名涵蓋起點', text.slice(0, 40))
   check(text.includes('2026-02'), '警語點名當前月份')
 }
+
+// --- 今天與手機的一週（2026-11-08，使用者選的方案 B）---
+console.log('\n今天與手機的一週')
+const todayText = await card.locator('.app-calendar-today').innerText()
+check(/^今天 \d+\/\d+（[日一二三四五六]）$/.test(todayText), '標頭寫今天', todayText)
+check(await page.locator('.dividend-calendar-agenda').isHidden(), '桌機沒有一週')
+
+const phone = await browser.newPage({ viewport: { width: 375, height: 812 } })
+phone.on('pageerror', (e) => failures.push(`pageerror (375): ${e.message}`))
+await phone.goto(BASE, { waitUntil: 'networkidle' })
+const agenda = phone.locator('.dividend-calendar-agenda')
+await agenda.waitFor()
+check(await phone.locator('.dividend-calendar-card__month').isHidden(), '手機一開始不畫月格')
+check(await phone.locator('.dividend-calendar-agenda__day').count() === 5, '一週五天（一～五）')
+// 往回找一週有一天超過 3 筆的（2026-03 起每週都有資料；往後的月份可能還沒公告）
+const more = phone.locator('.dividend-calendar-agenda__more').first()
+for (let i = 0; i < 8 && !(await more.count()); i++) {
+  await phone.getByRole('button', { name: '上一週', exact: true }).click()
+  await phone.waitForTimeout(800)
+}
+if (await more.count()) {
+  const rows = await phone.locator('.dividend-calendar-agenda__row').count()
+  await more.click()
+  check(await more.getAttribute('aria-expanded') === 'true', '「顯示其餘」標成展開')
+  check(await phone.locator('.dividend-calendar-agenda__row').count() > rows, '「顯示其餘」多出列', `${rows} 列`)
+} else check(false, '往回八週內有一天超過 3 筆')
+await phone.getByRole('radio', { name: '月' }).check({ force: true })
+check(await phone.locator('.dividend-calendar-card__month').isVisible(), '切到月格')
+check(await agenda.isHidden(), '月格時不畫一週')
 
 await browser.close()
 console.log(failures.length ? `\nFAILED (${failures.length}): ${failures.join('; ')}` : '\nALL PASS')
