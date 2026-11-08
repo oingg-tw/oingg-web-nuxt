@@ -11,22 +11,23 @@ allowBuilds:
 # - undici／@grpc/grpc-js：firebase 10 帶進來（undici 鎖 6.19.7）。firebaseui 6 只支援 firebase 9／10，所以不升 firebase 大版本，
 #   改鎖修補版。上層升到不再需要時刪掉。2026-10-27 undici 再拉到 6.29.1（兩筆 DoS 警示）
 # - source-map-js：建置工具群鎖在 1.2.1。
+# - zod（GHSA-mrhx-c7xc-m3w5，2026-11-08）：@nuxt/content 3.16 還直接依賴 zod 3，修補版只在 4.x。它認得 zod 4 的 schema（另走 zod4 的
+#   轉換），@nuxtjs/robots／sitemap 的 zod 是 >=3 的選用 peer，所以只換它底下這份；content.config.ts 的 z 跟著是 zod 4。它改依賴 4 時刪掉（nuxt/content#3904）
 # simple-git 不能這樣鎖：試過鎖 4.x，Nuxt devtools 用 3.x 的 default export，連 nuxt prepare 都失敗（2026-10-13）。
 # 沒有修補版的（node-forge、braces）不在這裡，等上游。
-# pnpm audit 先接受的兩筆（2026-10-27，使用者核准 Dependabot 檢查的修正）：每週的 .github/workflows/audit.yml 只對新的 high 失敗。
-# 兩筆都不在伺服器打包裡（.output/server 搜不到），網站執行時碰不到：
+# pnpm audit 先接受的（2026-10-27，使用者核准 Dependabot 檢查的修正）：每週的 .github/workflows/audit.yml 只對新的 high 失敗。
+# 不在伺服器打包裡（.output/server 搜不到），網站執行時碰不到：
 # - node-forge GHSA-86w9-cpqp-85rv：listhen（nitropack 開發伺服器的 HTTPS 憑證）帶進來，沒有修補版
-# - zod GHSA-mrhx-c7xc-m3w5：@nuxt/content、@nuxtjs/robots、@nuxtjs/sitemap 帶進來，建置時驗設定用；修補版在 4.x，3.x 沒有，硬升會壞
 # 上游有修補版就刪掉
 auditConfig:
   ignoreGhsas:
     - GHSA-86w9-cpqp-85rv
-    - GHSA-mrhx-c7xc-m3w5
 
 overrides:
   'undici@>=6 <6.29.1': ^6.29.1
   '@grpc/grpc-js@<1.13.6': ^1.13.6
   'source-map-js@<1.2.2': ^1.2.2
+  '@nuxt/content>zod': ^4.6.6
 
 # Nitro 的 defineCachedFunction 只在第一個參數是 event 時才用 event.waitUntil（2026-10-27，搬 Cloudflare Workers）：我們的快取函式都不傳 event，
 # 過期後的背景重算與寫回 KV 在回應送出後會被 Workers 砍掉。補丁改成沒傳就用 async context 裡的請求（asyncContext 已開）。
