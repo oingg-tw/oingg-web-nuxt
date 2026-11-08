@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import type { PerformanceOutcome, RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
+import type { RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
 import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // 持股的風險指標（2026-10-05）：使用者在 業務中台 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，業務中台 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
 // 的是「現在這組持股」，不是已實現的交易結果。
 //
-// 2026-10-21 加上實際經歷的跌幅，放第一段（使用者問「用現在的持股比例回推…這個合理嗎? 如果不用我持有期間去看，這樣真的能反映我
-// 真實持有的風險與壓力嗎?」，同意「照這樣改」）：回推答的是「現在這組持股接下來大概怎麼晃」，實際經歷的壓力要看每天真的持股——
-// 那四列原本在報酬與大盤的「跌幅與回到前高」，搬過來、那一頁拿掉（同一個數字只出現一次）。資料是 GET /holdings/performance 的
-// drawdown，跟報酬與大盤共用期間快取
+// 2026-10-21 加過實際經歷的跌幅（每天真的持股，從報酬與大盤搬來的四列），2026-11-08 整段刪掉（使用者：「實際經歷多大跌幅這個卡片刪掉」），
+// 這頁從此只有回推、只讀 GET /holdings/risk。同一天潰瘍指數自成一段、放最上面（「潰瘍指數卡片放上面」，見下面的方案 C）
 //
 // 業務中台 要求照實呈現的四件事，這頁都做到：
 //   1. 沒有報酬率與夏普比率（持股是事後選的，回推的報酬會偏高；真實報酬看交易績效）。
@@ -20,43 +18,21 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
-const { fetchRisk, fetchPerformance, ledgerVersion } = useHoldings()
+const { fetchRisk, ledgerVersion } = useHoldings()
 
 // 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
 const range = useHoldingsRange()
 const outcome = ref<RiskOutcome | null>(null)
-const performance = ref<PerformanceOutcome | null>(null)
 const pending = ref(false)
 
-// 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框。實際跌幅是次要的一段
+// 讀取失敗交給全站彈窗（2026-10-11）；只有「開始日期早於歷史價格」這種可行動的失敗留在頁面上的提示框
 watchLoadFailure('holdings-risk', () => (outcome.value && !outcome.value.ok ? outcome.value.error ?? null : null), () => loadRisk())
-watchLoadFailure('holdings-risk-drawdown', () => (performance.value && !performance.value.ok ? performance.value.error ?? null : null), () => loadRisk(), { scope: 'section' })
 
 async function loadRisk() {
   pending.value = true
-  const [risk, ledger] = await Promise.all([fetchRisk(range.value[0], range.value[1]), fetchPerformance(range.value[0], range.value[1])])
-  outcome.value = risk
-  performance.value = ledger
+  outcome.value = await fetchRisk(range.value[0], range.value[1])
   pending.value = false
 }
-
-// 實際經歷的跌幅：每天真的持股（買進、賣出都算進去）。期間內沒有持股時（twr 是 null）不列；第一次讀的時候列名與意思照畫、數值是骨架。
-// 骨架只在上次有這段時畫（useLayoutHint，同下面的波動占比）：上次沒有還照畫，資料一到整段拿掉、下面全部往上跳（2026-10-24 量到 1440 寬 0.11、手機 0.27）
-const ledgerDrawdown = computed(() => (performance.value?.ok && performance.value.result.twr !== null ? performance.value.result.drawdown : null))
-const drawdownRows = computed(() => {
-  const d = ledgerDrawdown.value
-  if (!d && performance.value) return []
-  return [
-    { name: '最大跌幅', value: d ? holdingsMetricText(d.maxDrawdown, 'pct') : '', meaningSample: '2026-01-15 高點 → 2026-04-09 低點，2026-07-20 回到前高', meaning: !d ? '' : d.peakDate && d.troughDate ? `${d.peakDate} 高點 → ${d.troughDate} 低點，${d.recoveryDate ? `${d.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}` : '期間內沒有下跌' },
-    { name: '低於前高的天數', value: d ? `${d.underwaterDays} 天` : '', meaning: '收盤低於前高的交易日合計' },
-    { name: '最長連續低於前高', value: d ? `${d.longestUnderwaterDays} 天` : '', meaning: '跌破前高到站回，最長的一段' },
-    { name: '目前距前高', value: !d ? '' : d.currentDrawdown === 0 ? '在前高' : holdingsMetricText(d.currentDrawdown, 'pct'), meaning: '期間最後一天距前高多遠' }
-  ]
-})
-const drawdownRowsHint = useLayoutHint('holdings-risk-drawdown', 4)
-watch(drawdownRows, (rows) => {
-  if (performance.value) drawdownRowsHint.value = rows.length
-})
 
 const report = computed(() => (outcome.value?.ok ? outcome.value.result : null))
 const companyByCode = useCompanyLookup(() => report.value?.holdings.map(holding => holding.symbol) ?? [])
@@ -78,7 +54,8 @@ function drawdownText(drawdown: RiskDrawdown | null): string {
 // ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
 // 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
 // 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：預設只列 core 的幾項，波動、跌幅、最差的日子各一項，
-// 加上潰瘍指數（使用者同日：「潰瘍指數很重要呢 希望他不要預設被隱藏」）；
+// 加上潰瘍指數（使用者同日：「潰瘍指數很重要呢 希望他不要預設被隱藏」；2026-11-08 方案 C 起，年化波動度在波動占比那段的答句、
+// 潰瘍指數自成一段放最上面，兩個都不在這張表裡）；
 // 其餘連同原本自成一張表的分散化比率，按「顯示全部指標」才列在同一張表、欄位對齊（同財報頁的「顯示全部科目」）。
 // 原本表格下面那句 VaR／ES 換成金額，寫進這兩列的「意思」。
 // 2026-10-20 Beta 拿掉（使用者：「holdings/analysis holdings/risk 做好資訊分工 避免重複」，選「Beta 歸持股特色」）：持股分析的
@@ -101,10 +78,8 @@ function metricRowsOf(r: RiskReport) {
   const varLoss = loss(r.portfolio.valueAtRisk95Amount)
   const esLoss = loss(r.portfolio.expectedShortfall95Amount)
   return [
-    { core: true, name: '年化波動度', value: pct(r.portfolio.annualizedVolatility), market: pct(r.benchmark.annualizedVolatility), meaning: '每天漲跌幅度的大小，換算成一年' },
     { core: false, name: '下行標準差（年化）', value: holdingsMetricText(r.portfolio.downsideDeviation, 'pct'), market: holdingsMetricText(r.benchmark.downsideDeviation, 'pct'), meaning: '只算下跌那幾天的波動，換算成一年' },
     { core: true, name: '最大回撤', value: drawdownText(r.portfolio.maxDrawdown), market: drawdownText(r.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
-    { core: true, name: '潰瘍指數', value: holdingsMetricText(r.portfolio.ulcerIndex, 'pct'), market: holdingsMetricText(r.benchmark.ulcerIndex, 'pct'), meaning: '每天距離前高跌了多少的平均，跌得越深、越久，數字越大' },
     { core: true, name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: varLoss ? `以現在市值 ${holdingsMetricText(r.marketValue, 'money')}計，最差 5% 的日子單日約少 ${varLoss}` : '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
     { core: false, name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: esLoss ? `最差 5% 的那些天，以現在市值平均約少 ${esLoss}` : '最差 5% 的那些天，平均跌多少' },
     { core: false, name: '與大盤的相關係數', value: plain(r.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' },
@@ -181,6 +156,27 @@ const contributionLegend = computed<ChartLegendGroup[]>(() => [{
   ]
 }])
 
+// ---- 方案 C（2026-11-08，使用者看過三個方案選 C：「這才是我要的。我需要在資料完整與UIUX 易用中取得平衡。需要這樣高信噪比的設計」；
+// 設計頁 https://claude.ai/artifact/6Rjz55TdsD7QhJono1yQX6）：只用現有的資料強調兩樣。潰瘍指數：自成一段、放最上面（同日「潰瘍指數
+// 卡片放上面」，取代 10-07 波動占比排第一），大數字加上跟大盤比長短；波動：「哪幾檔占了大部分的波動」接在後面，卡片第一行寫年化波動度。
+// 這兩個數字從下面的表拿掉，同一個數字只出現一次
+// 卡片前只留問句（同日「希望卡片出現之前的文字精簡」）：年化波動度寫在波動占比卡片的第一行，潰瘍指數在自己的卡片裡
+const volatilityText = computed(() => pct(report.value?.portfolio.annualizedVolatility))
+const volatilityMarketText = computed(() => pct(report.value?.benchmark.annualizedVolatility))
+const ulcerText = computed(() => holdingsMetricText(report.value?.portfolio.ulcerIndex, 'pct'))
+// 跟大盤比長短：大的那一根畫滿，顏色同上面的長條圖（持股是強調色、大盤是中性墨色）。讀的時候兩根骨架
+const ULCER_SKELETON = [{ name: '持股', width: '100%', text: '', color: '' }, { name: '大盤', width: '72%', text: '', color: '' }]
+const ulcerBars = computed(() => {
+  const r = report.value
+  if (!r) return []
+  const rows = [
+    { name: '持股', value: r.portfolio.ulcerIndex, color: getAccentColor(resolvedMode.value, accentColorName.value) },
+    { name: '大盤', value: r.benchmark.ulcerIndex, color: getChartInk(resolvedMode.value).muted }
+  ].filter((row): row is { name: string, value: number, color: string } => row.value !== null)
+  const max = Math.max(...rows.map(row => row.value))
+  return rows.map(row => ({ name: row.name, color: row.color, text: holdingsMetricText(row.value, 'pct'), width: max > 0 ? `${(row.value / max) * 100}%` : '0%' }))
+})
+
 // 統計天數不足時照實說，不下結論
 const fewDays = computed(() => (report.value ? report.value.tradingDays : 0))
 const FEW_DAYS_NOTE = '交易日少於 60 天，波動度的統計誤差較大。'
@@ -202,16 +198,14 @@ const { holdingsScope } = useHoldingsPortfolios()
 watch([report, partialHoldings, namesReady], ([value, , ready]) => {
   if (!value) return
   rememberFewDays(fewDays.value < 60 ? FEW_DAYS_NOTE : '')
-  if (ready) rememberPartial(partialHoldings.value.length ? `${PARTIAL_NOTE}${partialCoverageText(partialHoldings.value)}` : '')
+  if (!ready) return
+  rememberPartial(partialHoldings.value.length ? `${PARTIAL_NOTE}${partialCoverageText(partialHoldings.value)}` : '')
 })
 
 watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => {
   if (!resolved) return
   if (uid) loadRisk()
-  else {
-    outcome.value = null
-    performance.value = null
-  }
+  else outcome.value = null
 }, { immediate: true })
 </script>
 
@@ -223,7 +217,7 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
       <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" :days-pending="loading" />
 
       <!-- 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：每段只剩問句 → 圖或表 → 一個展開。
-           波動占比（風險貢獻）仍放最前面（2026-10-07「risk 我想先看到 分散化與風險貢獻」）。 -->
+           2026-11-08 方案 C 起潰瘍指數放最前面、波動占比接在後面（使用者：「潰瘍指數卡片放上面」，取代 10-07 的波動占比排第一）。 -->
       <!-- 遮罩只給換期間（內容已經在畫面上）；第一次讀的時候問句、指標名稱與意思、計算方式照畫，圖與數字是骨架（2026-10-20） -->
       <div v-loading="pending && !loading" class="risk-page__body" :aria-busy="loading">
         <el-alert v-if="outcome && !outcome.ok && !outcome.error" type="error" :closable="false" show-icon :title="outcome.message">
@@ -232,30 +226,64 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
 
         <template v-else-if="loading || report">
 
-          <section v-if="loading ? drawdownRowsHint : drawdownRows.length" aria-labelledby="risk-actual-title">
-            <h2 id="risk-actual-title" class="risk-page__section-title">你實際經歷過多大的跌幅？</h2>
-            <HoldingsMetricTable caption="實際持股的跌幅" :rows="drawdownRows" value-label="數值" :loading="loading" />
-          </section>
 
-          <!-- 回推的假設寫在它的第一句（2026-10-21）：下面不是你經歷過的，是現在這組持股放回這段期間 -->
-          <p class="risk-page__lead">下面假設這段期間一直持有現在這組股票，看漲跌起伏會有多大。</p>
+          <!-- 潰瘍指數放最上面（2026-11-08 方案 C，使用者：「潰瘍指數卡片放上面」）：大數字＋跟大盤比長短，意思寫在卡片裡一行。
+               卡片前只留問句（同日「希望卡片出現之前的文字精簡」）：數字都在卡片裡，假設寫在計算方式 -->
+          <section aria-labelledby="risk-ulcer-title">
+            <h2 id="risk-ulcer-title" class="risk-page__section-title">跌得多深、多久？</h2>
+            <div class="app-card risk-ulcer">
+              <p class="risk-ulcer__value">
+                <span class="risk-ulcer__label">潰瘍指數</span>
+                <span v-if="loading" class="risk-ulcer__number app-skeleton app-skeleton--inline" aria-hidden="true">6.8%</span>
+                <span v-else class="risk-ulcer__number">{{ ulcerText }}</span>
+              </p>
+              <div class="risk-ulcer__compare">
+                <div v-for="bar in loading ? ULCER_SKELETON : ulcerBars" :key="bar.name" class="risk-ulcer__row">
+                  <span>{{ bar.name }}</span>
+                  <span class="risk-ulcer__track" aria-hidden="true">
+                    <span class="risk-ulcer__bar" :class="{ 'app-skeleton': loading }" :style="{ width: bar.width, background: loading ? undefined : bar.color }" />
+                  </span>
+                  <span class="risk-ulcer__text">
+                    <span v-if="loading" class="app-skeleton app-skeleton--inline" aria-hidden="true">6.8%</span>
+                    <template v-else>{{ bar.text }}</template>
+                  </span>
+                </div>
+                <!-- 用名字的由來說（使用者：「不如跟用戶說這是衡量胃痛與壓力的指數如何？」）：說的是指數量什麼，不是對這組持股的評語；定義在計算方式 -->
+                <p class="risk-ulcer__meaning">衡量下跌讓人多「胃痛」、多有壓力：跌得越深、越久，數字越大。</p>
+              </div>
+            </div>
+          </section>
 
           <section v-if="loading ? contributionCountHint : contributionRows.length" aria-labelledby="risk-contribution-title">
             <h2 id="risk-contribution-title" class="risk-page__section-title">哪幾檔占了大部分的波動？</h2>
             <!-- 先圖後表（2026-10-07「risk 先圖表 再表格」，同站上指標頁的規矩） -->
-            <SharedChartLegend v-if="loading || hasContribution" :groups="contributionLegend" />
-            <div v-if="loading" class="risk-contribution-chart app-skeleton" :style="{ height: chartHeightFor(contributionCountHint) }" aria-hidden="true" />
-            <ClientOnly v-else>
-              <SharedChart
-                v-if="hasContribution"
-                class="risk-contribution-chart"
-                :style="{ height: contributionChartHeight }"
-                :option="contributionOption"
-                autoresize
-                role="img"
-                aria-label="各檔持股的市值占比與波動占比"
-              />
-            </ClientOnly>
+            <!-- 年化波動度寫在卡片的第一行（2026-11-08，使用者：「希望卡片出現之前的文字精簡」），圖例與圖在它下面。波動占比樣本不足時
+                 卡片只有這一行，各檔數字攤開在下面 -->
+            <div class="app-card risk-page__chart-card">
+              <p class="risk-volatility">
+                <span>年化波動度</span>
+                <span v-if="loading" class="risk-volatility__number app-skeleton app-skeleton--inline" aria-hidden="true">28.8%</span>
+                <span v-else class="risk-volatility__number">{{ volatilityText }}</span>
+                <span class="risk-volatility__market">大盤
+                  <span v-if="loading" class="app-skeleton app-skeleton--inline" aria-hidden="true">27.2%</span>
+                  <template v-else>{{ volatilityMarketText }}</template>
+                </span>
+              </p>
+              <template v-if="loading || hasContribution">
+                <SharedChartLegend :groups="contributionLegend" />
+                <div v-if="loading" class="risk-contribution-chart app-skeleton" :style="{ height: chartHeightFor(contributionCountHint) }" aria-hidden="true" />
+                <ClientOnly v-else>
+                  <SharedChart
+                    class="risk-contribution-chart"
+                    :style="{ height: contributionChartHeight }"
+                    :option="contributionOption"
+                    autoresize
+                    role="img"
+                    aria-label="各檔持股的市值占比與波動占比"
+                  />
+                </ClientOnly>
+              </template>
+            </div>
             <!-- 有圖時表格收進 details（2026-10-08「有了圖表還需要表格嗎…可以收合精簡視覺嗎」）：圖是 canvas，
                  螢幕閱讀器念不出各檔數字，所以文字版必須在，只是預設收起來。沒有圖時直接攤開。 -->
             <details v-if="loading || hasContribution" class="app-disclosure">
@@ -266,7 +294,7 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
           </section>
 
           <section aria-labelledby="risk-metrics-title">
-            <h2 id="risk-metrics-title" class="risk-page__section-title">波動和跌幅跟大盤比起來如何？</h2>
+            <h2 id="risk-metrics-title" class="risk-page__section-title">其他風險指標跟大盤比起來如何？</h2>
             <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權報酬指數的風險指標" :rows="shownMetricRows" market-label="加權報酬指數" :loading="loading" />
             <el-button link type="primary" class="risk-page__toggle" :aria-expanded="showAllMetrics" :aria-controls="metricsTableId" @click="showAllMetrics = !showAllMetrics">
               {{ showAllMetrics ? '只看主要指標' : `顯示全部指標（另有 ${metricRows.length - shownMetricRows.length} 項）` }}
@@ -288,8 +316,8 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
           <details class="app-disclosure">
             <summary>計算方式</summary>
             <ul class="risk-page__notes">
-              <li>實際經歷的跌幅：依你每天實際的持股計算，買進、賣出都算進去；期間內沒有持股就不列。</li>
-              <li>其餘用現在每一檔的市值比例<template v-if="report?.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>用現在每一檔的市值比例<template v-if="report?.weightsAsOf">（以 {{ report.weightsAsOf }} 的收盤價為準）</template>套用過去的股價，不是你過去實際的持股；持股是事後選的，所以不顯示報酬率，實際報酬請看「報酬與大盤」。</li>
+              <li>潰瘍指數：1987 年由 Peter Martin 提出，名字來自股價下跌時讓人胃痛的壓力。它是每天距離期間內前高跌了多少的平均；最大回撤只看最深的那一次，潰瘍指數把每一天都算進去，所以跌了多久也會反映出來。</li>
               <li>波動占比（風險貢獻）：每一檔占整體波動的比例，合計約 100%。</li>
               <!-- 含息、還原減資（業務中台 5593cce，2026-10-23）：個股用還原收盤價，跟 analysis-ts 的 Beta 同一套；大盤用報酬指數 -->
               <li>股價含息：現金股利、股票股利與分割、減資退還的股款都已還原；大盤用發行量加權股價報酬指數（含息）。</li>
@@ -324,16 +352,92 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
 
 .risk-contribution-chart {
   width: 100%;
+}
+
+/* 圖例與圖放進卡片（2026-11-08 方案 C）：內距同全站卡片 16px，卡片下面接「各檔數字」 */
+.risk-page__chart-card {
+  padding: 16px;
   margin-bottom: 16px;
+}
+
+/* 年化波動度：波動占比卡片的第一行（2026-11-08） */
+.risk-volatility {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+}
+
+.risk-volatility__number {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.risk-volatility__market {
+  color: var(--el-text-color-regular);
+}
+
+/* 潰瘍指數（2026-11-08 方案 C）：寬的時候大數字與比長短左右兩半，窄的時候上下疊 */
+.risk-ulcer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  align-items: center;
+  gap: 16px 32px;
+  padding: 16px;
+}
+
+.risk-ulcer__value {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.risk-ulcer__label,
+.risk-ulcer__meaning {
+  color: var(--el-text-color-regular);
+}
+
+.risk-ulcer__number {
+  align-self: flex-start;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.risk-ulcer__compare {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.risk-ulcer__row {
+  display: grid;
+  grid-template-columns: 3em minmax(0, 1fr) 4.5em;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.risk-ulcer__track {
+  height: 16px;
+}
+
+.risk-ulcer__bar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.risk-ulcer__text {
+  text-align: right;
+}
+
+.risk-ulcer__meaning {
+  margin: 0;
 }
 
 .risk-page__note {
   margin: 0 0 12px;
-  color: var(--el-text-color-regular);
-}
-
-.risk-page__lead {
-  margin: 0;
   color: var(--el-text-color-regular);
 }
 
