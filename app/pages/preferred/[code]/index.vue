@@ -8,14 +8,25 @@ import type { FactItem } from '~/components/shared/SharedFactList.vue'
 const preferred = await usePreferredStock()
 const { code, entry, price, priceDate, shortName } = preferred
 
-const answer = computed(() => {
+const closeText = () => `以 ${priceDate.value ? `${priceDate.value} ` : '最新'}收盤價 ${preferredYuan(price.value)}計算`
+
+// meta description 寫完整（50～90 字）；卡片前的答句只留股息與殖利率（2026-11-08：清單放進卡片後，卡片前文字檢查量到 97 字，上限 80），
+// 票面利率與 YTW 卡片裡都有
+const description = computed(() => {
   const stockEntry = entry.value
   if (!stockEntry) return null
   const parts = [`${shortName.value}（${code.value}）每年股息 ${preferredYuan(stockEntry.dividendRate)}`]
   if (stockEntry.issuePrice !== null && stockEntry.nominalDividendRatePct !== null) parts.push(`，以發行價 ${preferredYuan(stockEntry.issuePrice)}計算的票面利率 ${preferredPct(stockEntry.nominalDividendRatePct)}`)
-  if (price.value !== null && stockEntry.currentYieldPct !== null) parts.push(`；以 ${priceDate.value ?? '最新'}收盤價 ${preferredYuan(price.value)}計算，殖利率 ${preferredPct(stockEntry.currentYieldPct)}`)
+  if (price.value !== null && stockEntry.currentYieldPct !== null) parts.push(`；${closeText()}，殖利率 ${preferredPct(stockEntry.currentYieldPct)}`)
   if (stockEntry.ytwPct !== null) parts.push(`，最差情境殖利率（YTW）${preferredPct(stockEntry.ytwPct)}`)
   return `${parts.join('')}。`
+})
+
+const answer = computed(() => {
+  const stockEntry = entry.value
+  if (!stockEntry) return null
+  const yieldText = price.value !== null && stockEntry.currentYieldPct !== null ? `；${closeText()}，殖利率 ${preferredPct(stockEntry.currentYieldPct)}` : ''
+  return `${shortName.value}（${code.value}）每年股息 ${preferredYuan(stockEntry.dividendRate)}${yieldText}。`
 })
 
 const facts = computed<FactItem[]>(() => {
@@ -33,9 +44,9 @@ const facts = computed<FactItem[]>(() => {
 </script>
 
 <template>
-  <PreferredStockPage :preferred="preferred" topic="股息與殖利率" :description="answer">
+  <PreferredStockPage :preferred="preferred" topic="股息與殖利率" :description="description">
     <StockQuestionSection id="preferred-yield" :question="`${shortName}（${code}）的股息怎麼算？`" :answer="answer">
-      <SharedFactList :items="facts" :label="`${shortName}的股息與殖利率`" />
+      <SharedChartCard><SharedFactList :items="facts" :label="`${shortName}的股息與殖利率`" /></SharedChartCard>
     </StockQuestionSection>
   </PreferredStockPage>
 </template>

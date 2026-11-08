@@ -35,7 +35,7 @@ const facts = computed<FactItem[]>(() => {
 <template>
   <ReitPage :reit-data="reitData" facet="profile" :description="answer">
     <StockQuestionSection id="reit-profile" :question="`${shortName}（${code}）是什麼？誰管理、收益怎麼分配？`" :answer="answer">
-      <SharedFactList v-if="facts.length" :items="facts" :label="`${shortName}的基本資料`" />
+      <SharedChartCard v-if="facts.length"><SharedFactList :items="facts" :label="`${shortName}的基本資料`" /></SharedChartCard>
     </StockQuestionSection>
   </ReitPage>
 </template>

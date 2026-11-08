@@ -56,7 +56,7 @@ const answer = computed(() => {
         </tbody>
       </SharedTable>
       <p v-if="feeYear" class="hub-answer">各項費用是 {{ feeYear }} 年全年的實際比率，不是契約費率。總費用率含交易成本、並扣掉 ETF 申購買回交易費，所以可能比經理費加保管費還低。</p>
-      <SharedFactList :items="fees" :label="feeYear ? `${shortName} ${feeYear} 年各項費用` : `${shortName}各項費用`" />
+      <SharedChartCard><SharedFactList :items="fees" :label="feeYear ? `${shortName} ${feeYear} 年各項費用` : `${shortName}各項費用`" /></SharedChartCard>
     </StockQuestionSection>
   </EtfPage>
 </template>
