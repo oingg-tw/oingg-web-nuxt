@@ -1,5 +1,16 @@
-import { Compass, DataLine, Filter, Money, Odometer, Sort, Star, OfficeBuilding, Trophy } from '@element-plus/icons-vue'
-import type { Component } from 'vue'
+import { Calendar, Compass, DataLine, Filter, GoldMedal, OfficeBuilding, PieChart, Star } from '@element-plus/icons-vue'
+import { defineComponent, h, type Component } from 'vue'
+
+// 圖示（2026-11-09，使用者從 https://claude.ai/artifact/2o2bYgjRtHUbEsVmatFztG 選的）：導覽、篩選、觀察清單、外觀設定、產業索引、總經特區
+// 不變；配息月曆換月曆、排行換頒獎台、持股管理換圓餅（投資組合）、大師徽章換寫著 1 的金牌。全部是線條圖示，實心的放在一起會很突兀
+// 頒獎台 Element Plus 沒有，自己畫：線寬 1.6／24 跟 Element Plus 線條圖示的 64／1024 差不多。首頁便當盒格的排行也用它
+export const Podium = defineComponent({
+  name: 'PodiumIcon',
+  render: () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
+    h('path', { d: 'M8.5 21V10h7v11M2.5 21v-7h6M15.5 16.5h6V21M2 21h20' }),
+    h('path', { d: 'M12 2l.76 1.95 2.09.12-1.61 1.33.52 2.03L12 6.3l-1.76 1.13.52-2.03-1.61-1.33 2.09-.12z' })
+  ])
+})
 
 export interface AppFeature {
   key: string
@@ -19,23 +30,22 @@ export interface AppNavGroup {
 // 全站的第一層功能，頁首（AppNavMenu）與手機選單的圖示格（AppFeatureMenu）讀同一份（2026-10-21，使用者：「app-header-menu 我懷疑 這邊的樣式
 // 也是不一致的 請重新設計」）。原本兩份各自維護：桌機有排行、手機沒有；手機有總經特區、大師徽章，順序也不同。
 // 配息月曆：2026-09-16 由 dashboard 改名；2026-07 的 620 筆除息全是普通股、2026-10 的 17 筆有 8 筆是 ETF，月配型 ETF 是讀者最常追的
-const CALENDAR: AppFeature = { key: 'calendar', label: '配息月曆', icon: Odometer, to: '/calendar' }
+const CALENDAR: AppFeature = { key: 'calendar', label: '配息月曆', icon: Calendar, to: '/calendar' }
 // 網站導覽：/sitemap 是給人看的 HTML 網站地圖（不是 sitemap.xml）。2026-09-20 放回第一位（「導覽順位要在Logo後面 也就是第一位」）
 const SITEMAP: AppFeature = { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' }
 // 股票篩選：普通股／特別股／ETF 三組篩選的入口（2026-10-15 起 ETF、特別股都收在 /screener 底下）
 const SCREENER: AppFeature = { key: 'screener', label: '股票篩選', icon: Filter, to: '/screener/common', match: '/screener' }
-// 排行的圖示是線條的上下箭頭（Sort）：其他圖示都是線條，Histogram 是實心的直條，放在一起就是唯一一個實心的
-const RANK: AppFeature = { key: 'rank', label: '排行', icon: Sort, to: '/rank' }
+const RANK: AppFeature = { key: 'rank', label: '排行', icon: Podium, to: '/rank' }
 // 產業索引（2026-10-21 由產業追蹤改名：「追蹤」像是能關注某個產業，點進去其實是 34 個類股的索引頁）；/industry/{類股} 也算它底下
 const INDUSTRIES: AppFeature = { key: 'industries', label: '產業索引', icon: OfficeBuilding, to: '/industries', match: '/industr' }
 // 觀察清單與持股管理相鄰：使用者明確指示這是兩個功能（追蹤 vs 真的持有、有股數與成本），擺在一起讓這個區分一眼看得出來
 const WATCHLIST: AppFeature = { key: 'watchlist', label: '觀察清單', icon: Star, to: '/watchlist' }
-const HOLDINGS: AppFeature = { key: 'holdings', label: '持股管理', icon: Money, to: '/holdings' }
+const HOLDINGS: AppFeature = { key: 'holdings', label: '持股管理', icon: PieChart, to: '/holdings' }
 // 頁首沒放、只在手機圖示格的兩個（頁首 2026-09-19 收斂、09-22「總經特區從top nav移除」，桌機的入口在頁尾）。總經特區列在這裡而不只在
 // sitemap：個股導覽永遠不會通到全市場頁，沒有這一筆手機只剩 /sitemap 一個入口
 const MACRO: AppFeature = { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro' }
 // 大師徽章：永遠放最後（「徽章系統永遠放在 sidebar 最下面」）
-const GURU: AppFeature = { key: 'guru-indicators', label: '大師徽章', icon: Trophy, to: '/guru-indicators' }
+const GURU: AppFeature = { key: 'guru-indicators', label: '大師徽章', icon: GoldMedal, to: '/guru-indicators' }
 
 // 頁首的導覽：照這個順序；有 items 的是下拉分組（2026-09-20「找股票應該要與篩選排行合併成下拉選單」，2026-10-21 名稱對齊點進去的內容）
 export const APP_NAV: (AppFeature | AppNavGroup)[] = [

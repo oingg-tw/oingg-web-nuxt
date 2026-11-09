@@ -8,9 +8,9 @@
 //   依類股瀏覽（收合，爬蟲照樣走得到每個類股頁）→ 常見問題（FAQPage 結構化資料）
 // 刻意沒有的：精選股與排行清單（跟本站不給精選的規則衝突）、定價、AggregateRating、編出來的數字（YMYL 誤導）。原本的樹插圖
 // （public/images/landing-hero-tree.*，使用者提供）這版不用了，檔案留著
-import { Calendar, Filter, OfficeBuilding, Reading, Sort, Star } from '@element-plus/icons-vue'
+import { Calendar, Filter, OfficeBuilding, Reading, Star } from '@element-plus/icons-vue'
 import type { HomePageData, HubSector } from '#shared/types/hub'
-import type { SiteMapGroup } from '~/utils/app-features'
+import { Podium, type SiteMapGroup } from '~/utils/app-features'
 
 // Own standalone layout (see layouts/landing.vue and app.vue) instead of the app-shell
 // desktop/mobile split every other page uses — no pinned sidebar or stock search bar here.
@@ -224,7 +224,7 @@ useHead({
         </div>
 
         <NuxtLink :to="rankLink.to" class="app-card landing-bento__tile landing-bento__stat">
-          <el-icon class="landing-bento__icon" aria-hidden="true"><Sort /></el-icon>
+          <el-icon class="landing-bento__icon" aria-hidden="true"><Podium /></el-icon>
           <span class="landing-bento__stat-title">{{ rankLink.label }}</span>
           <span class="landing-bento__stat-value">{{ RANK_PAGES.length }}<span> 種</span></span>
           <span class="landing-bento__text">{{ rankLink.description }}</span>
