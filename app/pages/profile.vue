@@ -250,7 +250,7 @@ async function deleteAccount() {
     // 立刻登出，中間不打任何 API（見上面）。登出後這一頁的 watcher 會回首頁
     await signOut(auth)
     deleteOpen.value = false
-    ElMessage.success('帳號與所有資料已經刪除')
+    ElMessage.success('帳號與資料已經刪除')
   } catch (error) {
     const code = businessErrorCode(error)
     if (code === 'reauth_required') {
@@ -369,7 +369,7 @@ const planName = computed(() => {
 
     <section class="profile-page__section" aria-labelledby="delete-account-title">
       <h2 id="delete-account-title" class="profile-page__section-title">刪除帳號</h2>
-      <p class="profile-page__delete-text">刪除帳號會把你在這裡的所有資料一起刪掉，而且無法復原。</p>
+      <p class="profile-page__delete-text">刪除帳號會把你在這裡的資料一起刪掉，而且無法復原。</p>
       <el-button type="danger" plain class="profile-page__delete-button" @click="openDelete">刪除帳號…</el-button>
     </section>
 
@@ -381,6 +381,9 @@ const planName = computed(() => {
         <li>篩選分頁、欄位組合、釘選指標與外觀設定</li>
         <li>登入帳號本身（之後要用需要重新註冊）</li>
       </ul>
+      <!-- 業務中台刪完帳號會記下 email 與 LINE 帳號的 HMAC 雜湊 365 天（2026-11-09 資安盤點 L8，只用來防止重複試用）：按下去之前要說
+           （2026-11-09，使用者：「加」；網站還沒有隱私權政策頁） -->
+      <p class="profile-page__delete-text">刪除後只保留一樣東西一年：用你的 email 和 LINE 帳號算出的代碼（無法反推回原本的內容），只用來讓同一個人重新註冊時，不再有 14 天專業版試用。</p>
       <template v-if="needsReauth">
         <p class="profile-page__delete-text">為了安全，刪除前請再驗證一次身分。</p>
         <el-button v-if="lineSession" @click="startLineLogin('/profile')">用 LINE 重新登入</el-button>
