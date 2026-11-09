@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Share } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Share } from '@element-plus/icons-vue'
 import { SHARE_EXPIRY_DAYS, type Share as ShareLink, type ShareExpiryDays, type ShareKind } from '~/composables/share/useShares'
 
 // 分享連結（2026-10-19，使用者：「做好以後設計分享持股或是 watchlist 的機制」，選了：有連結就能看、免登入；內容即時；
@@ -9,8 +9,9 @@ import { SHARE_EXPIRY_DAYS, type Share as ShareLink, type ShareExpiryDays, type 
 //   - 有連結之後改勾選就直接存（旁邊寫「已儲存」），不用再按「更新欄位」——舊版建立後有兩顆主色按鈕、底部三顆按鈕；
 //   - 底部只剩「取消」，或建立後的「關閉連結」（文字按鈕）＋「完成」。
 // 關閉比照全站「可復原不先確認」：先關對話框（不疊對話框），undoToast 10 秒後才送 DELETE，這 10 秒內連結還能用。
-// 期限（2026-11-09，業務中台 48a1c34，資安盤點 H1、L9）：連結列下面選 7／30／90 天，有連結時寫到期日；換天數照樣直接存，
-// 「從今天重新算」是同樣的設定再存一次（期限從今天重算，全部帳戶的分享也一起換成現在的帳戶）
+// 期限（2026-11-09，業務中台 48a1c34，資安盤點 H1、L9）：7／30／90 天，每次存都從那天重新算。
+// 方案 C（2026-11-09，使用者從 https://claude.ai/artifact/3HRHxKQiKwRMe9MZpLrSdW 選的，A 嫌層次太雜）：第一頁只有連結和一列
+// 「連結設定」摘要；期限、欄位（持股還有分享頁的標題）在第二頁，同一個對話框換頁、不疊。每個天數旁邊寫選了會到哪天，再選一次同一個＝延長
 const props = defineProps<{
   kind: ShareKind
   // 清單 id；持股是帳戶 id，null ＝ 全部帳戶
@@ -64,7 +65,19 @@ const copyButton = ref<{ ref?: HTMLElement } | null>(null)
 const displayName = ref('')
 const nameToSend = () => (props.kind === 'holdings' ? displayName.value.trim() || null : null)
 const expiresInDays = ref<ShareExpiryDays>(30)
-const expiryLabelId = useId()
+const page = ref<'main' | 'settings'>('main')
+const backButton = ref<{ ref?: HTMLElement } | null>(null)
+const settingsRow = ref<HTMLElement | null>(null)
+const periodLabelId = useId()
+// 換頁時焦點跟著走：進第二頁到「回到分享」，回第一頁到「連結設定」那一列
+function openSettings() {
+  page.value = 'settings'
+  nextTick(() => backButton.value?.ref?.focus())
+}
+function backToMain() {
+  page.value = 'main'
+  nextTick(() => settingsRow.value?.focus())
+}
 // 這條連結是幾天的：每次存都從那天重新算，所以是到期日減最後一次儲存。對不上（2026-11-09 以前建、沒有期限）就是預設的 30 天
 const periodOf = (share: ShareLink | null): ShareExpiryDays => {
   if (!share?.expiresAt) return 30
@@ -79,6 +92,22 @@ const includedAccounts = computed(() => {
   return ids ? props.accounts.filter(account => ids.includes(account.id)).map(account => account.name) : null
 })
 const costColumns = computed(() => props.columns.filter(column => column.revealsCost && chosen.value.includes(column.key)).map(column => column.label))
+// 第一頁的摘要：期限＋幾項；預設不分享的（部位大小、備註）勾了才寫出來
+const summary = computed(() => {
+  const sensitive = props.columns.filter(column => column.sensitive && chosen.value.includes(column.key)).map(column => column.label)
+  const content = `分享 ${chosen.value.length} 項${sensitive.length ? `，含${sensitive.join('、')}` : ''}`
+  if (!active.value) return `${expiresInDays.value} 天內有效・${content}`
+  return `${active.value.expiresAt ? `${periodOf(active.value)} 天有效（${expiryDate(active.value.expiresAt)} 到期）` : '目前不會過期'}・${content}`
+})
+// 選了會到哪一天：選了就從今天重新算
+const periodDate = (days: number) => expiryDate(new Date(Date.now() + days * 86_400_000).toISOString())
+// 再選一次同一個天數＝延長。換天數交給 v-model 和下面的 watch；這裡只看 radio 的 input 自己的 click（點文字時瀏覽器會再點一次 input，
+// 文字那一下不算；鍵盤的空白鍵也是 input 的 click）。Element Plus 在 input 上 stopPropagation，所以在外層用捕獲階段看
+function onPeriodClick(event: MouseEvent) {
+  const input = event.target as HTMLInputElement
+  if (input.tagName !== 'INPUT' || Number(input.value) !== expiresInDays.value || !active.value || saving.value) return
+  void save()
+}
 // 系統分享選單只有部分瀏覽器有（手機），掛載後才知道，免得伺服器與瀏覽器畫的不一樣
 const canShare = ref(false)
 onMounted(() => (canShare.value = typeof navigator.share === 'function'))
@@ -90,6 +119,7 @@ function openDialog() {
   displayName.value = active.value ? (active.value.displayName ?? '') : (currentUser.value?.displayName ?? '').slice(0, 15).replace(/[\uD800-\uDBFF]$/, '')
   expiresInDays.value = periodOf(active.value)
   status.value = ''
+  page.value = 'main'
   open.value = true
 }
 
@@ -172,58 +202,65 @@ function closeLink() {
   <span v-else-if="shares" class="shared-share">
     <!-- 分享的 icon（2026-10-23，使用者：「holdings 分享按鈕 加上 icon」；觀察清單同一顆） -->
     <el-button class="shared-share__button" :icon="Share" aria-haspopup="dialog" @click="openDialog">{{ active ? '已分享' : '分享' }}</el-button>
-    <el-dialog v-model="open" :title="`分享「${name}」`" width="min(480px, 92vw)">
-      <p class="share-dialog__note">有連結的人不用登入就能看，到期後就打不開。內容有變動時，分享頁最多晚 10 分鐘更新。</p>
+    <el-dialog v-model="open" width="min(480px, 92vw)">
+      <template #header="{ titleId, titleClass }">
+        <div class="share-dialog__header">
+          <el-button v-if="page === 'settings'" ref="backButton" link :icon="ArrowLeft" aria-label="回到分享" class="share-dialog__back" @click="backToMain" />
+          <h2 :id="titleId" :class="titleClass">{{ page === 'settings' ? '連結設定' : `分享「${name}」` }}</h2>
+        </div>
+      </template>
 
-      <!-- 連結列：建立前是「建立連結」，建立後同一列換成網址與複製，高度一樣，下面不會跳 -->
-      <div class="share-dialog__link">
-        <template v-if="active">
-          <label class="visually-hidden" :for="inputId">分享連結</label>
-          <el-input :id="inputId" :model-value="url" readonly class="share-dialog__input" />
-          <el-button ref="copyButton" type="primary" @click="copyLink(url)">複製連結</el-button>
-          <el-button v-if="canShare" @click="shareLink(name, url)">傳送…</el-button>
-        </template>
-        <el-button v-else type="primary" class="share-dialog__create" :loading="saving" :disabled="!chosen.length" @click="save">建立連結</el-button>
-      </div>
+      <template v-if="page === 'main'">
+        <p class="share-dialog__note">有連結的人不用登入就能看。</p>
+        <!-- 連結列：建立前是「建立連結」，建立後同一列換成網址與複製，高度一樣，下面的「連結設定」不跳 -->
+        <div class="share-dialog__link">
+          <template v-if="active">
+            <label class="visually-hidden" :for="inputId">分享連結</label>
+            <el-input :id="inputId" :model-value="url" readonly class="share-dialog__input" />
+            <el-button ref="copyButton" type="primary" @click="copyLink(url)">複製連結</el-button>
+            <el-button v-if="canShare" @click="shareLink(name, url)">傳送…</el-button>
+          </template>
+          <el-button v-else type="primary" class="share-dialog__create" :loading="saving" :disabled="!chosen.length" @click="save">建立連結</el-button>
+        </div>
+        <button ref="settingsRow" type="button" class="app-card share-dialog__settings" @click="openSettings">
+          <span class="share-dialog__settings-text">
+            <span class="share-dialog__settings-title">連結設定</span>
+            <span class="share-dialog__settings-summary">{{ summary }}</span>
+          </span>
+          <el-icon aria-hidden="true"><ArrowRight /></el-icon>
+        </button>
+      </template>
 
-      <div class="share-dialog__expiry">
-        <span :id="expiryLabelId" class="share-dialog__heading">連結期限</span>
-        <el-radio-group v-model="expiresInDays" class="app-radio-fill share-dialog__expiry-options" :aria-labelledby="expiryLabelId">
-          <el-radio-button v-for="days in SHARE_EXPIRY_DAYS" :key="days" :value="days">{{ days }} 天</el-radio-button>
+      <template v-else>
+        <!-- 持股：名字接在「分享的持股」前面，看得到標題整句長怎樣 -->
+        <div v-if="kind === 'holdings'" class="share-dialog__name">
+          <label :for="nameId">分享頁的標題</label>
+          <el-input :id="nameId" v-model="displayName" maxlength="15" :aria-describedby="nameHintId">
+            <template #append>分享的持股</template>
+          </el-input>
+          <p :id="nameHintId" class="share-dialog__hint">預設是你的帳號名稱，有連結的人都看得到；留空就只寫「分享的持股」。</p>
+        </div>
+        <h3 :id="periodLabelId" class="share-dialog__heading">有效期限</h3>
+        <el-radio-group v-model="expiresInDays" class="share-dialog__periods" :aria-labelledby="periodLabelId" @click.capture="onPeriodClick">
+          <el-radio v-for="days in SHARE_EXPIRY_DAYS" :key="days" :value="days" class="share-dialog__period">
+            <span class="share-dialog__period-days">{{ days }} 天</span><span class="share-dialog__period-date">到 {{ periodDate(days) }}</span>
+          </el-radio>
         </el-radio-group>
-      </div>
-      <!-- 建立前後都是一行短句、同樣高：連結列下面的內容不跳（check-share-links 量「要分享哪些內容？」的位置） -->
-      <p class="share-dialog__expiry-date">
-        <template v-if="!active">從建立那天開始算。</template>
-        <template v-else>
-          {{ active.expiresAt ? `${expiryDate(active.expiresAt)} 到期。` : '目前不會過期。' }}
-          <el-button link type="primary" :disabled="saving" @click="save">從今天重新算</el-button>
-        </template>
-      </p>
-
-      <div class="share-dialog__content-head">
-        <p class="share-dialog__heading">要分享哪些內容？</p>
-        <span class="share-dialog__status" role="status">{{ status }}</span>
-      </div>
-      <!-- 建立前後同一句：建立前列現在的帳戶，建立後列連結存著的 -->
-      <p v-if="includedAccounts" class="share-dialog__hint share-dialog__accounts">包含的帳戶：{{ includedAccounts.join('、') }}。之後新增的帳戶，要再儲存一次才會加入。</p>
-      <!-- 持股：名字接在「分享的持股」前面，看得到標題整句長怎樣 -->
-      <div v-if="kind === 'holdings'" class="share-dialog__name">
-        <label :for="nameId">分享頁的標題</label>
-        <el-input :id="nameId" v-model="displayName" maxlength="15" :aria-describedby="nameHintId">
-          <template #append>分享的持股</template>
-        </el-input>
-        <p :id="nameHintId" class="share-dialog__hint">預設是你的帳號名稱，有連結的人都看得到；留空就只寫「分享的持股」。</p>
-      </div>
-      <SharedColumnChecklist v-model="chosen" :columns="columns" label="要分享的內容" :sensitive-heading="sensitiveHeading" />
-      <p class="share-dialog__hint">代號與名稱一定會分享。</p>
-      <p v-if="costColumns.length" class="share-dialog__hint share-dialog__cost">勾了{{ costColumns.join('、') }}，看的人可以用公開的股價推算出你的平均成本。</p>
+        <p class="share-dialog__hint">選了就從今天重新算，也就是延長；到期後連結就打不開。</p>
+        <h3 class="share-dialog__heading share-dialog__content-heading">分享內容</h3>
+        <!-- 建立前列現在的帳戶，建立後列連結存著的 -->
+        <p v-if="includedAccounts" class="share-dialog__hint share-dialog__accounts">包含的帳戶：{{ includedAccounts.join('、') }}。之後新增的帳戶，要再儲存一次才會加入。</p>
+        <SharedColumnChecklist v-model="chosen" :columns="columns" label="要分享的內容" :sensitive-heading="sensitiveHeading" />
+        <p class="share-dialog__hint">代號與名稱一定會分享；內容有變動時，分享頁最多晚 10 分鐘更新。</p>
+        <p v-if="costColumns.length" class="share-dialog__hint share-dialog__cost">勾了{{ costColumns.join('、') }}，看的人可以用公開的股價推算出你的平均成本。</p>
+      </template>
 
       <template #footer>
         <div class="share-dialog__footer">
-          <el-button v-if="active" type="danger" link class="share-dialog__close-link" @click="closeLink">關閉連結</el-button>
-          <span class="share-dialog__spacer" />
-          <el-button @click="open = false">{{ active ? '完成' : '取消' }}</el-button>
+          <el-button v-if="page === 'main' && active" type="danger" link class="share-dialog__close-link" @click="closeLink">關閉連結</el-button>
+          <span class="share-dialog__status" role="status">{{ status }}</span>
+          <el-button v-if="page === 'settings'" @click="backToMain">完成</el-button>
+          <el-button v-else @click="open = false">{{ active ? '完成' : '取消' }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -277,57 +314,103 @@ function closeLink() {
   flex: 1;
 }
 
-.share-dialog__expiry {
+.share-dialog__header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 4px;
 }
 
-.share-dialog__expiry-options {
-  flex: 1 1 14rem;
-}
-
-/* 固定一行 44px（觸控時文字按鈕的高度）：建立前只有一句字，建立後多一顆按鈕，高度一樣 */
-.share-dialog__expiry-date {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 8px;
-  min-height: 44px;
-  margin: 4px 0 16px;
-  color: var(--el-text-color-regular);
-}
-
-.share-dialog__expiry-date :deep(.el-button) {
-  min-height: 44px;
+.share-dialog__header h2 {
   margin: 0;
 }
 
+/* 返回鍵：觸控 44px，左邊對齊對話框的內容（往外推 12px，箭頭跟下面的字對齊） */
+.share-dialog__back {
+  width: 44px;
+  min-height: 44px;
+  margin: -10px 0 -10px -12px;
+  font-size: 1.125rem;
+}
+
+/* 「連結設定」那一列：整列是一顆按鈕，樣子是全站卡片（.app-card），這裡只管版面 */
+.share-dialog__settings {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  color: var(--el-text-color-regular);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.share-dialog__settings:hover {
+  border-color: var(--el-color-primary);
+}
+
+.share-dialog__settings-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.share-dialog__settings-title {
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+
+.share-dialog__heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+/* 天數一列一個，旁邊寫選了會到哪天 */
+.share-dialog__periods {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 4px;
+}
+
+.share-dialog__period {
+  height: 48px;
+  margin-right: 0;
+  border-bottom: 1px solid var(--app-divider);
+}
+
+.share-dialog__period-days {
+  display: inline-block;
+  width: 4rem;
+  color: var(--el-text-color-primary);
+}
+
+.share-dialog__period-date {
+  color: var(--el-text-color-regular);
+}
+
+.share-dialog__content-heading {
+  margin-top: 24px;
+}
+
 .share-dialog__hint.share-dialog__accounts {
-  margin: 0 0 8px;
+  margin: 4px 0 0;
 }
 
 .share-dialog__hint.share-dialog__cost {
   color: var(--el-text-color-primary);
 }
 
-.share-dialog__content-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.share-dialog__heading {
-  margin: 0;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
 .share-dialog__status {
+  flex: 1;
   color: var(--el-text-color-regular);
+  text-align: right;
 }
 
 .share-dialog__hint {
@@ -362,9 +445,5 @@ function closeLink() {
 .share-dialog__footer :deep(.el-button) {
   min-height: 44px;
   margin: 0;
-}
-
-.share-dialog__spacer {
-  flex: 1;
 }
 </style>

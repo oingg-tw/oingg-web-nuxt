@@ -97,6 +97,8 @@ await stub(settingsContext)
 const settings = await settingsContext.newPage()
 await settings.goto(`${base}/holdings`, { waitUntil: 'networkidle', timeout: 180000 })
 await settings.getByRole('button', { name: '已分享' }).click({ timeout: 30000 })
+// 欄位在第二頁（方案 C，2026-11-09）：先按「連結設定」
+await settings.getByRole('dialog').locator('.share-dialog__settings').click({ timeout: 15000 })
 const returnBox = settings.getByRole('dialog').getByRole('checkbox', { name: '報酬率' })
 const checked = await returnBox.isChecked({ timeout: 15000 }).catch(() => false)
 console.log(`  ${checked ? 'PASS' : 'FAIL'}  分享視窗：已存的報酬率（returnPct）是勾著的`)
