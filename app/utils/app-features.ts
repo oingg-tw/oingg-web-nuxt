@@ -1,14 +1,25 @@
-import { Calendar, Compass, DataLine, Filter, GoldMedal, OfficeBuilding, PieChart, Star } from '@element-plus/icons-vue'
+import { Calendar, Compass, Filter, GoldMedal, OfficeBuilding, PieChart, Star } from '@element-plus/icons-vue'
 import { defineComponent, h, type Component } from 'vue'
 
-// 圖示（2026-11-09，使用者從 https://claude.ai/artifact/2o2bYgjRtHUbEsVmatFztG 選的）：導覽、篩選、觀察清單、外觀設定、產業索引、總經特區
-// 不變；配息月曆換月曆、排行換頒獎台、持股管理換圓餅（投資組合）、大師徽章換寫著 1 的金牌。全部是線條圖示，實心的放在一起會很突兀
-// 頒獎台 Element Plus 沒有，自己畫：線寬 1.6／24 跟 Element Plus 線條圖示的 64／1024 差不多。首頁便當盒格的排行也用它
+// 圖示（2026-11-09，使用者從 https://claude.ai/artifact/2o2bYgjRtHUbEsVmatFztG 選的）：導覽、篩選、觀察清單、外觀設定、產業索引不變；
+// 配息月曆換月曆、排行換頒獎台、持股管理換圓餅（投資組合）、大師徽章換寫著 1 的金牌。總經特區同一天稍晚換溫度計（使用者：「總經特區用溫度計
+// 我認為很好」：景氣的冷熱，像景氣燈號的紅燈、藍燈）。全部是線條圖示，實心的放在一起會很突兀
+// 頒獎台、溫度計 Element Plus 沒有，自己畫：線寬 1.6／24 跟 Element Plus 線條圖示的 64／1024 差不多。首頁便當盒格的排行也用頒獎台
+const lineIcon = { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const
 export const Podium = defineComponent({
   name: 'PodiumIcon',
-  render: () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
+  render: () => h('svg', lineIcon, [
     h('path', { d: 'M8.5 21V10h7v11M2.5 21v-7h6M15.5 16.5h6V21M2 21h20' }),
     h('path', { d: 'M12 2l.76 1.95 2.09.12-1.61 1.33.52 2.03L12 6.3l-1.76 1.13.52-2.03-1.61-1.33 2.09-.12z' })
+  ])
+})
+// 溫度計：玻璃管加底下的球，管裡一條水銀到球裡的實心圓點，右邊三道刻度
+const Thermometer = defineComponent({
+  name: 'ThermometerIcon',
+  render: () => h('svg', lineIcon, [
+    h('path', { d: 'M8 13.7V4.5a2.5 2.5 0 0 1 5 0v9.2a4.5 4.5 0 1 1-5 0z' }),
+    h('path', { d: 'M10.5 15.5V8M16 5.5h3M16 9h3M16 12.5h3' }),
+    h('circle', { cx: 10.5, cy: 17.4, r: 1.7, fill: 'currentColor', stroke: 'none' })
   ])
 })
 
@@ -43,7 +54,7 @@ const WATCHLIST: AppFeature = { key: 'watchlist', label: '觀察清單', icon: S
 const HOLDINGS: AppFeature = { key: 'holdings', label: '持股管理', icon: PieChart, to: '/holdings' }
 // 頁首沒放、只在手機圖示格的兩個（頁首 2026-09-19 收斂、09-22「總經特區從top nav移除」，桌機的入口在頁尾）。總經特區列在這裡而不只在
 // sitemap：個股導覽永遠不會通到全市場頁，沒有這一筆手機只剩 /sitemap 一個入口
-const MACRO: AppFeature = { key: 'macro', label: '總經特區', icon: DataLine, to: '/macro' }
+const MACRO: AppFeature = { key: 'macro', label: '總經特區', icon: Thermometer, to: '/macro' }
 // 大師徽章：永遠放最後（「徽章系統永遠放在 sidebar 最下面」）
 const GURU: AppFeature = { key: 'guru-indicators', label: '大師徽章', icon: GoldMedal, to: '/guru-indicators' }
 
