@@ -226,6 +226,7 @@ export function useScreenerTabCrud(ctx: {
       // whatever presetToTab's own resolveDefaultColumnPresetId call just resolved, since a
       // brand-new custom tab should always start on 總覽 specifically, not whichever preset the
       // user happens to have marked isDefault for their OTHER tabs.
+      // 欄位組合額度滿了就拿不到（2026-11-09 起業務中台的套用範本也算額度）：留在預設那一組，篩選照樣建好、不跳額度視窗——使用者要的是篩選
       const overviewId = await ctx.ensureOverviewColumnPreset()
       if (overviewId) tab.columnPresetId = overviewId
 
