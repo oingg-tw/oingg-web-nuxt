@@ -35,8 +35,9 @@ export default defineEventHandler(async (event) => {
   const segments = path.split('/').filter(Boolean)
   if (!/^[A-Za-z0-9/_.-]+$/.test(path) || segments.some(segment => segment === '..' || segment === '.')) return problem(event, 400, 'Bad Request', null, '不接受的路徑')
   // 業務中台只給 Nitro 的兩類（2026-11-09，資安盤點 M6）：這裡每個請求都帶 Nitro 金鑰，轉過去等於公開。openapi.json 列出全部端點
-  //（含 /admin 與機器端點的標頭名稱），cold-starts/ 是冷啟動報告；網頁伺服器自己送冷啟動報告走 businessFetch，不經這裡
-  if (segments[0] === 'openapi.json' || segments[0] === 'cold-starts') return problem(event, 404, 'Not Found', null, '不接受的路徑')
+  //（含 /admin 與機器端點的標頭名稱），cold-starts/ 是冷啟動報告；網頁伺服器自己送冷啟動報告走 businessFetch，不經這裡。
+  // /admin/* 也擋（同一天，使用者同意）：網頁從來不經這裡打 /admin，管理站有自己的代理；公開網站萬一有 XSS，也拿不到管理員的 token 去打
+  if (['openapi.json', 'cold-starts', 'admin'].includes(segments[0] ?? '')) return problem(event, 404, 'Not Found', null, '不接受的路徑')
 
   const authorization = getRequestHeader(event, 'authorization')
   const contentType = getRequestHeader(event, 'content-type')

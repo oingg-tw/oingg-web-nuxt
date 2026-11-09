@@ -1,4 +1,4 @@
-// /api/core 不轉業務中台只給 Nitro 的路徑（2026-11-09，資安盤點 M6）：openapi.json 與 cold-starts/ 底下回 404，換個寫法
+// /api/core 不轉業務中台只給 Nitro 的路徑（2026-11-09，資安盤點 M6）與 /admin/*：openapi.json、cold-starts/、admin/ 底下回 404，換個寫法
 // （多一個斜線、結尾斜線、./）也到不了業務中台；一般的路徑照樣轉。被擋的回應要是 Nitro 自己的（detail「不接受的路徑」），
 // 不是上游剛好沒有。路徑原樣送出（fetch 會先把 ./ 正規化掉，所以用 node:http）。
 // POST 只在同一條路徑的 GET 確定被這裡擋下之後才送：還沒換上這一版的伺服器會把它轉給業務中台，業務中台收到任何 id 都會新增一列。
@@ -32,7 +32,7 @@ const send = (path, method = 'GET') => new Promise((resolve, reject) => {
   request.end(body)
 })
 
-for (const path of ['openapi.json', '/openapi.json', 'openapi.json/', 'cold-starts', 'cold-starts/x', 'cold-starts/x/client-timing']) {
+for (const path of ['openapi.json', '/openapi.json', 'openapi.json/', 'cold-starts', 'cold-starts/x', 'cold-starts/x/client-timing', 'admin', 'admin/users', '/admin/cold-starts']) {
   const { status, blocked } = await send(path)
   check(status === 404 && blocked, `GET /api/core/${path} → ${status}${blocked ? '，Nitro 擋的' : '，不是 Nitro 擋的'}（要 404）`)
 }
