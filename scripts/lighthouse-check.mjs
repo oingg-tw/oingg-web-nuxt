@@ -16,6 +16,7 @@
 import { execSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { ALL_ROUTES } from './site-routes.mjs'
+import { seoIfIndexable } from './lighthouse-seo.mjs'
 
 // PSI 只量得到公開網址，目前只有 DEV（target dev）。業務中台已開放 local／dev／prd（b856e55）；PRD 部署後再加它的網址與 --target=prd
 // 2026-10-28 起是 Workers DEV（App Hosting 刪掉）：之前的分數是 App Hosting 量的，跟之後的比要分開看
@@ -155,6 +156,7 @@ async function worker() {
     if (!results.length) continue
     lighthouseVersion ??= results[0].lighthouseVersion
     const scores = Object.fromEntries(Object.entries(CATEGORIES).map(([category, key]) => [key, intMedian(results.map(result => scoreOf(result, category)))]))
+    scores.seoIfIndexable = intMedian(results.map(seoIfIndexable))
     // 毫秒取整數、CLS 留四位小數（PSI 的 numericValue 帶一長串浮點雜訊：3901.030151649087）
     const metrics = Object.fromEntries(Object.entries(METRICS).map(([key, id]) => {
       const value = median(results.map(result => result.audits[id]?.numericValue))
@@ -173,7 +175,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
 const summary = {
   pageCount: routes.length,
-  byFormFactor: Object.fromEntries(FORM_FACTORS.map(formFactor => [formFactor, Object.fromEntries(Object.values(CATEGORIES).map(key =>
+  byFormFactor: Object.fromEntries(FORM_FACTORS.map(formFactor => [formFactor, Object.fromEntries([...Object.values(CATEGORIES), 'seoIfIndexable'].map(key =>
     [key, intMedian(pages.filter(page => page.formFactor === formFactor).map(page => page.scores[key]))]))]))
 }
 const run = {
