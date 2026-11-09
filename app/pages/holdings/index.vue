@@ -246,11 +246,11 @@ watch(importVisible, (open) => { if (open) importAccountId.value = defaultAccoun
 const SHARE_COLUMNS = [
   { key: 'traits', label: '持股特色' },
   { key: 'weight', label: '占比' },
-  { key: 'returnPct', label: '報酬率' },
+  { key: 'returnPct', label: '報酬率', revealsCost: true },
   { key: 'dayChange', label: '今日漲跌' },
   { key: 'quantity', label: '股數', sensitive: true },
   { key: 'marketValue', label: '市值', sensitive: true },
-  { key: 'unrealizedPnl', label: '未實現損益', sensitive: true },
+  { key: 'unrealizedPnl', label: '未實現損益', sensitive: true, revealsCost: true },
   { key: 'annualDividend', label: '預估年股利', sensitive: true }
 ]
 const shareName = computed(() => (portfolios.value.length > 1 ? `${selectedPortfolio.value?.name ?? '全部帳戶'}的持股` : '我的持股'))
@@ -494,6 +494,7 @@ async function submit() {
                 :name="shareName"
                 :columns="SHARE_COLUMNS"
                 sensitive-heading="部位大小，預設不分享"
+                :accounts="portfolios"
               />
             </template>
             <template #detail="{ row, variant }">

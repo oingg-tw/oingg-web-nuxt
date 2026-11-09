@@ -1,7 +1,12 @@
-// 分享連結（2026-10-19，使用者：「設計分享持股或是 watchlist 的機制」）：有連結就能看、免登入，內容即時，分享時勾要顯示的欄位。
+// 分享連結（2026-10-19，使用者：「設計分享持股或是 watchlist 的機制」）：有連結就能看、免登入，分享時勾要顯示的欄位。
 // 這裡是擁有者那一端：GET／PUT／DELETE /shares（業務中台）。一個對象（一份清單；持股是一個帳戶或全部帳戶）只有一條連結，
 // PUT 沒有就建立、有就更新欄位（token 不變）。免登入的公開讀取在 pages/share/[token].vue（GET /public/shares/{token}）。
+// 2026-11-09 起（業務中台 48a1c34，資安盤點 H1、L9）：連結有期限（7／30／90 天，沒送是 30），每次 PUT 都從那天重新算；公開頁讀
+// 業務中台的快照，內容最多晚 10 分鐘，改設定時快照馬上清掉
 export type ShareKind = 'watchlist' | 'holdings'
+
+export const SHARE_EXPIRY_DAYS = [7, 30, 90] as const
+export type ShareExpiryDays = typeof SHARE_EXPIRY_DAYS[number]
 
 export interface ShareColumn {
   key: string
@@ -17,6 +22,10 @@ export interface Share {
   columns: ShareColumn[]
   // 持股分享頁的標題「○○分享的持股」，分享者自己填（業務中台 40b115c，2026-10-20）；沒填與觀察清單都是 null
   displayName: string | null
+  // 到期後公開頁回 404，跟不存在一樣。2026-11-09 以前建的是 null（不過期），下次存的時候才套用期限
+  expiresAt: string | null
+  // 持股「全部帳戶」固定包含的帳戶（存的那一刻有的）：之後新建的帳戶要再存一次才會出現；單一帳戶與清單是 null
+  portfolioIds: string[] | null
   createdAt: string
   updatedAt: string
 }
@@ -48,9 +57,9 @@ export function useShares() {
     shares.value?.find(share => share.kind === kind && (kind === 'watchlist' ? share.watchlistId : share.portfolioId) === targetId) ?? null
 
   // 持股的 displayName 每次 PUT 整個換掉、沒送就變 null——只改欄位時也要帶著目前的名稱
-  async function saveShare(kind: ShareKind, targetId: string | null, columns: ShareColumn[], displayName: string | null = null): Promise<Share | null> {
+  async function saveShare(kind: ShareKind, targetId: string | null, columns: ShareColumn[], displayName: string | null, expiresInDays: ShareExpiryDays): Promise<Share | null> {
     try {
-      const body = kind === 'watchlist' ? { kind, watchlistId: targetId, columns } : { kind, portfolioId: targetId, columns, displayName }
+      const body = kind === 'watchlist' ? { kind, watchlistId: targetId, columns, expiresInDays } : { kind, portfolioId: targetId, columns, displayName, expiresInDays }
       const { share } = await authedFetch<{ share: Share }>('/shares', { method: 'PUT', body })
       shares.value = [...(shares.value ?? []).filter(item => item.token !== share.token), share]
       return share

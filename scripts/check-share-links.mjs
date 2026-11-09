@@ -2,7 +2,8 @@
 // 其他寫入一律擋下（測試帳號不會被寫入）：
 //   - 擁有者：預設勾表格上的欄、備註不勾；建立送出的 PUT；網址、焦點、念出狀態、複製；更新欄位；按鈕「分享／已分享」；
 //     關閉連結先關對話框、10 秒內不送 DELETE、按復原就不送；10 秒內又建立是先刪舊的再發新網址；讀不到連結狀態時不出現；
-//     晚出現時沒有版面位移；持股的「分享頁的標題」（displayName 每次 PUT 都帶）；axe。
+//     晚出現時沒有版面位移；持股的「分享頁的標題」（displayName 每次 PUT 都帶）；連結期限（預設 30 天、換天數直接存、
+//     從今天重新算）、全部帳戶列出包含的帳戶、勾了報酬率提醒推算得出平均成本（2026-11-09）；axe。
 //   - 訪客：分享頁的標題（持股是「○○分享的持股」）、noindex、檔數、備註只在分享了才出現、沒有操作欄、找不到是 404；axe。
 //   - 加到我的觀察清單：一次 POST /watchlists 帶整批與 sourceShareToken；存過的靠帳號裡的清單認出來。
 // 分享頁用站內換頁打開（請求從瀏覽器發，才攔得到）；SSR 那一條要等 業務中台 上線後實際打一次。
@@ -82,7 +83,9 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
       const existing = storedShares.find(item => item.kind === body.kind && (item.watchlistId ?? item.portfolioId) === (body.watchlistId ?? body.portfolioId))
       const first = body.kind === 'holdings' ? TOKEN_H : TOKEN
       const token = existing?.token ?? (issued[body.kind]++ ? `${first}${issued[body.kind]}` : first)
-      const share = { token, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, displayName: body.displayName?.trim() || null, createdAt: 'x', updatedAt: 'y' }
+      // 期限與包含的帳戶（業務中台 48a1c34）：每次 PUT 都從那一刻重新算；全部帳戶的持股分享記下當時的帳戶
+      const now = Date.now()
+      const share = { token, kind: body.kind, watchlistId: body.watchlistId ?? null, portfolioId: body.portfolioId ?? null, columns: body.columns, displayName: body.displayName?.trim() || null, expiresAt: new Date(now + (body.expiresInDays ?? 30) * 86_400_000).toISOString(), portfolioIds: body.kind === 'holdings' && !body.portfolioId ? ['p-a'] : null, createdAt: new Date(now).toISOString(), updatedAt: new Date(now).toISOString() }
       storedShares = [...storedShares.filter(item => item.token !== share.token), share]
       return route.fulfill({ json: { share } })
     }
@@ -161,6 +164,15 @@ console.log('擁有者（1440）')
   await dialog.locator('.el-checkbox', { hasText: '備註' }).click(); await page.waitForTimeout(1200)
   const puts = calls.filter(call => call.startsWith('PUT'))
   check(puts.length === putsBefore + 1 && puts.at(-1).includes('{"key":"note","label":"備註"}') && (await dialog.locator('[role=status]').innerText()).trim() === '已儲存', '勾了備註：自己存一次（PUT 帶 note），寫出「已儲存」')
+  // 連結期限（2026-11-09，業務中台 48a1c34）：預設 30 天；換天數直接存、日期跟著換；「從今天重新算」同樣的設定再存一次
+  const dateIn = days => new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + days * 86_400_000))
+  const expiry = dialog.locator('.share-dialog__expiry-date')
+  check(puts.at(-1).endsWith(',"expiresInDays":30}') && (await expiry.innerText()).includes(`${dateIn(30)} 到期`), `期限預設 30 天：PUT 帶 expiresInDays 30，寫出 ${dateIn(30)} 到期`)
+  await dialog.locator('.el-radio-button', { hasText: '7 天' }).click(); await page.waitForTimeout(1200)
+  check(calls.at(-1).endsWith(',"expiresInDays":7}') && (await expiry.innerText()).includes(`${dateIn(7)} 到期`), `換成 7 天：直接存（expiresInDays 7），寫出 ${dateIn(7)} 到期`)
+  const putsBeforeRenew = calls.filter(call => call.startsWith('PUT')).length
+  await dialog.getByRole('button', { name: '從今天重新算' }).click(); await page.waitForTimeout(800)
+  check(calls.filter(call => call.startsWith('PUT')).length === putsBeforeRenew + 1 && calls.at(-1).endsWith(',"expiresInDays":7}'), '「從今天重新算」：同樣的設定再存一次（還是 7 天）')
   await page.mouse.move(0, 0); await page.waitForTimeout(600)
   const sharedViolations = await axe(page)
   check(sharedViolations === '0', `已分享的對話框 axe 0（${sharedViolations}）`)
@@ -271,7 +283,7 @@ for (const [width, withNote] of [[1440, false], [375, true]]) {
   await shot(page, `share-page-${width}`, true)
   await page.evaluate(() => window.useNuxtApp().$router.push('/share/NoSuchTokenNoSuchToken1'))
   await page.waitForTimeout(2500)
-  check((await page.locator('body').innerText()).includes('這個分享連結已經關閉，或網址不完整'), `${width}：不存在的 token 是 404 頁、寫出原因`)
+  check((await page.locator('body').innerText()).includes('這個分享連結已經關閉、過期，或網址不完整'), `${width}：不存在的 token 是 404 頁、寫出原因`)
   await ctx.close()
 }
 
@@ -295,18 +307,21 @@ console.log('持股：擁有者（1440）')
   const dialogAxe = await axe(page)
   check(dialogAxe === '0', `對話框 axe 0（${dialogAxe}）`)
   await shot(page, 'share-holdings-dialog-1440')
+  // 全部帳戶列出包含哪幾個（業務中台存的是當下的帳戶）；報酬率預設勾著：提醒看的人推算得出平均成本（業務中台擋不了）
+  check((await dialog.locator('.share-dialog__accounts').innerText()).trim() === '包含的帳戶：元大。之後新增的帳戶，要再儲存一次才會加入。', '全部帳戶：列出包含的帳戶')
+  check((await dialog.locator('.share-dialog__cost').innerText()).trim() === '勾了報酬率，看的人可以用公開的股價推算出你的平均成本。', '勾了報酬率：提醒看的人推算得出平均成本')
   // 分享頁的標題（2026-10-20）：名字接在「分享的持股」前面，預設帶帳號名稱、可以改
   const nameInput = dialog.getByLabel('分享頁的標題')
   check(await nameInput.getAttribute('maxlength') === '15' && (await dialog.locator('.share-dialog__name .el-input-group__append').innerText()).trim() === '分享的持股', '有「分享頁的標題」：名字最多 15 字，後面接著「分享的持股」')
   await nameInput.fill('  小明 ')
   await dialog.getByRole('button', { name: '建立連結' }).click(); await page.waitForTimeout(600)
-  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"returnPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}],"displayName":"小明"}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄、名稱去掉前後空白')
+  check(calls.at(-1) === 'PUT {"kind":"holdings","portfolioId":null,"columns":[{"key":"traits","label":"持股特色"},{"key":"weight","label":"占比"},{"key":"returnPct","label":"報酬率"},{"key":"dayChange","label":"今日漲跌"}],"displayName":"小明","expiresInDays":30}', 'PUT 的 body：kind holdings、全部帳戶（null）、持股特色＋三欄、名稱去掉前後空白、期限 30 天')
   check((await dialog.getByLabel('分享連結').inputValue()) === `${base}/share/${TOKEN_H}`, '網址就是這條連結')
   // 業務中台每次 PUT 整個換掉 displayName、沒帶就變 null：只改欄位也要帶著名稱
   await dialog.locator('.el-checkbox', { hasText: '今日漲跌' }).click(); await page.waitForTimeout(1200)
-  check(!calls.at(-1).includes('dayChange') && calls.at(-1).endsWith('"displayName":"小明"}'), '只改欄位：PUT 照樣帶著名稱「小明」')
+  check(!calls.at(-1).includes('dayChange') && calls.at(-1).endsWith('"displayName":"小明","expiresInDays":30}'), '只改欄位：PUT 照樣帶著名稱「小明」')
   await nameInput.fill(''); await page.waitForTimeout(1200)
-  check(calls.at(-1).endsWith('"displayName":null}') && (await dialog.locator('[role=status]').innerText()).trim() === '已儲存', '名稱清空：自己存一次、送 null（分享頁只寫「分享的持股」）')
+  check(calls.at(-1).endsWith('"displayName":null,"expiresInDays":30}') && (await dialog.locator('[role=status]').innerText()).trim() === '已儲存', '名稱清空：自己存一次、送 null（分享頁只寫「分享的持股」）')
   await dialog.getByRole('button', { name: '完成' }).click(); await page.waitForTimeout(400)
   check((await button.innerText()).trim() === '已分享', '按鈕變成「已分享」')
   // 關閉之後 10 秒內又建立（使用者 2026-10-20：「關閉分享以後再建立連結，就看不到連結了」）：舊的先真的刪掉、再發新網址
@@ -332,8 +347,6 @@ console.log('持股：擁有者（1440）')
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await ctx.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => { const style = document.createElement('style'); style.textContent = '#nuxt-devtools-container{display:none!important}'; document.head.append(style) })
-    window.__cls = 0
-    new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) window.__cls += entry.value }).observe({ type: 'layout-shift', buffered: true })
   })
   await mock(ctx)
   await ctx.route('**/api/core/shares', async (route) => { await new Promise(resolve => setTimeout(resolve, 6000)); await route.fulfill({ json: { shares: [] } }) })
@@ -343,13 +356,18 @@ console.log('持股：擁有者（1440）')
   await table.waitFor({ state: 'visible', timeout: 60000 })
   await page.waitForTimeout(3000)
   check(await page.locator('.shared-share__button').count() === 0, '（前提）/shares 還沒回來時分享鈕還沒出現')
-  const before = await table.boundingBox()
-  const clsBefore = await page.evaluate(() => window.__cls)
+  // 量分享鈕自己的影響：表格到工具列的距離、按鈕跟骨架一樣大。不量整頁的 y 與 CLS：總覽的「未計入」那一行等公司名稱，第一次造訪
+  // 會晚到、把整段推一次（CLAUDE.md 的骨架那一列：首訪可能動一次），本機上游慢時剛好落在這幾秒裡（2026-11-09 量到 458 → 494）。
+  // 不能把 /shares 拖得更久來避開：超過網站的 15 秒逾時，分享鈕就不出現了
+  const toolbar = page.locator('.symbol-table__toolbar')
+  const gap = async () => Math.round((await table.boundingBox()).y - (await toolbar.boundingBox()).y)
+  const before = await gap()
+  const skeleton = await page.locator('.shared-share__skeleton').boundingBox()
   await page.locator('.shared-share__button').waitFor({ state: 'visible', timeout: 10000 }); await page.waitForTimeout(500)
-  const after = await table.boundingBox()
-  const clsAfter = await page.evaluate(() => window.__cls)
-  check(before.y === after.y, `分享鈕出現時表格不動（y ${before.y} → ${after.y}）`)
-  check(clsAfter - clsBefore === 0, `分享鈕出現沒有版面位移（CLS 增加 ${(clsAfter - clsBefore).toFixed(4)}）`)
+  const after = await gap()
+  const shown = await page.locator('.shared-share__button').boundingBox()
+  check(before === after, `分享鈕出現時表格不動（離工具列 ${before} → ${after}px）`)
+  check(!!skeleton && Math.abs(skeleton.width - shown.width) < 1 && Math.abs(skeleton.height - shown.height) < 1, `分享鈕跟原本的骨架一樣大（${skeleton?.width}×${skeleton?.height} → ${shown.width}×${shown.height}）`)
   await ctx.close()
 }
 

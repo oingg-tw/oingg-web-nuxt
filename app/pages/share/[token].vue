@@ -4,8 +4,8 @@ import type { PublicHolding } from '~/components/holdings/HoldingsSharedView.vue
 import type { HoldingsTraitsResult } from '~/utils/holdings-traits'
 import type { WatchlistKind } from '~/composables/watchlist/useWatchlistStocks'
 
-// 分享出去的觀察清單或持股（2026-10-19，SharedShareButton 建的連結）：有連結就能看、免登入，內容即時——每次打開都讀
-// 業務中台 的公開 API（GET /public/shares/{token}），只回分享時勾的欄位推得出來的東西；擁有者是誰不顯示。不給搜尋引擎收錄、
+// 分享出去的觀察清單或持股（2026-10-19，SharedShareButton 建的連結）：有連結就能看、免登入，每次打開都讀
+// 業務中台 的公開 API（GET /public/shares/{token}，2026-11-09 起是它的快照、最多晚 10 分鐘），只回分享時勾的欄位推得出來的東西；擁有者是誰不顯示。不給搜尋引擎收錄、
 // CDN 不快取（nuxt.config 的 routeRules '/share/**'）。
 // 觀察清單跟 /watchlist 同一個 WatchlistTable、持股跟持股總覽同一張表（HoldingsSharedView），都是只讀。
 // 只陳述資料：沒有公開目錄、排行、追蹤或異動通知（避開「跟單」），只多一句這是使用者分享的。
@@ -30,8 +30,8 @@ interface PublicHoldingsShare {
 const token = String(useRoute().params.token ?? '')
 if (!SHARE_TOKEN_PATTERN.test(token)) throw createError({ statusCode: 404, statusMessage: '找不到這個分享連結', fatal: true })
 const { data, error } = await useFetch<PublicWatchlistShare | PublicHoldingsShare>(`/api/core/public/shares/${token}`, { key: `share-${token}` })
-// 關掉了、或網址不完整：同一個 404
-if (error.value?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: '這個分享連結已經關閉，或網址不完整', fatal: true })
+// 關掉了、過期了（2026-11-09 起連結有期限）、或網址不完整：同一個 404
+if (error.value?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: '這個分享連結已經關閉、過期，或網址不完整', fatal: true })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '分享的內容暫時無法取得', fatal: true })
 const share = computed(() => data.value!)
 const watchlist = computed(() => (share.value.kind === 'watchlist' ? share.value : null))
