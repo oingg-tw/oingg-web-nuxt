@@ -185,9 +185,10 @@ function save() {
     <ScreenerIndicatorPickerBody v-if="step === 'pick'" :categories="categories" :active="open && step === 'pick'" :hide-period="false" @select="pick" />
     <p class="visually-hidden" role="status">{{ status }}</p>
     <template #footer>
+      <!-- 貼底面板的按鈕同篩選條件面板（large） -->
       <template v-if="step === 'list'">
-        <el-button @click="open = false">取消</el-button>
-        <el-button type="primary" @click="save">儲存</el-button>
+        <el-button :size="sheet ? 'large' : undefined" @click="open = false">取消</el-button>
+        <el-button type="primary" :size="sheet ? 'large' : undefined" @click="save">儲存</el-button>
       </template>
       <!-- 貼底面板的上一步同篩選條件面板的「上一步：條件清單」 -->
       <el-button v-else :size="sheet ? 'large' : undefined" @click="backToList">{{ sheet ? '上一步：欄位清單' : '上一步' }}</el-button>

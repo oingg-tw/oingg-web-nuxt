@@ -133,6 +133,9 @@ export interface ScreenerWorkspace {
   listVisible: boolean
   openConditionList(tab: WorkspaceTab): void
   finishStep(): void
+  // 面板裡改的是草稿（2026-11-09）：清單畫草稿的條件；「儲存」換回頁籤，closePanel（取消、×、Esc）丟掉
+  draftSlots: TabFilterSlot[] | null
+  savePanel(): void
   closePanel(): void
 
   // 結果表

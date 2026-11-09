@@ -25,8 +25,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [fieldId: string, fieldLabel: string]
   back: []
-  // 「完成」與「上一步：條件清單」：回到上一頁（不是從清單進來的就是關掉）
+  // 「完成」與「上一步：條件清單」：手機回到清單
   done: []
+  // 面板裡改的是草稿（2026-11-09，使用者：「篩選條件請加上儲存取消按鈕，確保體驗一樣」）：儲存才套用；取消、×、Esc、點外面是 close，作廢
+  save: []
   close: []
   // 關閉動畫結束（Element Plus 已經把焦點還給打開它的按鈕之後）
   closed: []
@@ -98,14 +100,25 @@ const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.cat
       :periods="periods"
       :current-field-id="slot.fieldId"
       :visible="open"
-      @reset="emit('close')"
       @update:field-id="(fieldId: string) => emit('changePeriod', fieldId)"
     />
 
-    <template v-if="step === 'range'" #footer>
+    <!-- 儲存放在面板的第一頁：手機是條件清單（從清單進去的設定範圍「完成」回到清單）；電腦版沒有清單，設定範圍這一步就存。
+         「重置」只清這一個條件的值，面板不關（關掉就是取消） -->
+    <template v-if="step === 'list'" #footer>
+      <div class="condition-panel__footer">
+        <el-button size="large" @click="emit('close')">取消</el-button>
+        <el-button type="primary" size="large" @click="emit('save')">儲存</el-button>
+      </div>
+    </template>
+    <template v-else-if="step === 'range'" #footer>
       <div class="condition-panel__footer">
         <el-button size="large" @click="emit('back')">上一步：換指標</el-button>
-        <el-button type="primary" size="large" @click="emit('done')">完成</el-button>
+        <el-button v-if="listVisible" type="primary" size="large" @click="emit('done')">完成</el-button>
+        <template v-else>
+          <el-button size="large" @click="emit('close')">取消</el-button>
+          <el-button type="primary" size="large" @click="emit('save')">儲存</el-button>
+        </template>
       </div>
     </template>
     <template v-else-if="step === 'pick' && listVisible" #footer>

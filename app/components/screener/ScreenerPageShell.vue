@@ -62,7 +62,7 @@ function removeFromEmpty(slotId: number) {
   props.screener.removeSlot(tab.value!, slotId)
 }
 
-// 新增條件按「完成」之後焦點落在新膠囊的值上，不是回到「新增條件」：鍵盤使用者接著要改值或移除，不必再找一次。
+// 新增條件按「儲存」之後焦點落在新膠囊的值上，不是回到「新增條件」：鍵盤使用者接著要改值或移除，不必再找一次。
 // 等面板的 closed（關閉動畫結束）才移：Element Plus 的對話框在那之前會把焦點還給打開它的按鈕
 const setupRef = ref<HTMLElement>()
 let slotCountAtOpen = 0
@@ -255,13 +255,15 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       @select="screener.handleSelect"
       @back="screener.backToPicker()"
       @done="screener.finishStep()"
+      @save="screener.savePanel()"
       @close="screener.closePanel()"
       @closed="focusNewCondition"
       @change-period="screener.changeRangeEditorPeriod"
     >
       <template v-if="tab" #list>
+        <!-- 清單裡是草稿的條件（按「儲存」才換回頁籤） -->
         <ScreenerFilters
-          :slots="tab.slots"
+          :slots="screener.draftSlots ?? tab.slots"
           :categories="screener.categories"
           @add-condition="screener.openFieldPicker(tab!, null)"
           @change-slot-field="slotId => screener.openFieldPicker(tab!, slotId)"

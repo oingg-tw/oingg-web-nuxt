@@ -11,15 +11,35 @@ import type { ConditionTab, TabFilterSlot } from '~/composables/screener/screene
 // useScreenerTabs 把這裡的回傳攤平進它自己的 return；漏掉任何一個符號會在 `nuxt typecheck` 當場爆。
 // 2026-10-15 起泛型化：普通股、特別股、ETF 三組共用（三組的頁籤型別不同，只要有 ConditionTab 那三個欄位）。
 // 2026-11-01 拿掉「新增欄位」模式（使用者：「新增欄位 按鈕從 篩選結果移除」，表格最後一欄的＋是它唯一的入口）：新增欄位只在欄位設定裡
+//
+// 面板裡改的是草稿（2026-11-09，使用者：「不採用套用，這樣只會更複雜。篩選條件請加上儲存取消按鈕，確保體驗一樣」，同欄位設定）：打開面板時把
+// 那一組的條件複製一份，面板裡新增、修改、刪除都改這份；「儲存」才整份換回頁籤，查詢與已存的那組存回帳號照舊由 useScreenerTabs／
+// useUniverseScreener 的監看接手（一次儲存只查一次）；「取消」、×、Esc、點外面就丟掉。電腦版頁面上膠囊的 × 不在面板裡，照舊馬上刪
+type DraftTab = Pick<ConditionTab, 'slots'>
+const cloneSlots = (slots: TabFilterSlot[]): TabFilterSlot[] => JSON.parse(JSON.stringify(slots))
+
 export function useScreenerConditionEditor<T extends ConditionTab>() {
+  const draft = shallowRef<{ source: T, copy: DraftTab } | null>(null)
+  // 手機的條件清單畫的是最後一份草稿：關掉的動畫裡內容不換（同面板的 lastStep），取消時不會先閃回原本的條件
+  const shownCopy = shallowRef<DraftTab | null>(null)
+  // 面板開著、同一組還在改就沿用（從清單進去選指標、設定範圍都是同一份草稿）；從關著的面板打開一律重新複製
+  function draftOf(tab: T): DraftTab {
+    if (panelOpen.value && draft.value?.source === tab) return draft.value.copy
+    const copy: DraftTab = reactive({ slots: cloneSlots(tab.slots) })
+    draft.value = { source: tab, copy }
+    shownCopy.value = copy
+    return copy
+  }
+  const draftSlots = computed(() => shownCopy.value?.slots ?? null)
+
   // One shared picker dialog, always on `pickerTargetTab` (distinct from the page-level
   // `activeTab`: this tracks which tab the dialog itself is currently pointed at, not which tab
   // is on screen). `pickerTargetSlotId` is null while adding a brand-new condition (there's no
   // slot yet to point at) and a real id while reassigning an already-filled pill's field; both go
   // through the same dialog, never two different flows.
   const pickerVisible = ref(false)
-  // shallowRef：T 是泛型，ref 會把它包成 UnwrapRef<T> 而對不上型別；頁籤本身已經是父層的響應式物件，改它的欄位照樣會更新
-  const pickerTargetTab = shallowRef<T | null>(null)
+  // 指著草稿（draftOf），不是頁籤本身
+  const pickerTargetTab = shallowRef<DraftTab | null>(null)
   const pickerTargetSlotId = ref<number | null>(null)
 
   // 手機的條件清單（2026-10-31，使用者選結果區方案 B，並要「篩選條件與欄位設定，兩個操作體驗方式應該要一樣」）：手機上條件不再
@@ -27,11 +47,11 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
   // 從清單進去的那幾步，「完成」回到清單（finishStep），關掉面板（×、Esc、點外面）才整個關（closePanel）。電腦版不打開清單
   const listVisible = ref(false)
   function openConditionList(tab: T) {
-    pickerTargetTab.value = tab
+    pickerTargetTab.value = draftOf(tab)
     listVisible.value = true
   }
 
-  function nextSlotId(tab: T): number {
+  function nextSlotId(tab: DraftTab): number {
     return tab.slots.reduce((max, slot) => Math.max(max, slot.id), -1) + 1
   }
 
@@ -40,7 +60,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
   // reads as "a new filter already exists" even before a field or value is chosen). handleSelect
   // below only actually creates a slot once a value has been set too (see commitDraft).
   function openFieldPicker(tab: T, slotId: number | null) {
-    pickerTargetTab.value = tab
+    pickerTargetTab.value = draftOf(tab)
     pickerTargetSlotId.value = slotId
     pickerVisible.value = true
   }
@@ -58,7 +78,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
   // `rangeEditorDraftSlot` 放新增中、還不是真 slot 的那一個；`rangeEditorSlotId` 放編輯既有膠囊時的 id——兩者不會同時有值。
   // 下面的 rangeEditorSlot 是兩種情況共同綁定的來源，min／max／exclude 的 v-model 接法一致。
   const rangeEditorVisible = ref(false)
-  const rangeEditorTab = shallowRef<T | null>(null)
+  const rangeEditorTab = shallowRef<DraftTab | null>(null)
   const rangeEditorSlotId = ref<number | null>(null)
   const rangeEditorDraftSlot = ref<TabFilterSlot | null>(null)
 
@@ -78,7 +98,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
   // Opens the value editor for an already-filled pill (its own value button, not the field
   // picker chain) — the counterpart to the draft-slot path handleSelect takes below.
   function openRangeEditor(tab: T, slotId: number) {
-    rangeEditorTab.value = tab
+    rangeEditorTab.value = draftOf(tab)
     rangeEditorSlotId.value = slotId
     rangeEditorDraftSlot.value = null
     rangeEditorVisible.value = true
@@ -95,10 +115,9 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     if (rangeEditorSlot.value) rangeEditorSlot.value.fieldId = fieldId
   }
 
-  // 新條件在設了值的那一刻變成真的條件（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」）：以前要按「完成」才算數，
-  // 面板開著時勾項目、填數字，結果都不動。現在一有值就放進 tab.slots，之後跟編輯既有條件一樣直接綁在真的 slot 上，
-  // 自動查詢（useScreenerTabs 的 watchTabForAutoSearch）照常 600ms 後重跑。只挑了指標、沒設值就關，照舊不算一個條件
-  //（使用者明文要求：指標與值都設了才算）。同一個物件從草稿搬進 tab.slots，編輯器綁的還是它，輸入框不會重建、焦點不會掉
+  // 新條件在設了值的那一刻放進草稿的條件裡（2026-10-31 起是直接進頁籤、馬上查；2026-11-09 改成草稿，按「儲存」才查），之後跟編輯
+  // 既有條件一樣直接綁在那一個 slot 上。只挑了指標、沒設值，照舊不算一個條件（使用者明文要求：指標與值都設了才算）。
+  // 同一個物件從新條件搬進草稿的條件，編輯器綁的還是它，輸入框不會重建、焦點不會掉
   const hasValue = (slot: TabFilterSlot) => slot.min !== null || slot.max !== null || (slot.values?.length ?? 0) > 0
   function commitDraft() {
     const draft = rangeEditorDraftSlot.value
@@ -174,22 +193,40 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     pickerVisible.value = true
   }
 
-  // 面板的「完成」（設定範圍）與「上一步：條件清單」（選指標）：回到前一頁；不是從清單進來的，就是關掉面板
+  // 手機面板的「完成」（設定範圍）與「上一步：條件清單」（選指標）：回到清單，草稿留著
   function finishStep() {
     if (rangeEditorVisible.value) closeRangeEditor()
     else pickerVisible.value = false
   }
 
-  // 面板整個關掉：在第二步就照原本的規則收尾（有值才把草稿變成條件），清單一起關
-  function closePanel() {
-    finishStep()
+  function closeAll() {
+    draft.value = null
+    rangeEditorVisible.value = false
+    pickerVisible.value = false
     listVisible.value = false
   }
 
+  // 「儲存」：設定範圍裡的新條件有值就收進來，整份草稿換回頁籤
+  function savePanel() {
+    commitDraft()
+    if (draft.value) draft.value.source.slots = cloneSlots(draft.value.copy.slots)
+    closeAll()
+  }
+
+  // 「取消」、×、Esc、點外面：草稿丟掉
+  function closePanel() {
+    closeAll()
+  }
+
+  const panelOpen = computed(() => listVisible.value || pickerVisible.value || rangeEditorVisible.value)
+  // 面板開著時刪的是草稿（手機的條件清單）；關著時是頁面上的膠囊（電腦版）或空狀態的按鈕，馬上刪
   function removeSlot(tab: T, slotId: number) {
-    tab.slots = tab.slots.filter(slot => slot.id !== slotId)
+    const target: DraftTab = panelOpen.value && draft.value?.source === tab ? draft.value.copy : tab
+    target.slots = target.slots.filter(slot => slot.id !== slotId)
   }
   return {
+    draftSlots,
+    savePanel,
     pickerVisible,
     pickerCurrentFieldId,
     openFieldPicker,
