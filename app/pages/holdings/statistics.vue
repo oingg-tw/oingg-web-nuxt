@@ -44,7 +44,7 @@ const report = computed(() => (performance.value?.ok && performance.value.result
 
 // 兩段都要 120 個交易日（業務中台 的門檻），都不夠時每一項都是 null：整頁只寫一句，不列兩張每格都是「樣本不足」的表
 // （使用者 2026-10-19：「近三個月 全部 樣本不足」）。2026-10-23 起這一頁不列湊不到 120 個交易日的快捷期間、進來時換成近一年（見上面），
-// 還會走到這裡的是自訂的短區間與紀錄還不到 120 個交易日的帳戶（選近一年也一樣）。近三個月在報酬與大盤、已實現損益照常有。
+// 還會走到這裡的是自訂的短區間與紀錄還不到 120 個交易日的帳戶（選近一年也一樣）。近三個月在報酬與大盤、已實現損益照常有（風險 2026-11-09 起也不列）。
 const sampleDays = computed(() => (report.value ? Math.max(report.value.benchmarkComparison.sampleDays, report.value.riskAdjusted.sampleDays) : 0))
 
 // 讀的時候（report 還是 null）列照樣列出、數值留空：表格畫成骨架，名稱與意思先出現（2026-10-20）

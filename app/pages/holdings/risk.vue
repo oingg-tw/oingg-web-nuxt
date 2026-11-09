@@ -22,6 +22,9 @@ const { fetchRisk, ledgerVersion } = useHoldings()
 
 // 跟報酬與大盤、已實現損益、績效統計共用同一段期間（useHoldingsRange），切頁不重設
 const range = useHoldingsRange()
+// 選單不列近三個月（2026-11-09，使用者：「holdings/risk 移除近三個月選項」）：波動占比與分散化比率要 120 個交易日，同績效統計，湊不到的
+// 快捷期間不列（上半年的今年以來也不列），進來時期間不夠就換成近一年。在讀資料之前換，舊期間的請求才不會蓋掉新的
+if (holdingsTradingDaysEstimate(range.value[0], range.value[1]) < COVARIANCE_MIN_DAYS) range.value = holdingsLastYear()
 const outcome = ref<RiskOutcome | null>(null)
 const pending = ref(false)
 
@@ -214,7 +217,7 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
     <template #default="{ loading }">
 
       <!-- 交易日數寫在期間旁邊（業務中台 要求一併顯示；兩段共用。2026-10-19 從內容上方獨立的一句搬來） -->
-      <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" :days-pending="loading" />
+      <HoldingsRangePicker :pending="pending" :days="report?.tradingDays" :days-pending="loading" :min-trading-days="COVARIANCE_MIN_DAYS" />
 
       <!-- 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：每段只剩問句 → 圖或表 → 一個展開。
            2026-11-08 方案 C 起潰瘍指數放最前面、波動占比接在後面（使用者：「潰瘍指數卡片放上面」，取代 10-07 的波動占比排第一）。 -->
