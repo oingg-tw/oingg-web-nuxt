@@ -113,8 +113,8 @@ async function addColumn(page, name) {
 }
 const applyColumnTemplate = async (page) => {
   await page.getByRole('button', { name: '新增欄位組合' }).click()
-  await page.getByRole('button', { name: /官方精選欄位組合/ }).click()
-  await page.getByRole('button', { name: new RegExp(TEMPLATE.name) }).click()
+  // 一格一個官方範本（2026-11-09 起同新增篩選的格子，沒有「官方精選欄位組合」那一步）
+  await page.getByRole('dialog', { name: '新增欄位組合' }).getByRole('button', { name: new RegExp(TEMPLATE.name) }).click()
   await page.waitForTimeout(2500)
 }
 const deleteColumnSet = async (page, name) => {

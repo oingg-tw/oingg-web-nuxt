@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Edit, Trophy } from '@element-plus/icons-vue'
+import { Edit } from '@element-plus/icons-vue'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
 defineProps<{
   templates: ColumnPresetTemplate[]
@@ -12,189 +12,46 @@ const emit = defineEmits<{
   template: [key: string]
 }>()
 
-// Same choose/browse two-step pattern as ScreenerNewPresetDialog (filter presets) —
-// "choose type" then "browse official options" reads as one continuous decision, and a back
-// button beats closing one dialog and reopening another. Reset to the first step every time
-// this reopens（@open）, same reasoning as that dialog.
-const step = ref<'choose' | 'browse'>('choose')
-
-function close() {
-  visible.value = false
-}
-
+// 同「新增篩選」的格子（2026-11-09，使用者：「電腦版的新增，現在有篩選的新增 與欄位的新增兩個版本。請統一採用篩選的那個模板，也就是icon在上，
+// 文字在下的grid排版」）：原本先在「官方精選欄位組合／自訂欄位」兩張大卡裡選，再看範本清單；現在一格一個官方範本，按了就建立，空白開始放最後。
+// 範本沒有分類（GET /screener/column-preset-templates 只有 key/name/description/fields），所以沒有第二頁；說明在格子的 title
 function chooseCustom() {
   emit('custom')
-  close()
+  visible.value = false
 }
 
 function chooseTemplate(template: ColumnPresetTemplate) {
   emit('template', template.key)
-  close()
+  visible.value = false
 }
-
 </script>
 
 <template>
   <el-dialog
     v-model="visible"
-    :title="step === 'choose' ? '新增欄位組合' : '官方精選欄位組合'"
+    title="新增欄位組合"
     class="condition-panel condition-panel--narrow"
     modal-class="condition-panel-overlay"
     append-to-body
-    @open="step = 'choose'"
   >
-    <div v-if="step === 'choose'" class="new-column-preset-dialog__choices">
-      <button type="button" class="app-card new-column-preset-dialog__choice" @click="step = 'browse'">
-        <el-icon class="new-column-preset-dialog__choice-icon"><Trophy /></el-icon>
-        <span class="new-column-preset-dialog__choice-title">官方精選欄位組合</span>
-        <span class="new-column-preset-dialog__choice-desc">套用我們整理好的常用欄位組合，一鍵開始</span>
+    <div class="app-tile-grid">
+      <button
+        v-for="template in templates"
+        :key="template.key"
+        type="button"
+        class="app-card app-tile"
+        :title="template.description"
+        @click="chooseTemplate(template)"
+      >
+        <el-icon class="app-tile__icon"><component :is="columnPresetTemplateIcon(template)" /></el-icon>
+        <span class="app-tile__label">{{ template.name }}</span>
+        <span class="app-tile__count">{{ template.fieldKeys.length }}<span class="visually-hidden"> 個欄位</span></span>
       </button>
-      <button type="button" class="app-card new-column-preset-dialog__choice" @click="chooseCustom">
-        <el-icon class="new-column-preset-dialog__choice-icon"><Edit /></el-icon>
-        <span class="new-column-preset-dialog__choice-title">自訂欄位</span>
-        <span class="new-column-preset-dialog__choice-desc">從空白開始，自由挑選要顯示的欄位</span>
+      <button type="button" class="app-card app-tile" @click="chooseCustom">
+        <el-icon class="app-tile__icon"><Edit /></el-icon>
+        <span class="app-tile__label">空白開始</span>
       </button>
-    </div>
-
-    <!-- Flat list, not grouped like ScreenerNewPresetDialog's filter templates —
-         GET /screener/column-preset-templates has no category/tier/status fields, just
-         key/name/description/fieldKeys (confirmed live with 業務中台 2026-09-01). -->
-    <div v-else class="new-column-preset-dialog__browse">
-      <button type="button" class="new-column-preset-dialog__back" @click="step = 'choose'">
-        <el-icon><ArrowLeft /></el-icon>返回
-      </button>
-
-      <div v-if="templatesLoading" class="new-column-preset-dialog__status">載入中…</div>
-      <div v-else-if="!templates.length" class="new-column-preset-dialog__status">目前沒有可用的欄位組合</div>
-      <div v-else class="new-column-preset-dialog__templates">
-        <button
-          v-for="template in templates"
-          :key="template.key"
-          type="button"
-          class="app-card new-column-preset-dialog__template"
-          @click="chooseTemplate(template)"
-        >
-          <div class="new-column-preset-dialog__template-head">
-            <el-icon class="new-column-preset-dialog__template-icon"><component :is="columnPresetTemplateIcon(template)" /></el-icon>
-            <span class="new-column-preset-dialog__template-name">{{ template.name }}</span>
-          </div>
-          <p class="new-column-preset-dialog__template-desc">{{ template.description }}</p>
-        </button>
-      </div>
+      <div v-if="templatesLoading" class="app-tile-grid__status">載入中…</div>
     </div>
   </el-dialog>
 </template>
-
-<style scoped>
-.new-column-preset-dialog__choices {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.new-column-preset-dialog__choice {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 16px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-
-.new-column-preset-dialog__choice:hover {
-  border-color: var(--el-color-primary-light-5);
-}
-
-.new-column-preset-dialog__choice-icon {
-  font-size: 1.375rem;
-  color: var(--el-color-primary);
-  margin-bottom: 4px;
-}
-
-.new-column-preset-dialog__choice-title {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.new-column-preset-dialog__choice-desc {
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-}
-
-.new-column-preset-dialog__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 12px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--el-text-color-secondary);
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.new-column-preset-dialog__back:hover {
-  color: var(--el-color-primary);
-}
-
-.new-column-preset-dialog__status {
-  padding: 24px 0;
-  text-align: center;
-  color: var(--el-text-color-secondary);
-  font-size: 1rem;
-}
-
-.new-column-preset-dialog__templates {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-/* Whole card is the click target now (was just a small "套用" button pinned top-right,
-   inconsistent with the choose-step cards above and awkward once a longer description
-   wrapped to 2-3 lines) — same real <button> + hover-border pattern as
-   .new-column-preset-dialog__choice, just left-aligned block layout instead of that one's
-   flex-column, since name+description here read better as a plain stacked paragraph. */
-.new-column-preset-dialog__template {
-  display: block;
-  width: 100%;
-  padding: 12px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-
-.new-column-preset-dialog__template:hover {
-  border-color: var(--el-color-primary-light-5);
-}
-
-.new-column-preset-dialog__template + .new-column-preset-dialog__template {
-  margin-top: 8px;
-}
-
-.new-column-preset-dialog__template-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.new-column-preset-dialog__template-icon {
-  flex-shrink: 0;
-  font-size: 1.125rem;
-  color: var(--el-color-primary);
-}
-
-.new-column-preset-dialog__template-name {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.new-column-preset-dialog__template-desc {
-  margin: 6px 0 0;
-  font-size: 1rem;
-  color: var(--el-text-color-secondary);
-  line-height: 1.5;
-}
-</style>

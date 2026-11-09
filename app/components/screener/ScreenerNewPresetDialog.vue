@@ -83,33 +83,34 @@ const activeTemplates = computed(() => {
     append-to-body
     @open="backToGrid"
   >
-    <div v-if="step === 'grid'" class="new-preset-dialog__grid">
+    <!-- 格子是全站的 .app-tile-grid（main.css），新增欄位組合同一套 -->
+    <div v-if="step === 'grid'" class="app-tile-grid">
       <button
         v-for="[category, items] in groupedTemplates"
         :key="category"
         type="button"
-        class="app-card new-preset-dialog__tile"
+        class="app-card app-tile"
         @click="openCategory(category)"
       >
-        <el-icon class="new-preset-dialog__tile-icon"><component :is="filterTemplateCategoryIcon(category)" /></el-icon>
-        <span class="new-preset-dialog__tile-label">{{ category }}</span>
-        <span class="new-preset-dialog__tile-count">{{ items.length }}</span>
+        <el-icon class="app-tile__icon"><component :is="filterTemplateCategoryIcon(category)" /></el-icon>
+        <span class="app-tile__label">{{ category }}</span>
+        <span class="app-tile__count">{{ items.length }}<span class="visually-hidden"> 組</span></span>
       </button>
 
       <!-- Last tile, not first — the template categories above are the "browse options
            we curated" path and read as the primary offering; 自訂篩選邏輯 is the fallback
            for "none of those fit," which belongs at the end, not competing for the first
            (most-noticed) grid slot. -->
-      <button type="button" class="app-card new-preset-dialog__tile" @click="chooseCopy">
-        <el-icon class="new-preset-dialog__tile-icon"><CopyDocument /></el-icon>
-        <span class="new-preset-dialog__tile-label">複製目前這組</span>
+      <button type="button" class="app-card app-tile" @click="chooseCopy">
+        <el-icon class="app-tile__icon"><CopyDocument /></el-icon>
+        <span class="app-tile__label">複製目前這組</span>
       </button>
-      <button type="button" class="app-card new-preset-dialog__tile" @click="chooseCustom">
-        <el-icon class="new-preset-dialog__tile-icon"><Edit /></el-icon>
-        <span class="new-preset-dialog__tile-label">空白開始</span>
+      <button type="button" class="app-card app-tile" @click="chooseCustom">
+        <el-icon class="app-tile__icon"><Edit /></el-icon>
+        <span class="app-tile__label">空白開始</span>
       </button>
 
-      <div v-if="templatesLoading" class="new-preset-dialog__status">載入中…</div>
+      <div v-if="templatesLoading" class="app-tile-grid__status">載入中…</div>
     </div>
 
     <div v-else class="new-preset-dialog__browse">
@@ -143,65 +144,7 @@ const activeTemplates = computed(() => {
 </template>
 
 <style scoped>
-/* Same icon-over-label tile grid as AppFeatureMenu.vue's mobile nav grid — deliberately
-   matched (3 columns, same gap/padding/icon size) so "adding a preset" reads as the same
-   pattern language as the rest of the app's own navigation, not a one-off dialog layout. */
-.new-preset-dialog__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: min-content;
-  gap: 16px;
-}
-
-.new-preset-dialog__tile {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px 8px;
-  color: var(--el-text-color-primary);
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-
-.new-preset-dialog__tile:hover {
-  border-color: var(--el-color-primary-light-5);
-}
-
-.new-preset-dialog__tile-icon {
-  font-size: 1.75rem;
-  color: var(--el-color-primary);
-}
-
-.new-preset-dialog__tile-label {
-  font-size: 1rem;
-  text-align: center;
-}
-
-/* font-size 16px per docs/ui-ux/accessibility-guidelines.md §1.1 — 16px is the site-wide floor with
-   no exceptions for new components (the only carved-out exception is Element Plus's own
-   literal size="small" 12px, which this isn't). Contrast confirmed: --el-text-color-secondary
-   on --el-fill-color measures 4.61:1, clear of the 4.5:1 AA threshold for normal text (see
-   that doc's §5.1 formula) — box dimensions bumped from the old 18px to fit 16px text without
-   the number crowding the badge's edges. */
-.new-preset-dialog__tile-count {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  min-width: 24px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--el-fill-color);
-  color: var(--el-text-color-secondary);
-  font-size: 1rem;
-  line-height: 24px;
-  text-align: center;
-}
-
 .new-preset-dialog__status {
-  grid-column: 1 / -1;
   padding: 24px 0;
   text-align: center;
   color: var(--el-text-color-secondary);
