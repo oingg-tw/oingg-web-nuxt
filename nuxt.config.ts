@@ -105,6 +105,11 @@ export default defineNuxtConfig({
   // 篩選區首頁拿掉（2026-10-16 使用者：「screener 這一個畫面是多的，我希望預設就是跑到 screener/common 就好」）。站內連結都直接指向
   // /screener/common，這條只接住書籤、外部連結與搜尋引擎（301 讓它把 /screener 換成新網址）
   routeRules: {
+    // 全站安全標頭（2026-11-09，業務中台轉來的個資保護文件 §1）：別的網站不能把本站嵌進 iframe（點擊劫持）、瀏覽器不猜檔案型別、
+    // 不准 <object> 與改 <base>。都不限制 script，Firebase 登入、GA、LINE 登入照舊。referrer 跟 head 的 meta 一樣（不能用 no-referrer：
+    // Firebase 的 Browser key 要看 Referer）；/share/** 的 strict-origin 比較具體，蓋過這裡。
+    // 沒加：HSTS（DEV 的 .dev 網域瀏覽器本來就只走 HTTPS；正式站的網域定了再決定，瀏覽器會記住、收不回來）、限制 script 的完整 CSP（要先用 Report-Only 觀察）
+    '/**': { headers: { 'x-frame-options': 'SAMEORIGIN', 'content-security-policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' } },
     '/screener': { redirect: { to: '/screener/common', statusCode: 301 } },
     // public/images 原本沒有 Cache-Control（2026-10-16 PSI：首頁主圖 95 KB、logo 7 KB 每次造訪都重新驗證或重新下載；/_nuxt 有一年
     // immutable）。檔名沒有雜湊，所以不用 immutable：換了圖最多一天就換新
