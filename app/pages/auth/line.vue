@@ -11,9 +11,12 @@ import type { LineIntent } from '~/utils/line-login'
 //     （使用者聽完風險後決定）。newAccount（這次才建立 LINE 專屬帳號）提示一次——那正是使用者卡住的情況
 //   - intent link：個人資料頁按「綁定 LINE」來的。**不重新登入**（換使用者會讓已載入的觀察清單等留在舊帳號），用目前的 token 打
 //     POST /auth/line/link，業務中台把這個 LINE 記到目前的帳號，之後用 LINE 登入就是這個帳號
-type Failure = 'cancelled' | 'expired' | 'unavailable' | 'signedOut' | 'alreadyLinked' | 'accountLinked' | 'lineAccount' | 'hasData' | 'reauth'
+// revoked（2026-11-09，業務中台 48a1c34 的 401 line_link_revoked）：帳號綁定 LINE 之後撤銷過登入（改密碼、登出所有裝置），LINE 登入
+// 不發 token。用原本的方式登入、到個人資料重新綁定就恢復——所以這一種不給「重新用 LINE 登入」，再試也一樣
+type Failure = 'cancelled' | 'expired' | 'unavailable' | 'signedOut' | 'alreadyLinked' | 'accountLinked' | 'lineAccount' | 'hasData' | 'reauth' | 'revoked'
 const FAILURES: Record<Failure, { title: string; detail: string }> = {
   cancelled: { title: '已取消 LINE 登入', detail: '沒有登入，也沒有存取你的 LINE 資料。' },
+  revoked: { title: '這次沒辦法用 LINE 登入', detail: '這個帳號綁定 LINE 之後改過密碼或登出了所有裝置，為了安全，LINE 登入先停用。請改用原本的方式（Google 或電子郵件）登入，再到「個人資料」重新綁定 LINE。' },
   expired: { title: '這次登入已經失效', detail: '登入連結只能用一次，請重新登入。' },
   unavailable: { title: '暫時無法完成登入', detail: '請稍後再試；一直失敗的話，可以先改用其他方式登入。' },
   signedOut: { title: '沒有綁定 LINE', detail: '要先登入原本的帳號，才能把 LINE 綁上去。' },
@@ -113,7 +116,7 @@ onMounted(async () => {
     if (pending.intent === 'link') await link(code, pending.nonce)
     else await signIn(code, pending.nonce)
   } catch (caught) {
-    failure.value = statusOf(caught) === 401 ? 'expired' : 'unavailable'
+    failure.value = businessErrorCode(caught) === 'line_link_revoked' ? 'revoked' : statusOf(caught) === 401 ? 'expired' : 'unavailable'
   }
 })
 </script>
@@ -130,8 +133,8 @@ onMounted(async () => {
       </div>
       <template v-else>
         <div class="line-login-page__actions">
-          <el-button type="primary" size="large" @click="startLineLogin(returnTo)">重新用 LINE 登入</el-button>
-          <el-button size="large" @click="openLoginDialog">改用其他方式登入</el-button>
+          <el-button v-if="failure !== 'revoked'" type="primary" size="large" @click="startLineLogin(returnTo)">重新用 LINE 登入</el-button>
+          <el-button :type="failure === 'revoked' ? 'primary' : undefined" size="large" @click="openLoginDialog">改用其他方式登入</el-button>
         </div>
         <NuxtLink :to="returnTo" class="line-login-page__back">回到剛才的頁面</NuxtLink>
       </template>

@@ -4,6 +4,7 @@
 useSeoMeta({ title: '個人資料設定', robots: 'noindex, nofollow' })
 
 import { SwitchButton } from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
 import { EmailAuthProvider, GoogleAuthProvider, linkWithPopup, reauthenticateWithCredential, reauthenticateWithPopup, signOut } from 'firebase/auth'
 
 const currentUser = useCurrentUser()
@@ -102,7 +103,7 @@ async function reauthenticate(password: string): Promise<string | null> {
 // 綁定會讓帳號多一種登入方式，所以最近 5 分鐘內沒登入過要先重新驗證（同刪帳號；業務中台也會再檢查一次）。
 // lineLinked 來自 GET /users/me：loading＝還在問；unknown＝讀不到或舊版 業務中台 沒有這欄（不給按鈕，按了也只會失敗）。
 // LINE 那一列一開始就畫、右邊先留按鈕大小的空位，說明也固定一句：原本等回應才長出那一列與說明，把下面的方案往下推 120～145px
-//（2026-10-20 正式建置量到 /profile 位移 0.013／0.048）。不做解除綁定
+//（2026-10-20 正式建置量到 /profile 位移 0.013／0.048）。解除綁定在下面的 unlinkLine（2026-11-09）
 const lineStatus = ref<'loading' | 'linked' | 'unlinked' | 'unknown'>('loading')
 const lineLinked = computed(() => lineStatus.value === 'linked')
 watch(currentUser, async (user) => {
@@ -111,7 +112,8 @@ watch(currentUser, async (user) => {
   const linked = await authedFetch<{ user: { lineLinked?: boolean } }>('/users/me').then(response => response.user.lineLinked, () => undefined)
   lineStatus.value = linked === true ? 'linked' : linked === false ? 'unlinked' : 'unknown'
 }, { immediate: true })
-const linkNeedsPassword = ref(false)
+// 密碼帳號重新驗證時的密碼欄：綁定與解除綁定共用一格，標籤寫是哪一顆要再按一次
+const passwordFor = ref<'link' | 'unlink' | null>(null)
 const linkPassword = ref('')
 const linkMessage = ref('')
 const linkBusy = ref(false)
@@ -120,9 +122,9 @@ async function linkLine() {
   linkBusy.value = true
   try {
     if (!(await recentlySignedIn())) {
-      if (!reauthWithGoogle.value && !linkNeedsPassword.value) {
+      if (!reauthWithGoogle.value && passwordFor.value !== 'link') {
         // 密碼帳號：先在這裡輸入密碼，再按一次
-        linkNeedsPassword.value = true
+        passwordFor.value = 'link'
         return
       }
       const failed = await reauthenticate(linkPassword.value)
@@ -134,6 +136,54 @@ async function linkLine() {
     startLineLogin('/profile', 'link')
   } finally {
     linkBusy.value = false
+  }
+}
+
+// 解除綁定 LINE（2026-11-09，業務中台 48a1c34 的 DELETE /auth/line/link，使用者同意資安盤點 M1）。上游要 10 分鐘內登入過（不然
+// 401 reauth_required），這裡跟綁定一樣先看 5 分鐘。解除之後再用 LINE 登入會進到另一個新的 LINE 帳號、看不到這裡的資料，要綁回來得
+// 重新走一次 LINE 授權，所以先問一次（停下來決定的時刻）。這次是用 LINE 登入的，只能再用 LINE 登入一次來驗證身分
+const unlinkBusy = ref(false)
+async function unlinkLine() {
+  linkMessage.value = ''
+  // 輸入密碼後再按一次時不再問
+  if (passwordFor.value !== 'unlink') {
+    const confirmed = await ElMessageBox.confirm(
+      '解除之後，用 LINE 登入會變成另一個新帳號，看不到這裡的持股與觀察清單；要再用 LINE 登入這個帳號，得重新綁定。',
+      '解除綁定 LINE',
+      { confirmButtonText: '解除綁定', cancelButtonText: '取消', type: 'warning' }
+    ).then(() => true, () => false)
+    if (!confirmed) return
+  }
+  unlinkBusy.value = true
+  try {
+    if (!(await recentlySignedIn())) {
+      if (lineSession.value) {
+        linkMessage.value = '為了安全，請先重新用 LINE 登入，再按一次「解除綁定」。'
+        return
+      }
+      if (!reauthWithGoogle.value && passwordFor.value !== 'unlink') {
+        passwordFor.value = 'unlink'
+        return
+      }
+      const failed = await reauthenticate(linkPassword.value)
+      if (failed) {
+        linkMessage.value = failed
+        return
+      }
+    }
+    await authedFetch('/auth/line/link', { method: 'DELETE' })
+    passwordFor.value = null
+    linkPassword.value = ''
+    lineStatus.value = 'unlinked'
+    ElMessage.success('已解除綁定 LINE。')
+  } catch (error) {
+    const code = businessErrorCode(error)
+    linkMessage.value = code === 'reauth_required'
+      ? '為了安全，請先驗證身分，再按一次「解除綁定」。'
+      : code === 'line_account_cannot_unlink' ? '這是用 LINE 建立的帳號，沒辦法解除綁定。' : '沒有解除綁定，請稍後再試。'
+    if (code === 'reauth_required' && !reauthWithGoogle.value && !lineSession.value) passwordFor.value = 'unlink'
+  } finally {
+    unlinkBusy.value = false
   }
 }
 
@@ -247,7 +297,11 @@ const planName = computed(() => {
         <li v-if="providers.includes('password')" class="profile-page__method"><span>電子郵件</span><span class="profile-page__method-note">{{ currentUser.email }}</span></li>
         <li class="profile-page__method">
           <span>LINE</span>
-          <span v-if="lineAccount || lineLinked" class="profile-page__method-note">已綁定</span>
+          <span v-if="lineAccount" class="profile-page__method-note">已綁定</span>
+          <span v-else-if="lineLinked" class="profile-page__method-actions">
+            <span class="profile-page__method-note">已綁定</span>
+            <el-button :loading="unlinkBusy" @click="unlinkLine">解除綁定</el-button>
+          </span>
           <el-button v-else-if="lineStatus === 'unlinked'" :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
           <span v-else-if="lineStatus === 'loading'" class="profile-page__method-pending" aria-hidden="true" />
         </li>
@@ -261,11 +315,12 @@ const planName = computed(() => {
       <p v-if="googleMessage" class="profile-page__delete-message" role="alert">{{ googleMessage }}</p>
       <el-button v-if="googleMessage.startsWith('為了安全')" @click="startLineLogin('/profile')">重新用 LINE 登入</el-button>
       <p v-if="lineAccount && inLineBrowser && !providers.includes('google.com')" class="profile-page__plan-note">LINE 內建瀏覽器打不開 Google 的登入視窗：用外部瀏覽器開啟這一頁、用 LINE 登入後，再按「加上 Google 登入」。</p>
-      <template v-if="linkNeedsPassword && !lineLinked">
-        <label for="link-line-password" class="profile-page__delete-label">為了安全，綁定前請輸入密碼，再按一次「綁定 LINE」</label>
+      <template v-if="passwordFor">
+        <label for="link-line-password" class="profile-page__delete-label">為了安全，請輸入密碼，再按一次「{{ passwordFor === 'link' ? '綁定 LINE' : '解除綁定' }}」</label>
         <el-input id="link-line-password" v-model="linkPassword" type="password" show-password autocomplete="current-password" />
       </template>
       <p v-if="linkMessage" class="profile-page__delete-message" role="alert">{{ linkMessage }}</p>
+      <el-button v-if="linkMessage.includes('重新用 LINE 登入')" @click="startLineLogin('/profile')">重新用 LINE 登入</el-button>
       <p v-if="lineAccount && !providers.includes('google.com')" class="profile-page__plan-note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
       <p v-else-if="!lineAccount" class="profile-page__plan-note">綁定 LINE 之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
     </section>
@@ -428,6 +483,12 @@ const planName = computed(() => {
 .profile-page__method-note {
   color: var(--el-text-color-regular);
   overflow-wrap: anywhere;
+}
+
+.profile-page__method-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .profile-page__method .el-button {
