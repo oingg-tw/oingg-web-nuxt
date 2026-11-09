@@ -100,6 +100,15 @@ export function useHoldings() {
     await Promise.all([reloadAfterWrite(), symbol in transactions.value ? loadTransactions(symbol) : null])
   }
 
+  // 交易筆數上限（業務中台 48a1c34，2026-11-09）：每個會員 50,000 筆，超過回 409 transaction_limit_reached，延伸欄位 limit／used；
+  // 匯入的 dryRun 也會回。不是這個錯誤回 null
+  function transactionLimitText(error: unknown, action: string): string | null {
+    if (businessErrorCode(error) !== 'transaction_limit_reached') return null
+    const data = (error as { data?: { limit?: number; used?: number } }).data
+    const used = typeof data?.used === 'number' ? `，現在已經有 ${groupThousands(data.used)} 筆` : ''
+    return `交易紀錄最多 ${groupThousands(data?.limit ?? 50_000)} 筆${used}。請先刪掉不需要的紀錄，再${action}。`
+  }
+
   // 新增與編輯**不做樂觀更新**：對話框本來就有等待狀態，而股數與均價只有伺服器算得出來。
   async function saveTransaction(id: string | null, input: TransactionInput): Promise<SaveResult> {
     const note = input.note?.trim() ?? ''
@@ -130,6 +139,8 @@ export function useHoldings() {
       const message = describeBusinessError(error)
       // 超賣帶原文（英文）：oversoldMessage 從裡面讀日期與股數，自己寫中文
       if (businessErrorCode(error) === LEDGER_OVERSOLD) return { ok: false, reason: 'oversold', message: businessErrorDetail(error) }
+      const limit = transactionLimitText(error, '新增')
+      if (limit) return { ok: false, reason: 'failed', message: limit }
       if (status === 404 && !id) return { ok: false, reason: 'unknown', message }
       if (status === 404) {
         await refreshAfterWrite(input.symbol)
@@ -243,7 +254,7 @@ export function useHoldings() {
       // shortfalls 在回應主體最上層（problem+json 的延伸欄位）
       const data = (error as { data?: { shortfalls?: ImportShortfall[] } }).data
       if (businessErrorCode(error) === LEDGER_SHORTFALL && Array.isArray(data?.shortfalls)) return { kind: 'shortfalls', shortfalls: data.shortfalls }
-      return { kind: 'failed', message: describeBusinessError(error) ?? '暫時無法連線，請稍後再試' }
+      return { kind: 'failed', message: transactionLimitText(error, '匯入') ?? describeBusinessError(error) ?? '暫時無法連線，請稍後再試' }
     }
   }
 
