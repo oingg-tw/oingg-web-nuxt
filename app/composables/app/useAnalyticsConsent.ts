@@ -18,9 +18,10 @@ export function useAnalyticsConsent() {
 
   function clearAnalyticsCookies() {
     if (!import.meta.client) return
-    // GA 把 cookie 設在最上層網域（.oingg.com），也可能在目前的主機名稱上；兩個都清
-    const host = location.hostname
-    const domains = ['', host, `.${host.split('.').slice(-2).join('.')}`]
+    // GA 把 cookie 設在不是公共後綴的最上層網域（oingg.com 是 .oingg.com；DEV 的 workers.dev 是公共後綴，所以是 .oingg-web-nuxt.workers.dev），
+    // 也可能在目前的主機名稱上：每一層都清一次，設不了的網域瀏覽器會略過（原本只清最後兩層，DEV 上拒絕後 _ga 還在，2026-11-09）
+    const labels = location.hostname.split('.')
+    const domains = ['', ...labels.map((_, index) => `.${labels.slice(index).join('.')}`)]
     for (const name of document.cookie.split(';').map(part => part.split('=')[0]!.trim()).filter(name => name === '_ga' || name.startsWith('_ga_'))) {
       for (const domain of domains) document.cookie = `${name}=; Max-Age=0; path=/${domain ? `; domain=${domain}` : ''}`
     }

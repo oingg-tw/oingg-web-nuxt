@@ -10,19 +10,21 @@ export default defineNuxtPlugin(() => {
   // 等頁面接手完成、瀏覽器閒下來才載（onNuxtReady），firebase/analytics 也改成動態載入：原本外掛 await isSupported()，Nuxt 要等
   // 外掛跑完才接手頁面，gtag 的下載與執行也擠在第一個畫面之前（2026-10-16 DEV 的 Lighthouse，手機每頁約 130 ms）
   // 2026-10-18 起還要使用者按過「接受」（useAnalyticsConsent，橫幅在 AppConsentBanner）；當下才按的，按了就載
+  // 撤回（拒絕，或頁尾「Cookie 設定」清掉選擇）時已經載入的 GA 要停（setAnalyticsCollectionEnabled 設 ga-disable-<ID>）：只清 cookie 的話，
+  // 同一個分頁裡 GA 下一次送出又會放回去（2026-11-09）。setCollection 同步指定，接受後馬上撤回也照順序生效
   const { consent, asks } = useAnalyticsConsent()
   if (asks) {
-    let started = false
-    const start = async () => {
-      if (started) return
-      started = true
-      const { getAnalytics, isSupported } = await import('firebase/analytics')
-      if (await isSupported()) getAnalytics(app)
+    let setCollection: Promise<((enabled: boolean) => void) | null> | null = null
+    const follow = (value: typeof consent.value) => {
+      if (value !== 'granted' && !setCollection) return
+      setCollection ??= import('firebase/analytics').then(async ({ getAnalytics, isSupported, setAnalyticsCollectionEnabled }) => {
+        if (!(await isSupported())) return null
+        const analytics = getAnalytics(app)
+        return (enabled: boolean) => setAnalyticsCollectionEnabled(analytics, enabled)
+      })
+      void setCollection.then(set => set?.(value === 'granted'))
     }
-    onNuxtReady(() => {
-      if (consent.value === 'granted') void start()
-      watch(consent, value => { if (value === 'granted') void start() })
-    })
+    onNuxtReady(() => watch(consent, follow, { immediate: true }))
   }
 
   // 登入狀態的來源是 modular 的 Auth（2026-10-16 起）。FirebaseUI 只會用 compat API，但 compat 只在打開登入視窗時才載入
