@@ -235,7 +235,8 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     await page.waitForTimeout(600)
     await page.locator('.indicator-dialog__metric').filter({ has: page.locator('.indicator-dialog__metric-label', { hasText: /^(ROE|股東權益報酬率)$/ }) }).first().click()
     const editor = await waitFor(page.locator('.condition-panel .range-editor'), 15000)
-    const periods = page.locator('.condition-panel .range-editor__period')
+    // 期別是全站的晶片（2026-11-08 起 .hub-chip，原本的 .range-editor__period 拿掉了）
+    const periods = page.locator('.condition-panel .range-editor__periods .hub-chip')
     const labels = (await periods.allTextContents()).map(text => text.trim())
     expect('換期別', 'ROE 可以換單季、近四季、年度', editor.ok && ['單季', '近四季', '年度'].every(label => labels.includes(label)), labels.join('／') || '沒有期別按鈕')
     if (labels.includes('單季')) {
@@ -553,33 +554,40 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     expect('手機', '按方向鍵換成大到小並打後端', toggledText.includes('大到小') && upstream.length > requestsBeforeToggle && upstream.at(-1) === 200, `${toggledText}，多發了 ${upstream.length - requestsBeforeToggle} 次`)
     expect('手機', '排序後卡片還在', await m.locator('.smt-card').count() > 0)
 
-    // 「欄位 N 個」（2026-11-01，比照「篩選條件 N 個」）：貼底面板、每一步馬上套用——下移第一欄，面板還開著卡片就換順序；
-    // 移除留在原位可以復原；沒有儲存鈕
+    // 「欄位 N 個」：貼底面板（比照「篩選條件 N 個」），跟欄位設定一樣是草稿（2026-11-09，使用者：「都改成草稿+儲存」）——面板開著時
+    // 卡片不動、移除的那一列直接消失；取消就作廢，按儲存才換
     const labelsBefore = await m.locator('.smt-card').first().locator('dt').allTextContents()
     expect('手機', '表格版面的「欄位設定」藏起來', !await m.locator('.smt-toolbar__settings').isVisible())
-    await m.getByRole('button', { name: /^欄位 \d+ 個$/ }).click()
-    await waitFor(m.locator('.column-settings__row').first(), 10000)
     const sheet = m.getByRole('dialog', { name: '欄位' })
-    // 等打開的動畫跑完（同下面條件面板）
-    await m.waitForTimeout(500)
-    const box = await m.locator('.el-dialog.column-settings--live').boundingBox()
+    const openColumns = async () => {
+      await m.getByRole('button', { name: /^欄位 \d+ 個$/ }).click()
+      await waitFor(m.locator('.column-settings__row').first(), 10000)
+      // 等打開的動畫跑完（同下面條件面板）
+      await m.waitForTimeout(500)
+    }
+    const cardLabels = () => m.locator('.smt-card').first().locator('dt').allTextContents()
+    await openColumns()
+    const box = await m.locator('.el-dialog.column-settings--sheet').boundingBox()
     expect('手機', '欄位面板貼在畫面底部', box !== null && Math.abs(box.y + box.height - 800) <= 2, box ? `底 ${Math.round(box.y + box.height)}` : '找不到')
     const settingsRows = await sheet.locator('.column-settings__row').count()
-    expect('手機', '欄位面板列出每一欄、沒有儲存鈕', settingsRows === labelsBefore.length && await sheet.getByRole('button', { name: '儲存' }).count() === 0, `${settingsRows} 列 / ${labelsBefore.length} 欄`)
+    expect('手機', '欄位面板列出每一欄，底部有取消和儲存', settingsRows === labelsBefore.length && await sheet.getByRole('button', { name: '儲存' }).isVisible() && await sheet.getByRole('button', { name: '取消' }).isVisible(), `${settingsRows} 列 / ${labelsBefore.length} 欄`)
     await sheet.locator('.column-settings__row').first().getByRole('button', { name: /下移/ }).click()
-    await m.waitForTimeout(1500)
-    const labelsAfter = await m.locator('.smt-card').first().locator('dt').allTextContents()
-    expect('手機', '下移第一欄、面板開著卡片就換順序', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0], `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)
-    await sheet.getByRole('button', { name: `移除「${labelsAfter[0]}」` }).click()
-    await m.waitForTimeout(1500)
-    const afterRemove = await m.locator('.smt-card').first().locator('dt').allTextContents()
-    expect('手機', '移除馬上少一欄、那一列留著「復原」', afterRemove.length === labelsAfter.length - 1 && await sheet.getByRole('button', { name: `復原「${labelsAfter[0]}」` }).isVisible(), `${labelsAfter.length} → ${afterRemove.length} 欄`)
-    await sheet.getByRole('button', { name: `復原「${labelsAfter[0]}」` }).click()
-    await m.waitForTimeout(1500)
-    const afterRestore = await m.locator('.smt-card').first().locator('dt').allTextContents()
-    expect('手機', '復原回到原位', afterRestore.join('|') === labelsAfter.join('|'), afterRestore.slice(0, 2).join('、'))
-    await m.keyboard.press('Escape')
+    await sheet.getByRole('button', { name: `移除「${labelsBefore[2]}」` }).click()
+    await m.waitForTimeout(800)
+    const rowsAfterEdit = await sheet.locator('.column-settings__row').count()
+    const cardsWhileOpen = await cardLabels()
+    expect('手機', '草稿：移除的那一列直接消失，卡片還沒變', rowsAfterEdit === labelsBefore.length - 1 && cardsWhileOpen.join('|') === labelsBefore.join('|'), `${rowsAfterEdit} 列；卡片 ${cardsWhileOpen.slice(0, 3).join('、')}`)
+    await sheet.getByRole('button', { name: '取消' }).click()
     await m.waitForTimeout(600)
+    const afterCancel = await cardLabels()
+    await openColumns()
+    const rowsReopened = await sheet.locator('.column-settings__row').count()
+    expect('手機', '取消就作廢：卡片沒變，再打開還是原本的欄位', afterCancel.join('|') === labelsBefore.join('|') && rowsReopened === labelsBefore.length, `卡片 ${afterCancel.slice(0, 3).join('、')}；${rowsReopened} 列`)
+    await sheet.locator('.column-settings__row').first().getByRole('button', { name: /下移/ }).click()
+    await sheet.getByRole('button', { name: '儲存' }).click()
+    await m.waitForTimeout(1500)
+    const labelsAfter = await cardLabels()
+    expect('手機', '按儲存才換順序，面板關掉', labelsAfter[0] === labelsBefore[1] && labelsAfter[1] === labelsBefore[0] && !await sheet.isVisible(), `${labelsBefore.slice(0, 2)} → ${labelsAfter.slice(0, 2)}`)
 
     // 條件面板：手機是貼底的面板，條件收在「篩選條件 N 個」裡（方案 B）；先到條件清單，新增條件在同一個面板換頁；
     // 選了指標換到第二步，有看得見的標籤；沒設值就完成，回到清單、不多一個條件

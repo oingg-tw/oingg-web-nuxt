@@ -161,7 +161,7 @@ function onRowClick(row: ScreenerResultRow, _column: unknown, event: MouseEvent)
 const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
-  // 欄位設定彈窗按「儲存」、欄位面板的每一步、表頭選單的移除（saveFromSettings、removeFromMenu）：整份欄位
+  // 欄位設定彈窗或欄位面板按「儲存」、表頭選單的移除（saveFromSettings、removeFromMenu）：整份欄位
   saveColumns: [columns: ColumnDraft[]]
   rowClick: [symbol: string]
   loadMore: []
@@ -442,14 +442,15 @@ const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${g
 
 // ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），彈窗在 SharedColumnSettings（觀察清單共用）----
 const columnSettingsOpen = ref(false)
-// 卡片版面的「欄位 N 個」打開的是 live（每一步馬上套用，比照篩選條件的面板，2026-11-01）；表格版面的「欄位設定」照舊按儲存
-const columnSettingsLive = ref(false)
-function openColumnSettings(live: boolean) {
-  columnSettingsLive.value = live
+// 卡片版面的「欄位 N 個」打開的是貼底面板（同篩選條件的面板），表格版面的「欄位設定」是置中的彈窗；兩個一樣是草稿、按儲存才套用
+// （2026-11-09，使用者：「都改成草稿+儲存」；11/01 到這天「欄位 N 個」是每一步馬上套用）
+const columnSettingsSheet = ref(false)
+function openColumnSettings(sheet: boolean) {
+  columnSettingsSheet.value = sheet
   columnSettingsOpen.value = true
 }
 
-// 彈窗按「儲存」（live 是每一步）：整份交給父層（saveColumns），表格先照新順序排——這張表保留自己的拖曳順序、不跟父層換順序
+// 彈窗按「儲存」：整份交給父層（saveColumns），表格先照新順序排——這張表保留自己的拖曳順序、不跟父層換順序
 // （見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
 function saveColumns(columns: ColumnDraft[]) {
   emit('saveColumns', columns)
@@ -593,7 +594,7 @@ watch(() => props.loading, (loading, wasLoading) => {
        Vue only does that for a single-root component. -->
   <div class="screener-result-table-wrap screener-result-table-wrap--cards">
     <!-- 表格版面一列：顯示欄位＋欄位設定。卡片版面三列，比照設定區的「我的篩選」＋「篩選條件 N 個」（2026-11-01，使用者：「讓多條件或是
-         多欄位的使用手感一樣」；10/31 試過的「檢視」面板同日拿掉）：顯示欄位一列、「欄位 N 個」一列（打開貼底面板，每一步馬上套用）、
+         多欄位的使用手感一樣」；10/31 試過的「檢視」面板同日拿掉）：顯示欄位一列、「欄位 N 個」一列（打開貼底面板，2026-11-09 起按儲存才套用）、
          排序＋方向一列。兩顆都在 DOM 裡、CSS 切換。欄位設定與欄位面板都是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7）。排序選單只在卡片版面
          （容器 <720px）出現：卡片沒有表頭；表格的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個選單只是重複（2026-10-08 使用者同意） -->
     <div class="smt-toolbar">
@@ -627,7 +628,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       :columns="orderedColumns"
       :label-of="displayLabel"
       :categories="categories"
-      :live="columnSettingsLive"
+      :sheet="columnSettingsSheet"
       @save="saveFromSettings"
     />
 
