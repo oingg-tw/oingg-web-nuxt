@@ -14,7 +14,17 @@ export const UNDO_WINDOW_MS = 10_000
 // 同一天起焦點只有「鍵盤的」才暫停（:focus-visible）：原本任何焦點都停，而焦點一開始就被移到「復原」，於是用滑鼠、手指移除的人
 // 在點別的地方之前倒數根本沒開始——秒數寫出來會一直停在 10。「停在上面」也只認滑鼠：手機點一下會觸發 mouseenter、卻等不到離開。
 // 提示關掉時，如果焦點原本在提示裡（或已經掉到 <body>），移到頁面的 h1，不讓鍵盤使用者回到頁首重新找。
-export function undoToast(text: string, onUndo: () => void, onClose: () => void) {
+//
+// scope（'watchlist'、'holdings'）：同一個範圍要寫入之前，commitUndoToasts 先把還開著的提示收掉、送出、等完。復原期間業務中台還算著
+// 那些還沒刪的東西：額度、同名，還有刪一整檔時連剛記的那筆一起刪（2026-11-11，使用者：「我把觀察清單都清空了 可是想要新增觀察清單
+// 的個股時 跳出了 觀察清單已達免費版的上限」）。分享連結的「關閉後又按建立」是同一件事，在 SharedShareButton 自己處理
+const pendingByScope = new Map<string, Set<() => Promise<void>>>()
+
+export async function commitUndoToasts(scope: string): Promise<void> {
+  await Promise.all([...(pendingByScope.get(scope) ?? [])].map(commit => commit()))
+}
+
+export function undoToast(text: string, onUndo: () => void, onClose: () => unknown, scope?: string) {
   let remaining = UNDO_WINDOW_MS
   let startedAt = 0
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -82,9 +92,19 @@ export function undoToast(text: string, onUndo: () => void, onClose: () => void)
           heading.focus()
         }
       }
-      onClose()
+      void settle()
     }
   })
+  // onClose 只跑一次：提示自己收掉（逾時、Esc、復原）和提前送出都走這裡；送完才從範圍拿掉，送到一半被要求提前送出也等得到
+  let settled: Promise<void> | undefined
+  const settle = () => (settled ??= Promise.resolve(onClose())
+    .then(() => {}, error => devWarn('undo-toast', 'onClose failed', error))
+    .finally(() => pendingByScope.get(scope ?? '')?.delete(commit)))
+  const commit = () => {
+    instance.close()
+    return settle()
+  }
+  if (scope) pendingByScope.set(scope, (pendingByScope.get(scope) ?? new Set()).add(commit))
   run()
   return instance
 }

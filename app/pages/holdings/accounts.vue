@@ -40,6 +40,7 @@ const accountCountHint = useLayoutHint('holdings-accounts', 1)
         :hide="hidePortfolio"
         :remove="removeAccount"
         :reorder="reorderPortfolios"
+        undo-scope="holdings"
       />
     </template>
   </HoldingsPageShell>

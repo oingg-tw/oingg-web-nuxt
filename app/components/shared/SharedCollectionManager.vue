@@ -30,6 +30,8 @@ const props = defineProps<{
   remove: (id: string) => Promise<boolean>
   // 要剛好是全部的 id（業務中台的 reorder 規則）
   reorder: (ids: string[]) => Promise<unknown>
+  // 刪除還在復原期間時，呼叫端寫入前用 commitUndoToasts(這個範圍) 先送出（undo-toast.ts）
+  undoScope: string
   // 資料還沒到：畫這麼多列骨架（useLayoutHint 記住的組數），0＝資料到了（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」）
   skeletonRows?: number
 }>()
@@ -72,7 +74,7 @@ function removeItem(item: Item) {
     const removed = await props.remove(item.id)
     settle()
     if (!removed) restore()
-  })
+  }, props.undoScope)
 }
 
 const newName = ref('')

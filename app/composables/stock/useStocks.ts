@@ -117,6 +117,8 @@ export function useStocks() {
       openLogin()
       return
     }
+    // 剛移除、還在復原期間的先送出：業務中台還算著它們，不然清空了照樣被額度擋，加回同一檔也會被延後的刪除刪掉
+    await commitUndoToasts('watchlist')
     const targetId = listId ?? (await ensureWatchlist())
     if (!targetId) return
     // await 之後再檢查一次：連點兩下時兩次都會通過開頭的檢查（業務中台提醒這支端點不是冪等的）
@@ -169,8 +171,8 @@ export function useStocks() {
       watchlistItems.value = next
     }, () => {
       if (undone || !currentUser.value || !item.id) return
-      void removeFromWatchlist(item.id)
-    })
+      return removeFromWatchlist(item.id)
+    }, 'watchlist')
   }
 
   // 回傳 false ＝ 沒存到（呼叫端要把對話框留著，使用者打的字不能丟）。改的是目前那一組裡的那一筆
@@ -186,6 +188,7 @@ export function useStocks() {
   // ---- 清單本身 ----
   // 新增一組：成功回傳那一組（呼叫端決定要不要切過去）；同名、額度、名稱不合規各自提示
   async function createWatchlist(name: string): Promise<Watchlist | null> {
+    await commitUndoToasts('watchlist')
     const result = await saveWatchlistName(name)
     if (result.ok) {
       watchlists.value = [...watchlists.value, result.watchlist]
@@ -205,6 +208,7 @@ export function useStocks() {
   async function importToWatchlist(name: string, symbols: string[], sourceShareToken: string): Promise<{ list: Watchlist; added: number; skipped: string[]; created: boolean } | 'signed-out' | null> {
     await whenAuthResolved()
     if (!currentUser.value) return 'signed-out'
+    await commitUndoToasts('watchlist')
     if (!(await applyServerWatchlist())) {
       showErrorMessage('觀察清單暫時讀不到，請稍後再試')
       return null
@@ -230,6 +234,7 @@ export function useStocks() {
   async function renameWatchlist(id: string, name: string) {
     const previous = watchlists.value
     watchlists.value = watchlists.value.map(list => (list.id === id ? { ...list, name } : list))
+    await commitUndoToasts('watchlist')
     const result = await saveWatchlistName(name, id)
     if (result.ok) return
     watchlists.value = previous

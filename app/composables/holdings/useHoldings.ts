@@ -126,6 +126,8 @@ export function useHoldings() {
       costUnknown
     }
     try {
+      // 還在復原期間的刪除先送出：刪一整檔、清除全部是照代號、照帳戶刪，晚一步送就會把這一筆一起刪掉
+      await commitUndoToasts('holdings')
       if (id) await request(`/transactions/${id}`, { method: 'PATCH', body })
       else {
         const portfolioId = await ensurePortfolio(input.portfolioId)
@@ -174,7 +176,7 @@ export function useHoldings() {
         restore()
         showErrorMessage(`刪除 ${label} 失敗：${failure}紀錄仍保留。`)
       }
-    })
+    }, 'holdings')
     pendingDeletes.set(key, () => instance.close())
   }
 
@@ -235,6 +237,8 @@ export function useHoldings() {
   // 去重、期初部位、賣超檢查都只看 portfolioId 那個帳戶（業務中台）：同一份檔案可以分別匯進兩個帳戶
   async function importTrades(portfolioId: string, source: string, trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
     try {
+      // 同 saveTransaction；預覽也先送出，預覽的帳本才是匯入時那一份
+      await commitUndoToasts('holdings')
       const result = await request<ImportResult>('/transactions/import', {
         method: 'POST',
         body: {
@@ -298,7 +302,7 @@ export function useHoldings() {
       const failure = await sendClearAll(portfolioId)
       await reloadAfterWrite()
       if (failure) showErrorMessage(failure)
-    })
+    }, 'holdings')
     pendingDeletes.set(CLEAR_ALL_KEY, () => instance.close())
   }
 

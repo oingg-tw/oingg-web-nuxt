@@ -41,6 +41,7 @@ const listCountHint = useLayoutHint('watchlist-lists', 1)
       :hide="hideWatchlist"
       :remove="deleteWatchlist"
       :reorder="reorderWatchlists"
+      undo-scope="watchlist"
     />
   </div>
 </template>

@@ -71,6 +71,8 @@ export function useHoldingsPortfolios() {
 
   async function savePortfolio(name: string, id?: string): Promise<NameResult> {
     try {
+      // 刪掉、還在復原期間的帳戶先送出：業務中台還算著它的額度與名稱
+      await commitUndoToasts('holdings')
       const response = id
         ? await request<{ portfolio: Portfolio }>(`/portfolios/${id}`, { method: 'PATCH', body: { name } })
         : await request<{ portfolio: Portfolio }>('/portfolios', { method: 'POST', body: { name } })
