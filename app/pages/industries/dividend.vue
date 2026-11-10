@@ -65,7 +65,7 @@ const excluded = computed(() => rows.value.filter(row => !plotted.value.includes
 
 const excludedText = computed(() => {
   const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）`)
-  return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。它們的數字在產業索引的表格裡。` : ''
+  return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。` : ''
 })
 
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：殖利率以列入的類股中位數的中位數分高低，
@@ -149,7 +149,7 @@ const chartOption = computed(() => {
           color: chartInk.value.primary,
           formatter: (param: ScatterParam) => param.data?.row.sectorName ?? ''
         },
-        // 34 個標籤一定會互相壓到：先上下推開，推不開才藏；完整數字在 tooltip 與產業索引的表格裡。
+        // 34 個標籤一定會互相壓到：先上下推開，推不開才藏；完整數字在 tooltip 裡（產業索引的表格 2026-11-09 隨那一頁先隱藏）。
         labelLayout: { moveOverlap: 'shiftY', hideOverlap: true },
         data: plotted.value.map(row => ({
           value: [row.holdingDividendGrowthRate5y.median as number, row.liveCashDividendYield.median as number],
@@ -178,7 +178,6 @@ const chartOption = computed(() => {
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
       <h2 id="industries-notes-heading" class="stock-page-section__title">看這些數字要注意什麼？</h2>
-      <p class="hub-answer">每個類股的逐項數字、公司家數與各自的公司一覽表，在<NuxtLink to="/industries" class="hub-inline-link">產業索引</NuxtLink>那一頁。</p>
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」） -->
         <li>殖利率是一年份的現金股利除以 {{ summary?.liveCashDividendYieldTradeDate ?? '' }} 收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>

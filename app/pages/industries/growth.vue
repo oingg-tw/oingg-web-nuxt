@@ -174,7 +174,6 @@ const chartOption = computed(() => {
 
     <section class="stock-page-section" aria-labelledby="industries-growth-notes-heading">
       <h2 id="industries-growth-notes-heading" class="stock-page-section__title">看這些數字要注意什麼？</h2>
-      <p class="hub-answer">每個類股的兩個中位數，在<NuxtLink to="/industries" class="hub-inline-link">產業索引</NuxtLink>那一頁的表格裡。</p>
       <ul class="industries-page__notes">
         <!-- 講圖的半句只在電腦版（手機上那裡是四張表） -->
         <li><span class="app-wide-only">對角線以上代表</span>淨利成長比營收快，也就是每一元營收留下的獲利變多<span class="app-wide-only">；對角線以下則相反</span>。</li>

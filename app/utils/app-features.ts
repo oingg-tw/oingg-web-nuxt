@@ -124,7 +124,7 @@ export const SITE_MAP: SiteMapGroup[] = [
       { label: 'ETF 篩選', to: SCREENER_PATHS.etf, description: '依規模、費用率、配息頻率比較 ETF' },
       { label: 'REITs 總覽', to: SCREENER_PATHS.reits, description: '比較 REITs 的淨值折溢價與近 12 個月分配率' },
       { ...RANK, description: '單一指標由高到低的全市場排行' },
-      { ...INDUSTRIES, description: '證交所各類股的家數、殖利率與公司名單' }
+      { ...INDUSTRIES, description: '證交所各類股的殖利率與股利成長' }
     ]
   },
   {

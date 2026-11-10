@@ -6,7 +6,7 @@
 //
 // Per route, the server-rendered HTML must have: exactly one <h1>; an h1→h2→h3 outline with no
 // skipped level; a <title> ending with the brand and ≤ 32 CJK-equivalent characters; a meta
-// description of 60–90 CJK-equivalent characters; a self canonical without a query; BreadcrumbList
+// description of 60–90 CJK-equivalent characters; a self canonical without a query (or the route's canonicalPath); BreadcrumbList
 // JSON-LD; no internal href carrying a `?`（view state never becomes a URL variant — the
 // screener deep links are the one deliberate exception and are allow-listed）; none of the
 // compliance register's banned words outside <script>（backend-owned phrases are reported, not
@@ -62,9 +62,10 @@ const ROUTES = [
   // 篩選區首頁 /screener 2026-10-16 拿掉（301 到這一頁）。標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
   { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/screener/common/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
-  { path: '/industries', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
+  // 產業索引 2026-11-09 先隱藏（使用者：「把產業殖利率當作產業索引預設畫面，URL不變化」）：/industries 畫的是殖利率分析，要求同下一列
+  { path: '/industries', canonicalPath: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0
-  // 也是刻意的：它的工作是那張圖，逐類股的數字在 /industries，硬塞一張重複的表只是為了過檢查。
+  // 也是刻意的：它的工作是那張圖，逐類股的數字原本在 /industries，硬塞一張重複的表只是為了過檢查。
   { path: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/industries/growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 營收與景氣（2026-10-10；10-24 從「景氣敏感度」改名）：圖後有一張依類股代號排的表，每列連到類股頁
@@ -397,7 +398,8 @@ for (const route of ROUTES) {
   // Length window only for indexable pages（a noindex page still gets a description, just not a
   // search-snippet-tuned one）; the landing page keeps its own hand-written copy.
   expect(route.path, 'description 60–90', route.path === '/' || route.noindex || route.noDescriptionWindow || (cjkLength(description) >= 60 && cjkLength(description) <= 90), `${cjkLength(description)}`)
-  expect(route.path, 'self canonical', canonical === `${baseUrl}${route.path}` && !canonical.includes('?'), canonical)
+  // canonicalPath：同一份內容掛在兩個網址時，指向標準的那一個（/industries 畫殖利率分析）
+  expect(route.path, 'self canonical', canonical === `${baseUrl}${route.canonicalPath ?? route.path}` && !canonical.includes('?'), canonical)
   expect(route.path, 'BreadcrumbList', route.path === '/' || route.noBreadcrumb || ssr.includes('"BreadcrumbList"'))
   if (route.metricLinksMin) expect(route.path, `metric links ≥ ${route.metricLinksMin}`, new Set(internalHrefs.filter(href => /^\/learn\/[a-z0-9-]+$/.test(href))).size >= route.metricLinksMin)
   expect(route.path, 'no query links', internalHrefs.every(href => !href.includes('?') || QUERY_LINK_ALLOW.some(pattern => pattern.test(href))), internalHrefs.filter(href => href.includes('?')).slice(0, 3).join(' '))

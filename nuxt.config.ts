@@ -40,7 +40,8 @@ export default defineNuxtConfig({
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
     // /industries/sensitivity：2026-11-04 先隱藏、導到 /industries/cycle（見那一頁），導走的網址不放進網站地圖
-    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity'],
+    // /industries 與 /industries/overview：2026-11-09 產業索引先隱藏，/industries 畫殖利率分析（標準網址是 /industries/dividend），overview 導回 /industries
+    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity', '/industries', '/industries/overview'],
     sitemaps: {
       pages: {
         includeAppSources: true

@@ -9,7 +9,9 @@ import type { StockNavNode } from '~/utils/stock-page-nav'
 // 型別直接借個股導覽的 StockNavNode，因為畫它的是同一個元件（StockPageNavList）。`to` 是
 // `(code) => string`，產業這一區沒有代號，所以忽略參數回傳固定路徑。
 export const INDUSTRY_ZONE_ITEMS: StockNavNode[] = [
-  { label: '產業索引', to: () => '/industries' },
+  // 2026-11-09 先隱藏（使用者：「產業索引隱藏。把產業殖利率當作產業索引預設畫面，URL不變化」）：/industries 畫殖利率分析，恢復時打開這一行，
+  // 見 pages/industries/overview.vue
+  // { label: '產業索引', to: () => '/industries' },
   { label: '殖利率分析', to: () => '/industries/dividend' },
   { label: '成長分析', to: () => '/industries/growth' },
   // 營收版 2026-10-24 從「景氣敏感度」改名：詞彙表的景氣敏感度是股價對同時指標的斜率（/industries/sensitivity），兩頁同名會分不出來
