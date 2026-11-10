@@ -12,12 +12,12 @@ if (error.value || !data.value) throw createError({ statusCode: 503, statusMessa
 
 const year = computed(() => data.value!.year)
 const { breadcrumbs } = useHubPageSeo({
-  title: () => `除權息月覽：${year.value} 年每個月有幾檔除權息`,
+  title: () => `全年除權息：${year.value} 年每個月有幾檔除權息`,
   description: () => `${year.value} 年台股每個月有幾檔除權息：熱力表看出旺季在哪幾個月，點月份列出當月全部除權息的股票、ETF 與特別股，含現金股利、配股與發放日。`,
   path: '/calendar/months',
   breadcrumbs: [
     { label: '首頁', to: '/' },
-    { label: '除權息月覽', to: '/calendar/months' }
+    { label: '全年除權息', to: '/calendar/months' }
   ]
 })
 
@@ -122,7 +122,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
 
 <template>
   <div class="app-page ex-months">
-    <h1 class="app-page__title">除權息月覽</h1>
+    <h1 class="app-page__title">全年除權息</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <CalendarNav />
 

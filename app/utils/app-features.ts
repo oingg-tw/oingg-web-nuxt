@@ -132,7 +132,7 @@ export const SITE_MAP: SiteMapGroup[] = [
     label: '我想知道什麼時候配息',
     links: [
       { ...CALENDAR, description: '每一天有哪些股票除權息、哪天發放' },
-      { label: '除權息月覽', to: '/calendar/months', description: '一年裡哪幾個月除權息最多，每個月有哪些標的' }
+      { label: '全年除權息', to: '/calendar/months', description: '一年裡哪幾個月除權息最多，每個月有哪些標的' }
     ]
   },
   {
