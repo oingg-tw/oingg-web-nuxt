@@ -203,7 +203,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   grossMargin: {
-    pin: '4b41882010ca',
+    pin: '31d5eb2e9015',
     definition:
       '每賣 100 元的東西，扣掉原料、人工、製造這些直接成本之後，還剩下多少。剩得多，通常代表產品賣得起價錢，或成本壓得住。',
     reading: {
@@ -222,7 +222,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   operatingMargin: {
-    pin: '062acc249283',
+    pin: '17a6c936bcdc',
     definition:
       '每賣 100 元的東西，扣掉直接成本，再扣掉推銷、管理、研發這些營運費用之後，本業還剩下多少。它不含匯兌、賣資產這類跟本業無關的損益。',
     reading: {
@@ -241,7 +241,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   netProfitMargin: {
-    pin: '5f4cbcc6e34f',
+    pin: '38fbde09543d',
     definition:
       '每賣 100 元的東西，把所有成本、費用、利息和稅都扣完之後，最後真正留下多少。淨利用整間公司的總額，包含子公司裡其他股東應得的那一份，跟券商看盤軟體和證交所的算法一樣；少數財報缺總額的期別，改用母公司股東應得的數字。',
     reading: {
@@ -341,7 +341,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   psr: {
-    pin: '797ce2a7ebb6',
+    pin: '07cab3938efc',
     definition:
       '市場願意為公司每 1 元的營收付出多少倍的價格。算法是市值除以近四季營收。它常用在虧損或獲利極不穩定、本益比算不出來的公司。',
     reading: {
@@ -360,7 +360,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   livePegRatio: {
-    pin: '67b6af94c32f',
+    pin: '60ee58a1effa',
     definition:
       '把估值和成長速度放在一起看：本益比除以每股盈餘的五年年均成長率。每個交易日更新。',
     reading: {
@@ -380,7 +380,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   livePegyRatio: {
-    pin: 'da96deed5110',
+    pin: '9fb9d63a13d6',
     definition:
       '把股利也算進去的本益成長比：本益比除以「每股盈餘的五年年均成長率加現金股利殖利率」。每個交易日更新。',
     reading: {
@@ -581,7 +581,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendPayoutRatio: {
-    pin: '5a23b1a1288e',
+    pin: '1dbddee40221',
     definition:
       '公司把賺到的錢，拿多少比例出來發現金股利給股東。有兩種算法：年度口徑是某一年的盈餘配出去的股利除以該年的每股盈餘，分子分母落在同一年，個股頁預設看這一種；近四季口徑是近四季實際發出去的股利現金除以近四季淨利。',
     reading: {
@@ -603,7 +603,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendCoverageRatio: {
-    pin: 'c62a84f14822',
+    pin: '6eb3dcae39b1',
     definition:
       '公司發出去的股利，背後有幾倍的自由現金流在撐。有兩種算法：年度口徑是某一年的自由現金流，除以那一年盈餘配發的現金股利，個股頁預設看這一種；近四季口徑是近四季自由現金流除以近四季發出去的股利現金。',
     reading: {
@@ -623,7 +623,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   shareholderYield: {
-    pin: '529af9cee890',
+    pin: 'd6df92d242eb',
     definition:
       '公司一年回饋給股東的總金額，相當於市值的多少比例。它把兩種回饋方式加在一起：發現金股利，以及買回自家股票。',
     reading: {
@@ -643,7 +643,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   revenueGrowthRate: {
-    pin: '9c8afb733df6',
+    pin: '74d254417cdd',
     definition:
       '營收比一年前同一段期間多了或少了多少：單季對去年同季、近四季對前一年的近四季、年度對前一年度。跟去年同期比而不是跟上一期比，是為了避開淡旺季造成的落差。',
     reading: {
@@ -746,7 +746,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   inventoryDays: {
-    pin: '3ba5e7e78e1c',
+    pin: '49fc63676056',
     reading: {
       up: '貨在倉庫裡待得比較久才賣出去。可能是備料因應後面的訂單，也可能是出貨速度慢了下來。',
       down: '貨賣得比較快，或是刻意把庫存壓低。',
@@ -766,7 +766,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   receivablesDays: {
-    pin: '6a53ce073a72',
+    pin: '85331be51e0f',
     reading: {
       up: '東西賣出去之後要等比較久才收到錢。可能是給客戶的帳期放寬，也可能是收款變慢。',
       down: '收款變快，或是現金交易的比重提高。',
@@ -776,7 +776,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   payablesDays: {
-    pin: 'b82e129c0eed',
+    pin: '4bbb88045fda',
     reading: {
       up: '比較晚才付錢給供應商，同一筆錢可以在自己手上多留幾天。可能是談到比較長的帳期，也可能是刻意放慢付款。',
       down: '付得比較快。可能是換到現金折扣，也可能是供應商要求縮短帳期。',
@@ -786,7 +786,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   operatingCycle: {
-    pin: '265c82b6ef68',
+    pin: 'e941d8cfcc8e',
     reading: {
       up: '從把貨買進來、賣出去到收回貨款，整趟花的天數變長。可能是存貨待得久，也可能是收款變慢——拆開看存貨天數和收現天數就知道是哪一段。',
       down: '整趟變快，其中一段或兩段都縮短了。',
@@ -794,13 +794,14 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     }
   },
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
-  // 不在這裡複製第二份。
+  // 不在這裡複製第二份。compare 原本附 2330 的驗算例子，2026-11-11 拿掉：數據中台 dc227db（v4）改用沒取位的天數，
+  // 11/21 重算後那組數字會變，加減也可能差 0.01（現金循環頁容許 ±0.05 天，當場用那家公司的數字驗算）
   cashConversionCycle: {
-    pin: '64e401d41b46',
+    pin: 'f343c71f72eb',
     reading: {
       up: '錢被卡在生意裡的天數變長。可能是營運週期拉長，也可能是付款付得比以前快——後者會讓這個數字變大，但那跟前者是完全不同的事。',
       down: '錢卡住的時間變短。可能是存貨或收款加快，也可能是付款拖得比較久。',
-      compare: '跟自己過去比。它等於營運週期減掉付現天數，三個子項可以互相驗算（2330 截至 2026 Q2 的近四季：72.56 ＋ 26.78 − 21.42 ＝ 77.92），所以數字變了一定找得出是哪一段在動。'
+      compare: '跟自己過去比。它等於營運週期減掉付現天數，三個子項可以互相驗算，所以數字變了一定找得出是哪一段在動。'
     }
   },
 
