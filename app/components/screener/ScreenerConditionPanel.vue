@@ -25,7 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [fieldId: string, fieldLabel: string]
   back: []
-  // 「完成」與「上一步：條件清單」：手機回到清單；電腦版沒有清單，就是關掉
+  // 「完成」（設定範圍的輸入框按 Enter 也是）與「上一步：條件清單」：手機回到清單；電腦版沒有清單，就是關掉
   done: []
   // 手機的條件清單是草稿（2026-11-09，使用者：「手機版要有 儲存取消 電腦版不需要 電腦版可以改了就反應」）：儲存才套用；取消、×、Esc、點外面是 close，作廢
   save: []
@@ -61,6 +61,9 @@ const title = computed(() => {
 const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fieldId ?? null))
 // 輸入框後面的單位（元、%、倍、人…），三組型錄的單位都是看得懂的字；沒有單位是 null
 const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.categories, props.slot.fieldId)?.field.unit : null) ?? '')
+// 設定範圍是一個表單，「完成」是它的送出鈕：輸入框按 Enter 就是「完成」（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）。
+// 同「管理我的篩選」交給瀏覽器的隱式送出；條件的下拉選單自己吃掉 Enter，期別、重置是 type="button"，都不會送出
+const formId = useId()
 </script>
 
 <template>
@@ -87,22 +90,23 @@ const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.cat
       hide-period
       @select="(fieldId: string, fieldLabel: string) => emit('select', fieldId, fieldLabel)"
     />
-    <ScreenerRangeEditor
-      v-else-if="slot"
-      v-model:min="slot.min"
-      v-model:max="slot.max"
-      v-model:exclude="slot.exclude"
-      v-model:values="slot.values"
-      :kind="categorical ? 'categorical' : 'numeric'"
-      :options="metric?.options ?? []"
-      :unit="unit"
-      :field-label="slot.fieldLabel ?? ''"
-      :periods="periods"
-      :current-field-id="slot.fieldId"
-      :visible="open"
-      @reset="listVisible || emit('close')"
-      @update:field-id="(fieldId: string) => emit('changePeriod', fieldId)"
-    />
+    <form v-else-if="slot" :id="formId" @submit.prevent="emit('done')">
+      <ScreenerRangeEditor
+        v-model:min="slot.min"
+        v-model:max="slot.max"
+        v-model:exclude="slot.exclude"
+        v-model:values="slot.values"
+        :kind="categorical ? 'categorical' : 'numeric'"
+        :options="metric?.options ?? []"
+        :unit="unit"
+        :field-label="slot.fieldLabel ?? ''"
+        :periods="periods"
+        :current-field-id="slot.fieldId"
+        :visible="open"
+        @reset="listVisible || emit('close')"
+        @update:field-id="(fieldId: string) => emit('changePeriod', fieldId)"
+      />
+    </form>
 
     <!-- 儲存、取消只在手機的條件清單（從清單進去的設定範圍「完成」回到清單）；電腦版改了就套用，「完成」關掉面板。
          「重置」在手機只清這一個條件的值，面板不關（關掉就是取消）；電腦版清完就關，同 10/31 起 -->
@@ -115,7 +119,7 @@ const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.cat
     <template v-else-if="step === 'range'" #footer>
       <div class="condition-panel__footer">
         <el-button size="large" @click="emit('back')">上一步：換指標</el-button>
-        <el-button type="primary" size="large" @click="emit('done')">完成</el-button>
+        <el-button type="primary" size="large" native-type="submit" :form="formId">完成</el-button>
       </div>
     </template>
     <template v-else-if="step === 'pick' && listVisible" #footer>

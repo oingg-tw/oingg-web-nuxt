@@ -260,7 +260,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // count). 電腦版的面板開著時是邊打邊套用，等打完 0.6 秒再查，不是每按一鍵查一次；其他都是一次改好（膠囊的 ×、手機清單的「儲存」），
   // 馬上查（2026-11-09，使用者：「電腦版刪除條件時 似乎不會馬上更新」：那 0.6 秒檔數還寫著舊的「符合上述條件」）。
   // Cancellable so a pending one doesn't fire after its tab is gone.
-  const autoSearchControllers = new Map<string, { stopWatch: () => void; trigger: { cancel: () => void } }>()
+  const autoSearchControllers = new Map<string, { stopWatch: () => void; trigger: { cancel: () => void; flush: () => void } }>()
   // 監看掛在這一頁的 scope 上（2026-11-07）：開頁在 await 之後、新增頁籤在點擊裡才登記，那時沒有目前的 scope，監看會活過這一頁。
   // 離開再回來，一次編輯就查兩次、各自以為自己是最新的，晚到的舊失敗把新結果清掉（使用者看到「符合上述條件 48 檔」，表格卻是空的）
   const pageScope = getCurrentScope()
@@ -523,6 +523,11 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
 
   // 條件編輯（欄位挑選器＋區間編輯器＋移除條件）搬到 useScreenerConditionEditor，2026-10-02。
   const conditionEditor = useScreenerConditionEditor<ScreenerTab>()
+  // 面板關掉（「完成」、設定範圍的 Enter、×、Esc）就是改好了：還在等那 0.6 秒的查詢馬上送（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）。
+  // post：關掉的同一刻改的條件（「重置」）監看已經自己查了、也取消了等著的那一次，這裡不再多查一次
+  watch(conditionEditor.panelOpen, (open) => {
+    if (!open) for (const controller of autoSearchControllers.values()) controller.trigger.flush()
+  }, { flush: 'post' })
 
   // 頁籤增刪改搬到 useScreenerTabCrud，2026-10-02（第三刀）。那個檔案的開頭寫了它的風險與驗證
   // 覆蓋範圍——建立路徑都在登入閘門後面，所以只有 typecheck 在保護，改之前要手動走一遍。

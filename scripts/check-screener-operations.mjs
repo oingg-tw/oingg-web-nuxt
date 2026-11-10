@@ -192,7 +192,6 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
         // 沒有篩選（beta ≤ 50 全部命中），所以「結果有沒有變」永遠是沒變。用「不可能」的下限就
         // 跟挑到哪一支指標無關——任何數值指標都會變成 0 列，而那是一個明確、可斷言的結果。
         await inputs.first().fill('999999999')
-        await inputs.first().press('Enter')
         // 電腦版面板還開著就要套用（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」；11-09 手機改成草稿，電腦版照舊：
         // 「手機版要有 儲存取消 電腦版不需要 電腦版可以改了就反應」）：不按「完成」，結果就該換一批
         const changed = await waitForRowsChange(page, before)
@@ -203,8 +202,15 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
         expect('條件', '不可能的下限不按完成就讓結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
           `${before.count}列/${before.first} → ${changed.now.count}列，業務中台 ${lastStatus}，等了 ${changed.ms}ms`)
         expect('條件', '電腦版面板沒有儲存、取消', !await page.locator('.condition-panel').getByRole('button', { name: /^(儲存|取消)$/ }).count())
-        await page.keyboard.press('Escape')
+        // 設定範圍按 Enter 就是「完成」（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）：面板關掉，還在等的那一次馬上查
+        await inputs.first().fill('999999998')
+        const enterAt = Date.now()
+        await inputs.first().press('Enter')
         await page.waitForTimeout(800)
+        const enterSentAt = querySentAt.find(time => time >= enterAt)
+        expect('條件', 'Enter 就是完成：面板關掉', await page.locator('.condition-panel .range-editor').isHidden())
+        expect('條件', 'Enter 之後馬上查，不等 0.6 秒', enterSentAt !== undefined && enterSentAt - enterAt < 400,
+          enterSentAt === undefined ? '0.8 秒內沒有送出查詢' : `${enterSentAt - enterAt}ms 送出`)
         expect('條件', '關掉面板後條件還在', await page.locator('.screener-shell__setup .condition-pill').count() === pillsAfter)
       } else {
         await page.keyboard.press('Escape')
@@ -253,12 +259,10 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       await page.waitForTimeout(300)
       expect('換期別', '按「單季」就換過去', await quarter.getAttribute('aria-pressed') === 'true')
       const sent = sentBodies.length
-      // 同上一段：輸入框要按 Enter 才寫進去，關閉面板才算一個條件
+      // 同上一段：輸入框按 Enter 就是「完成」，面板關掉、馬上查
       const input = page.locator('.condition-panel input[role="spinbutton"]').first()
       await input.fill('0')
       await input.press('Enter')
-      await page.waitForTimeout(600)
-      await page.keyboard.press('Escape')
       const sentPeriod = () => sentBodies.slice(sent).some(body => body.includes('"roe.Q"'))
       const start = Date.now()
       while (!sentPeriod() && Date.now() - start < 30000) await page.waitForTimeout(300)
@@ -652,7 +656,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const cardsAfter = await m.locator('.smt-card').count()
     expect('手機', '捲到底會多載一頁', cardsAfter > cardsBefore, `${cardsBefore} → ${cardsAfter}`)
 
-    // 清單按「儲存」才套用，而且馬上查（最後做：結果會變 0 檔）：清單裡把界限改成不可能的數字，「完成」回到清單時卡片還在。
+    // 清單按「儲存」才套用，而且馬上查（最後做：結果會變 0 檔）：清單裡把界限改成不可能的數字，按 Enter（就是「完成」）回到清單時卡片還在。
     // 範本的條件可能是上限（價值型的葛拉漢倍數是 ≤ 22.5）：上限填極小、下限填極大，兩種都是 0 檔
     await conditionsOpen.click()
     await waitFor(m.locator('.condition-panel .screener-filters'), 10000)
@@ -663,8 +667,8 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const upperOnly = await m.locator('.condition-panel .range-editor').evaluate(el => el.textContent.includes('上限') && !el.textContent.includes('下限'))
     await draftInput.fill(upperOnly ? '-999999999' : '999999999')
     await draftInput.press('Enter')
-    await m.locator('.condition-panel').getByRole('button', { name: '完成' }).click()
     await m.waitForTimeout(1000)
+    expect('手機', 'Enter 就是完成：回到條件清單', await m.locator('.condition-panel .screener-filters').isVisible())
     const cardsInDraft = await m.locator('.smt-card').count()
     const savedAt = Date.now()
     await m.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()

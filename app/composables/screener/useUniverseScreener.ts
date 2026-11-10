@@ -612,6 +612,10 @@ export function useUniverseScreener(source: UniverseSource) {
 
   // ---- 條件與欄位的編輯（三組共用同一套流程）----
   const editor = useScreenerConditionEditor<UniverseTab>()
+  // 面板關掉就是改好了：還在等的那一次馬上查、存（同 useScreenerTabs，2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）
+  watch(editor.panelOpen, (open) => {
+    if (!open) for (const trigger of pendingEdits.values()) trigger.flush()
+  }, { flush: 'post' })
 
   function handleRemoveColumn(_tab: UniverseTab, field: string) {
     setActiveColumns((activeColumnSet.value?.fields ?? []).filter(item => item !== field))

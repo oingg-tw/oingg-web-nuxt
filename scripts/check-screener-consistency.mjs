@@ -69,6 +69,9 @@ for (const target of PAGES) {
   const page = await context.newPage()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
+  // 查詢送出的時間（設定範圍按 Enter 要馬上查）
+  const querySentAt = []
+  page.on('request', (request) => { if (request.method() === 'POST' && /\/api\/core\/(etf-)?screener(\?|$)/.test(request.url())) querySentAt.push(Date.now()) })
 
   await page.goto(`${baseUrl}${target.path}`, { waitUntil: 'load', timeout: 180000 })
   // pnpm dev 才有的 Nuxt DevTools 膠囊浮在畫面底部正中央，會蓋住橫向捲軸把手的中心點（2026-10-16 量到 elementFromPoint 拿到它），
@@ -124,10 +127,19 @@ for (const target of PAGES) {
       await spin.pressSequentially('−5')
       expect(target.name, '打「−5」是 −5（不是 5）', (await spin.inputValue()) === '-5', await spin.inputValue())
       await spin.fill('999999999999999')
+      // 輸入框按 Enter 就是「完成」（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）：面板關掉，還在等的那一次馬上查。
+      // 特別股在瀏覽器裡篩，沒有查詢可量
+      const enterAt = Date.now()
       await spin.press('Enter')
-      await page.getByRole('button', { name: '完成' }).click()
       const zero = await waitForCount(page, text => /符合上述條件 0 檔/.test(text))
       expect(target.name, '不可能的下限 → 0 檔（自動查）', zero.ok, `${zero.text}，${zero.ms}ms`)
+      // 等關閉動畫：特別股在瀏覽器裡篩，0 檔比面板關好還早出現
+      const closed = await page.locator('.condition-panel .range-editor').waitFor({ state: 'hidden', timeout: 5000 }).then(() => true).catch(() => false)
+      expect(target.name, 'Enter 就是完成：面板關掉', closed)
+      const sentAt = querySentAt.find(time => time >= enterAt)
+      if (target.universe !== 'preferred') {
+        expect(target.name, 'Enter 之後馬上查，不等 0.6 秒', sentAt !== undefined && sentAt - enterAt < 400, sentAt === undefined ? '沒有送出查詢' : `${sentAt - enterAt}ms 送出`)
+      }
       const undo = page.getByRole('button', { name: '移除最後一個條件' })
       expect(target.name, '0 檔時有「移除最後一個條件」', await undo.count() === 1)
       if (await undo.count()) {
