@@ -5,11 +5,14 @@
 //   - 看完長明細才按收合，卡片要捲回看得到的地方（不躲在頁首底下）
 //   - 已實現損益頁：「賣出（期間內）」不會被切成兩半；最後一筆不跟頁尾疊兩條線；報酬率（已實現損益 ÷ costBasis）在卡片與答句上
 //   - 沒有橫向捲動、axe 0
+//   - 記一筆交易（2026-11-10，使用者：「手機版的 記一筆交易跑版了」）：交易日期的外框跟裡面的框一樣高（不伸出去蓋住下一行）、跟其他欄一樣寬；
+//     日期面板的箭頭跟年月字同一列，320 寬也放得下。預設日期是最近一個交易日（同一天，「由系統自動設定為最近一個交易日就好」）
 // 持股與交易紀錄全是攔截的假資料，寫入一律擋下。
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-holdings-cards.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
+import { holdingsLatestTradingDay } from '../app/utils/holdings-format.ts'
 const base = process.env.BASE ?? 'http://localhost:3000'
 const dir = process.env.DIR
 let failures = 0
@@ -118,6 +121,42 @@ check(word === 1, '「賣出（期間內）」整段在同一行')
 check(await rcard.locator('.ledger__item').last().evaluate(el => getComputedStyle(el).borderBottomWidth) === '0px', '最後一筆不畫底線（不跟頁尾的線疊在一起）')
 const realizedViolations = await axe(page)
 check(realizedViolations === '0', `axe 0（${realizedViolations}）`)
+
+// 觸控的 44px 下限只撐日期框裡面的框，外框寫死 32px 時多出的 12px 伸出去蓋住下一行
+const openDatePanel = async () => {
+  await page.getByRole('button', { name: '記一筆交易' }).first().click()
+  const dialog = page.getByRole('dialog', { name: '記一筆交易' })
+  await dialog.waitFor(); await page.waitForTimeout(600)
+  await dialog.locator('.el-date-editor input').click(); await page.waitForTimeout(600)
+  return dialog
+}
+const datePanel = () => page.evaluate(() => {
+  const panel = [...document.querySelectorAll('.el-date-picker')].find(el => el.getClientRects().length)
+  const mid = el => { const box = el.getBoundingClientRect(); return (box.top + box.bottom) / 2 }
+  const label = panel.querySelector('.el-date-picker__header-label')
+  const arrows = [...panel.querySelectorAll('.el-date-picker__header .el-picker-panel__icon-btn')].filter(el => el.getClientRects().length)
+  const box = panel.getBoundingClientRect()
+  return { off: Math.max(...arrows.map(el => Math.round(Math.abs(mid(el) - mid(label))))), left: Math.round(box.left), right: Math.round(box.right), width: document.documentElement.clientWidth }
+})
+console.log('記一筆交易 375')
+await open('/holdings')
+const recordDialog = await openDatePanel()
+const date = await recordDialog.evaluate((el) => {
+  const editor = el.querySelector('.el-date-editor')
+  const frame = editor.querySelector('.el-input__wrapper').getBoundingClientRect()
+  return { outer: Math.round(editor.getBoundingClientRect().height), frame: Math.round(frame.height), width: Math.round(frame.width), quantity: Math.round(el.querySelector('.el-input-number').getBoundingClientRect().width), value: editor.querySelector('input').value }
+})
+check(date.outer === date.frame, `交易日期的外框跟裡面的框一樣高（${date.outer}／${date.frame}）`)
+check(date.width === date.quantity, `交易日期跟股數一樣寬（${date.width}／${date.quantity}）`)
+check(date.value === holdingsLatestTradingDay().replaceAll('-', '/'), `交易日期預設是最近一個交易日（${date.value}）`)
+const header = await datePanel()
+check(header.off <= 1, `日期面板：箭頭跟年月字同一列置中（差 ${header.off}px）`)
+console.log('記一筆交易 320')
+await page.setViewportSize({ width: 320, height: 700 })
+await open('/holdings')
+await openDatePanel()
+const narrow = await datePanel()
+check(narrow.left >= 0 && narrow.right <= narrow.width, `日期面板放得下（${narrow.left}～${narrow.right}，畫面 ${narrow.width}）`)
 
 await browser.close()
 console.log(`被擋下的寫入： ${JSON.stringify(blocked)}`)

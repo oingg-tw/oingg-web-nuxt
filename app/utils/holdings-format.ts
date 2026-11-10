@@ -29,6 +29,14 @@ export function holdingsTaipeiDate(): string {
   return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 }
 
+// 記一筆交易的預設日期：最近一個交易日（2026-11-10，使用者：「由系統自動設定為最近一個交易日就好」），週末往回到週五
+// ponytail: 不看國定假日（那天照樣帶出），上游還沒有證交所的開休市日期；只是預設值，配股與股利都比「交易日早於除權息日」，差一兩天算出來一樣
+export function holdingsLatestTradingDay(today = holdingsTaipeiDate()): string {
+  const date = new Date(`${today}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() - [2, 0, 0, 0, 0, 0, 1][date.getUTCDay()]!)
+  return date.toISOString().slice(0, 10)
+}
+
 // 台北日期字串往前推 N 個月（月底對不上時落在該月最後一天，例如 05-31 往前三個月是 02-28）
 export function holdingsMonthsBefore(date: string, months: number): string {
   const [year, month, day] = date.split('-').map(Number) as [number, number, number]

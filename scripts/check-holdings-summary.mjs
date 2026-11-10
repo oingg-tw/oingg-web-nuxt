@@ -3,7 +3,7 @@
 //
 // Run: node scripts/check-holdings-summary.mjs
 import { dayChange, groupByLabel, holdingRowFigures, sectorOfHolding, summarizeDayChange, summarizeHoldings, weightedDividendYield } from '../app/utils/holdings-summary.ts'
-import { holdingsMonthsBefore } from '../app/utils/holdings-format.ts'
+import { holdingsLatestTradingDay, holdingsMonthsBefore } from '../app/utils/holdings-format.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -141,6 +141,13 @@ console.log('\n期間：往前推幾個月（holdings-format.ts，預設期間�
   assert(holdingsMonthsBefore('2026-05-31', 3) === '2026-02-28', '月底對不上：落在那個月的最後一天')
   assert(holdingsMonthsBefore('2028-02-29', 12) === '2027-02-28', '閏日往前一年是 2 月 28 日（原本預設用「年份減一」會變成 3 月 1 日，選單就不是「近一年」）')
   assert(holdingsMonthsBefore('2026-01-15', 3) === '2025-10-15', '跨年')
+}
+
+console.log('\n記一筆交易的預設日期：最近一個交易日（holdings-format.ts）')
+{
+  assert(holdingsLatestTradingDay('2026-11-10') === '2026-11-10', '平日就是當天')
+  assert(holdingsLatestTradingDay('2026-11-07') === '2026-11-06', '週六往回到週五')
+  assert(holdingsLatestTradingDay('2026-11-01') === '2026-10-30', '週日往回到週五，跨月')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

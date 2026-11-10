@@ -173,6 +173,8 @@ html .el-alert.el-alert .el-alert__description {
 @media (pointer: coarse) {
   .el-button,
   .el-input__wrapper,
+  /* 日期框的外框寫死元件高度 32px：只撐裡面的框，多出的 12px 伸出去蓋住下一行（2026-11-10，使用者：「手機版的 記一筆交易跑版了」） */
+  .el-date-editor.el-input,
   .el-select__wrapper,
   /* 選單接手前的佔位框要跟真的選單一樣高，不然掛上去那一刻長 12px（2026-10-18 全站量測） */
   .select-placeholder,
@@ -195,6 +197,44 @@ html .el-alert.el-alert .el-alert__description {
 
   .el-button.is-circle {
     min-width: 44px !important;
+  }
+
+  /* 日期面板的標頭：箭頭被撐到 44px 高（還帶 Element 的上邊距 8px）、年月字還是 22px 一行，兩邊上下差 15px（同一天量到）。排成一列置中，
+     年月字也給 44px 高 */
+  html .el-date-picker__header {
+    display: flex;
+    align-items: center;
+  }
+
+  html .el-date-picker__prev-btn {
+    margin-right: auto;
+  }
+
+  html .el-date-picker__next-btn {
+    margin-left: auto;
+  }
+
+  html .el-date-picker__header .el-picker-panel__icon-btn {
+    margin-top: 0;
+  }
+
+  html .el-date-picker__header-label {
+    line-height: 44px;
+  }
+}
+
+/* 日期面板寫死 322px 寬（加框 324），320 寬的手機放不下，整頁多出橫向捲動（2026-11-10 量到）：窄螢幕改成螢幕寬扣左右各 8px，日期格跟著分 */
+@media (max-width: 339px) {
+  html .el-date-picker {
+    width: calc(100vw - 18px);
+  }
+
+  html .el-date-picker .el-picker-panel__content {
+    width: auto;
+  }
+
+  html .el-date-picker .el-date-table {
+    width: 100%;
   }
 }
 

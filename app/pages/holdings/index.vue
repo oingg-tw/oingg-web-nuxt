@@ -9,8 +9,8 @@ import type { HoldingRowFigures } from '~/utils/holdings-summary'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（業務中台 4467c44，使用者決定）：這一頁能做的
 // 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與成本（先進先出）由
-// 業務中台 重算。很久以前買、記不得每一筆的部位，就用最早的日期記一筆買進、價格填平均成本（期初部位）；
-// 配股記成價格 0 的買進。
+// 業務中台 重算。很久以前買、記不得日期的部位，日期照預設的最近一個交易日、股數與平均成本照券商現在的庫存記一筆（2026-11-10
+// 使用者選的，不寫提示）：配股與分割會自動入帳，日期填得早，那天之後的會再算一次。
 //
 // 總市值、損益、預估股利在 app/utils/holdings-summary.ts 算——持股是個資，不送去任何新的伺服器路由。
 //
@@ -218,11 +218,6 @@ function averageCostText(holding: Holding): string {
   return holding.costUnknownQuantity > 0 ? `${text}（另 ${groupThousands(holding.costUnknownQuantity)} 股成本不明）` : text
 }
 
-// 交易日期以台北時間為準：使用者在國外時，每天前 8 小時會差一天。
-function todayInTaipei(): string {
-  return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
-}
-
 function clearEverything() {
   expanded.value = []
   clearAll()
@@ -270,7 +265,7 @@ const saving = ref(false)
 const notice = ref('')
 const formRef = ref<FormInstance>()
 // 表單提示句以 aria-describedby 掛在對應的欄位上（朗讀器聚焦欄位時念出來，不只是視覺上在旁邊）
-const hintId = { tradeDate: useId(), quantity: useId(), price: useId() }
+const hintId = { quantity: useId(), price: useId() }
 const form = reactive({
   symbol: '',
   action: 'BUY' as 'BUY' | 'SELL',
@@ -299,7 +294,7 @@ const rules: FormRules = {
 // el-date-picker 給的是本地午夜的 Date；用本地日期比，不要 toISOString（UTC+8 會倒退一天）。
 function disabledFutureDate(date: Date): boolean {
   const local = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  return local > todayInTaipei()
+  return local > holdingsTaipeiDate()
 }
 
 // 選好之後又改了文字＝那個選擇已經不算數
@@ -326,7 +321,7 @@ function selectStock(item: Record<string, unknown>) {
 function openRecord(symbol: string | null = null) {
   editing.value = null
   lockedSymbol.value = symbol
-  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: todayInTaipei(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false, portfolioId: defaultAccountId() })
+  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: holdingsLatestTradingDay(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false, portfolioId: defaultAccountId() })
   selectedLabel = ''
   keyword.value = ''
   notice.value = ''
@@ -401,7 +396,7 @@ async function submit() {
       <template v-if="loadFailed" />
 
       <el-empty v-else-if="!loading && !holdings.length" description="還沒有記錄任何持股" :image-size="64">
-        <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。很久以前買的股票，用最早的日期記一筆買進、價格填平均成本即可。</p>
+        <p class="holdings-page__empty-hint">可以匯入券商的成交明細 CSV，或一筆一筆記。</p>
         <div class="holding-actions holding-actions--center">
           <el-button size="large" :icon="Upload" @click="importVisible = true">匯入成交明細</el-button>
           <el-button type="primary" size="large" :icon="Plus" @click="openRecord()">記一筆交易</el-button>
@@ -574,11 +569,9 @@ async function submit() {
             </el-radio-group>
           </el-form-item>
           <el-form-item label="交易日期" prop="tradeDate">
-            <!-- 指令掛在外層 div：el-date-picker 的根節點不是單一元素（tooltip 包著），自訂指令掛不上去 -->
-            <div class="holdings-form__full" v-describedby="form.action === 'BUY' && !editing ? hintId.tradeDate : undefined">
-              <el-date-picker v-model="form.tradeDate" type="date" value-format="YYYY-MM-DD" format="YYYY/MM/DD" :disabled-date="disabledFutureDate" :clearable="false" class="holdings-form__full" />
+            <div class="holdings-form__full">
+              <el-date-picker v-model="form.tradeDate" type="date" value-format="YYYY-MM-DD" format="YYYY/MM/DD" :disabled-date="disabledFutureDate" :clearable="false" />
             </div>
-            <p v-if="form.action === 'BUY' && !editing" :id="hintId.tradeDate" class="holdings-form__hint">很久以前買、記不得每一筆？用最早的日期記一筆，價格填平均成本即可。</p>
           </el-form-item>
           <el-form-item label="股數（股）" prop="quantity">
             <el-input-number v-model="form.quantity" class="holdings-form__full" :min="1" :max="2147483647" :precision="0" :controls="false" v-describedby="hintId.quantity" />
@@ -800,6 +793,11 @@ async function submit() {
 
 .holdings-form__full {
   width: 100%;
+}
+
+/* 日期框的寬度是它自己的變數（預設 220px），寫 width 蓋不過：只有它比其他欄窄 */
+.holdings-form__full :deep(.el-date-editor) {
+  --el-date-editor-width: 100%;
 }
 
 .holdings-form__cost-unknown {
