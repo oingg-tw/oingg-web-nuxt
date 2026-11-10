@@ -13,14 +13,15 @@ async function upcoming(today: string) {
   return { ex: upcomingDays(rows, today, 'exDate', UPCOMING_DAYS), pay: upcomingDays(rows, today, 'paymentDate', UPCOMING_DAYS) }
 }
 
-// 範本的說明是業務中台的原文，首頁只取第一句（「——」或「：」之前）
+// 範本的說明是業務中台的原文，首頁只取第一句（「——」或「：」之前），括號裡的算法細節也拿掉（低波動的「（beta，2 年週資料，
+// 業界常見的標準計算慣例）」在手機上把這一列撐成三、四行，2026-11-10）
 async function homeTemplates() {
   const templates = await getScreenerTemplates()
   const picked = HOME_TEMPLATES.flatMap(slug => templates.filter(template => template.slug === slug))
   return Promise.all(picked.map(async template => ({
     slug: template.slug!,
     name: template.name,
-    rule: (template.description ?? '').split(/——|：/)[0]!.trim(),
+    rule: (template.description ?? '').split(/——|：/)[0]!.replace(/（[^）]*）\s*/g, ' ').trim(),
     count: await settle(getTemplateMatchCount(template.slug!))
   })))
 }
