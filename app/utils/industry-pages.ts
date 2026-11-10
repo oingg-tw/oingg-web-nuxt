@@ -57,3 +57,15 @@ export const HOLDER_DIVIDEND_LABEL = '股利5年成長'
 // 殖利率與持股股利 5 年成長率都有值的公司（5 年前沒有配息紀錄的算不出成長率）
 export const industryScatterRows = (data: IndustryPageData) =>
   data.companies.rows.filter(row => row.dividendYield !== null && row.holdingDividendGrowthRate5y !== null)
+
+// 盈餘發放率（2026-11-10）：類股頁只拿跟類股分布同一個年度的數字比。screener 給的是每家最新的年度，類股分布每年 9 月 1 日才換年，
+// 1～8 月有些公司已經有新年度的數字，那些另外數（otherYear），不跟類股的中位數比；沒有年度的 null 是還沒有年度數字
+export function industryPayoutRows(data: IndustryPageData, year: number) {
+  const inYear = (row: IndustryPageData['companies']['rows'][number]) => row.dividendPayoutRatioYear === null || row.dividendPayoutRatioYear === year
+  const rows = data.companies.rows
+  return {
+    shown: rows.filter(row => inYear(row) && row.dividendPayoutRatio !== null),
+    missing: rows.filter(row => inYear(row) && row.dividendPayoutRatio === null),
+    otherYear: rows.filter(row => !inYear(row))
+  }
+}

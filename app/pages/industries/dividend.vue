@@ -160,6 +160,40 @@ const chartOption = computed(() => {
   }
 })
 
+// 盈餘發放率（2026-11-10，使用者選方案 A，設計頁 claude.ai/artifact/9C1Go34LxegryCVFdiJaBo；11-08「等接到資料再開發再推」）：一個類股一列，
+// 排在 25%～75% 的公司畫成一段、中位數一個點、100% 一條虛線，照中位數由高到低，類股名稱連到那個類股的殖利率頁。家數門檻同散佈圖。
+// 圖畫到 120%（設計頁的取捨：列入的類股中位數都在這之內），超過的那一段畫到邊為止，數字在旁邊的欄；手機藏掉圖那一欄，只留表
+const PAYOUT_AXIS_MAX = 120
+const payoutYear = computed(() => summary.value?.dividendPayoutRatioFiscalYear ?? null)
+const payoutRows = computed(() => (payoutYear.value === null ? [] : rows.value.flatMap((row) => {
+  const stat = row.dividendPayoutRatio
+  return stat && stat.count >= MIN_SAMPLE && stat.median !== null && stat.q1 !== null && stat.q3 !== null
+    ? [{ code: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode) && industryFacetPath(row.sectorCode, 'dividend'), median: stat.median, q1: stat.q1, q3: stat.q3 }]
+    : []
+}).sort((a, b) => b.median - a.median)))
+const payoutExcludedText = computed(() => {
+  const names = payoutRows.value.length
+    ? rows.value.filter(row => row.dividendPayoutRatio && !payoutRows.value.some(item => item.code === row.sectorCode)).map(row => `${row.sectorName}（${row.dividendPayoutRatio!.count} 家）`)
+    : []
+  return names.length ? `盈餘發放率有數值的公司少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。` : ''
+})
+const percentText = (value: number) => `${value.toFixed(2)}%`
+// 在圖上的位置，0～1
+const payoutAt = (value: number) => Math.min(Math.max(value, 0), PAYOUT_AXIS_MAX) / PAYOUT_AXIS_MAX
+const payoutAnswer = computed(() => {
+  const items = payoutRows.value
+  if (!items.length) return null
+  const medians = items.map(item => item.median).sort((a, b) => a - b)
+  return `列入的 ${items.length} 個類股，有一半的發放率中位數在 ${percentText(percentileValue(medians, 25))} 到 ${percentText(percentileValue(medians, 75))} 之間，最高的是${items[0]!.name}的 ${percentText(items[0]!.median)}。`
+})
+const payoutLegend = computed(() => [{
+  items: [
+    { name: '中位數', color: chartInk.value.primary, kind: 'dot' as const },
+    { name: '中間一半的公司（排在 25%～75%）', color: getAccentColor(resolvedMode.value, accentColorName.value), kind: 'bar' as const },
+    { name: '100%：配出的比賺的多', color: chartInk.value.secondary, kind: 'line' as const, dash: 'dashed' as const }
+  ]
+}])
+
 </script>
 
 <template>
@@ -174,6 +208,48 @@ const chartOption = computed(() => {
         <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與持股股利 5 年成長率中位數的散佈圖" />
       </el-card>
       <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率', HOLDER_DIVIDEND_LABEL]" />
+    </section>
+
+    <section v-if="payoutRows.length" class="stock-page-section" aria-labelledby="industries-payout-heading">
+      <h2 id="industries-payout-heading" class="stock-page-section__title">各個類股把多少盈餘配出去？</h2>
+      <p class="hub-answer">{{ payoutAnswer }}</p>
+      <SharedTable :label="`各類股的盈餘發放率（${payoutYear} 年度），照中位數由高到低`" table-class="industries-payout">
+        <template #header>
+          <div class="industries-payout__header">
+            <h3 class="industries-payout__title">盈餘發放率（{{ payoutYear }} 年度）</h3>
+            <SharedChartLegend class="app-wide-only" :groups="payoutLegend" />
+          </div>
+        </template>
+        <thead>
+          <tr>
+            <th scope="col">類股</th>
+            <th class="industries-payout__plot app-wide-only" aria-hidden="true">
+              <span class="industries-payout__track">
+                <span v-for="tick in [0, 50, 100]" :key="tick" class="industries-payout__tick" :style="{ '--at': payoutAt(tick) }">{{ tick }}%</span>
+              </span>
+            </th>
+            <th scope="col" class="seo-table__num">中位數</th>
+            <th scope="col" class="seo-table__num">中間一半</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in payoutRows" :key="item.code">
+            <th scope="row">
+              <NuxtLink v-if="item.to" :to="item.to">{{ item.name }}</NuxtLink>
+              <template v-else>{{ item.name }}</template>
+            </th>
+            <td class="industries-payout__plot app-wide-only" aria-hidden="true">
+              <span class="industries-payout__track industries-payout__track--row" :style="{ '--q1': payoutAt(item.q1), '--q3': payoutAt(item.q3), '--median': payoutAt(item.median), '--full': payoutAt(100) }">
+                <span class="industries-payout__range" />
+                <span class="industries-payout__median" />
+              </span>
+            </td>
+            <td class="seo-table__num">{{ percentText(item.median) }}</td>
+            <!-- 整數就夠看出範圍（設計頁手機版的寫法）；兩位小數在 320 寬會把類股名稱擠成三、四行 -->
+            <td class="seo-table__num">{{ Math.round(item.q1) }}–{{ Math.round(item.q3) }}%</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </section>
 
     <section class="stock-page-section" aria-labelledby="industries-notes-heading">
@@ -191,6 +267,13 @@ const chartOption = computed(() => {
         <li>景氣循環類股的股利跟著景氣起落：景氣好的那一年配得多，之後算出來的一年份殖利率會比平常年份高。各類股的營收跟著景氣怎麼走，在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</li>
         <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股殖利率有值的公司數。</li>
         <li v-if="excludedText">{{ excludedText }}</li>
+        <template v-if="payoutRows.length">
+          <li>盈餘發放率是 {{ payoutYear }} 年度的盈餘配出的現金股利，除以那一年的每股盈餘。虧損的公司沒有數值、不算進去；有賺錢、過了隔年 6 月底還沒有分派公告的公司算 0%。每年 9 月換到下一個年度。</li>
+          <li>各產業常見的發放率本來就不同：金融業配多少受資本規定限制，成長中的公司要把錢留下來投資。超過 100%，代表配出的現金股利比那一年賺的多。</li>
+          <li>「中間一半」是類股裡發放率排在 25% 到 75% 的公司，最高與最低的四分之一不算在這一段裡。</li>
+          <li class="app-wide-only">發放率的圖畫到 120%，超過的部分畫到邊為止，實際數字在「中間一半」那一欄。</li>
+          <li v-if="payoutExcludedText">{{ payoutExcludedText }}</li>
+        </template>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>
     </section>
@@ -211,6 +294,90 @@ const chartOption = computed(() => {
   gap: 8px;
   color: var(--el-text-color-regular);
   line-height: 1.7;
+}
+
+.industries-payout__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+
+.industries-payout__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* 圖那一欄吃掉其餘的寬；刻度和每一列的段畫在同一條軌道上（同寬、同樣的左右內距），位置是 0～1 的比例 */
+.industries-payout__plot {
+  width: 100%;
+  min-width: 16rem;
+}
+
+.industries-payout__track {
+  position: relative;
+  display: block;
+  height: 24px;
+}
+
+.industries-payout__tick {
+  position: absolute;
+  left: calc(var(--at) * 100%);
+  transform: translateX(-50%);
+}
+
+.industries-payout__tick:first-child {
+  transform: none;
+}
+
+/* 100% 的虛線貫穿整列（上下各補回格子的 9px 內距） */
+.industries-payout__track--row::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  bottom: -9px;
+  left: calc(var(--full) * 100%);
+  border-left: 2px dashed var(--el-text-color-secondary);
+}
+
+.industries-payout__range {
+  position: absolute;
+  top: 8px;
+  left: calc(var(--q1) * 100%);
+  width: calc((var(--q3) - var(--q1)) * 100%);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--el-color-primary);
+}
+
+.industries-payout__median {
+  position: absolute;
+  top: 5px;
+  left: calc(var(--median) * 100%);
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--el-text-color-primary);
+  box-shadow: 0 0 0 2px var(--app-card-bg);
+}
+
+/* 手機只剩三欄，要在 320px 放得下：名稱可以折，數字欄貼著內容靠右（同 IndustryQuadrantTables） */
+@media (max-width: 767px) {
+  .industries-payout tbody th {
+    white-space: normal;
+  }
+
+  .industries-payout :is(th, td):not(:first-child) {
+    width: 1%;
+    padding-left: 8px;
+  }
+
+  .industries-payout :is(th, td):not(:last-child) {
+    padding-right: 8px;
+  }
 }
 
 </style>

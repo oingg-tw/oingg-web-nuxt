@@ -50,6 +50,11 @@ export interface SectorCompanyRow {
   // 營收與淨利的近四季年增率（2026-10-09，產業成長座標圖）：同一次 screener POST 多帶兩欄，沒有多一次請求。
   revenueGrowthRate: number | null
   netIncomeGrowthRate: number | null
+  // 盈餘發放率，年度口徑（2026-11-10，類股頁跟類股分布比）：screener 給的是這家公司最新的年度，1～8 月可能比類股分布新一年，所以年度一起帶；
+  // 虧損（淨利是零或負數）是 null 而且 dividendPayoutRatioLoss 為真，其他的 null 是還沒有年度數字
+  dividendPayoutRatio: number | null
+  dividendPayoutRatioYear: number | null
+  dividendPayoutRatioLoss: boolean
 }
 
 export interface SectorStat {
@@ -418,11 +423,16 @@ export interface SectorDividendSummary {
   liveCashDividendYield: SectorStatPair
   // 持股股利 5 年成長率（2026-11-04，數據中台 89cc594；只收 14 天內的值）。上游另有 3 年那一支與成本殖利率，網站 2026-11-08 起不讀
   holdingDividendGrowthRate5y: SectorStatPair
+  // 盈餘發放率的分布（2026-11-10，數據中台 ee8a825，年度口徑 v3）：單位 %，虧損的公司不算，有賺錢、過了隔年 6/30 還沒有分派公告的算 0%。
+  // count 是 0 時三個數字都是 null；數據中台還沒送的時候整個是 null（業務中台照轉），頁面就不畫發放率
+  dividendPayoutRatio: (SectorStatPair & { q1: number | null; q3: number | null }) | null
 }
 
 export interface SectorDividendSummaryPageData {
   // 殖利率取自哪一天的收盤價——殖利率是 EOD 口徑，不標日期讀者無從判斷新舊。
   liveCashDividendYieldTradeDate: string | null
+  // 發放率是哪一個年度（每年 9 月 1 日換到下一年度）；數據中台還沒送是 null
+  dividendPayoutRatioFiscalYear: number | null
   sectors: SectorDividendSummary[]
 }
 

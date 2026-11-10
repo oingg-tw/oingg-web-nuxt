@@ -6,8 +6,8 @@
 export interface ChartLegendItem {
   name: string
   color: string
-  // line＝線（dash、symbol）；bar＝實心方塊；band＝淡色底（區段）；outline＝虛線框（市場事件的日收盤急跌段）
-  kind: 'line' | 'bar' | 'band' | 'outline'
+  // line＝線（dash、symbol）；bar＝實心方塊；band＝淡色底（區段）；outline＝虛線框（市場事件的日收盤急跌段）；dot＝單獨一個點（類股發放率的中位數）
+  kind: 'line' | 'bar' | 'band' | 'outline' | 'dot'
   dash?: 'solid' | 'dashed' | 'dotted'
   symbol?: 'circle' | 'emptyCircle' | 'triangle' | 'rect' | 'diamond' | 'none'
 }
@@ -27,6 +27,7 @@ const DASHES = { solid: undefined, dashed: '6 4', dotted: '2 3' } as const
           <rect v-if="item.kind === 'bar'" x="8" y="2" width="12" height="10" rx="2" :fill="item.color" />
           <rect v-else-if="item.kind === 'band'" x="5" y="2" width="18" height="10" :fill="item.color" fill-opacity="0.16" :stroke="item.color" stroke-opacity="0.5" />
           <rect v-else-if="item.kind === 'outline'" x="5.5" y="2.5" width="17" height="9" fill="none" :stroke="item.color" stroke-dasharray="3 2" />
+          <circle v-else-if="item.kind === 'dot'" cx="14" cy="7" r="5" :fill="item.color" />
           <template v-else>
             <line x1="1" y1="7" x2="27" y2="7" :stroke="item.color" stroke-width="2.5" :stroke-dasharray="DASHES[item.dash ?? 'solid']" />
             <circle v-if="item.symbol === 'circle'" cx="14" cy="7" r="4" :fill="item.color" />
