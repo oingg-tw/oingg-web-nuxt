@@ -90,7 +90,9 @@ const sentBodies = []
 // 還沒回來的查詢：伺服器慢的時候，前一步的回應會晚到，被算成下一步發的
 let queriesInFlight = 0
 const isQuery = request => request.method() === 'POST' && request.url().includes('/screener')
-page.on('request', (request) => { if (isQuery(request)) queriesInFlight++ })
+// 查詢送出的時間：膠囊的 × 要馬上查（2026-11-09，使用者：「電腦版刪除條件時 似乎不會馬上更新」，原本等 0.6 秒）
+const querySentAt = []
+page.on('request', (request) => { if (isQuery(request)) { queriesInFlight++; querySentAt.push(Date.now()) } })
 for (const event of ['requestfinished', 'requestfailed']) page.on(event, (request) => { if (isQuery(request)) queriesInFlight-- })
 // 等這一步的查詢回來：固定等幾秒的話，伺服器一慢就誤報成沒發
 const queryAnswered = async (since) => {
@@ -191,42 +193,19 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
         // 跟挑到哪一支指標無關——任何數值指標都會變成 0 列，而那是一個明確、可斷言的結果。
         await inputs.first().fill('999999999')
         await inputs.first().press('Enter')
-        // 面板裡改的是草稿（2026-11-09，使用者：「篩選條件請加上儲存取消按鈕，確保體驗一樣」）：面板開著時膠囊、結果都不動，按「儲存」才套用
-        await page.waitForTimeout(1500)
-        const whileOpen = await rowsSignature(page)
-        const pillsWhileOpen = await page.locator('.screener-shell__setup .condition-pill').count()
-        expect('條件', '設好值、面板還開著：膠囊和結果都還沒變', pillsWhileOpen === pillsBefore && whileOpen.count === before.count && whileOpen.first === before.first,
-          `${pillsBefore} → ${pillsWhileOpen} 個；${before.count} → ${whileOpen.count} 列`)
-        await page.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+        // 電腦版面板還開著就要套用（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」；11-09 手機改成草稿，電腦版照舊：
+        // 「手機版要有 儲存取消 電腦版不需要 電腦版可以改了就反應」）：不按「完成」，結果就該換一批
         const changed = await waitForRowsChange(page, before)
         const lastStatus = upstream[upstream.length - 1]
         pillsAfter = await page.locator('.screener-shell__setup .condition-pill').count()
-        expect('條件', `按「儲存」才多一個條件（${picked}）`, pillsAfter === pillsBefore + 1, `${pillsBefore} → ${pillsAfter}`)
-        expect('條件', '不可能的下限存了之後結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
+        expect('條件', `設好值、面板還開著就多一個條件（${picked}）`, pillsAfter === pillsBefore + 1 && await page.locator('.condition-panel .range-editor').isVisible(),
+          `${pillsBefore} → ${pillsAfter}`)
+        expect('條件', '不可能的下限不按完成就讓結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
           `${before.count}列/${before.first} → ${changed.now.count}列，業務中台 ${lastStatus}，等了 ${changed.ms}ms`)
+        expect('條件', '電腦版面板沒有儲存、取消', !await page.locator('.condition-panel').getByRole('button', { name: /^(儲存|取消)$/ }).count())
+        await page.keyboard.press('Escape')
         await page.waitForTimeout(800)
-        expect('條件', '儲存後面板關掉', !await page.locator('.condition-panel .range-editor').isVisible())
-
-        // 改了又取消：打開剛加的那顆、下限改成 0，按「取消」——膠囊照舊、不多查一次
-        const lastPill = page.locator('.screener-shell__setup .condition-pill').last()
-        const pillTextBefore = (await lastPill.textContent())?.replace(/\s+/g, ' ').trim() ?? ''
-        // 先等上一步儲存的查詢都回來（連續 0.8 秒沒有新的回應），才算得出取消有沒有多查
-        for (let i = 0; i < 20; i++) {
-          const seen = upstream.length
-          await page.waitForTimeout(800)
-          if (upstream.length === seen) break
-        }
-        const queriesBefore = upstream.length
-        await lastPill.locator('.condition-pill__value').click()
-        const reopened = page.locator('.condition-panel input[role="spinbutton"]').first()
-        await waitFor(reopened, 10000)
-        await reopened.fill('0')
-        await reopened.press('Enter')
-        await page.locator('.condition-panel').getByRole('button', { name: '取消' }).click()
-        await page.waitForTimeout(1500)
-        const pillTextAfter = (await lastPill.textContent())?.replace(/\s+/g, ' ').trim() ?? ''
-        expect('條件', '改了又按「取消」：膠囊照舊、沒有多查', pillTextAfter === pillTextBefore && upstream.length === queriesBefore,
-          `${pillTextBefore} → ${pillTextAfter}；多查 ${upstream.length - queriesBefore} 次`)
+        expect('條件', '關掉面板後條件還在', await page.locator('.screener-shell__setup .condition-pill').count() === pillsAfter)
       } else {
         await page.keyboard.press('Escape')
         await page.waitForTimeout(800)
@@ -237,10 +216,14 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     // 請求回 400（實測訊息是 "At least one filter is required"），結果也是 0 列，兩種 0 混在一起
     // 就分不出來了。
     const beforeRemove = await rowsSignature(page)
+    const removedAt = Date.now()
     await page.locator('.screener-shell__setup .condition-pill').last().locator('.condition-pill__remove').click()
     await page.waitForTimeout(1500)
     const pillsNow = await page.locator('.screener-shell__setup .condition-pill').count()
     expect('條件', '移除後膠囊少一個', pillsNow === pillsAfter - 1, `${pillsAfter} → ${pillsNow}`)
+    const removeSentAt = querySentAt.find(time => time >= removedAt)
+    expect('條件', '按 × 馬上查，不等 0.6 秒', removeSentAt !== undefined && removeSentAt - removedAt < 400,
+      removeSentAt === undefined ? '1.5 秒內沒有送出查詢' : `${removeSentAt - removedAt}ms 送出`)
     const back = await waitForRowsChange(page, beforeRemove, 30000)
     const backStatus = upstream[upstream.length - 1]
     expect('條件', '移除條件後結果回來', back.now.count > 0 && backStatus === 200,
@@ -270,12 +253,12 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       await page.waitForTimeout(300)
       expect('換期別', '按「單季」就換過去', await quarter.getAttribute('aria-pressed') === 'true')
       const sent = sentBodies.length
-      // 同上一段：輸入框要按 Enter 才寫進去，按「儲存」才算一個條件
+      // 同上一段：輸入框要按 Enter 才寫進去，關閉面板才算一個條件
       const input = page.locator('.condition-panel input[role="spinbutton"]').first()
       await input.fill('0')
       await input.press('Enter')
       await page.waitForTimeout(600)
-      await page.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+      await page.keyboard.press('Escape')
       const sentPeriod = () => sentBodies.slice(sent).some(body => body.includes('"roe.Q"'))
       const start = Date.now()
       while (!sentPeriod() && Date.now() - start < 30000) await page.waitForTimeout(300)
@@ -341,7 +324,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       const pillsBefore = await page.locator('.screener-shell__setup .condition-pill').count()
       if (labels.includes('興櫃')) await options.filter({ hasText: '興櫃' }).click()
       await page.waitForTimeout(400)
-      await page.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+      await page.keyboard.press('Escape')
       // 等的是帶這個條件的那一次，不是下一次：先送出去的可能是別的查詢（換條件前排進去的下一頁）
       const sentCondition = () => sentBodies.slice(sent).some(body => body.includes('"market.EOD"') && body.includes('"rotc"'))
       const start = Date.now()
@@ -495,7 +478,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       const name = optionText.replace(/（\d+）$/, '')
       await options.first().click()
       const included = page.waitForResponse(screenerPost('sectorCodes'), { timeout: 30000 }).catch(() => null)
-      await page.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+      await page.getByRole('button', { name: '完成' }).click()
       const pill = await waitFor(page.locator('.condition-pill__value', { hasText: `包含 ${name}` }), 10000)
       expect('類股', `膠囊寫「類股：包含 ${name}」`, pill.ok)
       expect('類股', '送出 sectorCodes', !!(await included))
@@ -513,7 +496,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       expect('類股', '再選一次類股，打開的是原本那一個（勾選還在）', checked.length === 1 && checked[0] === optionText, checked.join('、'))
       await page.locator('.condition-panel .range-editor__include').getByText('排除').click()
       const excludedRequest = page.waitForResponse(screenerPost('excludeSectorCodes'), { timeout: 30000 }).catch(() => null)
-      await page.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+      await page.getByRole('button', { name: '完成' }).click()
       const excluded = await waitFor(page.locator('.condition-pill__value', { hasText: `排除 ${name}` }), 10000)
       expect('類股', `改成排除：膠囊寫「類股：排除 ${name}」`, excluded.ok)
       const sectorPills = await page.locator('.condition-pill__field', { hasText: /^類股$/ }).count()
@@ -543,6 +526,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
   m.on('response', (response) => {
     if (response.url().includes('/screener') && response.request().method() === 'POST') upstream.push(response.status())
   })
+  m.on('request', (request) => { if (isQuery(request)) querySentAt.push(Date.now()) })
   await m.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'networkidle' })
   const firstCard = await waitFor(m.locator('.smt-card').first(), 90000)
   expect('手機', '結果是卡片', firstCard.ok, `${firstCard.ms}ms`)
@@ -667,6 +651,29 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     while (Date.now() - start < 30000 && await m.locator('.smt-card').count() <= cardsBefore) await m.waitForTimeout(500)
     const cardsAfter = await m.locator('.smt-card').count()
     expect('手機', '捲到底會多載一頁', cardsAfter > cardsBefore, `${cardsBefore} → ${cardsAfter}`)
+
+    // 清單按「儲存」才套用，而且馬上查（最後做：結果會變 0 檔）：清單裡把界限改成不可能的數字，「完成」回到清單時卡片還在。
+    // 範本的條件可能是上限（價值型的葛拉漢倍數是 ≤ 22.5）：上限填極小、下限填極大，兩種都是 0 檔
+    await conditionsOpen.click()
+    await waitFor(m.locator('.condition-panel .screener-filters'), 10000)
+    await m.waitForTimeout(500)
+    await listPills.last().locator('.condition-pill__value').click()
+    const draftInput = m.locator('.condition-panel input[role="spinbutton"]').first()
+    await waitFor(draftInput, 10000)
+    const upperOnly = await m.locator('.condition-panel .range-editor').evaluate(el => el.textContent.includes('上限') && !el.textContent.includes('下限'))
+    await draftInput.fill(upperOnly ? '-999999999' : '999999999')
+    await draftInput.press('Enter')
+    await m.locator('.condition-panel').getByRole('button', { name: '完成' }).click()
+    await m.waitForTimeout(1000)
+    const cardsInDraft = await m.locator('.smt-card').count()
+    const savedAt = Date.now()
+    await m.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+    // 手機的字首「符合上述條件」不畫（照樣念），只認數字
+    const emptied = await waitFor(m.locator('.screener-shell__count', { hasText: /(^|[^\d,])0 檔/ }), 30000)
+    const saveSentAt = querySentAt.find(time => time >= savedAt)
+    expect('手機', '清單改了值、還沒儲存：卡片還在', cardsInDraft > 0, `${cardsInDraft} 張`)
+    expect('手機', '按「儲存」才套用，馬上查', emptied.ok && saveSentAt !== undefined && saveSentAt - savedAt < 400,
+      `${saveSentAt === undefined ? '沒有送出查詢' : `${saveSentAt - savedAt}ms 送出`}，${emptied.ok ? '變成 0 檔' : '沒有變成 0 檔'}`)
   }
   await mobile.close()
 }

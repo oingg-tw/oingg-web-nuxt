@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // ETF 篩選（2026-10-15 三組篩選重新設計）：整頁交給 ScreenerPageShell，跟普通股、特別股同一份畫面；這一頁只給 ETF 的資料來源。
-// 原本的條件編輯器、結果表、兩排分頁（EtfFilterEditor／EtfResultTable／PresetFolder）都拿掉了，「搜尋」按鈕也是——改條件 0.6 秒後自動查。
+// 原本的條件編輯器、結果表、兩排分頁（EtfFilterEditor／EtfResultTable／PresetFolder）都拿掉了，「搜尋」按鈕也是——改條件就自動查。
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: 'ETF 篩選：依規模、費用率、配息頻率比較',

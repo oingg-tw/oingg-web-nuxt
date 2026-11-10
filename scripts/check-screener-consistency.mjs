@@ -125,10 +125,9 @@ for (const target of PAGES) {
       expect(target.name, '打「−5」是 −5（不是 5）', (await spin.inputValue()) === '-5', await spin.inputValue())
       await spin.fill('999999999999999')
       await spin.press('Enter')
-      // 面板裡改的是草稿（2026-11-09）：按「儲存」才查
-      await page.locator('.condition-panel').getByRole('button', { name: '儲存' }).click()
+      await page.getByRole('button', { name: '完成' }).click()
       const zero = await waitForCount(page, text => /符合上述條件 0 檔/.test(text))
-      expect(target.name, '不可能的下限按「儲存」→ 0 檔', zero.ok, `${zero.text}，${zero.ms}ms`)
+      expect(target.name, '不可能的下限 → 0 檔（自動查）', zero.ok, `${zero.text}，${zero.ms}ms`)
       const undo = page.getByRole('button', { name: '移除最後一個條件' })
       expect(target.name, '0 檔時有「移除最後一個條件」', await undo.count() === 1)
       if (await undo.count()) {

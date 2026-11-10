@@ -14,7 +14,7 @@ import type { ScreenerUniverse } from '~/utils/screener-zone'
 // 訪客走另一條路。這兩組的「我的篩選」「欄位組合」存在同一個後端資源（universe 分開，業務中台 84112d8），查詢卻是各自的
 // （ETF 打 POST /etf-screener，特別股 28 檔一次讀進來自己篩），所以共用儲存與畫面，不共用查詢流程。
 //
-// 跟普通股一樣的（學一組就會用另外兩組）：改條件 0.6 秒後自動查、已存的那一組同時存回帳號；新增、改名、上下移、刪除。
+// 跟普通股一樣的（學一組就會用另外兩組）：改條件自動查、已存的那一組同時存回帳號；新增、改名、上下移、刪除。
 // 只有這兩組有的：最前面一組內建的「全部」（進來就列出全部，使用者決定）與內建的「基本欄位」。內建的改了就標「未儲存」，
 // 按「存成…」才存進帳號——免費額度是三組合計 3 組（業務中台 2026-10-15），不能一進來就替使用者建一組。
 
@@ -306,15 +306,20 @@ export function useUniverseScreener(source: UniverseSource) {
     }
   }
 
-  // 改條件：0.6 秒後查一次；已存的那一組同時存回帳號。每個頁籤自己一個計時器，改完馬上切走也不會被下一組的改動吃掉
+  // 改條件就查；已存的那一組同時存回帳號。電腦版的面板開著時是邊打邊套用，等打完 0.6 秒（每個頁籤自己一個計時器，改完馬上切走也不會被
+  // 下一組的改動吃掉）；其他都是一次改好（膠囊的 ×、手機清單的「儲存」），馬上查（2026-11-09，使用者：「電腦版刪除條件時 似乎不會馬上更新」）。
+  // 同一組的存檔一個接一個：連按兩個 × 時，先送的那一份不能晚寫進去
   const pendingEdits = new Map<string, ReturnType<typeof debounce<[]>>>()
+  const filterSaves = new Map<string, Promise<void>>()
 
   async function applyEdit(tab: UniverseTab) {
+    const filters = filtersOf(tab)
     const saving = tab.saved && currentUser.value
-      ? presetsApi.update(tab.id, { filters: filtersOf(tab) }).then((updated) => {
+      ? (filterSaves.get(tab.id) ?? Promise.resolve()).then(() => presetsApi.update(tab.id, { filters })).then((updated) => {
           if (!updated) showErrorMessage(presetsApi.lastErrorMessage.value ?? '條件沒有存進帳號，請稍後再試')
         })
       : null
+    if (saving) filterSaves.set(tab.id, saving)
     await Promise.all([saving, search(tab)])
   }
 
@@ -334,8 +339,11 @@ export function useUniverseScreener(source: UniverseSource) {
   watch(
     () => (activeTab.value ? { id: activeTab.value.id, filters: JSON.stringify(filtersOf(activeTab.value)) } : null),
     (next, previous) => {
-      if (!ready.value || !next || !previous) return
-      if (next.id === previous.id && next.filters !== previous.filters) scheduleEdit(next.id)
+      if (!ready.value || !next || !previous || next.id !== previous.id || next.filters === previous.filters) return
+      if (editor.panelOpen.value) return scheduleEdit(next.id)
+      pendingEdits.get(next.id)?.cancel()
+      const tab = tabs.value.find(item => item.id === next.id)
+      if (tab) applyEdit(tab)
     }
   )
 

@@ -114,7 +114,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // 白白多一趟往返才開始搜。presetToTab（伺服器的版本，buildSlots 一對一不丟條件）與 PATCH 成功時記下，一樣就不送。用 handleSearch
   // 自己的轉法算，兩邊形狀才一致；composable 重掛時清空，最多多送一次（跟以前一樣）
   const persistedFilterKeys = new Map<string, string>()
-  const filterKeyOf = (tab: ScreenerTab) => JSON.stringify({ filters: filtersOfTab(tab), ...scopeFor(tab) })
+  // 同一組的 PATCH 一個接一個：膠囊的 × 馬上查，連按兩個時兩次查詢同時在跑，先送的那一份不能晚寫進去，重新整理才不會回到舊條件
+  const filterSaves = new Map<string, Promise<void>>()
+  const filterKeyOf =(tab: ScreenerTab) => JSON.stringify({ filters: filtersOfTab(tab), ...scopeFor(tab) })
 
   function presetToTab(preset: ScreenerPreset): ScreenerTab {
     const slots = buildSlots(preset.filters ?? [])
@@ -255,8 +257,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
 
   // No more 搜尋 button — a tab searches itself automatically whenever its actual filter
   // criteria change (field, min, max, exclude; adding/removing an empty slot doesn't
-  // count). Debounced so typing a number doesn't fire a request per keystroke, and
-  // cancellable so a pending one doesn't fire after its tab is gone.
+  // count). 電腦版的面板開著時是邊打邊套用，等打完 0.6 秒再查，不是每按一鍵查一次；其他都是一次改好（膠囊的 ×、手機清單的「儲存」），
+  // 馬上查（2026-11-09，使用者：「電腦版刪除條件時 似乎不會馬上更新」：那 0.6 秒檔數還寫著舊的「符合上述條件」）。
+  // Cancellable so a pending one doesn't fire after its tab is gone.
   const autoSearchControllers = new Map<string, { stopWatch: () => void; trigger: { cancel: () => void } }>()
   // 監看掛在這一頁的 scope 上（2026-11-07）：開頁在 await 之後、新增頁籤在點擊裡才登記，那時沒有目前的 scope，監看會活過這一頁。
   // 離開再回來，一次編輯就查兩次、各自以為自己是最新的，晚到的舊失敗把新結果清掉（使用者看到「符合上述條件 48 檔」，表格卻是空的）
@@ -276,7 +279,11 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           JSON.stringify(tab.slots
             .filter((slot): slot is TabFilterSlot & { fieldId: string } => slot.fieldId !== null)
             .map(slot => ({ field: slot.fieldId, min: slot.min, max: slot.max, exclude: slot.exclude, values: slot.values }))),
-        () => trigger()
+        () => {
+          if (conditionEditor.panelOpen.value) return trigger()
+          trigger.cancel()
+          void handleSearch(tab)
+        }
       )
 
       // 排序記在這一組上（2026-10-23，業務中台 c9e2208；使用者：「screener 也要儲存用戶上次的排序 這樣用戶才不用每次點」）：換排序、
@@ -407,9 +414,15 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           if (!isPageChangeOnly) {
             // 伺服器上已經是這一份就不送（見 persistedFilterKeys）；PATCH 失敗不記，下次再送
             const filterKey = filterKeyOf(tab)
-            if (persistedFilterKeys.get(tab.id) !== filterKey && await update(tab.id, { filters, ...scope })) {
-              persistedFilterKeys.set(tab.id, filterKey)
-            }
+            const saving = (filterSaves.get(tab.id) ?? Promise.resolve()).then(async () => {
+              if (persistedFilterKeys.get(tab.id) !== filterKey && await update(tab.id, { filters, ...scope })) {
+                persistedFilterKeys.set(tab.id, filterKey)
+              }
+            })
+            filterSaves.set(tab.id, saving)
+            await saving
+            // 等存檔的時候又改了：新的那次會查，這次不再白跑一趟
+            if (isStale()) return
 
             // 欄位一改當下就存了，這裡只補送上次沒存成功的。不能每次查詢都存：業務中台讀取時略過型錄已沒有的欄位（448b511），畫面比存檔少
             // 不是用戶改的；型錄暫時沒有也可能是部署時間差，存回去就真的把那一欄從帳號刪掉了。

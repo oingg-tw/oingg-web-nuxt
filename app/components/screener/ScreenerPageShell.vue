@@ -31,7 +31,7 @@ const tab = computed(() => props.screener.activeTab)
 const hasConditions = computed(() => !!tab.value?.slots.some(slot => slot.fieldId !== null))
 const goneCondition = computed(() => goneSlot(tab.value?.slots ?? []))
 
-// 「全部」還是「符合上述條件」看的是這個數字查到的時候有沒有條件，不是現在：改條件到自動查詢之間的 0.6 秒，數字還是上一次的，
+// 「全部」還是「符合上述條件」看的是這個數字查到的時候有沒有條件，不是現在：改條件到查詢回來之間，數字還是上一次的，
 // 跟著現在的條件換字首會讓 live region 先念一個錯的數字（2026-10-15 量到「符合上述條件 339 檔」接著才「322 檔」）
 const countedWithConditions = ref(false)
 watch(() => [tab.value?.id, tab.value?.loading] as const, () => {

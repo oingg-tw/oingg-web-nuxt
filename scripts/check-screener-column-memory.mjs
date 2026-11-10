@@ -5,6 +5,7 @@
 //   - 在一組上選欄位組合 → 只 PATCH 那一組的 lastColumnPresetId；選內建的「基本欄位」→ null
 //   - 切到沒記過的那一組，欄位照目前的、不換，也不會順手改到其他組
 //   - 欄位組合帶著上游拿掉的欄位：那一欄不畫（2026-11-05）
+//   - 連按兩個條件的 ×：第二次存檔等第一次存完才送，帳號裡是畫面上剩下的條件（2026-11-09）
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-screener-column-memory.mjs（要 A11Y_TEST_EMAIL／PASSWORD）
 import { chromium } from 'playwright'
 
@@ -15,7 +16,8 @@ const check = (cond, label, detail = '') => { console.log(`  ${cond ? 'PASS' : '
 
 const presets = [
   { id: 'e-a', name: '高股息 ETF', filters: [{ field: 'aum', min: 100, max: null, exclude: false }], lastColumnPresetId: 'ec-b' },
-  { id: 'e-b', name: '大型 ETF', filters: [{ field: 'aum', min: 1000, max: null, exclude: false }], lastColumnPresetId: null }
+  { id: 'e-b', name: '大型 ETF', filters: [{ field: 'aum', min: 1000, max: null, exclude: false }], lastColumnPresetId: null },
+  { id: 'e-c', name: '三個條件', filters: [{ field: 'aum', min: 1, max: null, exclude: false }, { field: 'holders', min: 1, max: null, exclude: false }, { field: 'return1y', min: -100, max: null, exclude: false }], lastColumnPresetId: null }
 ]
 const columnPresets = [
   { id: 'ec-a', name: '規模', isDefault: false, columns: [{ field: 'aum' }, { field: 'holders' }] },
@@ -23,6 +25,9 @@ const columnPresets = [
   { id: 'ec-gone', name: '上游拿掉一欄', isDefault: false, columns: [{ field: 'aum' }, { field: 'oldMetricGone' }] }
 ]
 const patches = []
+// 存條件的 PATCH 何時到、何時回（連按兩個 × 那一段把回應壓住 1.5 秒）
+const patchLog = []
+let patchDelayMs = 0
 const mock = async (ctx) => {
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
@@ -32,6 +37,10 @@ const mock = async (ctx) => {
     if (one && m === 'PATCH') {
       const body = req.postDataJSON()
       patches.push(`${one[1]} ${JSON.stringify(body)}`)
+      const entry = { filters: body.filters?.length, arrivedAt: Date.now(), doneAt: null }
+      patchLog.push(entry)
+      if (patchDelayMs) await new Promise(resolve => setTimeout(resolve, patchDelayMs))
+      entry.doneAt = Date.now()
       const preset = presets.find(item => item.id === one[1])
       Object.assign(preset, body)
       return route.fulfill({ json: { preset } })
@@ -93,6 +102,22 @@ check(patches.join(' | ') === 'e-a {"lastColumnPresetId":null}', '選內建的�
 await choose(1, '上游拿掉一欄')
 const heads = (await page.locator('.smt-table-view .el-table__header th .screener-result-table__column-label').allTextContents()).join('、')
 check(/^代號、名稱、規模( \d{4}-\d{2})?$/.test(heads), '欄位組合裡上游拿掉的欄位不畫（表頭不是欄位 id）', heads)
+
+// 連按兩個 ×（2026-11-09 起條件一改就查、不再等 0.6 秒）：兩次存檔要一個接一個，先送的那份晚寫進去，帳號就存回舊條件
+await choose(0, '三個條件')
+patches.length = 0
+patchLog.length = 0
+patchDelayMs = 1500
+const firstRemove = () => page.locator('.screener-shell__conditions-inline .condition-pill').first().locator('.condition-pill__remove')
+await firstRemove().click()
+await firstRemove().click()
+for (const start = Date.now(); Date.now() - start < 10000 && !(patchLog.length >= 2 && patchLog.every(entry => entry.doneAt)); await page.waitForTimeout(200));
+patchDelayMs = 0
+const [firstSave, secondSave] = patchLog
+check(patchLog.length === 2 && firstSave.filters === 2 && secondSave.filters === 1 && secondSave.arrivedAt >= firstSave.doneAt,
+  '連按兩個 ×：第二次存檔等第一次存完才送',
+  patchLog.map(entry => `${entry.filters} 個條件，${entry.arrivedAt - patchLog[0].arrivedAt}ms 到、${entry.doneAt - patchLog[0].arrivedAt}ms 回`).join('；') || '沒有 PATCH')
+check(presets.find(item => item.id === 'e-c').filters.length === 1, '帳號裡最後存的是畫面上剩下的那一個條件', JSON.stringify(presets.find(item => item.id === 'e-c').filters))
 check(!pageErrors.length, '沒有 page error', pageErrors.join(' | '))
 
 await browser.close()
