@@ -76,7 +76,9 @@ watch(
       await nextTick()
       // isConnected, because the trigger can be gone by now — a link inside the layer navigates,
       // and closing then happens against a page that has already re-rendered.
-      if (target?.isConnected) target.focus()
+      // preventScroll（2026-11-10，使用者：「手機版本 功能選單 回上一步以後 MENU有跳動的情形」）：頁面滑回來的 0.22 秒裡舞台還帶著
+      // transform，固定的頁首跟著舞台排在整頁最上面，focus() 把它捲進畫面＝整頁跳回頂端（量到 scrollY 600 → 0）。頁首本來就固定在畫面上，不用捲
+      if (target?.isConnected) target.focus({ preventScroll: true })
     }
   }
 )

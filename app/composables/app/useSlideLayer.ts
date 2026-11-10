@@ -19,32 +19,37 @@ const PUSH_DIRECTION: Record<SlideLayerId, 'left' | 'right'> = {
 export function useSlideLayer() {
   const openLayer = useState<SlideLayerId | null>('slide-layer-open', () => null)
 
-  // The class the sliding stage wears. Null at rest, and that matters more than it looks: a
-  // `transform` on the stage re-anchors every `position: fixed` descendant to it (both headers and
-  // the stock pages' bottom sheet), which is exactly right WHILE the screen slides and exactly
-  // wrong at rest — the stage is taller than the viewport, so a "fixed" header would scroll away
-  // with the page. Applying the class only while a layer is open keeps the resting computed value
-  // at `transform: none`, which creates no containing block.
-  //
-  // Nothing has to clean up after the closing animation: a transition from a translate back to no
-  // transform interpolates against the identity matrix and ends at `none` on its own. This is also
-  // why `will-change: transform` must never be added here — that WOULD pin the containing block
-  // permanently and reintroduce the bug the paragraph above avoids.
-  const stageClass = computed(() => (openLayer.value ? `is-pushed-${PUSH_DIRECTION[openLayer.value]}` : null))
-
   // 版面剪掉橫向溢出的時間：圖層開著、加上關掉後頁面滑回來的那一段（2026-10-20，使用者：「手機版點下選單再收回，會短暫跑出 X 軸
   // scrollbar；點搜尋再收回不會」）。選單把頁面往右推，超出右邊的部分是捲得到的寬度——關掉的那一刻就拿掉剪裁，0.22 秒的滑回動畫
   // 裡會冒出橫向捲軸（量到最多寬 345px）。搜尋往左推，超出左邊本來就捲不到，所以只有選單會。
+  // 滑回來的那一段在舞台的 transitionend 結束（endSliding）；300ms 是沒有收到 transitionend 時的保險（動畫關掉之類）。
   // ponytail: 300ms 是 layouts 與 AppSlideLayer 的 `transition: transform 0.22s` 加一點餘裕；改那邊的時間要跟著改這裡
   const sliding = useState<boolean>('slide-layer-sliding', () => false)
   const clipShell = computed(() => !!openLayer.value || sliding.value)
   let settleTimer: ReturnType<typeof setTimeout> | undefined
   function settleAfterClose() {
     clearTimeout(settleTimer)
-    settleTimer = setTimeout(() => {
-      if (!openLayer.value) sliding.value = false
-    }, 300)
+    settleTimer = setTimeout(endSliding, 300)
   }
+  function endSliding() {
+    if (openLayer.value) return
+    clearTimeout(settleTimer)
+    sliding.value = false
+  }
+
+  // The class the sliding stage wears. Null at rest, and that matters more than it looks: a
+  // `transform` on the stage re-anchors every `position: fixed` descendant to it (both headers and
+  // the stock pages' bottom sheet) — at rest the stage is taller than the viewport, so a "fixed"
+  // header would scroll away with the page. Applying a class only while the screen slides keeps the
+  // resting computed value at `transform: none`, which creates no containing block. While it slides
+  // the fixed chrome is anchored to the stage, and the layout hands it the offsets back to the
+  // screen's edges (--app-stage-top／--app-stage-bottom, layouts/default.vue).
+  //
+  // 滑回來的那 0.22 秒也要帶著 transform（is-settling＝translateX(0)），到 endSliding 才拿掉，跟那兩個補位的變數同一刻（2026-11-10，使用者：
+  // 「手機版本 功能選單 回上一步以後 MENU有跳動的情形」）：原本關掉的那一刻就換回不帶 class，過渡動畫裡頁首改以舞台為準卻沒有補位，
+  // 捲過的頁面滑回來時沒有頁首，動畫結束才冒出來。`will-change: transform` must never be added here — that WOULD pin the
+  // containing block permanently and reintroduce the bug above.
+  const stageClass = computed(() => (openLayer.value ? `is-pushed-${PUSH_DIRECTION[openLayer.value]}` : sliding.value ? 'is-settling' : null))
 
   // A history entry with the SAME url, so the phone's back button / back gesture closes the layer
   // instead of leaving the page — the behaviour a reader coming from a broker app will expect, and
@@ -89,5 +94,5 @@ export function useSlideLayer() {
     else open(id)
   }
 
-  return { openLayer, stageClass, clipShell, open, close, toggle }
+  return { openLayer, stageClass, clipShell, open, close, toggle, endSliding }
 }

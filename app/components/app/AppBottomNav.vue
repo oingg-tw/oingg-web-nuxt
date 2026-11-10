@@ -90,6 +90,8 @@ useHead({ bodyAttrs: { class: 'has-bottom-nav-bar' } })
   right: 0;
   bottom: 0;
   z-index: 10;
+  /* 圖層滑動時補回畫面下緣（layouts/default.vue 的 stageStyle） */
+  translate: 0 var(--app-stage-bottom, 0px);
   background: var(--el-bg-color-overlay);
   border-top: 1px solid var(--app-divider);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);

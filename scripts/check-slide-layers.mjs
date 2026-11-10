@@ -2,6 +2,8 @@
 // 點搜尋再收回不會」）。選單把頁面往右推，關掉後滑回來的 0.22 秒裡超出右邊的部分是捲得到的寬度，所以版面的剪裁要等滑完才拿掉
 // （useSlideLayer 的 clipShell）。這支逐幀量 scrollWidth − innerWidth，一般頁與首頁兩種版面、兩個滑層都要是 0。
 // 用桌面瀏覽器開 375px：手機的捲軸浮在畫面上、版面寬度跟著內容走，量不到；使用者看到的正是電腦縮窄的樣子。
+// 也量捲過的頁面（2026-11-10，使用者：「手機版本 功能選單 回上一步以後 MENU有跳動的情形」）：滑動時舞台帶著 transform，固定的頁首、
+// 底部列改以舞台為準，要靠 --app-stage-top／-bottom 留在畫面邊緣；收回後還焦點不能把整頁捲回頂端（AppSlideLayer 的 preventScroll）。
 //
 // Run: 本機 dev（:3000）開著，node scripts/check-slide-layers.mjs
 import { chromium } from 'playwright'
@@ -15,21 +17,30 @@ for (const path of ['/calendar', '/']) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle', timeout: 180000 })
   await page.waitForFunction(() => window.useNuxtApp?.().isHydrating === false, null, { timeout: 60000 }); await page.waitForTimeout(800)
   for (const label of ['選單', '搜尋']) {
+    await page.evaluate(() => window.scrollTo(0, 600)); await page.waitForTimeout(200)
+    const scrolled = await page.evaluate(() => window.scrollY)
     await page.locator('header button', { hasText: label }).first().click(); await page.waitForTimeout(500)
     // 量的迴圈先開始，再按關閉：涵蓋整段滑回動畫
     const sampling = page.evaluate(() => new Promise((resolve) => {
       let worst = 0
+      let header = 0
+      let bar = 0
       const start = performance.now()
       const tick = () => {
         worst = Math.max(worst, document.documentElement.scrollWidth - innerWidth)
+        header = Math.max(header, Math.abs(document.querySelector('.mobile-header')?.getBoundingClientRect().top ?? 0))
+        const nav = document.querySelector('.app-bottom-nav')?.getBoundingClientRect()
+        if (nav) bar = Math.max(bar, Math.abs(nav.bottom - innerHeight))
         if (performance.now() - start < 600) requestAnimationFrame(tick)
-        else resolve(worst)
+        else resolve({ worst, header: Math.round(header), bar: Math.round(bar), scrollY: window.scrollY })
       }
       requestAnimationFrame(tick)
     }))
     await page.locator('.slide-layer--open .slide-layer__close').click()
-    const worst = await sampling
+    const { worst, header, bar, scrollY } = await sampling
     check(worst === 0, `${path} ${label}收回時頁面沒有比畫面寬（最多 ${worst}px）`)
+    check(header === 0 && bar === 0, `${path} ${label}滑回來時頁首、底部列都在畫面邊緣（捲到 ${scrolled}；頁首最多差 ${header}px、底部列 ${bar}px）`)
+    check(scrolled > 0 && scrollY === scrolled, `${path} ${label}收回後停在原本捲到的地方（${scrolled} → ${scrollY}）`)
     await page.waitForTimeout(400)
   }
 }

@@ -57,6 +57,8 @@ useHeaderHeightMeasure(barRef)
   left: 0;
   right: 0;
   z-index: 10;
+  /* 圖層滑動時補回畫面上緣（layouts/default.vue 的 stageStyle） */
+  translate: 0 var(--app-stage-top, 0px);
   display: flex;
   align-items: center;
   gap: 8px;

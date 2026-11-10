@@ -40,7 +40,16 @@ const centered = computed(() => contentWidthMode.value === 'centered')
 // mobile header carries a backdrop-filter, and that creates a containing block for `position:
 // fixed` descendants, which once trapped a dialog's overlay inside the header's own 65px box
 // (AppMobileHeader.vue records that bug).
-const { openLayer, stageClass, clipShell, close } = useSlideLayer()
+const { openLayer, stageClass, clipShell, close, endSliding } = useSlideLayer()
+// 滑動中舞台帶著 transform，固定的頁首、公告列、底部列改以舞台為準，排在整頁的頂端與底端——捲過的頁面就在畫面外，動畫結束才跳回來
+// （2026-11-10，使用者：「手機版本 功能選單 回上一步以後 MENU有跳動的情形」）。開始滑的那一刻量好舞台離畫面上緣、下緣多遠，那幾條自己
+// 用 translate 補回去（var(--app-stage-top／-bottom, 0px)）；圖層開著時頁面不能捲，所以量一次就對
+const stageRef = ref<HTMLElement | null>(null)
+const stageStyle = computed(() => {
+  if (!stageClass.value || !stageRef.value) return undefined
+  const rect = stageRef.value.getBoundingClientRect()
+  return { '--app-stage-top': `${-rect.top}px`, '--app-stage-bottom': `${window.innerHeight - rect.bottom}px` }
+})
 </script>
 
 <template>
@@ -61,7 +70,7 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
          whole screen travels as one the way a native app's does. `inert` while a layer is open is
          what keeps Tab from walking into the page behind it; it also keeps axe from seeing a
          focusable element inside hidden content. -->
-    <div class="app-shell__stage" :class="stageClass" :inert="!!openLayer">
+    <div ref="stageRef" class="app-shell__stage" :class="stageClass" :style="stageStyle" :inert="!!openLayer" @transitionend.self="endSliding">
       <!-- Both headers always render; the layout's own CSS below shows exactly one per width.
            hydrate-on-visible（2026-10-16，DEV 的 Lighthouse 手機分數）：伺服器照樣輸出兩份 HTML，但只有看得到的那份接手——
            被 CSS 藏起來的那份不跑元件程式，手機上也就不會為桌機頁首的搜尋框抓股票目錄。換寬度讓它出現時才接手。
@@ -131,14 +140,17 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
    At rest it would be a bug: the stage is taller than the viewport, so a "fixed" header would
    scroll away with the document.
 
-   Keeping the transform on a class that only exists while a layer is open means the resting
-   computed value is `transform: none`, which creates no containing block. Nothing needs to clean
-   up after the closing animation either — a transition from a translate back to no transform
-   interpolates against the identity matrix and lands on `none` by itself.
+   Keeping the transform on a class that only exists while the screen slides means the resting
+   computed value is `transform: none`, which creates no containing block. While it slides, the
+   fixed chrome reads --app-stage-top／--app-stage-bottom (stageStyle above) to stay on the
+   screen's edges. Closing slides back to `is-settling`, translateX(0), and only at the stage's
+   transitionend does the class go, together with those two variables — so the chrome changes
+   anchor in the same frame and doesn't move (2026-11-10:「功能選單 回上一步以後 MENU有跳動」).
 
    `will-change: transform` must never be added here. It would pin the containing block
    permanently and bring back precisely the bug this arrangement avoids. */
-.app-shell__stage {
+/* 過渡只掛在滑動的 class 上：拿掉 is-settling 時 translateX(0) → none 不能再跑 0.22 秒，否則那段時間舞台還帶著 transform、頁首卻已經沒有補位 */
+.app-shell__stage:is(.is-pushed-left, .is-pushed-right, .is-settling) {
   transition: transform 0.22s ease;
 }
 
@@ -148,6 +160,10 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
 
 .app-shell__stage.is-pushed-right {
   transform: translateX(100%);
+}
+
+.app-shell__stage.is-settling {
+  transform: translateX(0);
 }
 
 /* Top padding adds a flat 16px on top of the header/banner height so every page's own first

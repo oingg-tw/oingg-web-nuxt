@@ -62,6 +62,8 @@ onUnmounted(() => {
 .app-system-health-banner {
   position: fixed;
   top: var(--app-header-height);
+  /* 圖層滑動時補回畫面上緣（layouts/default.vue 的 stageStyle） */
+  translate: 0 var(--app-stage-top, 0px);
   /* also the positioning context for .app-system-health-banner__close below */
   left: 0;
   right: 0;

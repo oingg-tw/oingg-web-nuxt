@@ -38,7 +38,14 @@
 // AppMobileHeader.vue's 選單 button has a dialog to open.
 
 // 手機版滑層，跟 layouts/default.vue 同一套（2026-09-23）。
-const { openLayer, stageClass, clipShell, close } = useSlideLayer()
+const { openLayer, stageClass, clipShell, close, endSliding } = useSlideLayer()
+// 滑動中固定的頁首補回畫面上緣：理由見 layouts/default.vue 同一段
+const stageRef = ref<HTMLElement | null>(null)
+const stageStyle = computed(() => {
+  if (!stageClass.value || !stageRef.value) return undefined
+  const rect = stageRef.value.getBoundingClientRect()
+  return { '--app-stage-top': `${-rect.top}px`, '--app-stage-bottom': `${window.innerHeight - rect.bottom}px` }
+})
 </script>
 
 <template>
@@ -56,7 +63,7 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
 
     <!-- Same sliding-stage arrangement as layouts/default.vue（2026-09-23）— see that file's own
          .app-shell__stage comment for why the transform may only exist while a layer is open. -->
-    <div class="app-shell__stage" :class="stageClass" :inert="!!openLayer">
+    <div ref="stageRef" class="app-shell__stage" :class="stageClass" :style="stageStyle" :inert="!!openLayer" @transitionend.self="endSliding">
       <!-- hydrate-on-visible：理由見 layouts/default.vue 同一段（看得到才接手） -->
       <LazyAppMobileHeader hydrate-on-visible class="app-shell__header-mobile" />
       <LazyAppHeaderMenu hydrate-on-visible class="app-shell__header-desktop" />
@@ -87,7 +94,8 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
 }
 
 /* 見 layouts/default.vue 的 .app-shell__stage 註解——靜止時不得留下 transform。 */
-.app-shell__stage {
+/* 過渡只掛在滑動的 class 上：理由見 layouts/default.vue 同一段 */
+.app-shell__stage:is(.is-pushed-left, .is-pushed-right, .is-settling) {
   transition: transform 0.22s ease;
 }
 
@@ -97,6 +105,10 @@ const { openLayer, stageClass, clipShell, close } = useSlideLayer()
 
 .app-shell__stage.is-pushed-right {
   transform: translateX(100%);
+}
+
+.app-shell__stage.is-settling {
+  transform: translateX(0);
 }
 
 /* AppHeaderMenu is `position: fixed` (see its own comment), unlike this file's old `position:
