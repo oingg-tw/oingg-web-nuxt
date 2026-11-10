@@ -188,7 +188,7 @@ const chartOption = computed(() => {
         <!-- 2026-11-08 查過殖利率分析的做法後加的兩條：配息政策因產業而異（Michel 1979 起；台灣的公司也向同業看齊），殖利率要跟同業比；
              景氣循環股不適合用一年份的殖利率看（存股著作與研究都這樣提醒） -->
         <li>各產業的配息習慣本來就不同，類股之間殖利率的高低，多半反映的是這個差異。要看一家公司配得多不多，要跟同類股的公司比：每個類股都有自己的殖利率頁，把同類股的公司畫在一起。</li>
-        <li>景氣循環類股的股利跟著景氣起落：景氣好的那一年配得多，之後算出來的一年份殖利率會偏高。各類股的營收跟著景氣怎麼走，在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</li>
+        <li>景氣循環類股的股利跟著景氣起落：景氣好的那一年配得多，之後算出來的一年份殖利率會比平常年份高。各類股的營收跟著景氣怎麼走，在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</li>
         <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股殖利率有值的公司數。</li>
         <li v-if="excludedText">{{ excludedText }}</li>
       </ul>
