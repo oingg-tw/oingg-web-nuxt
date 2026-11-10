@@ -112,6 +112,11 @@ export default defineNuxtConfig({
     // 沒加：HSTS（DEV 的 .dev 網域瀏覽器本來就只走 HTTPS；正式站的網域定了再決定，瀏覽器會記住、收不回來）、限制 script 的完整 CSP（要先用 Report-Only 觀察）
     '/**': { headers: { 'x-frame-options': 'SAMEORIGIN', 'content-security-policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' } },
     '/screener': { redirect: { to: '/screener/common', statusCode: 301 } },
+    // 用分數篩的四個範本 2026-11-10 拿掉（shared/utils/hub-slugs.ts 的 SCREENER_TEMPLATE_SLUGS），條件說明頁接回篩選頁
+    '/screener/common/financial-resilience': { redirect: { to: '/screener/common', statusCode: 301 } },
+    '/screener/common/earnings-quality': { redirect: { to: '/screener/common', statusCode: 301 } },
+    '/screener/common/turnaround': { redirect: { to: '/screener/common', statusCode: 301 } },
+    '/screener/common/growth-momentum': { redirect: { to: '/screener/common', statusCode: 301 } },
     // public/images 原本沒有 Cache-Control（2026-10-16 PSI：首頁主圖 95 KB、logo 7 KB 每次造訪都重新驗證或重新下載；/_nuxt 有一年
     // immutable）。檔名沒有雜湊，所以不用 immutable：換了圖最多一天就換新
     '/images/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },

@@ -325,11 +325,9 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   低波動: 'low-volatility',
   // 鍵是範本的名稱，上游改名會靜默少一個連結（股利穩健→股利連續性 2026-09-20、財務韌性→安全韌性 2026-09-21 都是
   // check-hub-pages 抓到 /screener 少一個範本連結才發現的）；slug 刻意不跟著改——那是已上線、在 sitemap 裡的網址，頁面主題沒變。
-  股利連續性: 'dividend-stability',
-  安全韌性: 'financial-resilience',
-  獲利品質: 'earnings-quality',
-  轉機股: 'turnaround',
-  成長動能: 'growth-momentum'
+  股利連續性: 'dividend-stability'
+  // 安全韌性、獲利品質、轉機股、成長動能 2026-11-10 拿掉（使用者：「普查類似這種分數決定的 都從篩選指標中移除」，四個範本都是用分數篩的，
+  // 請業務中台拿掉範本）：說明頁的網址在 nuxt.config 的 routeRules 301 到 /screener/common
 }
 
 export function screenerTemplateSlug(name: string): string | null {

@@ -116,6 +116,8 @@ const STATUS_CASES = [
   { path: '/industry/abc', status: 404 },
   { path: '/rank/nope', status: 404 },
   { path: '/screener/common/nope', status: 404 },
+  // 用分數篩的四個範本 2026-11-10 拿掉，說明頁接回篩選頁
+  ...['financial-resilience', 'earnings-quality', 'turnaround', 'growth-momentum'].map(slug => ({ path: `/screener/common/${slug}`, status: 301, location: '/screener/common' })),
   { path: '/screener/nope', status: 404 },
   { path: '/learn/nope', status: 404 },
   // camelCase input must not become a second URL for the same page.

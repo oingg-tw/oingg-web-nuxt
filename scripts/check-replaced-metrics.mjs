@@ -21,6 +21,11 @@ for (const key of PICKER_UNLISTED_METRICS) assert.ok(metrics.get(key), `${key} �
 const { templates } = await (await fetch(`${base}/api/core/screener/column-preset-templates`)).json()
 assert.ok(templates.length, '讀不到官方欄位範本')
 for (const { key, fields } of templates) assert.deepEqual(replacedFields(fields), fields, `官方欄位範本 ${key} 還有被藏起來的指標`)
+// 只藏不換的指標也不留在官方範本裡（2026-11-10，使用者選「請業務中台拿掉這些範本」）：挑選器加不回來的條件與欄位，範本也不該帶。紅了要請業務中台改
+const unlisted = field => PICKER_UNLISTED_METRICS.includes(field.split('.')[0])
+for (const { key, fields } of templates) assert.ok(!fields.some(unlisted), `官方欄位範本 ${key} 用到藏起來的指標：${fields.filter(unlisted).join('、')}`)
+const { templates: screenerTemplates } = await (await fetch(`${base}/api/core/screener/templates`)).json()
+for (const { name, filters } of screenerTemplates) assert.ok(!filters.some(filter => unlisted(filter.field)), `官方篩選範本「${name}」用到藏起來的指標：${filters.map(filter => filter.field).filter(unlisted).join('、')}`)
 // 換完去掉重複、留前面那一個位置；不在表上的照舊
 assert.deepEqual(replacedFields(['stock.price', 'pegRatio.TTM', 'roe.TTM', 'livePegRatio.EOD', 'peRatioRiverBand.1Y_1D']), ['stock.price', 'livePegRatio.EOD', 'roe.TTM', 'peRatioRiverBand.1Y_1D'])
 console.log('PASS: replaced metrics')

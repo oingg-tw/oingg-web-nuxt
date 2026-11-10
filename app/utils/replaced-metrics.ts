@@ -39,7 +39,13 @@ export const REPLACED_METRICS: Record<string, string> = {
 
 // 只藏、不換的指標（2026-11-08，使用者：「篩選指標藏起來」，跟產業頁拿掉 3 年成長與成本殖利率同一個理由：「不夠直觀」，成長率本身就是用
 // 買進價算的）：挑選器不列，存過的條件與欄位照舊能用（型錄裡還在）。不放進上面那張表：那張表會把存過的換成右邊，3 年換 5 年意思就變了
-export const PICKER_UNLISTED_METRICS = ['holdingDividendGrowthRate3y', 'yieldOnCost3y', 'yieldOnCost5y']
+// 單位是「分」的分數同樣只藏（2026-11-10，使用者：「普查類似這種分數決定的 都從篩選指標中移除」，起因是三率三升：「如果用範圍也看不出來
+// 是篩選哪一個數字 畢竟他有三組」）：型錄裡 10 支全藏，用到它們的官方範本請業務中台拿掉（安全韌性、獲利品質、轉機股、成長動能，欄位範本
+// 存股與股利的 Chowder Number）。新範本等數據中台有上一輪景氣循環的完整資料再設計
+export const PICKER_UNLISTED_METRICS = [
+  'holdingDividendGrowthRate3y', 'yieldOnCost3y', 'yieldOnCost5y',
+  'threeMarginsRising', 'piotroskiFScore', 'altmanZScore', 'altmanZDoublePrimeScore', 'ohlsonOScore', 'zmijewskiScore', 'beneishMScore', 'chowderNumber', 'sue', 'sus'
+]
 
 export const replacedField = (fieldId: string): string => REPLACED_METRICS[fieldId.split('.')[0] ?? ''] ?? fieldId
 
