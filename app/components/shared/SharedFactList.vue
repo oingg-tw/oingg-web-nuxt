@@ -8,7 +8,7 @@ export interface FactItem {
   note?: string
   // 需要留意的（規模低於法定下市門檻）：用文字說清楚，顏色只是加強
   warning?: boolean
-  // 值是外部網址（公司網站）：另開新視窗，同站上其他外部連結寫「（另開新視窗）」
+  // 值是外部網址（公司網站）：另開新視窗，同站上其他外部連結把「（另開新視窗）」寫在連結字裡、同色（灰字 note 的 8px 間距在手機換行時變成縮排）
   href?: string
 }
 
@@ -23,7 +23,7 @@ defineProps<{
     <div v-for="item in items" :key="item.label" class="fact-list__item">
       <dt class="fact-list__label">{{ item.label }}</dt>
       <dd class="fact-list__value" :class="{ 'fact-list__value--warning': item.warning }">
-        <a v-if="item.href" :href="item.href" target="_blank" rel="noopener noreferrer" class="hub-inline-link">{{ item.value }}<span class="fact-list__note">（另開新視窗）</span></a>
+        <a v-if="item.href" :href="item.href" target="_blank" rel="noopener noreferrer" class="hub-inline-link">{{ item.value }}（另開新視窗）</a>
         <template v-else>{{ item.value }}</template>
         <span v-if="item.note" class="fact-list__note">{{ item.note }}</span>
       </dd>
@@ -66,6 +66,13 @@ defineProps<{
   color: var(--el-text-color-primary);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+
+/* 「（另開新視窗）」整句換到下一行，不拆成「（另」「開新視窗）」。320 寬的欄放不下整句，照一般中文斷行（keep-all 會把「）」單獨擠到下一行） */
+@media (min-width: 360px) {
+  .fact-list__value a {
+    word-break: keep-all;
+  }
 }
 
 .fact-list__value--warning {
