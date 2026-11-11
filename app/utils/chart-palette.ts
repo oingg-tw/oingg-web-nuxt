@@ -330,7 +330,9 @@ export function chartTheme(mode: 'LIGHT' | 'DARK', ratio: number) {
   const numericAxis = { ...valueLike, axisLabel: { ...valueLike.axisLabel, hideOverlap: true } }
   return {
     textStyle: { fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif' },
-    tooltip: { appendTo: 'body', backgroundColor: CHART_TOOLTIP.backgroundColor, borderColor: CHART_TOOLTIP.borderColor, textStyle: { color: CHART_TOOLTIP_INK.primary } },
+    // confine：提示框留在圖的範圍裡。右邊放不下時 ECharts 會翻到游標左邊、不管畫面邊緣，手機上整個跑出左邊（2026-11-11 量到 320 寬 left −165）；
+    // 站上的圖都跟卡片一樣寬，留在圖裡就在畫面裡
+    tooltip: { appendTo: 'body', confine: true, backgroundColor: CHART_TOOLTIP.backgroundColor, borderColor: CHART_TOOLTIP.borderColor, textStyle: { color: CHART_TOOLTIP_INK.primary } },
     legend: { textStyle: { color: ink.muted, fontSize } },
     categoryAxis: { ...valueLike, axisTick: { show: false } },
     valueAxis: numericAxis,
