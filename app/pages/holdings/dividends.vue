@@ -106,6 +106,12 @@ const answer = computed(() => {
   const exRightsText = exRights.length ? `；另有 ${exRights.length} 筆已除權配股，共 ${groupThousands(exRightsShares)} 股` : ''
   return `${nextText}；${paidText}${exRightsText}。`
 })
+// 骨架的答句跟上次一樣長（useLineHint）：固定一句範例字的話，答句長短不同，手機上多或少一行，月曆與表格在資料到的那一刻上下移
+//（2026-11-11 正式建置 375 寬量到 0.0193）。第一次來照上次有沒有配息挑一句
+const { sample: answerSample, remember: rememberAnswer } = useLineHint('holdings-dividends-answer')
+watch(answer, (text) => {
+  if (text) rememberAnswer(text)
+})
 </script>
 
 <template>
@@ -119,8 +125,8 @@ const answer = computed(() => {
         <template v-if="failed" />
         <template v-else-if="loading || result">
           <p class="dividends-page__answer">
-            <!-- 範例字照上次有沒有配息挑一句：沒有配息的那句短很多，手機上少一行 -->
-            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ eventCountHint ? '接下來 2 筆，最近的是 11/05 除息的台積電，應收 5,000 元；過去一年發放 6 筆，現金合計應收 34,934 元。' : '目前沒有已公告、還沒發放的配息；過去一年沒有發放的配息。' }}</span>
+            <!-- 範例字跟上次的答句一樣長；第一次來照上次有沒有配息挑一句：沒有配息的那句短很多，手機上少一行 -->
+            <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ answerSample || (eventCountHint ? '接下來 2 筆，最近的是 11/05 除息的台積電，應收 5,000 元；過去一年發放 6 筆，現金合計應收 34,934 元。' : '目前沒有已公告、還沒發放的配息；過去一年沒有發放的配息。') }}</span>
             <template v-else>{{ answer }}</template>
           </p>
           <!-- 月曆在上、表格在下（2026-10-19 使用者：「要先呈現配息月曆，下半部才會是表格」） -->
