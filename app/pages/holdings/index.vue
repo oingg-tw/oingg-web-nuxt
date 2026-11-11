@@ -543,7 +543,7 @@ async function submit() {
               v-model="keyword"
               :fetch-suggestions="fetchSuggestions"
               class="holdings-form__full"
-              placeholder="輸入代號或名稱，例如 2330 或 台積電"
+              placeholder="代號或名稱，例如 2330"
               clearable
               @select="selectStock"
             >

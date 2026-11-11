@@ -41,7 +41,7 @@ function handleSubmit() {
     <el-input
       v-model="keyword"
       class="landing-stock-search__input"
-      placeholder="輸入股票代號或名稱，例如 2330 或 台積電"
+      placeholder="代號或名稱，例如 2330"
       aria-label="輸入股票代號或名稱"
       aria-describedby="layer-search-status"
       enterkeyhint="search"
@@ -80,7 +80,7 @@ function handleSubmit() {
         class="landing-stock-search__input"
         :fetch-suggestions="fetchSuggestions"
         popper-class="landing-stock-search__popper"
-        placeholder="輸入股票代號或名稱，例如 2330 或 台積電"
+        placeholder="代號或名稱，例如 2330"
         aria-label="輸入股票代號或名稱"
         enterkeyhint="search"
         clearable
@@ -107,7 +107,7 @@ function handleSubmit() {
       <template #fallback>
         <el-input
           class="landing-stock-search__input"
-          placeholder="輸入股票代號或名稱，例如 2330 或 台積電"
+          placeholder="代號或名稱，例如 2330"
           aria-label="輸入股票代號或名稱"
           disabled
         >
@@ -139,6 +139,13 @@ function handleSubmit() {
 .landing-stock-search__input {
   flex: 1;
   min-width: 0;
+}
+
+/* 手機：按鈕在輸入框下面、占滿一列（2026-11-11，使用者：「手機版 首頁 搜尋 文字被截斷了」：並排時 320 寬的輸入框只剩 91px） */
+@media (max-width: 767px) {
+  .landing-stock-search {
+    flex-direction: column;
+  }
 }
 
 /* 手機的搜尋層：輸入框在上、結果一列一列在下面，整列是連結 */

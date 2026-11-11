@@ -77,7 +77,7 @@ const { breadcrumbs } = useHubPageSeo({
             v-model="keyword"
             class="learn-index__picker-input"
             :fetch-suggestions="commonOnly"
-            placeholder="輸入股票代號或名稱，例如 2317"
+            placeholder="代號或名稱，例如 2317"
             aria-label="換一家公司當例子：輸入股票代號或名稱"
             clearable
             @select="pick"

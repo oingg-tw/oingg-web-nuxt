@@ -238,7 +238,7 @@ async function submitNote() {
       v-model="keyword"
       :fetch-suggestions="fetchSuggestions"
       class="watchlist-page__add"
-      placeholder="輸入代號或名稱，加入股票、ETF"
+      placeholder="代號或名稱，加入股票、ETF"
       aria-label="加入到觀察清單"
       clearable
       @select="handleSelect"
