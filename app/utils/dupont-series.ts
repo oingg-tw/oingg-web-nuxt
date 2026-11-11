@@ -15,13 +15,7 @@ export const isDupontComplete = (entry: MetricsHistoryEntry): boolean => DUPONT_
 // 頭尾的空白仍然修掉、也只修頭尾：軸應該涵蓋資料真正覆蓋的範圍，而範圍內的洞是關於資料的事實。這是常態不是假設：業務中台 2026-09-23
 // ——一般公司的近四季序列從 2021Q4 才有值（109Q4 的 XBRL 損益表全市場只有約 51 家），1101／2317／1216 都剛好有一個開頭的 null 季。
 // 2330 沒有這個現象（2020Q3 起兩種基準都有值），業務中台 因此警告別拿它當開發樣本——它是例外，而這頁的截圖都對著它。
-export function trimDupontEntries(all: MetricsHistoryEntry[]): MetricsHistoryEntry[] {
-  const first = all.findIndex(isDupontComplete)
-  if (first < 0) return []
-  let last = all.length - 1
-  while (last > first && !isDupontComplete(all[last]!)) last--
-  return all.slice(first, last + 1)
-}
+export const trimDupontEntries = (all: MetricsHistoryEntry[]): MetricsHistoryEntry[] => trimEmptyEnds(all, isDupontComplete)
 
 export const dupontTimesText = (value: number | null): string => (value === null ? '尚無資料' : minusSign(`${value.toFixed(2)} 次`))
 export const dupontMultipleText = (value: number | null): string => (value === null ? '尚無資料' : minusSign(`${value.toFixed(2)} 倍`))

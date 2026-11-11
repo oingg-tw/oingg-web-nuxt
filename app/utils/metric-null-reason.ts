@@ -1,3 +1,4 @@
+import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // 指標為什麼是 null，用讀者的話說。nullReason 的完整列舉由 analysis-ts 確認（2026-09-13，metricNullReasonSchema 當時 4 個值；
 // 2026-10-20 加 low_base）：只有 not_applicable_industry 是「這個指標的模型在觀念上不適用於這家公司」（五個危機預警模型排除金融保險股、
 // 營收年增率的兩支衍生指標排除營建業），其餘都是「真的有數字，只是這一期算不出來或不採用」。2026-09-19 從 StockHistoricalStatisticsTable
@@ -20,6 +21,9 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 兩個都是結構性的、不會恢復，儲存格跟 not_applicable_industry 一樣寫「不適用」（NOT_APPLICABLE_REASONS）
   not_published_by_exchange: '證交所、櫃買中心不公布興櫃股票的這項數字',
   semiannual_only: '興櫃公司只申報半年報，沒有第一、三季的單季財報',
+  // 近四季（數據中台 2026-11-12 起）：第一、三季的近四季跨到前一年只申報半年報的那半年，缺單季數字。這一期算不出來，不是不適用；
+  // 用近四季 EPS 的即時指標（即時本益比等）也會有
+  semiannual_window: '近四季跨到只申報半年報的期間，缺那幾季的單季數字，所以算不出來',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
@@ -37,6 +41,26 @@ export const NULL_REASON_SHORT_LABELS: Record<string, string> = {
 export interface NullablePoint {
   value: number | null
   nullReason: string | null
+}
+
+// 近四季算不出來，是因為窗口跨到前一年只申報半年報的期間（2026-11-11，使用者對 3158 杜邦缺 2024Q1 選了 B：空白照留，滑過去寫原因）。
+// 數據中台 11-12 起給 semiannual_window；11/21 全歷史重算之前，還沒重算的期別是 insufficient_history，從同一份回應的單季序列認。
+// 哪半年也從單季序列讀：前一年第二季標 semiannual_only 是上半年、第四季是下半年；第三季的近四季只用到前一年下半年。只有用到損益表
+// 或現金流量表的單季指標會標（數據中台 11-11：權益乘數這種只看資產負債表的照樣有值），所以 codes 裡有一支標了就算。
+// shortcut: 只有兩種序列一起到的圖（杜邦、財報三率）寫得出年份，11/21 之後全是新原因碼，insufficient_history 那條就拿掉
+export function semiannualWindowNote(entry: MetricsHistoryEntry, quarterly: readonly MetricsHistoryEntry[], codes: readonly string[]): string | undefined {
+  const { fiscalYear, fiscalQuarter } = entry
+  if (fiscalQuarter !== 1 && fiscalQuarter !== 3) return undefined
+  const points = codes.map(code => entry.values[code])
+  if (points.some(point => point?.value != null)) return undefined
+  // 有一支是新原因碼就算（其他幾支可能是別的原因）；全是 insufficient_history 的要靠單季序列認
+  const flagged = points.some(point => point?.nullReason === 'semiannual_window')
+  if (!flagged && !points.every(point => point?.nullReason === 'insufficient_history')) return undefined
+  const halves = [2, 4].filter(quarter => quarterly.some(other => other.fiscalYear === fiscalYear - 1 && other.fiscalQuarter === quarter && codes.some(code => other.values[code]?.nullReason === 'semiannual_only')))
+  if (fiscalQuarter === 1 ? !halves.length : !halves.includes(4)) return flagged ? NULL_REASON_LABELS.semiannual_window : undefined
+  const period = `${fiscalYear - 1} 年${halves.length === 2 ? '' : halves[0] === 2 ? '上半年' : '下半年'}`
+  const single = quarterly.find(other => other.fiscalYear === fiscalYear && other.fiscalQuarter === fiscalQuarter)
+  return `${period}只申報半年報，這一季的近四季算不出來${codes.some(code => single?.values[code]?.value != null) ? '（單季看得到）' : ''}`
 }
 
 export function nullReasonTitle(point: NullablePoint | null | undefined): string | undefined {

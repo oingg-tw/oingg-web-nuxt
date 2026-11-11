@@ -81,7 +81,9 @@ export interface LineChartEntry {
   fiscalYear?: number
   fiscalQuarter?: number | null
   label?: string
-  values: Record<string, { value: number | null } | null | undefined>
+  // 整期算不出來的原因，提示框只寫這一句（2026-11-11：近四季跨到只申報半年報的那一年，semiannualWindowNote）
+  note?: string
+  values: Record<string, { value: number | null; nullReason?: string | null } | null | undefined>
 }
 
 const props = defineProps<{
@@ -236,10 +238,17 @@ const chartOption = computed(() => {
         const entry = list[index]
         if (!entry) return ''
         const valueText = (series: LineSeriesSpec) => {
-          const text = (code: string) => (series.format ?? props.format)(entry.values[code]?.value ?? null)
+          // 空值照原因寫，同表格（reasonedCellText）：無法計算／不適用；沒帶原因的照各自的格式
+          const text = (code: string) => {
+            const point = entry.values[code]
+            return point?.value == null && point?.nullReason ? nullReasonShortText(point.nullReason) : (series.format ?? props.format)(point?.value ?? null)
+          }
           return series.type === 'range' && series.rangeTo ? `${text(series.code)}～${text(series.rangeTo)}` : text(series.code)
         }
-        const rows = props.series.map(series => `<div>${series.name}：${valueText(series)}</div>`).join('')
+        // 提示框預設不折行（ECharts 的 white-space:nowrap），原因那一句在手機上要折
+        const rows = entry.note
+          ? `<div style="white-space:normal;max-width:min(16em,calc(100vw - 48px))">${entry.note}</div>`
+          : props.series.map(series => `<div>${series.name}：${valueText(series)}</div>`).join('')
         const inPeriod = periodRanges.value.find(range => index >= range.from && index <= range.to)
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry)}${inPeriod ? `（${inPeriod.label}）` : ''}</div>${rows}</div>`
       }

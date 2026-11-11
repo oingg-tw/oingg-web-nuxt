@@ -21,7 +21,13 @@ const ROE_SERIES = [
   { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'solid', symbol: 'diamond', axis: 'right', format: dupontMultipleText }
 ] as const satisfies readonly LineSeriesSpec[]
 
-const ascending = computed(() => trimDupontEntries((basis.value === 'Q' ? props.data.quarterlySeries : props.data.series)?.entries ?? []))
+const ascending = computed(() => {
+  const list = trimDupontEntries((basis.value === 'Q' ? props.data.quarterlySeries : props.data.series)?.entries ?? [])
+  if (basis.value === 'Q') return list
+  // 近四季跨到只申報半年報那一年的期別：空白照留，提示框寫原因（使用者 2026-11-11 對 3158 選 B）
+  const quarterly = props.data.quarterlySeries?.entries ?? []
+  return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, ROE_SERIES.map(series => series.code)) }))
+})
 
 // 圖表區間（2026-09-22「圖表要可以選 1235 年」）與自訂區間：useChartPeriod＋SharedChartCard，從已載入的期數切片不重抓。停用的
 // 近N年依「篩選後的筆數」逐基準量（2330 的近四季 equityMultiplier 曾經只回溯 2.5 年）。

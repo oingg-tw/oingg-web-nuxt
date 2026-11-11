@@ -67,12 +67,17 @@ watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?
 // Periods with none of the three rates filed are dropped at the source rather than filtered at
 // each read site: a financial gets 20 such periods back（confirmed live on 2891 — the history
 // endpoint returns the period rows, with null in every value）, which rendered as a table of 18
-// 尚無資料 cells before this filter. A period with nothing to plot has nothing to tabulate either,
-// so removing it here fixes the chart and both tables at once. A period missing only SOME of the
-// three is kept — that gap is real information and the chart's own connectNulls: false shows it.
-const ascending = computed<MetricsHistoryEntry[]>(() =>
-  (activeSeries.value?.entries ?? []).filter(entry => MARGIN_RATE_CODES.some(rateCode => entry.values[rateCode]?.value != null))
-)
+// 尚無資料 cells before this filter. Only the leading and trailing ones go (trimEmptyEnds, since
+// 2026-11-11): one with nothing inside the range stays, a gap on the chart and 無法計算 in the
+// table, as on 杜邦 — 3158's 近四季 2024Q1 and Q3 had been dropped and the line drawn straight
+// across them. A period missing only SOME of the three was always kept.
+const ascending = computed<(MetricsHistoryEntry & { note?: string })[]>(() => {
+  const list = trimEmptyEnds(activeSeries.value?.entries ?? [], entry => MARGIN_RATE_CODES.some(rateCode => entry.values[rateCode]?.value != null))
+  if (basis.value === 'Q') return list
+  // 近四季跨到只申報半年報那一年的期別：提示框寫原因（同杜邦）
+  const quarterly = marginsData.value?.series?.entries ?? []
+  return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, MARGIN_RATE_CODES) }))
+})
 const periods = computed(() => [...ascending.value].reverse())
 
 const latest = computed(() => periods.value[0] ?? null)

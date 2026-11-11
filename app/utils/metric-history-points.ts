@@ -70,3 +70,10 @@ export function metricHistoryAnswer(
   const newest = points[0]!
   return historyTableText({ ...options, code: '', basis: TIMEFRAME_LABELS[options.timeframe], count: points.length, from: periodLabel(oldest, options.timeframe), to: periodLabel(newest, options.timeframe) }).answer
 }
+
+// 頭尾整期沒有值的期別修掉、中間的留著（2026-09-23 杜邦定的，2026-11-11 財報三率與安全韌性跟進）：中間的洞是關於資料的事實，
+// 濾掉的話類別軸把洞前後兩期畫成相鄰、線直接接過去（3158 財報三率的近四季跨過 2024Q1、Q3，使用者選了空白照留、滑過去寫原因）
+export function trimEmptyEnds<T>(list: readonly T[], hasValue: (entry: T) => boolean): T[] {
+  const first = list.findIndex(hasValue)
+  return first < 0 ? [] : list.slice(first, list.findLastIndex(hasValue) + 1)
+}

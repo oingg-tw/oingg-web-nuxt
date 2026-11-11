@@ -5,8 +5,8 @@ import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // 指標圖」）。外殼、近N年與自訂區間在 SharedChartCard＋useChartPeriod，區間是這張圖自己的，只切圖、不切頁面上的表。
 const props = defineProps<{
   page: 'margins' | 'solvency'
-  // 由舊到新，原樣傳進來
-  entries: MetricsHistoryEntry[]
+  // 由舊到新，原樣傳進來；note 交給提示框（財報三率的近四季，semiannualWindowNote）
+  entries: (MetricsHistoryEntry & { note?: string })[]
 }>()
 // 期別切換（2026-11-01，財報三率頁）：有綁 v-model:basis 才畫，指標速覽與安全韌性不綁；資料由頁面換（同 StockDupontChart）
 const basis = defineModel<'TTM' | 'Q'>('basis')
@@ -28,8 +28,8 @@ const SERIES: Record<'margins' | 'solvency', readonly LineSeriesSpec[]> = {
 }
 const series = computed(() => SERIES[props.page])
 
-// 一條線都沒有值的期別不畫：金融業會拿到 20 期全是 null（2891 實測）
-const plotted = computed(() => props.entries.filter(entry => series.value.some(spec => entry.values[spec.code]?.value != null)))
+// 頭尾一條線都沒有值的期別不畫（金融業會拿到 20 期全是 null，2891 實測），中間的留著空白
+const plotted = computed(() => trimEmptyEnds(props.entries, entry => series.value.some(spec => entry.values[spec.code]?.value != null)))
 const { period, shown } = useChartPeriod({ all: plotted, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
 
 // 固定兩位小數（rateText，shared/utils/number-format.ts）：兩頁的表格要逐項加減對得起來

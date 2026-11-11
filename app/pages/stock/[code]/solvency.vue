@@ -50,9 +50,9 @@ watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value
 
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
 // gets 20 such rows back (no 流動資產/流動負債 split on a bank's balance sheet), which would
-// otherwise render as a table of 尚無資料 cells. Same filter, same reason, as margins.vue's.
-const ascending = computed<MetricsHistoryEntry[]>(() =>  (solvencyData.value?.series?.entries ?? []).filter(entry => SOLVENCY_LIQUIDITY_CODES.some(ratioCode => entry.values[ratioCode]?.value != null))
-)
+// otherwise render as a table of 尚無資料 cells. Same rule, same reason, as margins.vue's: only the
+// leading and trailing ones go, one inside the range stays a gap (trimEmptyEnds).
+const ascending = computed<MetricsHistoryEntry[]>(() => trimEmptyEnds(solvencyData.value?.series?.entries ?? [], entry => SOLVENCY_LIQUIDITY_CODES.some(ratioCode => entry.values[ratioCode]?.value != null)))
 // 圖（三條線、區間選單）在 StockRatioLinesChart，指標速覽畫同一張
 
 const periods = computed(() => [...ascending.value].reverse())
