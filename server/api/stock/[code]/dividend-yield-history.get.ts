@@ -14,9 +14,7 @@ const cachedDividendYieldHistory = defineCachedFunction(
     name: 'stock-live-cash-dividend-yield-history',
     getKey: symbol => symbol,
     // 月底取樣，最新一點每天變一次；上游自己是 max-age=3600
-    maxAge: 60 * 60,
-    staleMaxAge: 24 * 60 * 60,
-    swr: true
+    ...swrCache(60 * 60, 24 * 60 * 60)
   }
 )
 

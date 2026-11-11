@@ -53,7 +53,7 @@ export const getSectors = defineCachedFunction(
     }
     return sectors.sort((a, b) => a.code.localeCompare(b.code))
   },
-  { name: 'hub-sectors', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sectors', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )
 
 interface StocksCollectionResponse {
@@ -103,7 +103,7 @@ export const getMarketDirectory = defineCachedFunction(
       .map(([code, companies]) => ({ code, name: SECTORS[code]!.name, slug: SECTORS[code]!.slug, companyCount: companies.length, companies: companies.sort(bySymbol) }))
     return { sectors, others: others.sort(bySymbol) }
   },
-  { name: 'hub-market-directory', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-market-directory', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 interface ScreenerFieldValue {
@@ -224,7 +224,7 @@ export const getSectorCompanies = defineCachedFunction(
     }
   },
   // -v2：2026-11-01 股價淨值比換成即時版，舊鍵裡是交易所的數字；-v3：2026-11-04 股利成長換成持股股利成長率，舊鍵裡沒有那幾欄；-v4：2026-11-10 多了盈餘發放率
-  { name: 'hub-sector-companies-v4', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sector-companies-v4', getKey: code => code, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 一個類股的上市櫃公司（2026-10-09 從 /api/hub/industry/:code 抽出來，產業成長座標圖共用）。興櫃不顯示（2026-09-26
@@ -244,7 +244,7 @@ export async function getListedSectorCompanies(code: string) {
 // /industries/sensitivity：各類股的景氣敏感度（2026-10-24）。上游在國發會每月公布新數字後自己重算、排好名次，這裡原樣轉
 export const getBusinessCycleSensitivity = defineCachedFunction(
   () => businessFetch<BusinessCycleSensitivity>('/industries/business-cycle-sensitivity'),
-  { name: 'hub-business-cycle-sensitivity', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-business-cycle-sensitivity', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // /industries/growth：各類股的營收、淨利近四季年增率中位數（2026-10-10 起讀上游 GET /industries/sector-summary，取代原本
@@ -274,7 +274,7 @@ export const getSectorGrowthSummary = defineCachedFunction(
         }))
     }
   },
-  { name: 'hub-sector-growth-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sector-growth-summary', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 類股指標中位數逐期（產業頁三率走勢，近四季 20 期）。只收季報型指標，每股類上游回 400。個股指標頁的「跟同類股中位數比」
@@ -282,7 +282,7 @@ export const getSectorGrowthSummary = defineCachedFunction(
 export const getSectorMetricHistory = defineCachedFunction(
   (code: string, metricCode: string): Promise<SectorMetricHistory> =>
     businessFetch<SectorMetricHistory>(`/industries/${code}/metric-history`, { query: { metricCode, timeframe: 'TTM', limit: 20 } }),
-  { name: 'hub-sector-metric-history', getKey: (code, metricCode) => `${code}:${metricCode}:TTM:20`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sector-metric-history', getKey: (code, metricCode) => `${code}:${metricCode}:TTM:20`, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 類股月營收（冷查詢 1～2 秒，上游建議快取）。抓到上游上限 132 個月（2026-10-10 業務中台與 analysis-ts 758a2b90 一起從
@@ -292,7 +292,7 @@ const SECTOR_REVENUE_MONTHS = 132
 export const getSectorMonthlyRevenue = defineCachedFunction(
   (code: string): Promise<SectorMonthlyRevenue> =>
     businessFetch<SectorMonthlyRevenue>(`/industries/${code}/monthly-revenue-history`, { query: { limit: SECTOR_REVENUE_MONTHS } }),
-  { name: 'hub-sector-monthly-revenue', getKey: code => code, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sector-monthly-revenue', getKey: code => code, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 國家發展委員會景氣指標的兩個去趨勢值（領先、同時），完整歷史（1982-01 起）。景氣時鐘頁與 /industries/cycle 共用。
@@ -304,7 +304,7 @@ export const getBusinessCycleIndicators = defineCachedFunction(
     const response = await businessFetch<{ entries: { yearMonth: string; leadingIndexDetrended: number | null; coincidentIndexDetrended: number | null }[] }>('/macro/business-cycle-indicator')
     return response.entries.map(entry => ({ period: entry.yearMonth, leading: entry.leadingIndexDetrended, coincident: entry.coincidentIndexDetrended }))
   },
-  { name: 'hub-business-cycle-indicators', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-business-cycle-indicators', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 國家發展委員會景氣循環基準日期（業務中台 219abbc 轉發 analysis-ts，2026-10-18）。景氣時鐘頁的時段選單與循環表
@@ -314,7 +314,7 @@ export const getBusinessCycleReferenceDates = defineCachedFunction(
     return response.entries.map(({ cycleNo, troughStart, peak, troughEnd, expansionMonths, contractionMonths, totalMonths, supplementedFields }) =>
       ({ cycleNo, troughStart, peak, troughEnd, expansionMonths, contractionMonths, totalMonths, supplementedFields: supplementedFields ?? [] }))
   },
-  { name: 'hub-business-cycle-reference-dates', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-business-cycle-reference-dates', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 const previousMonth = (yearMonth: string, back: number): string => {
@@ -414,7 +414,7 @@ export const getSectorCycleSummary = defineCachedFunction(
       contractions: first && last ? contractionPeriods(cycles ?? [], first, last) : []
     }
   },
-  { name: 'hub-sector-cycle-summary', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sector-cycle-summary', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 interface RankingResponse {
@@ -597,7 +597,7 @@ export const getRanking = defineCachedFunction(
     }
   },
   // 鍵帶欄位：排行換一支指標（2026-11-01 股價淨值比換即時版）就是新的鍵，不會再讀到舊指標排的那一份
-  { name: 'hub-ranking', getKey: slug => `${slug}:${findRankPage(slug)?.field ?? ''}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-ranking', getKey: slug => `${slug}:${findRankPage(slug)?.field ?? ''}`, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // GET /metrics — the whole catalog, passed through untyped: the app types it as MetricCatalog
@@ -606,7 +606,7 @@ export const getMetricsCatalog = defineCachedFunction(
   async () => metricsCatalogFromBusiness(await businessFetch<{ categories: unknown[] }>('/metrics')),
   // -v2：2026-11-03 沒有單位改成 null，舊鍵裡還是「無單位」；-v3：2026-11-04 型錄多了四個是／否欄位（交易方法、注意股票、處置狀態、
   // 停止買賣狀態），舊鍵停在同步之前，網站讀得到的要等兩層快取各過一輪
-  { name: 'hub-metrics-catalog-v3', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-metrics-catalog-v3', ...swrCache(TTL_CATALOG, TTL_STATIC) }
 )
 
 // useFilterSchema 讀的精簡目錄（2026-10-16，/api/hub/filter-schema）。整份目錄序列化進頁面 payload 有 271 KB（個股頁 payload 的 92%），
@@ -644,7 +644,7 @@ export const getFilterSchemaCatalog = defineCachedFunction(
   },
   // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）；-v3：最新財報季別的選項多了 fiscalYear／fiscalQuarter（2026-11-04），舊快取沒有；
   // -v4：同日跟著 hub-metrics-catalog-v3 換（v3 是從還沒有是／否欄位的目錄建的）
-  { name: 'hub-filter-schema-v4', maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-filter-schema-v4', ...swrCache(TTL_CATALOG, TTL_STATIC) }
 )
 
 // 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，
@@ -667,7 +667,7 @@ export const getFormulaHtml = defineCachedFunction(
     }
     return null
   },
-  { name: 'hub-formula', getKey: (metricKey: string) => metricKey, maxAge: TTL_CATALOG, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-formula', getKey: (metricKey: string) => metricKey, ...swrCache(TTL_CATALOG, TTL_STATIC) }
 )
 
 // GET /screener/templates（public）with this app's URL slug attached by template NAME.
@@ -676,7 +676,7 @@ export const getScreenerTemplates = defineCachedFunction(
     const response = await businessFetch<{ templates: ScreenerTemplateSummary[] }>('/screener/templates')
     return response.templates.map(template => ({ ...template, slug: screenerTemplateSlug(template.name) }))
   },
-  { name: 'hub-screener-templates', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-screener-templates', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )
 
 // How many companies currently match a template — POST /screener's `count` is the total match
@@ -698,7 +698,7 @@ export const getTemplateMatchCount = defineCachedFunction(
     })
     return response.count
   },
-  { name: 'hub-template-match-count', getKey: slug => slug, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-template-match-count', getKey: slug => slug, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // /industries 的類股股利統計（2026-09-30）。一次呼叫、34 個類股，不需要扇出。
@@ -706,7 +706,7 @@ export const getSectorDividendSummary = defineCachedFunction(
   async (): Promise<SectorDividendSummaryPageData> =>
     businessFetch<SectorDividendSummaryPageData>('/industries/sector-dividend-summary'),
   // -v2：2026-11-04 多了持股股利成長率與成本殖利率，舊鍵裡沒有，頁面讀 .count 會 500；-v3：2026-11-10 多了盈餘發放率，舊鍵要等一天才看得到
-  { name: 'hub-sector-dividend-summary-v3', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-sector-dividend-summary-v3', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // ---- 除權息月覽（/calendar/months，2026-10-21）----
@@ -750,7 +750,7 @@ export const getExDividendMonth = defineCachedFunction(
       }))
       .sort((a, b) => a.exDate.localeCompare(b.exDate) || a.symbol.localeCompare(b.symbol))
   },
-  { name: 'hub-ex-dividend-month', getKey: (month: string) => month, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-ex-dividend-month', getKey: (month: string) => month, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 每個月有幾檔除權息（業務中台 00329e4 轉發 analysis-ts GET /stocks/ex-dividend-calendar/monthly-counts，跟行事曆同一批列、同一個分類；
@@ -758,7 +758,7 @@ export const getExDividendMonth = defineCachedFunction(
 const getExDividendMonthlyCounts = defineCachedFunction(
   async (from: string, to: string) =>
     (await businessFetch<{ months: { yearMonth: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } })).months,
-  { name: 'hub-ex-dividend-monthly-counts', getKey: (from: string, to: string) => `${from}:${to}`, maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-ex-dividend-monthly-counts', getKey: (from: string, to: string) => `${from}:${to}`, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 今年 12 個月各有幾檔除權息。還沒到的月份（current 之後）整個月用去年同月試算（使用者：「今年日期未到的才用去年模擬試算」）；這個月用今年的實際資料，
@@ -793,5 +793,5 @@ export const getSecurityCounts = defineCachedFunction(
     }
     return counts
   },
-  { name: 'hub-security-counts', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-security-counts', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )

@@ -219,6 +219,14 @@ const comparePoints = computed(() =>
   compareCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[compareCode.value!]?.value != null)
 )
 
+// 空圖回報給管理站（2026-11-12，shared/utils/chart-empty.ts）：照模板分支的順序判斷畫的是哪一種空圖
+const emptyReason = computed(() => {
+  if (shortfall.value) return 'shortfall'
+  if (pending.value || comparePoints.value.length > 1 || stacked.value || points.value.length > 1) return null
+  return 'no_points'
+})
+watchChartEmpty(() => (emptyReason.value ? { symbol: props.symbol, chart: 'metric-history', metric: props.metricCode, timeframe: timeframe.value, lookbackYears: null, reason: emptyReason.value } : null))
+
 // 配色是 compare（主角用強調色、對照用灰，2026-10-07），見 StockMultiSeriesLineChart。右軸那一條的名稱帶單位：
 // 權益乘數 1.5 倍會穿過左軸 40% 附近的格線，圖例不寫「（倍）」就會被讀成百分比（同杜邦圖）
 const compareSeries = computed<LineSeriesSpec[]>(() => [

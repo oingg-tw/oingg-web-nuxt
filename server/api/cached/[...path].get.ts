@@ -51,7 +51,7 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily'; query?: 
   { pattern: /^stocks\/preferred-stocks$/, ttl: 'hourly' },
   { pattern: /^securities$/, ttl: 'hourly', query: { limit: COUNT, offset: COUNT } },
   // 更新紀錄（2026-10-29，/changelog）：管理站寫、業務中台存。
-  // shortcut: swr 下最多慢 15 分鐘，閒置很久後第一位訪客看到舊版；維護公告要上橫幅時改短或不用 swr
+  // shortcut: 最多舊 15 分鐘加一小時（swrCache 的上限）；維護公告要上橫幅時改短或不用 swr
   { pattern: /^release-notes$/, ttl: 'quote' },
   // REITs 總覽（2026-10-29，/screener/reits）：收盤與淨值一天一次，業務中台也回 max-age=3600
   { pattern: /^reits$/, ttl: 'hourly' }
@@ -80,9 +80,9 @@ function keyOf(path: string, query: QueryRecord): string {
 }
 
 // One cached function per TTL class — defineCachedFunction's maxAge is fixed per function.
-const cachedQuote = defineCachedFunction(upstream, { name: 'cached-get-quote', getKey: keyOf, maxAge: TTL_SECONDS.quote, staleMaxAge: HOUR, swr: true })
-const cachedHourly = defineCachedFunction(upstream, { name: 'cached-get-hourly', getKey: keyOf, maxAge: TTL_SECONDS.hourly, staleMaxAge: 24 * HOUR, swr: true })
-const cachedDaily = defineCachedFunction(upstream, { name: 'cached-get-daily', getKey: keyOf, maxAge: TTL_SECONDS.daily, staleMaxAge: 24 * HOUR, swr: true })
+const cachedQuote = defineCachedFunction(upstream, { name: 'cached-get-quote', getKey: keyOf, ...swrCache(TTL_SECONDS.quote, HOUR) })
+const cachedHourly = defineCachedFunction(upstream, { name: 'cached-get-hourly', getKey: keyOf, ...swrCache(TTL_SECONDS.hourly, 24 * HOUR) })
+const cachedDaily = defineCachedFunction(upstream, { name: 'cached-get-daily', getKey: keyOf, ...swrCache(TTL_SECONDS.daily, 24 * HOUR) })
 
 const BY_TTL = { quote: cachedQuote, hourly: cachedHourly, daily: cachedDaily }
 

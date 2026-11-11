@@ -21,7 +21,7 @@ const cachedTaiexMonthly = defineCachedFunction(
     )
     return taiex.entries.flatMap(({ tradeDate, close }) => (tradeDate && close !== null ? [{ tradeDate, close }] : []))
   },
-  { name: 'hub-taiex-monthly', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-taiex-monthly', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )
 
 // /macro/equity-risk-premium 的四個窗口（2026-09-29）。
@@ -77,7 +77,7 @@ export const getEquityRiskPremium = defineCachedFunction(
       components: full.supplySide ? (components as EquityRiskPremiumComponents) : null
     }
   },
-  { name: 'hub-equity-risk-premium', maxAge: TTL_DAILY, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-equity-risk-premium', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // /macro/market-events 的一份資料 — 央行月報的加權指數月平均，事件本身是前端靜態資料。
@@ -116,7 +116,7 @@ export const getMarketEvents = defineCachedFunction(
       .flatMap(({ tradeDate, close }) => (tradeDate && close !== null ? [{ tradeDate, close }] : []))
     return { months, days }
   },
-  { name: 'hub-market-events', maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-market-events', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )
 
 // /macro/{slug} 的兩份資料 — 一支總經序列 + 同頻率的加權指數。
@@ -157,5 +157,5 @@ export const getMacroPage = defineCachedFunction(
       taiex: [...byPeriod.entries()].map(([period, close]) => ({ period, close })).sort((a, b) => a.period.localeCompare(b.period))
     }
   },
-  { name: 'hub-macro-page', getKey: slug => slug, maxAge: TTL_STATIC, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'hub-macro-page', getKey: slug => slug, ...swrCache(TTL_STATIC, TTL_STATIC) }
 )

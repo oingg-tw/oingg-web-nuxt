@@ -59,9 +59,7 @@ const cachedMonthlyRevenue = defineCachedFunction(
     getKey: (symbol: string) => `${symbol}:${MONTHS}`,
     // Monthly data changes once a month, on the 10th — a day's staleness is invisible and the
     // whole market re-reading it on the same morning is not.
-    maxAge: 6 * 60 * 60,
-    staleMaxAge: 24 * 60 * 60,
-    swr: true
+    ...swrCache(6 * 60 * 60, 24 * 60 * 60)
   }
 )
 
@@ -80,8 +78,6 @@ const cachedMonthlyPrices = defineCachedFunction(
   {
     name: 'stock-monthly-prices-v2',
     getKey: symbol => symbol,
-    maxAge: 6 * 60 * 60,
-    staleMaxAge: 24 * 60 * 60,
-    swr: true
+    ...swrCache(6 * 60 * 60, 24 * 60 * 60)
   }
 )

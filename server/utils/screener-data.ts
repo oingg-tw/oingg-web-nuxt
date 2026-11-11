@@ -8,18 +8,18 @@ import type { EtfDetail, EtfDistributions, EtfHolders, EtfMonthlyPoint, EtfPremi
 export const cachedEtf = defineCachedFunction(
   (symbol: string) => businessFetch<EtfDetail>(`/etfs/${symbol}`),
   // 規模、受益人數是月報，淨值與折溢價每天變；6 小時夠新
-  { name: 'etf-detail', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'etf-detail', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 
 export const cachedEtfDistributions = defineCachedFunction(
   (symbol: string) => businessFetch<EtfDistributions>('/market/etf-distributions', { query: { symbol } }),
-  { name: 'etf-distributions', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'etf-distributions', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 
 // ETF 第二批面向（2026-10-18，業務中台 f667085 轉發 analysis-ts 6189b3d）。每月快照歷史（2024-01 起）原樣
 export const cachedEtfMonthlyHistory = defineCachedFunction(
   async (symbol: string): Promise<EtfMonthlyPoint[]> => (await businessFetch<{ entries: EtfMonthlyPoint[] }>(`/etfs/${symbol}/monthly-history`)).entries ?? [],
-  { name: 'etf-monthly-history', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'etf-monthly-history', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 
 // 每日折溢價彙總成每月的平均、最高、最低：0050 全歷史 5,410 天約 428KB，快取與頁面都只放彙總（約 270 個月）。沒成交的日子上游 null，不算。
@@ -39,7 +39,7 @@ export const cachedEtfPremiumMonths = defineCachedFunction(
       }
     })
   },
-  { name: 'etf-premium-months', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'etf-premium-months', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 
 // 集保股權分散（每週，2026-09-18 起）：15 個級距併成 5 組畫圖（用每級的股數上限分，不寫死級數），最新一週的 15 級原樣給表格。
@@ -68,13 +68,13 @@ export const cachedEtfHolders = defineCachedFunction(
     const latest = entries?.at(-1)?.levels.filter(level => level.levelKind === 'bracket') ?? []
     return { weeks, latestLevels: latest.map(({ level, minShares, maxShares, holders, shares, custodyPct }) => ({ level, minShares, maxShares, holders, shares, custodyPct })) }
   },
-  { name: 'etf-holders', getKey: symbol => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'etf-holders', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 
 // 28 檔一次讀完；個別頁與 sitemap 共用
 export const cachedPreferredStocks = defineCachedFunction(
   async () => (await businessFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks')).entries,
-  { name: 'preferred-stocks', getKey: () => 'all', maxAge: HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'preferred-stocks', getKey: () => 'all', ...swrCache(HOUR, TTL_STATIC) }
 )
 
 // 只要最後兩個有成交的交易日（摘要卡的股價與漲跌）；拿 5 天是為了跳過收盤價 0 的無成交日（isRealClose）
@@ -93,7 +93,7 @@ export const cachedLatestClose = defineCachedFunction(
       changePercent: previous && change !== null ? Number(((change / previous.close) * 100).toFixed(2)) : null
     }
   },
-  { name: 'latest-close', getKey: symbol => symbol, maxAge: HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'latest-close', getKey: symbol => symbol, ...swrCache(HOUR, TTL_STATIC) }
 )
 
 // sitemap 用的 ETF 代號清單：POST /etf-screener 一頁最多 200 筆（2026-10-15 共 339 檔，兩頁）
@@ -111,5 +111,5 @@ export const cachedEtfSymbols = defineCachedFunction(
       if (page >= response.totalPages) return symbols
     }
   },
-  { name: 'etf-symbols', getKey: () => 'all', maxAge: TTL_STATIC, swr: true }
+  { name: 'etf-symbols', getKey: () => 'all', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )

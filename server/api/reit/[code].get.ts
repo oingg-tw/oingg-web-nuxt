@@ -24,13 +24,13 @@ export default defineEventHandler(async (event): Promise<ReitPageResponse> => {
 // 收盤價、淨值、分配一天變一次（業務中台也回 max-age=3600）
 const cachedReit = defineCachedFunction(
   (symbol: string) => businessFetch<ReitDetail>(`/reits/${symbol}`),
-  { name: 'reit-detail', getKey: (symbol: string) => symbol, maxAge: HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'reit-detail', getKey: (symbol: string) => symbol, ...swrCache(HOUR, TTL_STATIC) }
 )
 const cachedReitNavMonths = defineCachedFunction(
   async (symbol: string) => reitNavMonths((await businessFetch<{ entries: ReitDailyNav[] }>(`/reits/${symbol}/daily-nav`)).entries ?? []),
-  { name: 'reit-nav-months', getKey: (symbol: string) => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'reit-nav-months', getKey: (symbol: string) => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 const cachedReitDistributions = defineCachedFunction(
   async (symbol: string) => (await businessFetch<{ entries: ReitDistribution[] }>(`/reits/${symbol}/distributions`)).entries ?? [],
-  { name: 'reit-distributions', getKey: (symbol: string) => symbol, maxAge: 6 * HOUR, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'reit-distributions', getKey: (symbol: string) => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )

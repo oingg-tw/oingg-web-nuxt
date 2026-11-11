@@ -6,7 +6,7 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
 import type { MetricProvenanceResponse } from '#shared/types/metric-provenance'
-import type { RiverLatest, RiverLatestByTimeframe } from '#shared/types/stock-metric-page'
+import type { RiverCellsByTimeframe, RiverLatest, RiverLatestByTimeframe, RiverMissing } from '#shared/types/stock-metric-page'
 import type { RiverKind, RiverTimeframe } from '#shared/utils/metric-pages'
 
 // Per-symbol 業務中台 data behind the /stock/:code pages, each wrapped in Nitro's
@@ -68,9 +68,7 @@ export const cachedMetricsHistory = defineCachedFunction(
       const name = joined.length <= 100 ? joined : createHash('sha1').update(joined).digest('hex').slice(0, 16)
       return `${symbol}:${timeframe}:${limit}:${name}`
     },
-    maxAge: TTL_FUNDAMENTALS,
-    staleMaxAge: TTL_STATIC,
-    swr: true
+    ...swrCache(TTL_FUNDAMENTALS, TTL_STATIC)
   }
 )
 
@@ -78,33 +76,36 @@ export const cachedMetricsHistory = defineCachedFunction(
 // current 是最新交易日的「股價 ÷ 每股基數」，跟回溯幾年無關。股價每天變，快取 15 分鐘（同 /api/cached 的 quote）；頁面載入後圖自己的
 // 那份到了會蓋過這一份（StockMetricDetailPage 的 riverLive），所以盤後這 15 分鐘的落差只在伺服器畫的那一瞬間
 export const cachedRiverLatest = defineCachedFunction(
-  async (symbol: string, kind: RiverKind, timeframe: RiverTimeframe): Promise<RiverLatest | null> => {
-    const response = await businessFetch<{ baseLabel: string, current: { tradeDate: string, price: number | null, base: number | null, ratio: number | null } | null }>(
+  async (symbol: string, kind: RiverKind, timeframe: RiverTimeframe): Promise<RiverLatest | RiverMissing> => {
+    const response = await businessFetch<{ baseLabel: string, nullReason?: string | null, current: { tradeDate: string, price: number | null, base: number | null, ratio: number | null, nullReason?: string | null } | null }>(
       `/stocks/${symbol}/valuation-river`,
       { query: { ratio: kind, lookbackYears: 1, timeframe } }
     )
     const current = response.current
-    // 底數 ≤ 0（近四季虧損）那天沒有比值：沒有這一點，答句退回原本的寫法
-    if (!current || current.ratio === null || current.price === null || current.base === null) return null
+    // 底數 ≤ 0（近四季虧損）那天沒有比值：沒有這一點，答句退回原本的寫法；原因（數據中台 59cb36c）給指標速覽的表格寫「無法計算」。current 整個是 null 時看頂層
+    if (!current || current.ratio === null || current.price === null || current.base === null) return { nullReason: current?.nullReason ?? response.nullReason ?? null }
     return { tradeDate: current.tradeDate, price: current.price, base: current.base, ratio: current.ratio, baseLabel: response.baseLabel }
   },
-  { name: 'stock-river-latest', getKey: (symbol, kind, timeframe) => `${symbol}:${kind}:${timeframe}`, maxAge: 15 * 60, staleMaxAge: HOUR, swr: true }
+  // -v2：2026-11-12 沒有比值時從 null 改成帶原因的 { nullReason }
+  { name: 'stock-river-latest-v2', getKey: (symbol, kind, timeframe) => `${symbol}:${kind}:${timeframe}`, ...swrCache(15 * 60, HOUR) }
 )
-// 一頁要的每一種期別（淨值比兩種），讀不到的那種不放
-export async function riverLatestOf(symbol: string, kind: RiverKind | undefined): Promise<RiverLatestByTimeframe | null> {
+// 一頁要的每一種期別（淨值比兩種）。withReasons：沒有比值的期別也放，帶原因（指標速覽的表格）；預設只放有比值的（指標頁、徽章頁的答句）
+export async function riverLatestOf(symbol: string, kind: RiverKind | undefined): Promise<RiverLatestByTimeframe | null>
+export async function riverLatestOf(symbol: string, kind: RiverKind | undefined, withReasons: true): Promise<RiverCellsByTimeframe | null>
+export async function riverLatestOf(symbol: string, kind: RiverKind | undefined, withReasons = false): Promise<RiverCellsByTimeframe | null> {
   if (!kind) return null
   const pairs = await Promise.all(RIVER_TIMEFRAMES[kind].map(async timeframe => [timeframe, await settle(cachedRiverLatest(symbol, kind, timeframe))] as const))
-  return Object.fromEntries(pairs.filter(([, latest]) => latest))
+  return Object.fromEntries(pairs.filter(([, latest]) => latest && (withReasons || 'ratio' in latest)))
 }
 
 export const cachedBadges = defineCachedFunction(
   (symbol: string) => businessFetch<StockBadges>(`/stocks/${symbol}/badges`),
-  { name: 'stock-badges', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'stock-badges', getKey: symbol => symbol, ...swrCache(TTL_FUNDAMENTALS, TTL_STATIC) }
 )
 
 export const cachedDividendHistory = defineCachedFunction(
   (symbol: string) => businessFetch<DividendHistoryResponse>(`/stocks/${symbol}/dividend-history`),
-  { name: 'stock-dividend-history', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'stock-dividend-history', getKey: symbol => symbol, ...swrCache(TTL_STATEMENTS, TTL_STATIC) }
 )
 
 // GET /stocks/:symbol/daily-price-history — raw daily closes, ascending.
@@ -132,7 +133,7 @@ export const cachedDailyCloses = defineCachedFunction(
     const response = await businessFetch<{ entries: DailyClose[] }>(`/stocks/${symbol}/daily-price-history`, { query: { limit: DAILY_PRICE_ROWS } })
     return [...(response.entries ?? [])].filter(isRealClose).sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
   },
-  { name: 'stock-daily-closes', getKey: symbol => symbol, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'stock-daily-closes', getKey: symbol => symbol, ...swrCache(TTL_FUNDAMENTALS, TTL_STATIC) }
 )
 
 // 填息 per cash-dividend event — see DividendFillEvent for what is compared and why.
@@ -214,7 +215,7 @@ export function computeDividendFills(history: DividendHistoryResponse | null, da
 // provenance?metricCode=roe returns real statement-field entries.
 export const cachedMetricProvenance = defineCachedFunction(
   (symbol: string, metricCode: string) => businessFetch<MetricProvenanceResponse>(`/stocks/${symbol}/metric-provenance`, { query: { metricCode } }),
-  { name: 'stock-metric-provenance', getKey: (symbol, metricCode) => `${symbol}:${metricCode}`, maxAge: TTL_FUNDAMENTALS, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'stock-metric-provenance', getKey: (symbol, metricCode) => `${symbol}:${metricCode}`, ...swrCache(TTL_FUNDAMENTALS, TTL_STATIC) }
 )
 
 // cachedPeerGroup / cachedPeerValues (GET /stocks/:symbol/peer-group, POST /screener/values for
@@ -231,9 +232,7 @@ export const cachedFinancialStatement = defineCachedFunction(
   {
     name: 'stock-financial-statement',
     getKey: (symbol, statementType, fiscalYear, fiscalQuarter) => `${symbol}:${statementType}:${fiscalYear ?? 'latest'}:${fiscalQuarter ?? 'latest'}`,
-    maxAge: TTL_STATEMENTS,
-    staleMaxAge: TTL_STATIC,
-    swr: true
+    ...swrCache(TTL_STATEMENTS, TTL_STATIC)
   }
 )
 
@@ -257,7 +256,7 @@ export const cachedBookValueBreakdown = defineCachedFunction(
       entries: response.entries.map(entry => ({ ...entry, netIncome: (entry as unknown as Record<string, number>).profitLossAttributableToOrdinaryEquityHoldersOfParentEntityPerShare! }))
     }
   },
-  { name: 'stock-book-value-breakdown', getKey: symbol => symbol, maxAge: TTL_STATEMENTS, staleMaxAge: TTL_STATIC, swr: true }
+  { name: 'stock-book-value-breakdown', getKey: symbol => symbol, ...swrCache(TTL_STATEMENTS, TTL_STATIC) }
 )
 
 // ---- Page plans for /api/stock/:code/series ------------------------------------------------

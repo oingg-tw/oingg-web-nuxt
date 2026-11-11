@@ -97,7 +97,7 @@ const getLogoManifest = defineCachedFunction(
       return null
     }
   },
-  { name: 'company-logo-manifest', getKey: () => 'all', maxAge: TTL_LOGO_MANIFEST, staleMaxAge: TTL_LOGO_STALE, swr: true }
+  { name: 'company-logo-manifest', getKey: () => 'all', ...swrCache(TTL_LOGO_MANIFEST, TTL_LOGO_STALE) }
 )
 
 // Below this, the artwork renders blurry in the card's own 40px-tall box. Expressed as the RENDERED

@@ -39,12 +39,13 @@ const emit = defineEmits<{ latest: [latest: RiverLatest | null | undefined] }>()
 
 // baseLabels：各期別的基準叫什麼（有哪些期別在 RIVER_TIMEFRAMES）。只有一種的不出期別切換，同其他圖卡。提示框優先用端點回的
 // baseLabel，這裡是資料到之前的備用（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）
+// negativeHint：基準是零或負的時候舉的例子（沒有河道的說明，見 noBandsText）
 const KINDS = {
-  pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabels: { TTM: '近四季 EPS' } },
+  pe: { ratioCode: 'peRatio', ratioBasis: 'TTM', baseCode: 'eps', ratioLabel: '本益比', baseLabels: { TTM: '近四季 EPS' }, negativeHint: '（例如近四季虧損）' },
   // ratioLabel 本淨比→淨值比 2026-09-16（「全站 本淨比 改為淨值比」）.
   // 淨值比 2026-10-23 預設改成近四季平均（analysis-ts 65c12aea，使用者：「3130 的四季淨值明顯有季節性 所以想用四季加總平均的方式平滑化
   // 來畫河流圖」），同日加回單季可選（使用者：「改成右上角 跟別的卡片一樣可以選 單季 近四季 這樣更清楚」；端點 timeframe=Q|TTM）
-  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabels: { TTM: '近四季平均每股淨值', Q: '最近一季每股淨值' } },
+  pb: { ratioCode: 'pbRatio', ratioBasis: 'Q', baseCode: 'bvps', ratioLabel: '淨值比', baseLabels: { TTM: '近四季平均每股淨值', Q: '最近一季每股淨值' }, negativeHint: '（例如淨值為負）' },
   // 股價營收比河流圖 2026-09-21（「PSR 是不是也用河流圖比較適合?」）. The same shape as the other two
   // once the identity is checked rather than assumed: psr's own formula is 市值 ÷ 營收, which is
   // 股價 ÷ 每股營收, so 每股營收（revenuePerShare, Q+TTM in the catalog）is a real per-share base to
@@ -52,7 +53,7 @@ const KINDS = {
   // 每股營收 171.23 = 2395.5 against a filed 股價 of 2395, and the same within rounding on 1101
   // and 2454. Without a per-share base there is no river to draw, which is why this component
   // takes a `kind` rather than any old metricCode.
-  ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabels: { TTM: '近四季每股營收' } }
+  ps: { ratioCode: 'psr', ratioBasis: 'TTM', baseCode: 'revenuePerShare', ratioLabel: '股價營收比', baseLabels: { TTM: '近四季每股營收' }, negativeHint: '' }
 } as const
 
 const spec = computed(() => KINDS[props.kind])
@@ -76,7 +77,9 @@ const activeWindow = ref<LookbackWindow>('近5年')
 interface ValuationRiverResponse {
   lookback: { requestedYears: number; from: string; to: string }
   bandMultiples: number[] | null
-  current: { tradeDate: string; price: number | null; base: number | null; ratio: number | null } | null
+  // bandMultiples 是 null 的原因（數據中台 59cb36c，2026-11-12）：missing_input、zero_or_negative_denominator、insufficient_history
+  nullReason?: string | null
+  current: { tradeDate: string; price: number | null; base: number | null; ratio: number | null; nullReason?: string | null } | null
   prices: { tradeDate: string; close: number }[]
   bases: { effectiveFrom: string; base: number | null }[]
   // 河道基準的名稱（例如「近四季平均每股淨值」），analysis-ts 1cf7b237 起有
@@ -88,7 +91,7 @@ interface ValuationRiverResponse {
 const symbolRef = computed(() => props.symbol)
 const ratioBasis = computed<MetricsHistoryTimeframe>(() => spec.value.ratioBasis)
 const ratioCodes = computed<string[]>(() => [spec.value.ratioCode])
-const { data: latestRatio, total: mainTotal } = useMetricsHistory(symbolRef, ratioCodes, ratioBasis, ref(1))
+const { data: latestRatio, total: mainTotal, pending: ratioPending } = useMetricsHistory(symbolRef, ratioCodes, ratioBasis, ref(1))
 // 這個比率對這家公司不適用（金融股的 psr：損益表沒有一般意義的營業收入，analysis-ts d8b71bdd 2026-10-08 改標
 // not_applicable_industry）。河流圖端點的 bases 只回 null、不附原因，所以用同一檔最新一期比率的 nullReason 判斷。
 const notApplicable = computed(() => {
@@ -198,6 +201,29 @@ const levels = computed<number[] | null>(() => {
   const multiples = river.value?.bandMultiples
   return multiples && multiples.length === BAND_COUNT + 1 ? multiples : null
 })
+
+// 沒有河道時取代圖的那一句（2026-11-12，使用者：「圖表沒資料時顯示原因，不要整個不顯示」）：原因由數據中台給（valuation-river 的
+// nullReason），網站只照代碼寫；沒給原因的照原本的「尚無資料」。基準的名稱用端點給的 baseLabel，基準改了說明跟著改
+const noBandsText = computed(() => {
+  const tail = `，所以沒有${spec.value.ratioLabel}河流圖。`
+  switch (river.value?.nullReason) {
+    case 'missing_input': return `${baseLabel.value}無法計算（缺少計算所需資料）${tail}`
+    case 'zero_or_negative_denominator': return `${baseLabel.value}是零或負的${spec.value.negativeHint}${tail}`
+    case 'insufficient_history': return `這段期間沒有收盤價（例如停止交易）${tail}`
+    default: return `${baseLabel.value}尚無資料${tail}`
+  }
+})
+
+// 空圖回報給管理站（2026-11-12，shared/utils/chart-empty.ts）：照模板分支的順序判斷畫的是哪一種空圖；比率還在讀時還不知道是不是不適用，不判斷
+const emptyReason = computed(() => {
+  if (ratioPending.value) return null
+  if (notApplicable.value) return 'not_applicable_industry'
+  if (shortfall.value) return 'shortfall'
+  if (river.value && !levels.value) return river.value.nullReason ?? 'no_bands'
+  if (riverStatus.value === 'success' && !hasAnyData.value) return 'no_prices'
+  return null
+})
+watchChartEmpty(() => (emptyReason.value ? { symbol: props.symbol, chart: 'valuation-river', metric: props.kind, timeframe: riverTimeframe.value, lookbackYears: fetchYears.value, reason: emptyReason.value } : null))
 
 // A non-positive base (a loss-making quarter's EPS) becomes null rather than a plotted point: a
 // negative band boundary is meaningless for a valuation band and can't sit on a log axis anyway.
@@ -350,6 +376,8 @@ const chartOption = computed(() => ({
          a hydration mismatch on every river page, found 2026-10-15.) -->
     <div v-if="notApplicable" class="valuation-river__empty"><SharedEmptyState :description="`${spec.ratioLabel}${NULL_REASON_SHORT_LABELS.not_applicable_industry}，所以沒有河流圖。`" /></div>
     <div v-else-if="shortfall" class="valuation-river__empty"><SharedEmptyState :description="shortfall" /></div>
+    <div v-else-if="river && !levels && ratioPending" class="valuation-river__chart app-skeleton" aria-hidden="true" />
+    <div v-else-if="river && !levels" class="valuation-river__empty"><SharedEmptyState :description="noBandsText" /></div>
     <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
     <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" :class="{ 'app-skeleton': riverStatus !== 'error' }" aria-hidden="true" />
     <div v-else class="valuation-river__empty"><SharedEmptyState :description="`目前沒有這檔股票的${spec.ratioLabel}歷史資料。`" /></div>

@@ -10,7 +10,7 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
-import type { RiverLatest, RiverLatestByTimeframe } from '#shared/types/stock-metric-page'
+import type { RiverCellsByTimeframe, RiverLatest, RiverMissing } from '#shared/types/stock-metric-page'
 import type { RiverKind } from '#shared/utils/metric-pages'
 import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
 import type { QuickViewChart } from '#shared/utils/metric-pages'
@@ -133,7 +133,7 @@ const riverKindOf = (slug: string): RiverKind | null => {
   return spec?.kind === 'river' ? spec.river : null
 }
 const riverKinds = computed(() => [...new Set(rows.value.flatMap(row => riverKindOf(row.slug) ?? []))])
-type RiverLatestByKind = Partial<Record<RiverKind, RiverLatestByTimeframe>>
+type RiverLatestByKind = Partial<Record<RiverKind, RiverCellsByTimeframe>>
 const { data: riverLatestByKind, status: riverStatus } = useAsyncData<RiverLatestByKind>(
   () => `quick-view-river-${code.value}-${riverKinds.value.join(',')}`,
   async () => (riverKinds.value.length
@@ -141,8 +141,8 @@ const { data: riverLatestByKind, status: riverStatus } = useAsyncData<RiverLates
     : {}),
   { watch: [riverKinds], default: () => ({}) }
 )
-// undefined＝還在讀，null＝沒有這一點（底數 ≤ 0、讀不到）
-function riverLatestOfRow(slug: string): RiverLatest | null | undefined {
+// undefined＝還在讀，null＝讀不到，RiverMissing＝那天沒有比值（帶數據中台的原因）
+function riverLatestOfRow(slug: string): RiverLatest | RiverMissing | null | undefined {
   const kind = riverKindOf(slug)
   if (!kind || (riverStatus.value !== 'success' && riverStatus.value !== 'error')) return undefined
   return riverLatestByKind.value[kind]?.[RIVER_TIMEFRAMES[kind][0]!] ?? null
@@ -150,7 +150,17 @@ function riverLatestOfRow(slug: string): RiverLatest | null | undefined {
 function riverPeriodText(slug: string): string {
   const kind = riverKindOf(slug)!
   const latest = riverLatestOfRow(slug)
-  return `${TIMEFRAME_LABELS[RIVER_TIMEFRAMES[kind][0]!]}${latest ? `（${latest.tradeDate} 收盤）` : ''}`
+  return `${TIMEFRAME_LABELS[RIVER_TIMEFRAMES[kind][0]!]}${latest && 'tradeDate' in latest ? `（${latest.tradeDate} 收盤）` : ''}`
+}
+// 沒有比值那格滑過去的說明，同其他表格（nullReasonTitle）
+function riverTitle(slug: string): string | undefined {
+  const latest = riverLatestOfRow(slug)
+  return latest && 'nullReason' in latest ? nullReasonTitle({ value: null, nullReason: latest.nullReason }) : undefined
+}
+// 卡片標題跟圖自己的期別走：圖說沒有比值、而且表格那格（預設期別）也沒有，才寫那格的原因，否則「－」
+function riverHeaderText(latest: RiverLatest | null | undefined, slug: string, field: string | null): string {
+  const row = riverLatestOfRow(slug)
+  return riverValueText(latest === undefined || (latest === null && row && 'nullReason' in row) ? row : latest, field)
 }
 
 // 每支指標各自的圖（2026-10-07「quick-view 加上圖表」→「圖表就是該指標各自的圖表」）：跟它自己那一頁畫的是同一張。哪一頁畫哪張
@@ -266,9 +276,10 @@ function valueText(field: string | null, slug?: string): string {
   return `${(slug && VALUE_PREFIX[slug]) ?? ''}${formatScreenerValue(cell.value, located?.field.unit, field, located?.metric.options)}`
 }
 // 河流圖卡片的數字：圖的最後一點，格式同 valueText（同一個單位、同一支格式函式）
-function riverValueText(latest: RiverLatest | null | undefined, field: string | null): string {
+function riverValueText(latest: RiverLatest | RiverMissing | null | undefined, field: string | null): string {
   if (latest === undefined) return '…'
   if (latest === null) return '－'
+  if ('nullReason' in latest) return nullReasonShortText(latest.nullReason)
   const located = field ? locateFieldInSchema(schema.value?.categories ?? [], field) : null
   return formatScreenerValue(latest.ratio, located?.field.unit, field ?? '', located?.metric.options)
 }
@@ -305,7 +316,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         </StockDividendYieldHistoryChart>
         <!-- 標題的數字是圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」），跟著圖的期別切換；圖還在讀是「…」 -->
         <StockValuationRiverChart v-else-if="item.spec.kind === 'river'" :symbol="code" :kind="item.spec.river">
-          <template #header="{ latest }"><StockQuickViewChartHead :to="item.to" :label="item.label" :value="riverValueText(latest === undefined ? riverLatestOfRow(item.slug) : latest, item.field)" @remove="removeRow(item.slug, item.label)" /></template>
+          <template #header="{ latest }"><StockQuickViewChartHead :to="item.to" :label="item.label" :value="riverHeaderText(latest, item.slug, item.field)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockValuationRiverChart>
         <StockMonthlyRevenueChart v-else-if="item.spec.kind === 'monthly-revenue' && monthlyRevenue?.entries?.length" measure="amount" :entries="monthlyRevenue.entries" :monthly-prices="monthlyRevenue.monthlyPrices" :price-break-months="monthlyRevenue.priceBreakMonths">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
@@ -445,7 +456,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <tbody>
           <tr v-for="(row, index) in rows" :key="row.slug">
             <th scope="row"><NuxtLink :to="row.to" class="seo-table__link">{{ row.label }}</NuxtLink></th>
-            <td class="seo-table__num">{{ riverKindOf(row.slug) ? riverValueText(riverLatestOfRow(row.slug), row.field) : valueText(row.field, row.slug) || '－' }}</td>
+            <td class="seo-table__num" :title="riverKindOf(row.slug) ? riverTitle(row.slug) : undefined">{{ riverKindOf(row.slug) ? riverValueText(riverLatestOfRow(row.slug), row.field) : valueText(row.field, row.slug) || '－' }}</td>
             <td data-label="期別">{{ row.slug === 'profile' ? profileDateText : riverKindOf(row.slug) ? riverPeriodText(row.slug) : periodText(row.field) }}</td>
             <td class="stock-quick-view-page__order">
               <div class="stock-quick-view-page__order-buttons">

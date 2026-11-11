@@ -45,3 +45,9 @@ export interface RiverLatest {
   baseLabel: string
 }
 export type RiverLatestByTimeframe = Partial<Record<'TTM' | 'Q', RiverLatest>>
+// 那天沒有比值：數據中台給的原因（valuation-river 的 current.nullReason，current 是 null 時取頂層），沒給是 null
+export interface RiverMissing {
+  nullReason: string | null
+}
+// 指標速覽的表格：沒有比值的期別也有一格，寫「無法計算」
+export type RiverCellsByTimeframe = Partial<Record<'TTM' | 'Q', RiverLatest | RiverMissing>>
