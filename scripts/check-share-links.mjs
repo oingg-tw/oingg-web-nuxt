@@ -289,10 +289,11 @@ for (const [width, withNote] of [[1440, false], [375, true]]) {
   check((await page.locator('h1').innerText()).startsWith('存股名單'), `${width}：h1 是清單名`)
   check(await page.title() === '存股名單・分享的觀察清單｜安盈選股', `${width}：分頁標題`)
   check(await page.locator('meta[name="robots"]').getAttribute('content') === 'noindex, nofollow', `${width}：noindex`)
-  const visibleRows = await page.locator(width >= 1280 ? '.view-table tbody tr' : '.watchlist-compact tbody tr').count()
+  // 篩選的結果表（2026-11-11）：表格與卡片都在 DOM 裡、CSS 切換，只數看得到的那一份
+  const visibleRows = await page.locator('.el-table__body tr.el-table__row:visible, .smt-card:visible').count()
   check(visibleRows === 6, `${width}：6 檔（實得 ${visibleRows}）`)
-  check(await page.getByText('等法說會再看').count() === (withNote ? (width >= 1280 ? 1 : 2) : 0), `${width}：${withNote ? '分享了備註才顯示' : '沒分享備註就沒有'}`)
-  check(await page.locator('.watchlist-row-actions').count() === 0, `${width}：沒有操作欄`)
+  check(await page.locator('.smt-note:visible, .smt-card__note:visible', { hasText: '等法說會再看' }).count() === (withNote ? 1 : 0), `${width}：${withNote ? '分享了備註才顯示' : '沒分享備註就沒有'}`)
+  check(await page.locator('.smt-actions, .smt-card__actions').count() === 0, `${width}：沒有操作欄`)
   // 頁首（使用者：「share 頁面請再設計，讓 UIUX 邏輯是通暢的」）：標題下一行是誰分享、幾檔、哪天收盤；整份存起來在頁首右邊，手機上在標題下面、整行寬
   const meta = (await page.locator('.share-page__meta').innerText()).trim()
   check(meta === '安盈選股使用者分享・共 6 檔・10/16 收盤', `${width}：標題下一行是分享者、檔數、收盤日（${meta}）`)

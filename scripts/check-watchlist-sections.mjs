@@ -4,8 +4,10 @@
 //   - 顯示欄位：選一組＝那一類的 isDefault，選基本欄位＝清掉；欄位設定：有組合就改那一組，基本欄位就新增一組並設成預設，額度滿了開額度彈窗
 //   - ETF 讀不到時只有 ETF 那一段空著，普通股照常顯示
 //   - 訪客沒有選單，欄位設定是登入；手機是對齊的四欄表、沒有橫向捲動；分享頁同樣分段、不送已經持有
-// 2026-11-07 改版（使用者看過方案頁選 A，再加 B 的「今天」）：每一類的工具收成一顆「欄位」選單（顯示欄位、欄位設定、到篩選管理），
-// 手機的最右欄用晶片換、點表頭排序，備註與移除收進「編輯」（「今天」那一塊 2026-11-08 拿掉：使用者「觀察清單移除summary」）
+// 2026-11-07 改版（使用者看過方案頁選 A，再加 B 的「今天」）：每一類的工具收成一顆「欄位」選單（顯示欄位、到篩選管理），
+// 備註與移除收進「編輯」（「今天」那一塊 2026-11-08 拿掉：使用者「觀察清單移除summary」）。
+// 2026-11-11 表格換成篩選的結果表（SharedMetricTable，使用者：「以篩選那邊的表格為主」，電腦版「拿掉，跟篩選一樣」、手機「改成篩選的
+// 卡片」）：欄位設定是表格自己的按鈕，窄的時候是卡片與排序列；河道位置有七格軌道（使用者的例子：淨值比河流圖原本是原始文字），格子連到指標頁
 // 清單、欄位組合、方案、分享是攔截的假資料（寫入記下來比對），報價、ETF、特別股讀真的本機業務中台。
 //
 // Run: 本機 dev（:3000）與業務中台開著，node --env-file=.env scripts/check-watchlist-sections.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；
@@ -115,14 +117,14 @@ const open = async (ctx, path, ready = '.watchlist-page__count') => {
   return page
 }
 const shot = (page, name) => (dir ? page.screenshot({ path: `${dir}/watchlist-${name}.png`, fullPage: true }) : null)
-const headersOf = section => section.locator('th[role="columnheader"]').allInnerTexts().then(list => list.map(text => text.trim()))
+const headersOf = section => section.locator('.smt-table-view .el-table__header-wrapper thead th').allInnerTexts().then(list => list.map(text => text.trim()))
 // 基金月報的欄名帶月份（規模 2026-09）
 const sameHeader = (text, header) => text === header || text.startsWith(`${header} `)
 const sectionOf = (page, label) => page.locator(`.watchlist-section[aria-label="${label}"]`)
 const cellOf = async (section, rowName, header) => {
   const headers = await headersOf(section)
-  const row = section.locator('tbody tr', { hasText: rowName })
-  return (await row.locator('th, td').nth(headers.findIndex(text => sameHeader(text, header))).innerText()).trim()
+  const row = section.locator('.smt-table-view .el-table__body tr.el-table__row', { hasText: rowName })
+  return (await row.locator('td').nth(headers.findIndex(text => sameHeader(text, header))).innerText()).trim()
 }
 const openMenu = async (section) => {
   await section.locator('.watchlist-columns__button').click()
@@ -132,7 +134,7 @@ const pick = async (page, section, name) => {
   await (await openMenu(section)).getByRole('button', { name, exact: true }).click()
   await page.waitForTimeout(1500)
 }
-const openSettings = async section => (await openMenu(section)).getByRole('button', { name: '欄位設定', exact: true }).click()
+const openSettings = section => section.locator('.smt-toolbar__settings').click()
 
 console.log('混合清單（1440）')
 {
@@ -159,11 +161,11 @@ console.log('混合清單（1440）')
   await shot(page, 'mixed-1440')
 
   // 備註與移除收進編輯
-  check(await page.locator('.view-table .watchlist-row-actions').count() === 0, '平常沒有備註、移除')
+  check(await page.locator('.smt-table-view .smt-actions').count() === 0, '平常沒有備註、移除')
   await page.getByRole('button', { name: '編輯', exact: true }).click()
-  check(await page.locator('.view-table .watchlist-row-actions').count() === 3, '按編輯才有備註、移除')
+  check(await page.locator('.smt-table-view .smt-actions').count() === 3 && (await headersOf(common)).at(-1) === '操作', '按編輯才有操作欄（備註、移除）')
   await page.getByRole('button', { name: '完成', exact: true }).click()
-  check(await page.locator('.view-table .watchlist-row-actions').count() === 0, '按完成收起來')
+  check(await page.locator('.smt-table-view .smt-actions').count() === 0, '按完成收起來')
   // 欄位選單：寫著現在用哪一組；Esc 關掉、焦點回到按鈕
   const menuButton = common.locator('.watchlist-columns__button')
   check((await menuButton.innerText()).includes('欄位：基本欄位'), `按鈕寫著現在用哪一組（${(await menuButton.innerText()).trim()}）`)
@@ -247,23 +249,37 @@ console.log('手機（375）')
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   check(overflow <= 0, `沒有橫向捲動（多 ${overflow}px）`)
   const etf = sectionOf(page, 'ETF')
-  const heads = async () => (await etf.locator('.watchlist-compact thead th').allInnerTexts()).map(text => text.trim())
-  const first = await heads()
-  check(first.length === 4 && first.slice(0, 3).join('、') === '名稱、收盤價、漲跌', `對齊的四欄（${first.join('、')}）`)
-  const chips = (await etf.locator('.watchlist-picks__chip').allInnerTexts()).map(text => text.trim())
-  check(chips.some(text => sameHeader(text, '規模')) && chips.at(-1) === '除息／發放', `最右欄換 ETF 的欄位，除息／發放排最後（${chips.join('、')}）`)
-  await etf.locator('.watchlist-picks__chip').last().click()
-  check((await heads()).at(-1) === '除息／發放' && await etf.locator('.watchlist-picks__chip').last().getAttribute('aria-pressed') === 'true', '按晶片換最右欄')
-  await etf.locator('.watchlist-compact thead th').nth(2).locator('button').click()
-  check(await etf.locator('.watchlist-compact thead th').nth(2).getAttribute('aria-sort') === 'descending', '點表頭排序（漲跌由大到小）')
+  // 同篩選結果的手機：一檔一張卡片，固定欄在前面，排序是卡片上面的排序列
+  check(await etf.locator('.smt-card:visible').count() === 1 && await etf.locator('.smt-table-view').isHidden(), '卡片，不是表格')
+  const labels = (await etf.locator('.smt-card:visible dt').allInnerTexts()).map(text => text.trim())
+  check(labels.slice(0, 3).join('、') === '收盤價、漲跌、除息／發放' && labels.some(text => sameHeader(text, '規模')), `卡片：固定欄在前、ETF 的欄位在後（${labels.join('、')}）`)
+  const sortOptions = await etf.locator('.smt-sort__select option').allInnerTexts()
+  check(['收盤價', '漲跌', '除息／發放'].every(label => sortOptions.includes(label)) && await etf.locator('.smt-columns-open').isVisible(), `排序列與「欄位 N 個」（${sortOptions.join('、')}）`)
   await page.getByRole('button', { name: '編輯', exact: true }).click()
-  const editing = await heads()
-  check(editing.join('、') === '名稱、收盤價、操作' && await etf.locator('.watchlist-compact .watchlist-row-actions').count() === 1, `編輯：漲跌讓位給備註、移除（${editing.join('、')}）`)
+  check(await etf.locator('.smt-card__actions:visible').count() === 1, '編輯：卡片底下有備註、移除')
   await shot(page, 'mixed-375-edit')
   await page.getByRole('button', { name: '完成', exact: true }).click()
   const violations = (await new AxeBuilder({ page }).include('.watchlist-page').analyze()).violations
   check(violations.length === 0, `axe ${violations.map(item => `${item.id}(${item.nodes.length})`).join('、') || '0'}`)
   await shot(page, 'mixed-375')
+  await ctx.close()
+}
+
+console.log('跟篩選一樣的格子（1440）')
+{
+  // 使用者的例子：淨值比河流圖在觀察清單原本是原始文字。普通股用一組「淨值比河流圖、ROE」，報價與數值讀本機業務中台
+  const state = newState(['2330'])
+  state.presets.common = [preset('c1', '河流圖', true, ['pbRatioRiverBand.5Y_1D', 'roe.TTM'])]
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
+  await mock(ctx, state)
+  const page = await open(ctx, '/watchlist')
+  const common = page.locator('.watchlist-section')
+  const headers = await headersOf(common)
+  const river = common.locator('.smt-table-view .el-table__body tr.el-table__row').locator('td').nth(headers.findIndex(text => text.startsWith('股價淨值比河流圖') || text.includes('河')))
+  check(await river.locator('.screener-result-table__zone-track').count() === 1, `河道位置有七格軌道（${(await river.innerText()).trim()}）`)
+  const roe = common.locator('.smt-table-view .el-table__body tr.el-table__row').locator('td').nth(headers.findIndex(text => text.startsWith('ROE')))
+  check(await roe.locator('a').getAttribute('href') === '/stock/2330/roe', `格子連到那家公司那支指標的頁（${await roe.locator('a').getAttribute('href')}）`)
+  await shot(page, 'river-1440')
   await ctx.close()
 }
 

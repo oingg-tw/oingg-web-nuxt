@@ -5,14 +5,22 @@ import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 import type { ColumnDraft } from './SharedColumnSettings.vue'
 import type { ColumnMenuAction } from './SharedColumnMenu.vue'
-// 篩選器結果表（普通股、特別股、ETF 三組共用）。2026-10-06 搬到 shared 讓觀察清單共用，觀察清單後來改用 SharedSheetGrid，
-// 當時為它加的 prop 與 slot 2026-10-23 拿掉。
+// 結果表：普通股、特別股、ETF 三組篩選，加上觀察清單與它的分享頁（2026-11-11，使用者：「以篩選那邊的表格為主…請把結果表格抽出為
+// 共用元件」，桌機「拿掉，跟篩選一樣」、手機「改成篩選的卡片」：觀察清單原本是 SharedSheetGrid 與對齊的四欄表）。
 export interface ScreenerResultTableColumn {
   field: string
   label: string
   // ---- 2026-10-15 三組篩選（普通股、特別股、ETF）共用這張表 ----
-  // 這一欄自己的格式；不給就照型錄的單位（formatScreenerValue）。ETF 的規模、特別股的發行價這類要自己決定
-  format?: (raw: string | number | null | undefined) => string
+  // 這一欄自己的格式；不給就照型錄的單位（formatScreenerValue）。ETF 的規模、特別股的發行價這類要自己決定；觀察清單的漲跌、除息要看整列
+  format?: (raw: string | number | null | undefined, row: ScreenerResultRow) => string
+  // 格子的字色（觀察清單的漲跌用漲跌色），同年增率的漲跌色（textClassOf）
+  cellClass?: (raw: string | number | null | undefined, row: ScreenerResultRow) => string
+  // 釘在最前面（觀察清單的收盤價、漲跌、除息／發放）：不能移動、移除、拖曳，其他欄也不能移到它們前面；欄位設定只列沒釘住的
+  pinned?: boolean
+  // 型錄外、字比數字長的欄（觀察清單的「+85.00 (+2.04%)」）自己給最小寬度；其他照 minWidthFor
+  minWidth?: number
+  // 骨架裡代替值的字（跟真的值一樣長，窄卡片折行才一樣）；不給是 00.00
+  sample?: string
   // 這一欄怎麼排：'server' 交給父層打後端、'client' 只排已載入的列、false 不能排。不給就照原本的規則（見 sortableFor）
   sortable?: 'server' | 'client' | false
   // 第一下由小到大（溢價率、費用率這類「越小越符合多數人要找的」）；不給就照 ASCENDING_FIRST_METRICS
@@ -63,6 +71,20 @@ const props = withDefaults(defineProps<{
   sticky?: boolean
   // 查詢中：遮罩只蓋結果（表格或卡片），不蓋工具列裡的控制項
   loading?: boolean
+  // ---- 2026-11-11 觀察清單共用 ----
+  // 名稱下面一行字（觀察清單的備註）
+  noteOf?: (symbol: string) => string | null | undefined
+  // false：沒有欄位設定與「欄位 N 個」，表頭選單只能排序、不能拖曳（分享頁、訪客）
+  editable?: boolean
+  // 欄位設定的「重設預設欄位」
+  columnDefaults?: ColumnDraft[]
+  // 資料還沒到（會員頁的骨架，全站規則「結構先畫、資料區塊同大小」）：rows 是呼叫端給的空列（列數照上次），不畫 el-table——它在伺服器
+  // 不畫列（欄位要 mount 才登記），自己畫一張骨架表與骨架卡片。同 HoldingsSymbolTable
+  skeleton?: boolean
+  // 骨架要跟資料到了一樣大：名稱欄寬與表頭高記在 cookie（useLayoutHint）的鍵
+  layoutKey?: string
+  // 這張表叫什麼（左右捲動區的名稱「…，可左右捲動」）：一頁有好幾張時要分得開（觀察清單一類一張，同名是 axe landmark-unique）
+  label?: string
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -75,8 +97,19 @@ const props = withDefaults(defineProps<{
   cellLink: () => null,
   total: undefined,
   sticky: false,
-  loading: false
+  loading: false,
+  noteOf: undefined,
+  editable: true,
+  columnDefaults: undefined,
+  skeleton: false,
+  layoutKey: undefined,
+  label: '股票清單'
 })
+const slots = defineSlots<{
+  toolbar?: () => unknown
+  // 有給才多一欄「操作」，卡片底下一列按鈕（觀察清單按「編輯」時的備註、移除）
+  actions?: (props: { row: ScreenerResultRow }) => unknown
+}>()
 
 // Per direct request 2026-09-11 ("排序第一下按下去時，原則上是從大到小排。例外：代號，還有股價是
 // 分子的指標 PER/PBR/PEG 等等") — first-click sort direction. 代號 needs no override at all: it's
@@ -109,8 +142,9 @@ function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
 // magnitude actually risks this (≥1,000,000) rather than every numeric column — a per-share
 // price or ratio keeps every digit the backend sent rather than being cut to 4 significant digits
 // (nothing that size ever overflows this column to begin with).
-function formatValue(column: ScreenerResultTableColumn, raw: string | number | null | undefined): string {
-  if (column.format) return column.format(raw)
+function formatValue(column: ScreenerResultTableColumn, row: ScreenerResultRow): string {
+  const raw = row.values[column.field]?.value
+  if (column.format) return column.format(raw, row)
   // 上面的理由（市值有效數字、千分位、其他數字不截位）的實作在 app/utils/screener-value.ts，觀察清單共用
   const located = locateFieldInSchema(props.categories, column.field)
   return formatScreenerValue(raw, located?.field.unit, column.field, located?.metric.options)
@@ -143,9 +177,10 @@ function riverZoneOf(column: ScreenerResultTableColumn, raw: string | number | n
 // 年增率、年減率的格子用漲跌色（2026-10-22，使用者：「篩選 表格 舉凡 年增率 年減率 數字 都用 漲跌色」）：指標名稱以年增率／年減率結尾
 // （可以再接「變化」）才算。「營收年增率波動」是標準差、永遠是正的，不是增減，所以不上色
 const YOY_NAME = /(年增率|年減率)(變化)?$/
-function directionClassOf(column: ScreenerResultTableColumn, raw: string | number | null | undefined): string {
+function textClassOf(column: ScreenerResultTableColumn, row: ScreenerResultRow): string {
+  const raw = row.values[column.field]?.value
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
-  return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(numericValue(raw)) : ''
+  return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(numericValue(raw)) : column.cellClass?.(raw, row) ?? ''
 }
 
 // 有值、而且這一欄有頁才連（空格連過去也是空的）。格子整塊是連結：數字照原本的顏色（年增率的漲跌色、河道位置），只有滑過或聚焦時畫底線
@@ -153,9 +188,9 @@ const NuxtLink = resolveComponent('NuxtLink')
 function cellHref(row: ScreenerResultRow, column: ScreenerResultTableColumn): string | null {
   return row.values[column.field]?.value == null ? null : props.cellLink(row.symbol, column.field)
 }
-// 點到連結（名稱、有頁的格子）由連結自己換頁；其他地方點整列進個股頁
+// 點到連結（名稱、有頁的格子）由連結自己換頁、按鈕（觀察清單的操作欄）做自己的事；其他地方點整列進個股頁
 function onRowClick(row: ScreenerResultRow, _column: unknown, event: MouseEvent) {
-  if (!(event.target as Element).closest('a')) emit('rowClick', row.symbol)
+  if (!(event.target as Element).closest('a, button')) emit('rowClick', row.symbol)
 }
 
 const emit = defineEmits<{
@@ -194,6 +229,9 @@ const emit = defineEmits<{
 // patch path. Fixed at the template below by keying each <el-table-column> off field+label
 // together, not field alone — see its own comment.
 const orderedColumns = ref<ScreenerResultTableColumn[]>([...props.columns])
+// 釘住的欄（觀察清單的固定欄）一直在最前面；拖曳、表頭選單的移動與移除、欄位設定都只動沒釘住的
+const pinnedColumns = computed(() => orderedColumns.value.filter(column => column.pinned))
+const movableColumns = computed(() => orderedColumns.value.filter(column => !column.pinned))
 
 watch(
   () => props.columns,
@@ -304,6 +342,7 @@ function sortableFor(field: string): boolean | 'custom' {
 const NUMBER_COLUMN_WIDTH = 104
 const RIVER_TRACK_WIDTH = 60
 function minWidthFor(column: ScreenerResultTableColumn): number {
+  if (column.minWidth) return column.minWidth
   if (column.wide) return 20 * 16
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
   const labels = (metric?.options ?? []).map(option => option.label)
@@ -318,7 +357,7 @@ function minWidthFor(column: ScreenerResultTableColumn): number {
 const tableKey = ref(0)
 
 // 欄位多的時候表格要左右捲：捲動區要能用鍵盤聚焦、有名稱，方向鍵才捲得動（axe scrollable-region-focusable）。整表重掛會換掉捲動區，要再補
-useFocusableTableScroll(tableRef, '股票清單，可左右捲動', () => tableKey.value)
+useFocusableTableScroll(tableRef, `${props.label}，可左右捲動`, () => tableKey.value)
 
 // 表頭拖曳換順序在 useColumnDrag（Pragmatic DnD、插入縫發亮、放手才換）；放手後整表重掛（tableKey）並把新順序交給父層
 const { headerClassFor } = useColumnDrag({
@@ -330,13 +369,13 @@ const { headerClassFor } = useColumnDrag({
     )
     return Array.from(headerWrapper?.querySelectorAll<HTMLElement>('thead tr th.screener-result-table__draggable-header') ?? [])
   },
-  columns: orderedColumns,
-  readonly: () => false,
+  columns: movableColumns,
+  readonly: () => !props.editable,
   headerClass: 'screener-result-table__draggable-header',
   onReorder: updated => {
-    orderedColumns.value = updated
+    orderedColumns.value = [...pinnedColumns.value, ...updated]
     tableKey.value++
-    emit('reorder', updated.map(column => column.field))
+    emit('reorder', orderedColumns.value.map(column => column.field))
   }
 })
 
@@ -353,7 +392,10 @@ const { headerClassFor } = useColumnDrag({
 // that recalculation immediately — calling it explicitly after data/columns settle (post
 // nextTick, so the DOM already reflects the new content) skips waiting on whatever internal
 // schedule it would otherwise run on.
-watch([orderedColumns, () => props.rows], () => nextTick(() => tableRef.value?.doLayout()))
+watch([orderedColumns, () => props.rows], () => nextTick(() => {
+  tableRef.value?.doLayout()
+  rememberLayout()
+}))
 
 // column.label already carries its period baked in as "名稱（期間）" (see formatFieldLabel
 // in useFilterSchema.ts, the one place that ever assembles this) — a global toggle rather
@@ -437,8 +479,38 @@ const nameWidth = computed(() => {
   return Math.ceil(widest) + 24
 })
 
-// 最後一列：知道總數就寫出來（三組篩選共用，2026-10-15；原本寫死「…的股票」，ETF 不是股票）
-const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${groupThousands(props.total)} 檔` : '已顯示全部符合條件的結果'))
+// 骨架照上次量到的名稱欄寬與表頭高畫（layoutKey 記在 cookie，伺服器讀得到）：資料到了名稱欄不變寬、表頭不多折一行，下面的東西不被推動。
+// 第一次來名稱照 6 個字寬、表頭照一行，可能動一下（同全站 useLayoutHint）。骨架表的其他欄是平分的（<col> 的 calc 混百分比 Chromium
+// 當成 auto，算不出 el-table 照 min-width 比例的分法，2026-11-11 量過），表頭因此釘在記下的高度、欄名不折行
+const nameHint = props.layoutKey ? useLayoutHint(`${props.layoutKey}-name`, 0) : null
+const headHint = props.layoutKey ? useLayoutHint(`${props.layoutKey}-head`, 0) : null
+const skeletonNameWidth = computed(() => nameHint?.value || 6 * 16 + 24)
+const skeletonHeadHeight = computed(() => (headHint?.value ? `${headHint.value}px` : undefined))
+// 骨架表的欄寬照 el-table 的分法估：每欄的最小寬度，加起來比容器寬就左右捲（跟 el-table 一樣寬），否則照比例放大（<col> 寫百分比；calc 混 px
+// Chromium 當成 auto）。只用伺服器也知道的數字、不看型錄：ETF 的型錄伺服器端還沒有，照型錄估的話欄寬在瀏覽器接手那一刻變（2026-11-11 量到 0.0021）
+const skeletonWidths = computed(() => [90, skeletonNameWidth.value, ...orderedColumns.value.map(column => column.minWidth ?? (column.wide ? 20 * 16 : NUMBER_COLUMN_WIDTH))])
+const skeletonTotal = computed(() => skeletonWidths.value.reduce((sum, width) => sum + width, 0))
+const skeletonShare = (index: number) => `${(skeletonWidths.value[index]! / skeletonTotal.value) * 100}%`
+function rememberLayout() {
+  if (nameHint && !props.skeleton && props.rows.length) nameHint.value = nameWidth.value
+}
+// 表頭的高：el-table 照欄寬排好、欄名折完行之後才定（doLayout 之後下一個畫面量到的還是一行的高，2026-11-11），跟著 ResizeObserver 記。
+// 卡片版面時表格藏著、高是 0，不記；整表重掛（tableKey）換了一個 el-table，重新看
+let headerObserver: ResizeObserver | null = null
+watch(() => (props.skeleton ? undefined : tableRef.value?.$el as HTMLElement | undefined), (root) => {
+  headerObserver?.disconnect()
+  headerObserver = null
+  const header = root?.querySelector<HTMLElement>('.el-table__header-wrapper')
+  if (!header || !headHint) return
+  headerObserver = new ResizeObserver(() => {
+    if (header.offsetHeight && props.rows.length) headHint.value = header.offsetHeight
+  })
+  headerObserver.observe(header)
+}, { flush: 'post' })
+onUnmounted(() => headerObserver?.disconnect())
+
+// 最後一列：寫出總數（三組篩選共用，2026-10-15；原本寫死「…的股票」，ETF 不是股票）。沒有總數（觀察清單一段就是全部）不畫這一列
+const endText = computed(() => (props.total !== undefined ? `已顯示全部 ${groupThousands(props.total)} 檔` : null))
 
 // ---- 欄位設定：拖曳表頭與表頭小 × 的替代（WCAG 2.1.1／2.5.7），彈窗在 SharedColumnSettings（觀察清單共用）----
 const columnSettingsOpen = ref(false)
@@ -451,7 +523,7 @@ function openColumnSettings(sheet: boolean) {
 }
 
 // 彈窗按「儲存」：整份交給父層（saveColumns），表格先照新順序排——這張表保留自己的拖曳順序、不跟父層換順序
-// （見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上
+// （見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上。整份是沒釘住的那些，釘住的照舊排在前面
 function saveColumns(columns: ColumnDraft[]) {
   emit('saveColumns', columns)
   applyLocalOrder(columns)
@@ -461,7 +533,7 @@ function saveFromSettings(columns: ColumnDraft[], close: () => void) {
   close()
 }
 function applyLocalOrder(columns: ColumnDraft[]) {
-  orderedColumns.value = columns.map(draft => orderedColumns.value.find(column => column.field === draft.field) ?? { field: draft.field, label: draft.label })
+  orderedColumns.value = [...pinnedColumns.value, ...columns.map(draft => orderedColumns.value.find(column => column.field === draft.field) ?? { field: draft.field, label: draft.label })]
   tableKey.value++
 }
 
@@ -495,9 +567,9 @@ const menuSort = computed(() => {
   return sortable ? (activeSort.value.field === menu.field ? activeSort.value.order : null) : undefined
 })
 const menuMoves = computed(() => {
-  if (!menuColumn.value) return undefined
-  const index = orderedColumns.value.indexOf(menuColumn.value)
-  return { left: index > 0, right: index < orderedColumns.value.length - 1 }
+  if (!menuColumn.value || menuColumn.value.pinned || !props.editable) return undefined
+  const index = movableColumns.value.indexOf(menuColumn.value)
+  return { left: index > 0, right: index < movableColumns.value.length - 1 }
 })
 // 整表重掛（tableKey）之後，el-table 要再畫一兩個畫面表頭才出來：等到那一欄的按鈕出現再放焦點，最多等十個畫面
 function focusHead(field: string, tries = 10) {
@@ -521,7 +593,8 @@ function onColumnMenu(action: ColumnMenuAction) {
     menuStatus.value = '取消排序'
     return
   }
-  const columns = orderedColumns.value
+  // 只在沒釘住的欄之間移動：釘住的永遠在最前面
+  const columns = movableColumns.value
   const index = columns.findIndex(column => column.field === field)
   if (index < 0) return
   if (action === 'remove') return removeFromMenu(columns[index]!)
@@ -530,10 +603,10 @@ function onColumnMenu(action: ColumnMenuAction) {
   const next = [...columns]
   const [moved] = next.splice(index, 1)
   next.splice(target, 0, moved!)
-  orderedColumns.value = next
+  orderedColumns.value = [...pinnedColumns.value, ...next]
   tableKey.value++
-  emit('reorder', next.map(column => column.field))
-  menuStatus.value = `「${menuLabel.value}」移到第 ${target + 1} 欄`
+  emit('reorder', orderedColumns.value.map(column => column.field))
+  menuStatus.value = `「${menuLabel.value}」移到第 ${pinnedColumns.value.length + target + 1} 欄`
   // 整表重掛換掉了表頭按鈕：焦點放回搬過去的那一欄
   focusHead(field)
 }
@@ -541,7 +614,7 @@ function onColumnMenu(action: ColumnMenuAction) {
 // 移除這一欄：馬上拿掉、10 秒內可以復原（全站「可以復原的動作不先確認」；選單不是對話框，復原提示按得到）。整份欄位交給父層，
 // 跟欄位設定彈窗同一條路（saveColumns）
 function removeFromMenu(column: ScreenerResultTableColumn) {
-  const previous = orderedColumns.value.map(({ field, label }) => ({ field, label }))
+  const previous = movableColumns.value.map(({ field, label }) => ({ field, label }))
   const next = previous.filter(item => item.field !== column.field)
   const label = displayLabel(column)
   saveColumns(next)
@@ -602,10 +675,10 @@ watch(() => props.loading, (loading, wasLoading) => {
         <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
         <slot name="toolbar" />
         <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
-        <el-button class="smt-toolbar__settings" @click="openColumnSettings(false)">欄位設定</el-button>
+        <el-button v-if="editable" class="smt-toolbar__settings" @click="openColumnSettings(false)">欄位設定</el-button>
       </div>
-      <el-button class="smt-columns-open" aria-haspopup="dialog" @click="openColumnSettings(true)">
-        <span>欄位 {{ orderedColumns.length }} 個</span><span class="smt-columns-open__chevron" aria-hidden="true" />
+      <el-button v-if="editable" class="smt-columns-open" aria-haspopup="dialog" @click="openColumnSettings(true)">
+        <span>欄位 {{ movableColumns.length }} 個</span><span class="smt-columns-open__chevron" aria-hidden="true" />
       </el-button>
       <div class="smt-toolbar__row smt-toolbar__sort">
         <!-- 標籤疊在選單框裡（不攔點擊），名稱照樣是「排序」 -->
@@ -624,10 +697,12 @@ watch(() => props.loading, (loading, wasLoading) => {
       </div>
     </div>
     <SharedColumnSettings
+      v-if="editable"
       v-model:open="columnSettingsOpen"
-      :columns="orderedColumns"
+      :columns="movableColumns"
       :label-of="displayLabel"
       :categories="categories"
+      :defaults="columnDefaults"
       :sheet="columnSettingsSheet"
       @save="saveFromSettings"
     />
@@ -636,7 +711,42 @@ watch(() => props.loading, (loading, wasLoading) => {
          渲染時用寬度選標記）。 -->
     <!-- click.capture：表頭點擊在 el-table 自己排序之前攔下來，改成打開欄位選單（onTableClickCapture） -->
     <div v-loading="loading" class="smt-table-view" @click.capture="onTableClickCapture">
+    <!-- 骨架表（skeleton）：伺服器與瀏覽器畫一樣的；欄名照畫，值是骨架。表頭高、名稱欄寬是上次量到的（見 rememberLayout）。
+         外框是呼叫端的卡片，這裡拿掉 SharedTable 自己那一層 -->
+    <SharedTable
+      v-if="skeleton"
+      :ssr="false"
+      :scrollable="false"
+      table-class="smt-skeleton"
+      class="smt-skeleton-card"
+      :style="{ '--smt-skeleton-width': `${skeletonTotal}px` }"
+      aria-hidden="true"
+    >
+      <colgroup>
+        <col :style="{ width: skeletonShare(0) }">
+        <col :style="{ width: skeletonShare(1) }">
+        <col v-for="(column, index) in orderedColumns" :key="column.field" :style="{ width: skeletonShare(index + 2) }">
+      </colgroup>
+      <thead>
+        <tr :class="{ 'smt-skeleton__pinned': skeletonHeadHeight }" :style="{ height: skeletonHeadHeight }">
+          <th><span class="smt-skeleton__head smt-skeleton__head--start"><span>代號</span><span class="smt-skeleton__caret" /></span></th>
+          <th><span class="smt-skeleton__head smt-skeleton__head--start"><span>名稱</span><span class="smt-skeleton__caret" /></span></th>
+          <th v-for="column in orderedColumns" :key="column.field"><span class="smt-skeleton__head"><span class="smt-skeleton__caret" /><span>{{ displayLabel(column) }}</span></span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="row in rows" :key="row.symbol">
+          <td><span class="app-skeleton app-skeleton--flow">2330</span></td>
+          <td>
+            <span class="smt-skeleton__name"><span class="app-skeleton app-skeleton--flow">台積電</span></span>
+            <p v-if="noteOf?.(row.symbol)" class="smt-note"><span class="app-skeleton app-skeleton--flow">{{ noteOf(row.symbol) }}</span></p>
+          </td>
+          <td v-for="column in orderedColumns" :key="column.field" class="smt-skeleton__num"><span class="app-skeleton app-skeleton--flow">{{ column.sample ?? '00.00' }}</span></td>
+        </tr>
+      </tbody>
+    </SharedTable>
     <el-table
+      v-else
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
@@ -674,6 +784,7 @@ watch(() => props.loading, (loading, wasLoading) => {
         </template>
         <template #default="{ row }">
           <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
+          <p v-if="noteOf?.(row.symbol)" class="smt-note">{{ noteOf(row.symbol) }}</p>
         </template>
       </el-table-column>
       <!-- Real bug fixed 2026-09-11 (reported live: "點選市值排序無反應") — this column never
@@ -696,7 +807,7 @@ watch(() => props.loading, (loading, wasLoading) => {
         :sortable="sortableFor(column.field)"
         :sort-method="sortMethodFor(column.field)"
         :sort-orders="sortOrdersFor(column.field)"
-        :label-class-name="headerClassFor(column, index)"
+        :label-class-name="column.pinned ? undefined : headerClassFor(column, index - pinnedColumns.length)"
       >
         <template #header>
           <!-- 點表頭打開欄位選單（2026-10-22，SharedColumnMenu）：排序、移動、移除都在選單裡；表頭上沒有直接刪除的 X
@@ -708,9 +819,9 @@ watch(() => props.loading, (loading, wasLoading) => {
         <template #default="{ row }">
           <component :is="cellHref(row, column) ? NuxtLink : 'div'" :to="cellHref(row, column) ?? undefined" class="screener-result-table__cell" :class="{ 'screener-result-table__cell--link': cellHref(row, column) }">
             <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
-              <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
+              <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row) }}
             </span>
-            <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
+            <span v-else :class="textClassOf(column, row)">{{ formatValue(column, row) }}</span>
             <!-- The actual per-row knowledgeDate this specific number describes (renamed from
                  asOfDate 2026-09-14) — different symbols can legitimately show different dates
                  for the same field (e.g. one hasn't filed this quarter's report yet), so this
@@ -721,10 +832,16 @@ watch(() => props.loading, (loading, wasLoading) => {
           </component>
         </template>
       </el-table-column>
+      <!-- 操作欄（觀察清單按「編輯」時的備註、移除）：固定在右邊，欄位多到要左右捲時按鈕也在畫面上 -->
+      <el-table-column v-if="slots.actions" label="操作" fixed="right" width="150" class-name="smt-actions-cell">
+        <template #default="{ row }">
+          <div class="smt-actions"><slot name="actions" :row="row as ScreenerResultRow" /></div>
+        </template>
+      </el-table-column>
       <!-- Renders INSIDE el-table's body, after the last data row — reads as the table's own
            last row. observeSentinel (script) watches it against the viewport. Only shown once
            there are any results at all (an empty table has nothing to paginate through). -->
-      <template v-if="rows.length > 0" #append>
+      <template v-if="rows.length > 0 && (hasMore || endText)" #append>
         <div v-if="hasMore" ref="sentinelRef" class="screener-result-table__load-more" role="status">
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
@@ -740,42 +857,60 @@ watch(() => props.loading, (loading, wasLoading) => {
       :label="menuLabel"
       :sort="menuSort"
       :moves="menuMoves"
-      :removable="!!menuColumn"
+      :removable="!!menuColumn && !menuColumn.pinned && editable"
       @action="onColumnMenu"
     />
     <p class="visually-hidden" role="status">{{ menuStatus }}</p>
     </div>
 
     <div v-loading="loading" class="smt-cards-view">
-      <p v-if="!rows.length" class="smt-cards__empty">目前沒有資料</p>
+      <!-- 骨架卡片：跟真的卡片同一套結構與欄名，值是骨架（跟真的值一樣長，見 column.sample），高度就一樣 -->
+      <ul v-if="skeleton" class="smt-cards" aria-hidden="true">
+        <li v-for="row in rows" :key="row.symbol" class="app-card smt-card">
+          <div class="smt-card__head">
+            <span class="app-skeleton app-skeleton--flow">台積電</span>
+            <span class="smt-card__code"><span class="app-skeleton app-skeleton--flow">2330</span></span>
+          </div>
+          <p v-if="noteOf?.(row.symbol)" class="smt-card__note"><span class="app-skeleton app-skeleton--flow">{{ noteOf(row.symbol) }}</span></p>
+          <dl v-if="orderedColumns.length" class="smt-card__values">
+            <div v-for="column in orderedColumns" :key="column.field" class="smt-card__value">
+              <dt>{{ displayLabel(column) }}</dt>
+              <dd><span class="app-skeleton app-skeleton--flow">{{ column.sample ?? '00.00' }}</span></dd>
+            </div>
+          </dl>
+        </li>
+      </ul>
+      <p v-else-if="!rows.length" class="smt-cards__empty">目前沒有資料</p>
       <ul v-else class="smt-cards" :aria-label="`共 ${rows.length} 檔已載入`">
         <li v-for="row in cardRows" :key="row.symbol" class="app-card smt-card">
           <div class="smt-card__head">
             <NuxtLink :to="rowLink(row.symbol)" class="screener-result-table__name-link">{{ row.name }}</NuxtLink>
             <span class="smt-card__code">{{ row.symbol }}</span>
           </div>
+          <p v-if="noteOf?.(row.symbol)" class="smt-card__note">{{ noteOf(row.symbol) }}</p>
           <dl v-if="orderedColumns.length" class="smt-card__values">
             <div v-for="column in orderedColumns" :key="column.field" class="smt-card__value">
               <dt>{{ displayLabel(column) }}</dt>
               <dd>
                 <component :is="cellHref(row, column) ? NuxtLink : 'span'" :to="cellHref(row, column) ?? undefined" class="smt-card__cell" :class="{ 'screener-result-table__cell--link': cellHref(row, column) }">
                 <span v-if="riverZoneOf(column, row.values[column.field]?.value)" class="screener-result-table__zone" :class="riverZoneOf(column, row.values[column.field]?.value)!.textClass">
-                  <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row.values[column.field]?.value) }}
+                  <span class="screener-result-table__zone-track" :class="`screener-result-table__zone-track--${riverZoneOf(column, row.values[column.field]?.value)!.zone}`" :style="{ '--zone-color': riverZoneOf(column, row.values[column.field]?.value)!.color }" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>{{ formatValue(column, row) }}
                 </span>
-                <span v-else :class="directionClassOf(column, row.values[column.field]?.value)">{{ formatValue(column, row.values[column.field]?.value) }}</span>
+                <span v-else :class="textClassOf(column, row)">{{ formatValue(column, row) }}</span>
                 <span v-if="showCellDates && row.values[column.field]?.knowledgeDate" class="screener-result-table__cell-date">{{ cellPeriodText(row.values[column.field]!) }}</span>
                 </component>
               </dd>
             </div>
           </dl>
+          <div v-if="slots.actions" class="smt-card__actions"><slot name="actions" :row="row" /></div>
         </li>
       </ul>
-      <template v-if="rows.length > 0">
+      <template v-if="!skeleton && rows.length > 0">
         <div v-if="hasMore" ref="cardSentinelRef" class="screener-result-table__load-more">
           <el-icon v-if="loadingMore" class="screener-result-table__load-more-spinner"><Loading /></el-icon>
           <span>{{ loadingMore ? '載入更多…' : '' }}</span>
         </div>
-        <p v-else class="screener-result-table__load-more screener-result-table__load-more--end">{{ endText }}</p>
+        <p v-else-if="endText" class="screener-result-table__load-more screener-result-table__load-more--end">{{ endText }}</p>
       </template>
     </div>
   </div>
@@ -1309,6 +1444,120 @@ watch(() => props.loading, (loading, wasLoading) => {
 .screener-result-table__cell-date {
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
+}
+
+/* ---- 觀察清單（2026-11-11）：名稱下面的備註、操作欄、骨架 ---- */
+/* 備註：表格一行、放不下用刪節號（名稱欄寬照名稱量，備註不撐寬）；卡片最多兩行 */
+.smt-note {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.smt-card__note {
+  display: -webkit-box;
+  margin: -4px 0 8px;
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 並排的按鈕 8px（全站規則）；Element 的 .el-button + .el-button 另有 12px 左邊距 */
+.smt-actions,
+.smt-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 文字按鈕也有 44px 的觸控範圍（同原本觀察清單的操作欄） */
+.smt-actions :deep(.el-button),
+.smt-card__actions :deep(.el-button) {
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+}
+
+.smt-card__actions {
+  margin-top: 8px;
+}
+
+/* 骨架表：外框是呼叫端的卡片，SharedTable 自己那一層拿掉。格子照 el-table 的高（上下 8px、23px 行高，名稱連結 24px）。欄寬照 el-table 的分法估
+   （skeletonWidths），容器比欄寬加起來窄時跟 el-table 一樣寬、一樣左右捲；容器比較寬時代號、名稱也跟著放大，跟 el-table 差一點，所以值不折行。
+   欄名記下表頭高之後釘住、不折行（headerObserver），第一次來照表頭按鈕的結構折行 */
+.smt-skeleton-card {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* 線不合併（同 el-table）：合併的線一半算在上一列、一半算在下一列，釘住的表頭高與列高各差半格，整段矮 1px（2026-11-11 量到） */
+.smt-skeleton-card :deep(.smt-skeleton) {
+  table-layout: fixed;
+  width: max(100%, var(--smt-skeleton-width));
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.smt-skeleton-card th,
+.smt-skeleton-card td {
+  padding-block: 8px;
+  line-height: 23px;
+}
+
+.smt-skeleton-card td {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.smt-skeleton-card th {
+  vertical-align: bottom;
+}
+
+.smt-skeleton__num {
+  text-align: right;
+}
+
+/* 同表頭按鈕（.screener-result-table__head）：排序圖示一格、欄名在旁邊折行，至少 32px 高 */
+.smt-skeleton__head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 4px;
+  text-align: right;
+}
+
+.smt-skeleton__head--start {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.smt-skeleton__head > span:not(.smt-skeleton__caret) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.smt-skeleton__pinned .smt-skeleton__head > span:not(.smt-skeleton__caret) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smt-skeleton__caret {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.smt-skeleton__name {
+  display: block;
+  min-height: 24px;
 }
 
 </style>

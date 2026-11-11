@@ -15,9 +15,9 @@ export const WATCHLIST_KINDS = ['common', 'etf', 'preferred'] as const
 export const WATCHLIST_KIND_LABELS: Record<WatchlistKind, string> = { common: '普通股', etf: 'ETF', preferred: '特別股' }
 
 export const WATCHLIST_FIXED_COLUMNS: ScreenerResultTableColumn[] = [
-  { field: 'stock.price', label: '收盤價' },
-  { field: WATCHLIST_CHANGE, label: '漲跌' },
-  { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放' }
+  { field: 'stock.price', label: '收盤價', pinned: true },
+  { field: WATCHLIST_CHANGE, label: '漲跌', pinned: true },
+  { field: WATCHLIST_EX_DIVIDEND, label: '除息／發放', pinned: true }
 ]
 const isFixed = (field: string) => WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)
 // 組合裡的收盤價跟固定欄重複，不畫第二次
@@ -60,8 +60,12 @@ export function useWatchlistColumnCatalog() {
 
   const categoriesOf = (kind: WatchlistKind) => withoutHeld(kind === 'common' ? withSectorCondition(schema.value.categories, []) : sources[kind].categories.value)
   const basicColumns = (kind: WatchlistKind) => (kind === 'common' ? COMMON_BASIC : sources[kind].defaultColumns.filter(field => belongsTo(kind, field)).map(field => columnOf(kind, field)))
+  // 名稱與格子連去哪裡，同那一類的篩選（2026-11-11 改用篩選的結果表）
+  const linksOf = (kind: WatchlistKind) => (kind === 'common'
+    ? { rowLink: (symbol: string) => `/stock/${symbol}`, cellLink: stockMetricPath }
+    : { rowLink: sources[kind].rowLink, cellLink: sources[kind].cellLink })
 
-  return { sources, columnOf, belongsTo, categoriesOf, basicColumns }
+  return { sources, columnOf, belongsTo, categoriesOf, basicColumns, linksOf }
 }
 
 type ColumnHint = { id: string, name: string, columns: { field: string, label: string }[] }

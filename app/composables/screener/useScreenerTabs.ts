@@ -683,10 +683,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     activeTab,
     sortMode: 'server' as const,
     rowLink: (symbol: string) => `/stock/${symbol}`,
-    cellLink: (symbol: string, field: string) => {
-      const slug = metricPageSlug(field.split('.')[0] ?? '')
-      return slug ? `/stock/${symbol}/${slug}` : null
-    },
+    cellLink: stockMetricPath,
     periodToggle: true,
     dataDate: null,
     presetItems,

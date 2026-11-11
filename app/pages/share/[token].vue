@@ -40,7 +40,9 @@ const holdings = computed(() => (share.value.kind === 'holdings' ? share.value :
 // ---- 觀察清單 ----
 // 分享時存的欄位也換成留下來的那一支（replaced-metrics.ts，例如殖利率 2026-10-24 改讀自算），同觀察清單。分段同 /watchlist：
 // 固定欄每一段都有，其餘的欄位看 id 是哪一類的（useWatchlistColumnCatalog），表頭照型錄
-const { sources, columnOf, belongsTo } = useWatchlistColumnCatalog()
+const { sources, columnOf, belongsTo, categoriesOf, linksOf } = useWatchlistColumnCatalog()
+// 表格是篩選的結果表（el-table 在伺服器不畫列）：接手前先畫骨架，列不會在瀏覽器裡才冒出來把下面推開
+const hasHydrated = useHasHydrated()
 const sharedColumns = computed(() => (watchlist.value?.columns ?? []).filter(column => column.key !== 'note').map(column => ({ field: replacedField(column.key), label: column.label })))
 const fixedColumns = computed(() => sharedColumns.value.filter(({ field }) => WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)))
 const columnsOfKind = (kind: WatchlistKind) => sharedColumns.value.flatMap(({ field }) => (belongsTo(kind, field) ? [columnOf(kind, field)] : []))
@@ -143,9 +145,12 @@ onMounted(() => {
         <WatchlistTable
           :rows="section.rows"
           :columns="section.columns"
+          :categories="categoriesOf(section.kind)"
+          :links="linksOf(section.kind)"
+          :layout-key="`watchlist-share-${section.kind}`"
           :label="sections.length > 1 ? `${section.label}的觀察清單` : '觀察清單'"
           :notes="notes"
-          :storage-key="`watchlist-share-${section.kind}`"
+          :skeleton="!hasHydrated"
         />
       </section>
     </div>

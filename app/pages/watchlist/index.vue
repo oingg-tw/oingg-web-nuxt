@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ArrowDown, Check } from '@element-plus/icons-vue'
-import type { ColumnDraft } from '~/components/shared/SharedColumnSettings.vue'
 import type { WatchlistKind, WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
@@ -31,7 +30,7 @@ watch(() => activeWatchlist.value?.id, (id) => {
 // ---- 欄位 ----
 // 依類別分段，每一段的欄位是那一類篩選的欄位組合（useWatchlistColumns，2026-11-06）：收盤價、漲跌、除息／發放固定在前面，後面是選的那一組；
 // 欄位設定、表頭的移動與移除都改那一組，篩選也跟著變。欄位設定所有清單共用一套（使用者的決定）。
-const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns } = useWatchlistColumns()
+const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
 await useFilterSchema()
 const currentUser = useCurrentUser()
 onMounted(() => {
@@ -46,32 +45,12 @@ const fieldsByKind = computed(() => ({
   preferred: columnsOf('preferred').map(column => column.field)
 }))
 
-// 欄位設定（SharedColumnSettings，篩選共用）：改的是草稿、按「儲存」才換。挑指標的那一頁是那一類的型錄，普通股多一個類股
-const settingsKind = ref<WatchlistKind>('common')
-const columnSettingsOpen = ref(false)
-function openColumnSettings(kind: WatchlistKind) {
-  if (!member.value) {
-    openLogin('免費註冊或登入後，就能設定觀察清單的欄位。')
-    return
-  }
-  settingsKind.value = kind
-  columnSettingsOpen.value = true
-}
-async function saveColumnSettings(drafts: ColumnDraft[], close: () => void) {
-  if (await saveFields(settingsKind.value, drafts.map(draft => draft.field))) close()
-}
-// 表頭拖曳與表頭的欄位選單（SharedSheetGrid）照樣直接換順序；固定欄不在組合裡
-function reorderColumns(kind: WatchlistKind, fields: string[]) {
-  void saveFields(kind, fields.filter(field => !WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)))
-}
-// 表頭的欄位選單「移除這一欄」：馬上拿掉、10 秒內可以復原（全站「可以復原的動作不先確認」）
-function removeColumn(kind: WatchlistKind, field: string) {
-  const previous = columnsOf(kind)
-  void saveFields(kind, previous.map(column => column.field).filter(item => item !== field))
-  undoToast(`已移除「${previous.find(column => column.field === field)?.label ?? field}」欄`, () => { void saveFields(kind, previous.map(column => column.field)) }, () => {})
-}
+// 欄位設定、表頭選單的移動與移除（10 秒復原）、拖曳都在表格裡（SharedMetricTable，同篩選），存的是這一類的欄位組合（saveFields）。
+// 訪客沒有組合：工具列放一顆「欄位設定」，按了是登入
+const openGuestColumnSettings = () => openLogin('免費註冊或登入後，就能設定觀察清單的欄位。')
 
 // 每一類的「欄位」選單（2026-11-07 改版方案 A）：每一類原本一排工具——顯示欄位、欄位設定、到篩選管理，手機還有排序——收成一顆，寫著現在用哪一組。
+// 2026-11-11 表格換成篩選的結果表：欄位設定回到表格自己的按鈕（電腦版「欄位設定」、卡片版面「欄位 N 個」），排序也在表頭選單與卡片的排序列，選單只剩組合與到篩選管理。
 // 照頁首導覽（AppNavMenu）的可展開模式：按鈕的 aria-expanded 控制緊接在後的清單，Tab 自然走進去；Esc 關掉並回到按鈕，焦點離開或點外面就關，
 // 一次只開一個。選了組合、按欄位設定都先關掉選單、焦點回到按鈕：欄位設定的對話框關掉時把焦點還給打開前的那一顆，藏起來的選項接不住
 const columnsMenu = ref<WatchlistKind | null>(null)
@@ -93,10 +72,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerdown)
 function pickColumnSet(kind: WatchlistKind, id: string) {
   closeColumnsMenu(true)
   void selectColumnSet(kind, id)
-}
-function settingsFromMenu(kind: WatchlistKind) {
-  closeColumnsMenu(true)
-  openColumnSettings(kind)
 }
 
 // 備註與移除收進「編輯」（2026-11-07 方案 A）：原本每一列都有紅字「移除」，最危險的動作最搶眼；平常點名稱就進個股頁
@@ -195,7 +170,7 @@ const watchlistLimit = computed(() => quotaOf('watchlistItems'))
 // 檔數算所有清單的總列數（同一檔在兩組算 2）
 const watchlistFull = computed(() => typeof watchlistLimit.value === 'number' && watchlistItems.value.length >= watchlistLimit.value)
 
-// 表格怎麼畫在 WatchlistTable（2026-10-19 抽出來，分享頁 /share/[token] 也用）；這一頁留資料、欄位設定、備註與移除。
+// 表格怎麼畫在 WatchlistTable（篩選的結果表，分享頁 /share/[token] 也用）；這一頁留資料、欄位組合、備註與移除。
 // 操作欄（備註、移除）登入後按「編輯」才有
 
 // 分享連結（2026-10-19，SharedShareButton）：可以一起分享的是表格上現在的欄位；備註原本「只有你自己看得到」，預設不分享。
@@ -285,16 +260,17 @@ async function submitNote() {
       <template v-else>
         <section v-for="section in sections" :key="section.kind" class="watchlist-section" :aria-label="section.label">
           <WatchlistTable
-            :loading="firstPaintPending"
             :rows="section.rows"
             :columns="section.columns"
+            :categories="categoriesOf(section.kind)"
+            :links="linksOf(section.kind)"
+            :layout-key="`watchlist-${section.kind}`"
             :label="sections.length > 1 ? `${section.label}的觀察清單` : '觀察清單'"
-            :storage-key="`watchlist-${section.kind}`"
             :notes="firstPaintPending ? skeletonNotes : watchlistNotes"
-            :actions="member && editing"
-            :movable="member"
-            @reorder="fields => reorderColumns(section.kind, fields)"
-            @remove-column="field => removeColumn(section.kind, field)"
+            :editable="member"
+            :column-defaults="basicColumns(section.kind).map(({ field, label }) => ({ field, label }))"
+            :skeleton="firstPaintPending"
+            :save="fields => saveFields(section.kind, fields)"
           >
             <template #toolbar>
               <h2 v-if="sections.length > 1" class="watchlist-section__title">{{ section.label }}<span class="watchlist-section__count">{{ section.rows.length }} 檔</span></h2>
@@ -320,17 +296,17 @@ async function submitNote() {
                     </li>
                   </ul>
                   <ul class="rail-list watchlist-columns__more">
-                    <li><button type="button" class="rail-item" @click="settingsFromMenu(section.kind)">欄位設定</button></li>
                     <li><NuxtLink :to="SCREENER_PATHS[section.kind]" class="rail-item">到{{ section.label }}篩選管理</NuxtLink></li>
                   </ul>
                 </div>
               </div>
               <!-- 訪客沒有欄位組合，按了是登入 -->
-              <el-button v-else class="watchlist-toolbar__settings" :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openColumnSettings(section.kind)">欄位設定</el-button>
+              <el-button v-else class="watchlist-toolbar__settings" :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openGuestColumnSettings">欄位設定</el-button>
             </template>
-            <template #actions="{ row, loading }">
-              <el-button v-if="loading || watchlistIds[row.code]" :disabled="loading" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
-              <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" :disabled="loading" @click="removeStock(row.code)">移除</el-button>
+            <!-- 備註與移除收在「編輯」（2026-11-07 方案 A）：按了才有操作欄 -->
+            <template v-if="member && editing" #actions="{ row }">
+              <el-button v-if="watchlistIds[row.code]" link type="primary" :aria-label="`${row.name} 的備註`" @click="openNote(row)">備註</el-button>
+              <el-button link type="danger" :aria-label="`從觀察清單移除 ${row.name}`" @click="removeStock(row.code)">移除</el-button>
             </template>
           </WatchlistTable>
         </section>
@@ -343,15 +319,6 @@ async function submitNote() {
     <p v-if="isGuest && !firstPaintPending && rows.length" class="watchlist-page__guest">
       還沒登入，先列出市值最大的 {{ GUEST_LIST_SIZE }} 家公司（依最新市值排序）。<el-button link type="primary" class="watchlist-page__guest-login" @click="openLogin">登入</el-button>後，這裡就是你自己的觀察清單。
     </p>
-
-    <SharedColumnSettings
-      v-model:open="columnSettingsOpen"
-      :columns="columnsOf(settingsKind)"
-      :label-of="column => column.label"
-      :categories="categoriesOf(settingsKind)"
-      :defaults="basicColumns(settingsKind).map(({ field, label }) => ({ field, label }))"
-      @save="saveColumnSettings"
-    />
 
     <el-dialog :model-value="noteTarget !== null" :title="noteTarget ? `${noteTarget.name} 的備註` : '備註'" width="min(480px, 92vw)" @close="noteTarget = null">
       <label for="watchlist-note-input" class="watchlist-note-dialog__label">為什麼想追蹤這一檔？只有你自己看得到。</label>
@@ -477,11 +444,7 @@ async function submitNote() {
   margin-left: auto;
 }
 
-.watchlist-columns__button,
-.watchlist-toolbar__settings {
-  min-height: 44px;
-}
-
+/* 按鈕高照全站（滑鼠 32px、觸控 44px），跟同一列表格的「欄位設定」一樣高，同篩選的「顯示欄位」（2026-11-11 換成篩選的結果表） */
 .watchlist-toolbar__settings {
   margin-left: auto;
 }

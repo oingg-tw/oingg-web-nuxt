@@ -144,9 +144,8 @@ console.log('觀察清單「＋ 新增欄位」（1440）')
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx)
   const page = await open(ctx, '/watchlist')
-  // 2026-11-07 起會員的欄位設定收在每一類的「欄位：…」選單裡（只有一類時按鈕沒有「普通股的」）
-  await page.getByRole('button', { name: /^(普通股的)?欄位：/ }).first().click()
-  await page.getByRole('button', { name: '欄位設定', exact: true }).click(); await page.waitForTimeout(500)
+  // 2026-11-11 起表格是篩選的結果表：欄位設定是每一段表格自己的按鈕（同篩選），第一段是普通股
+  await page.locator('.watchlist-section').first().locator('.smt-toolbar__settings').click(); await page.waitForTimeout(500)
   await page.getByRole('button', { name: '＋ 新增欄位' }).click(); await page.waitForTimeout(800)
   const dialog = page.getByRole('dialog', { name: '新增欄位' })
   check(await dialog.isVisible() && await page.locator('.el-dialog:visible').count() === 1, '欄位設定的「＋ 新增欄位」在同一個彈窗換成挑指標（不疊彈窗）')
@@ -157,7 +156,7 @@ console.log('觀察清單「＋ 新增欄位」（1440）')
   await settings.getByRole('button', { name: '儲存' }).click(); await page.waitForTimeout(1500)
   const saved = puts.filter(put => put.path.endsWith('column-presets')).at(-1)
   check(saved?.universe === 'common' && saved.columns.some(column => column.field === 'roe.TTM'), `存進普通股的欄位組合：roe.TTM（${saved?.columns.map(column => column.field).join('、')}）`)
-  check(await page.locator('th[role="columnheader"]', { hasText: ROE_LABEL }).count() === 1, `表頭是「${ROE_LABEL}」`)
+  check(await page.locator('.smt-table-view .el-table__header-wrapper th', { hasText: ROE_LABEL }).count() === 1, `表頭是「${ROE_LABEL}」`)
   await ctx.close()
 }
 

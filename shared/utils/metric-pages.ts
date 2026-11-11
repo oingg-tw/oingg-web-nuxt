@@ -355,6 +355,12 @@ export function metricPageSlug(metricCode: string): string | null {
   return METRIC_PAGE_ALIASES[metricCode] ?? [...METRIC_PAGES, ...BADGE_PAGES].find(page => page.metricCode === metricCode)?.slug ?? null
 }
 
+// 普通股結果表的一格連到那家公司這支指標的頁（篩選與觀察清單共用）；這支指標沒有頁回 null，點了是整列
+export function stockMetricPath(symbol: string, field: string): string | null {
+  const slug = metricPageSlug(field.split('.')[0] ?? '')
+  return slug ? `/stock/${symbol}/${slug}` : null
+}
+
 // 唯一會靜默壞頁而不報錯的不變量：兩份登記表都認領的 slug 會渲染分派器先測到的那個模板，另一頁變成無法到達。開發時由分派器呼叫。
 export function assertMetricPagesDisjoint(): void {
   const collision = METRIC_PAGES.find(page => BADGE_PAGES.some(badge => badge.slug === page.slug))
