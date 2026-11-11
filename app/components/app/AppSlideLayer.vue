@@ -123,7 +123,9 @@ function onKeydown(event: KeyboardEvent) {
          accessible name is still a full sentence, so nothing is lost to assistive technology; only
          the redundant visible word is gone.
          The bar is at the TOP rather than the bottom because a layer's content scrolls and the exit
-         must stay where the thumb expects it. -->
+         must stay where the thumb expects it.
+         標題也在按鈕裡（2026-11-11，使用者：「希望手機版的menu上一頁，點擊範圍包含文字」）：點標題也能返回，看起來跟原本一樣；
+         按鈕的名稱仍是整句，含看得到的標題字（WCAG 2.5.3） -->
     <div class="slide-layer__bar">
       <!-- 跟頁首同一個樣子（.app-bar-item，2026-10-21 頁首重新設計）：原本是 Element 的框線方塊，整個手機介面只剩它有框 -->
       <button
@@ -134,8 +136,8 @@ function onKeydown(event: KeyboardEvent) {
         @click="emit('close')"
       >
         <el-icon aria-hidden="true"><ArrowLeft /></el-icon>
+        <span class="slide-layer__title">{{ label }}</span>
       </button>
-      <span class="slide-layer__title">{{ label }}</span>
     </div>
 
     <div ref="bodyRef" class="slide-layer__body">
@@ -213,10 +215,10 @@ function onKeydown(event: KeyboardEvent) {
   background: var(--el-bg-color-overlay);
 }
 
-/* 44px 見方：只有圖示，借不到文字的寬度，觸控大小要自己說 */
+/* 圖示在 44px 見方的正中、標題離它 24px，位置同標題還在按鈕外的時候（按鈕 44px 加列的 12px 間距） */
 .slide-layer__close {
-  min-width: 44px;
-  padding: 0;
+  gap: 24px;
+  padding: 0 12px;
 }
 
 .slide-layer__close .el-icon {
