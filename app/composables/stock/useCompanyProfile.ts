@@ -119,7 +119,10 @@ export interface CompanyProfileDetail {
   address: string | null
   phone: string | null
   faxNumber: string | null
+  // website 是兩所正規化的裸網域（tsmc.com，logo 服務也用），畫面上寫它；websiteUrl 是兩所驗過連得上的完整網址，連結用它，連不上是 null
+  //（數據中台 2026-11-11：證交所、櫃買匯入時加 website_url，數據中台與業務中台照轉）
   website: string | null
+  websiteUrl: string | null
   email: string | null
   stockTransferAgency: string | null
   transferAgencyPhone: string | null
@@ -164,6 +167,7 @@ function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfi
     phone: text(raw.phone),
     faxNumber: text(raw.faxNumber),
     website: text(raw.website),
+    websiteUrl: text(raw.websiteUrl),
     email: text(raw.email),
     stockTransferAgency: text(raw.stockTransferAgency),
     transferAgencyPhone: text(raw.transferAgencyPhone),

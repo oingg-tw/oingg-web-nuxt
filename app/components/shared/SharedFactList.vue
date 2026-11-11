@@ -8,6 +8,8 @@ export interface FactItem {
   note?: string
   // 需要留意的（規模低於法定下市門檻）：用文字說清楚，顏色只是加強
   warning?: boolean
+  // 值是外部網址（公司網站）：另開新視窗，同站上其他外部連結寫「（另開新視窗）」
+  href?: string
 }
 
 defineProps<{
@@ -21,7 +23,8 @@ defineProps<{
     <div v-for="item in items" :key="item.label" class="fact-list__item">
       <dt class="fact-list__label">{{ item.label }}</dt>
       <dd class="fact-list__value" :class="{ 'fact-list__value--warning': item.warning }">
-        {{ item.value }}
+        <a v-if="item.href" :href="item.href" target="_blank" rel="noopener noreferrer" class="hub-inline-link">{{ item.value }}<span class="fact-list__note">（另開新視窗）</span></a>
+        <template v-else>{{ item.value }}</template>
         <span v-if="item.note" class="fact-list__note">{{ item.note }}</span>
       </dd>
     </div>

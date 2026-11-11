@@ -1,7 +1,7 @@
 // 個股基本資料的寫法（app/utils/company-profile.ts）：上市櫃滿幾年、負責人一人一行怎麼寫、officers 與舊字串欄怎麼選
 // Run: node scripts/check-company-profile.mjs
 import assert from 'node:assert/strict'
-import { fullYears, officerText, officersOf } from '../app/utils/company-profile.ts'
+import { fullYears, officerText, officersOf, websiteHref } from '../app/utils/company-profile.ts'
 
 // 滿幾年：還沒到週年要少一年；日期在今天之後或讀不懂是 null
 assert.equal(fullYears('1994-09-05', '2026-11-08'), 32)
@@ -29,5 +29,13 @@ const split = { ...legacy, officers: [person('general_manager', '游步東'), pe
 assert.equal(officersOf(split, 'general_manager'), '游步東、謝兵')
 assert.equal(officersOf(split, 'chairman'), null)
 assert.equal(officersOf({ ...legacy, officers: [] }, 'chairman'), null)
+
+// 公司網站：只有 http(s):// 開頭的完整網址才是連結；數據中台現在給的 tsmc.com 不補 https://（交給數據中台），javascript: 擋掉
+assert.equal(websiteHref('https://www.tsmc.com'), 'https://www.tsmc.com')
+assert.equal(websiteHref('http://www.morn-sun.com.tw/'), 'http://www.morn-sun.com.tw/')
+assert.equal(websiteHref('tsmc.com'), undefined)
+assert.equal(websiteHref('javascript:alert(1)'), undefined)
+assert.equal(websiteHref('https://a.com b.com'), undefined)
+assert.equal(websiteHref(null), undefined)
 
 console.log('PASS: company profile')

@@ -62,6 +62,10 @@ function establishedFact(detail: CompanyProfileDetail, today: string): FactItem 
   return { label: '成立日', value: dash(detail.establishedDate), note: years !== null ? `成立 ${years} 年` : undefined }
 }
 
+// 公司網站：字寫 website（裸網域），連結用 websiteUrl（兩所驗過的完整網址），是 http(s):// 開頭才做成連結；不自己補 https:// 或 www.
+//（使用者 2026-11-11：「你這不要自己處理網址，交給數據中臺去處理」）。這是上游的字、直接進 href，所以 javascript: 之類的照舊只顯示文字
+export const websiteHref = (website: string | null | undefined): string | undefined => (website && /^https?:\/\/\S+$/i.test(website) ? website : undefined)
+
 // 指標速覽的卡片：固定 8 列，卡片不能比圖表卡高（index.vue 的 .stock-quick-view-page__facts）
 export function profileCardFacts(detail: CompanyProfileDetail, today: string): FactItem[] {
   return [
@@ -72,7 +76,7 @@ export function profileCardFacts(detail: CompanyProfileDetail, today: string): F
     { label: '總經理', value: dash(officersOf(detail, 'general_manager')) },
     { label: '實收資本額', value: money(detail.paidInCapitalNtd) },
     { label: '簽證會計師', value: dash(detail.auditingFirm) },
-    { label: '公司網站', value: dash(detail.website) }
+    { label: '公司網站', value: dash(detail.website), href: websiteHref(detail.websiteUrl) }
   ]
 }
 
@@ -108,7 +112,7 @@ export function profilePageFacts(detail: CompanyProfileDetail, today: string): R
       { label: '地址', value: dash(detail.address) },
       { label: '電話', value: dash(detail.phone) },
       { label: '傳真', value: dash(detail.faxNumber) },
-      { label: '公司網站', value: dash(detail.website) },
+      { label: '公司網站', value: dash(detail.website), href: websiteHref(detail.websiteUrl) },
       { label: '電子郵件', value: dash(detail.email) },
       { label: '股務代理', value: dash(detail.stockTransferAgency) },
       { label: '股務電話', value: dash(detail.transferAgencyPhone) },
