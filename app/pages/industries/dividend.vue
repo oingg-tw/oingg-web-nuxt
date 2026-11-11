@@ -18,6 +18,11 @@ import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub
 // 散佈圖只有產業頁用，自己註冊（SharedChart 只註冊共用的零件）。LabelLayout 是標籤避讓（labelLayout）的必要功能。
 use([ScatterChart, LabelLayout])
 
+// 產業索引先隱藏（2026-11-09，使用者：「產業索引隱藏。把產業殖利率當作產業索引預設畫面，URL不變化」）：/industries 直接畫這一頁、網址不導走，
+// 標準網址照這一頁，兩個網址不算兩份內容。原本的產業索引在 overview.vue。用別名而不是另一個頁面檔 import 這一頁：被兩處引用的頁面併進共用
+// chunk、建置清單裡沒有這一頁，伺服器就沒輸出它要的 Element Plus 樣式，卡片的框線與內距等 JS 到了才出現，下面整段往下推 42px（2026-11-11 量到）
+definePageMeta({ alias: '/industries' })
+
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股類股殖利率分析：34 個證交所類股的股利地圖',
