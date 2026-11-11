@@ -348,11 +348,11 @@ const chartOption = computed(() => ({
          tell「這家公司只有這麼短」from「你們沒有資料」. 載入中與讀取失敗都先保留圖的位置，不出文字。
          (No comment between the v-if branches: in dev the client compiles a commented branch into a fragment and SSR doesn't —
          a hydration mismatch on every river page, found 2026-10-15.) -->
-    <p v-if="notApplicable" class="valuation-river__empty">{{ spec.ratioLabel }}{{ NULL_REASON_SHORT_LABELS.not_applicable_industry }}，所以沒有河流圖。</p>
-    <p v-else-if="shortfall" class="valuation-river__empty">{{ shortfall }}</p>
+    <div v-if="notApplicable" class="valuation-river__empty"><SharedEmptyState :description="`${spec.ratioLabel}${NULL_REASON_SHORT_LABELS.not_applicable_industry}，所以沒有河流圖。`" /></div>
+    <div v-else-if="shortfall" class="valuation-river__empty"><SharedEmptyState :description="shortfall" /></div>
     <SharedChart v-else-if="hasAnyData" class="valuation-river__chart" :option="chartOption" autoresize />
     <div v-else-if="riverStatus !== 'success'" class="valuation-river__chart" :class="{ 'app-skeleton': riverStatus !== 'error' }" aria-hidden="true" />
-    <p v-else class="valuation-river__empty">目前沒有這檔股票的{{ spec.ratioLabel }}歷史資料。</p>
+    <div v-else class="valuation-river__empty"><SharedEmptyState :description="`目前沒有這檔股票的${spec.ratioLabel}歷史資料。`" /></div>
   </SharedChartCard>
 </template>
 
@@ -363,6 +363,10 @@ const chartOption = computed(() => ({
   margin-top: 12px;
 }
 
+/* 沒有圖的說明佔一張圖的位置（2026-11-12）：讀取中是圖高的骨架，原本換成一行字，下面整段往上跳 */
 .valuation-river__empty {
-  margin: 0;
+  display: grid;
+  place-items: center;
+  min-height: 20rem;
+  margin-top: 12px;
 }</style>

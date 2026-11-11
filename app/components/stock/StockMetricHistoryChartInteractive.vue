@@ -269,7 +269,7 @@ const { chartOption } = useMetricHistoryChartOption(
          讀取中（最後的 v-else）先佔一張圖的高度：資料在瀏覽器才抓，原本這段時間什麼都不畫，圖到了把下面整段推下 320px（2026-10-18 全站
          量測 /stock/2330/roe、eps 等 1440 寬 0.077）。這段註解不能放在 v-else-if 與 v-else 中間（2026-10-21）：開發模式的瀏覽器編譯會把夾在
          分支間的註解併進 v-else 變成 Fragment，伺服器編譯卻丟掉它，只要畫的是佔位就 hydration 不一致 -->
-    <SharedEmptyState v-if="shortfall" :description="shortfall" />
+    <div v-if="shortfall" class="stock-metric-history-chart-interactive__empty"><SharedEmptyState :description="shortfall" /></div>
     <StockMultiSeriesLineChart
       v-else-if="comparePoints.length > 1"
       v-loading="pending"
@@ -294,7 +294,7 @@ const { chartOption } = useMetricHistoryChartOption(
       :tooltip-header="stackedTooltipHeader"
     />
     <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
-    <SharedEmptyState v-else-if="!pending" description="這個期間沒有足夠的資料可以畫圖" />
+    <div v-else-if="!pending" class="stock-metric-history-chart-interactive__empty"><SharedEmptyState description="這個期間沒有足夠的資料可以畫圖" /></div>
     <div v-else class="stock-metric-history-chart-interactive__chart app-skeleton" aria-hidden="true" />
 
   </SharedChartCard>
@@ -305,6 +305,14 @@ const { chartOption } = useMetricHistoryChartOption(
 .stock-metric-history-chart-interactive__chart {
   height: 20rem;
   width: 100%;
+  margin-top: 12px;
+}
+
+/* 沒有圖的說明佔一張圖的位置（2026-11-12）：讀取中是圖高的骨架，原本換成一行字，下面整段往上跳 */
+.stock-metric-history-chart-interactive__empty {
+  display: grid;
+  place-items: center;
+  min-height: 20rem;
   margin-top: 12px;
 }
 
