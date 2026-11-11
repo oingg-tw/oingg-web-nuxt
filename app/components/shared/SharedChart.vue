@@ -22,6 +22,27 @@ const INIT_OPTIONS = { renderer: 'svg' } as const
 // registerTheme 是全域的；同一組（模式×比例）只登記一次
 const registeredThemes = new Set<string>()
 
+// 同時進到範圍的圖排隊，一個 task 畫一張、畫面上方的先畫（2026-11-12 PSI 手機：速覽 5 張、ETF 首頁 8 張圖在同一個 task 裡接連 init 與
+// setOption，/stock/2330 有 221–373 ms 的長任務）。每張之間讓出主執行緒，捲動、點擊不必等全部畫完
+const drawQueue: { top: number; start: () => void }[] = []
+let draining = false
+function drawNext() {
+  drawQueue.sort((a, b) => a.top - b.top)
+  const next = drawQueue.shift()
+  if (!next) {
+    draining = false
+    return
+  }
+  next.start()
+  setTimeout(drawNext, 0)
+}
+function queueDraw(top: number, start: () => void) {
+  drawQueue.push({ top, start })
+  if (draining) return
+  draining = true
+  setTimeout(drawNext, 0)
+}
+
 defineOptions({ inheritAttrs: false })
 const props = defineProps<{ option: Record<string, unknown> }>()
 const attrs = useAttrs()
@@ -38,9 +59,13 @@ const theme = computed(() => {
   return name
 })
 
+// 全是數字、字串或 null 的陣列（資料點）不必複製，原樣交給 ECharts；toRaw：不把 reactive 的 proxy 交出去（2026-11-12 PSI：河流圖 7 條線
+// 各一千多個點，原本每次重算都整份複製兩次）
+const isFlat = (list: unknown[]) => list.every(item => item === null || (typeof item !== 'object' && typeof item !== 'function'))
+
 // 走訪整個 option（series、axisLabel、legend.textStyle、rich 子樣式…），每個叫 fontSize 的鍵都乘上比例；'12px' 這種字串形式也處理。
 function scaleFontSizes(value: unknown, ratio: number): unknown {
-  if (Array.isArray(value)) return value.map(item => scaleFontSizes(item, ratio))
+  if (Array.isArray(value)) return isFlat(value) ? toRaw(value) : value.map(item => scaleFontSizes(item, ratio))
   if (value !== null && typeof value === 'object') {
     const result: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
@@ -76,7 +101,7 @@ function withMinusSign(value: unknown, key = ''): unknown {
       return typeof out === 'string' ? minusSign(out) : out
     }
   }
-  if (Array.isArray(value)) return value.map(item => withMinusSign(item, key))
+  if (Array.isArray(value)) return isFlat(value) ? toRaw(value) : value.map(item => withMinusSign(item, key))
   if (value === null || typeof value !== 'object') return value
   const result: Record<string, unknown> = {}
   for (const [entryKey, entry] of Object.entries(value as Record<string, unknown>)) result[entryKey] = withMinusSign(entry, entryKey)
@@ -88,7 +113,8 @@ function withMinusSign(value: unknown, key = ''): unknown {
   return result
 }
 
-const scaledOption = computed(() => withMinusSign(withStaticLegend(scaleFontSizes(props.option, scale.value / 100) as Record<string, unknown>)) as Record<string, unknown>)
+// markRaw：vue-echarts 深層監看 option，每次重算都會再走訪一遍；這裡每次都是新物件，換參考就夠它知道要更新
+const scaledOption = computed(() => markRaw(withMinusSign(withStaticLegend(scaleFontSizes(props.option, scale.value / 100) as Record<string, unknown>)) as Record<string, unknown>))
 
 // 有東西蓋住頁面時收起提示框與指示線（hideChartTips，見 chart-palette.ts）。只發 hideTip 的話軸上的指示線還在
 const chartRef = ref<InstanceType<typeof VChart> | null>(null)
@@ -97,23 +123,29 @@ function hideTip() {
   chartRef.value?.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' })
 }
 
-// 圖進到畫面附近（上下 300px）才把資料交給 ECharts 畫（2026-10-23，手機換頁延遲：一頁多張圖時，換頁那一刻所有圖一起算，中階手機
-// 速覽要 0.9 秒才換掉舊頁）。元素一直都在、大小由呼叫端的 class 決定，所以版面不動、伺服器輸出也不變；看得到的圖在下一個畫格就畫
+// 圖進到畫面附近（上下 300px）才掛上 ECharts（2026-10-23，手機換頁延遲：一頁多張圖時，換頁那一刻所有圖一起算，中階手機速覽要 0.9 秒
+// 才換掉舊頁）。2026-11-12 PSI 手機起連 init 都等：原本只延後資料，畫面外的圖照樣 init、掛 ResizeObserver、量尺寸（ETF 首頁 8 張）。
+// 之前是一個空的 div，帶呼叫端同樣的 class 與 style，大小一樣，所以版面不動；伺服器輸出的就是這個 div
 const inView = ref(false)
+const placeholderRef = ref<HTMLElement | null>(null)
+const placeholderAttrs = computed(() => ({ class: attrs.class, style: attrs.style }))
 let observer: IntersectionObserver | undefined
-const EMPTY_OPTION = {}
-const shownOption = computed(() => (inView.value ? scaledOption.value : EMPTY_OPTION))
+let disposed = false
 
 onMounted(() => {
   window.addEventListener(HIDE_CHART_TIPS, hideTip)
   observer = new IntersectionObserver((entries) => {
-    if (!entries.some(entry => entry.isIntersecting)) return
-    inView.value = true
+    const entry = entries.find(item => item.isIntersecting)
+    if (!entry) return
     observer?.disconnect()
+    queueDraw(entry.boundingClientRect.top, () => {
+      if (!disposed) inView.value = true
+    })
   }, { rootMargin: '300px 0px' })
-  observer.observe(chartRef.value!.$el as Element)
+  observer.observe(placeholderRef.value!)
 })
 onUnmounted(() => {
+  disposed = true
   window.removeEventListener(HIDE_CHART_TIPS, hideTip)
   observer?.disconnect()
 })
@@ -129,5 +161,17 @@ const label = computed(() => {
 </script>
 
 <template>
-  <VChart ref="chartRef" v-bind="attrs" role="img" :aria-label="label" :option="shownOption" :theme="theme" :init-options="INIT_OPTIONS" />
+  <VChart v-if="inView" ref="chartRef" v-bind="attrs" role="img" :aria-label="label" :option="scaledOption" :theme="theme" :init-options="INIT_OPTIONS" />
+  <div v-else ref="placeholderRef" v-bind="placeholderAttrs" class="shared-chart-placeholder" role="img" :aria-label="label" />
 </template>
+
+<style>
+/* 同 vue-echarts 給 x-vue-echarts 的預設（寬高 100%），特異性 0：呼叫端的 class 一樣蓋得過，佔位跟掛上之後的圖一樣大 */
+:where(.shared-chart-placeholder) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+</style>

@@ -87,6 +87,28 @@ export default defineNuxtConfig({
       nuxtLink: { prefetchOn: { visibility: false, interaction: true } }
     }
   },
+  // 首次繪製前的請求合併（2026-11-12 PSI 手機：每頁 66–119 個 modulepreload、10–32 個擋渲染的 CSS 檔，模擬慢速 4G 時首次繪製算成實測的 2–3 倍）：
+  // - initial：entry 靜態載入的 chunk（42 個，27 個不到 4 KiB）本來就每頁都載，合成一個不會讓任何一頁多載程式碼。$initial 是 Rolldown 內建的標籤
+  // - element-plus-style：Element Plus 每個元件一個的樣式（css.*.css，/stock/2330 的 32 個 CSS 檔裡有 17 個）合成一個檔、全站快取；
+  //   只含本站用到的元件（約 15 KB brotli，全套是 37 KB）。順序照舊在本站的全站 CSS 之後，element-plus.css 的覆寫本來就照這個順序寫
+  // 試過 features.inlineStyles: true：全站 CSS 寫進 HTML（每頁 +12 KB gzip），Element Plus 與 <ClientOnly> 裡元件的 CSS 連結卻都還在（Nuxt 只拿掉
+  // 確定整份都內嵌了的檔），所以沒用
+  vite: {
+    $client: {
+      build: {
+        rolldownOptions: {
+          output: {
+            codeSplitting: {
+              groups: [
+                { name: 'element-plus-style', test: /element-plus[\\/](?:es[\\/]components[\\/][^\\/]+[\\/]style[\\/]|theme-chalk[\\/])/, priority: 1 },
+                { name: 'initial', tags: ['$initial'] }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
   // asyncContext（2026-10-26）：businessFetch 在快取函式裡也要知道是哪個請求在等，冷啟動的量測才記得到使用者那個請求上
   //（server/utils/business.ts 的 noteBusinessColdStart 用 useEvent()）
   // externals.inline（2026-10-26，冷啟動）：這幾個套件打包進伺服器 chunk，讓 Rollup 剔掉用不到的部分。留在 node_modules 的話，伺服器端

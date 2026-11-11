@@ -45,8 +45,9 @@ interface ChainStep {
   from: string
 }
 
-export async function useDividendSourceChain(code: Ref<string>, stockShortName: Ref<string>) {
-  const { digest, series } = await useStockPageDigest(code, 'dividend-source', { shortName: stockShortName })
+// digest: false：用不到摘要文字的頁（新手專區首頁），型錄不進 payload，見 useStockPageDigest
+export async function useDividendSourceChain(code: Ref<string>, stockShortName: Ref<string>, options: { digest?: boolean } = {}) {
+  const { digest, series } = await useStockPageDigest(code, 'dividend-source', { shortName: stockShortName, digest: options.digest })
 
 
   // 整頁一個年度（2026-09-25「整頁改成年度」）。先前是近四季，而那讓最後一段結構性錯位——近四季的

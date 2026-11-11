@@ -39,6 +39,8 @@ export interface UseStockPageDigestOptions {
   // 瀏覽器裡換頁不等這一份（2026-10-23，換頁延遲）：只拿 description 寫 meta 的頁（指標速覽）可以開；拿 series 畫內容的頁要先有讀取中的
   // 樣子才能開。伺服器照樣等（Nuxt 的 lazy 只影響瀏覽器）
   lazy?: boolean
+  // false：不寫摘要文字的頁（/learn 首頁只畫配息鏈）不讀型錄，digest 一律 null——145K 的篩選型錄不跟著進 payload（2026-11-12 PSI）
+  digest?: boolean
 }
 
 // The first group on the page that carries `code` at `timeframe` with at least `minPeriods`
@@ -61,7 +63,7 @@ function isDigestPage(page: StockSeriesPage): page is StockDigestPage {
 export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPage, options: UseStockPageDigestOptions) {
   // The page awaits the catalog at top level together with this composable (Promise.all, 2026-10-26) — same key, so this
   // call joins that request instead of starting another, and it has resolved before any card mounts (the shared-key rule).
-  const { data: schema } = useFilterSchema()
+  const schema = options.digest === false ? null : useFilterSchema().data
   // Same key as useStockDetailSummary's own call → deduped, not a second request.
   const { data: summary } = useStockSummary(code)
   const historyCache = useState<Record<string, CachedHistory>>('metrics-history-cache', () => ({}))
@@ -110,7 +112,7 @@ export async function useStockPageDigest(code: Ref<string>, page: StockSeriesPag
 
   const digest = computed<StockPageDigest | null>(() => {
     const payload = asyncData.data.value
-    const categories = schema.value?.categories
+    const categories = schema?.value?.categories
     if (!payload || payload.symbol !== code.value || !categories || !isDigestPage(page)) return null
     const latest: Record<string, StockDigestGroupResult> = {}
     for (const [name, series] of Object.entries(payload.groups)) {

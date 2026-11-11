@@ -11,8 +11,14 @@ import type { StockSuggestion } from '~/composables/stock/useStockSearch'
 // 入口只放個股頁尾（使用者選的），網站頁尾與頭部導覽不放。
 const exampleCode = useState('learn-example-code', () => '2330')
 const { stockShortName } = useStockDetailSummary(exampleCode)
-const { chainAnswer, chartDrawn, segment } = await useDividendSourceChain(exampleCode, stockShortName)
-const { data: catalog } = await useFetch<MetricCatalog>('/api/hub/metrics', { key: 'hub-metrics', default: () => ({ categories: [] }) })
+const { chainAnswer, chartDrawn, segment } = await useDividendSourceChain(exampleCode, stockShortName, { digest: false })
+// 這一頁只用到 LEARN_GROUPS 裡那些指標的顯示名稱：payload 只帶「代號 → 名稱」，不帶完整型錄（261K，2026-11-12 PSI）。
+// 自己的 key：rank、新手專區個別頁共用的 hub-metrics 要完整那份
+const LEARN_METRICS = new Set(LEARN_GROUPS.flatMap(group => group.core.flatMap(item => ('metric' in item ? [item.metric] : []))))
+const { data: metricNames } = await useAsyncData('learn-metric-names', async () => {
+  const catalog = await $fetch<MetricCatalog>('/api/hub/metrics')
+  return Object.fromEntries(catalog.categories.flatMap(category => category.metrics).filter(metric => LEARN_METRICS.has(metric.key)).map(metric => [metric.key, metricDisplayName(metric)]))
+}, { default: () => ({}) as Record<string, string> })
 
 // 換一家公司：只收一般股（ETF、特別股沒有這條損益表鏈）
 const { keyword, fetchSuggestions } = useStockSearch()
@@ -37,8 +43,8 @@ const groups = computed(() =>
         const topic = findLearnTopic(item.topic)
         return topic ? [{ key: topic.slug, label: topic.topic, to: learnTopicPath(topic.slug) }] : []
       }
-      const metric = findMetricInSchema(catalog.value?.categories ?? [], item.metric)?.metric
-      return metric ? [{ key: item.metric, label: metricDisplayName(metric), to: metricPath(item.metric) }] : []
+      const label = metricNames.value[item.metric]
+      return label ? [{ key: item.metric, label, to: metricPath(item.metric) }] : []
     })
   }))
 )
