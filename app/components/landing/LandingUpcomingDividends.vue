@@ -19,11 +19,15 @@ const shownTrack = ref('ex')
 // 'YYYY-MM-DD' 照 UTC 解析，伺服器與瀏覽器算出同一個星期
 const dayText = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}（${WEEKDAYS[new Date(date).getUTCDay()]}）`
 
-// 每股（ETF 每單位）現金，最多四位小數。只配股、沒有現金的寫「除權」；沒有金額的寫「金額待更新」——資料缺金額不等於投信還沒公告（2026-11-02，00946 已公告 0.058 元，資料還沒進來）
+// 每股（ETF 每單位）現金，最多四位小數。只配股、沒有現金的寫「除權」；沒有金額的寫「金額待公告」（2026-11-12 使用者照建議，原本是
+// 「金額待更新」，聽起來像本站的資料沒更新）。11-02 那次 00946 已公告、資料還沒進來；之後基金後台每天 18:10 加抓，正式金額公告後最晚
+// 隔天早上就有。ETF 是先公告預估、除息前幾天才公告正式金額，有待公告的列時卡片最下面說一句
+const pendingAmount = (item: HomeAgendaDay['items'][number], track: string) => !(item.cash !== null && item.cash > 0) && !(track === 'ex' && item.exType !== '息')
 function amountText(item: HomeAgendaDay['items'][number], track: string) {
   if (item.cash !== null && item.cash > 0) return `${Number(item.cash.toFixed(4))} 元`
-  return track === 'ex' && item.exType !== '息' ? '除權' : '金額待更新'
+  return pendingAmount(item, track) ? '金額待公告' : '除權'
 }
+const hasPending = computed(() => tracks.value.some(track => track.days.some(day => day.items.some(item => pendingAmount(item, track.key)))))
 </script>
 
 <template>
@@ -84,6 +88,7 @@ function amountText(item: HomeAgendaDay['items'][number], track: string) {
         </div>
       </div>
     </div>
+    <p v-if="hasPending" class="upcoming__note">ETF 的正式配息金額通常在除息前幾天公告。</p>
   </section>
 </template>
 
@@ -280,6 +285,13 @@ function amountText(item: HomeAgendaDay['items'][number], track: string) {
 
 .upcoming__amount--pending {
   font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.upcoming__note {
+  margin: 0;
+  padding: 12px 24px 16px;
+  border-top: 1px solid var(--app-divider);
   color: var(--el-text-color-secondary);
 }
 
