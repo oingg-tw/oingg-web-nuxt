@@ -1,6 +1,6 @@
 import type { MetricProvenanceEntry } from '#shared/types/metric-provenance'
 // 溯源 entry 的數值格式化，**一份**。2026-10-01 抽出來的原因是它原本有三份一模一樣的拷貝
-// （StockMetricProvenanceSection、StockGuruBadgeDialog、StockHistoricalStatisticsTable），
+// （StockMetricProvenanceSection、StockGuruBadgeDialog（已刪）、StockHistoricalStatisticsTable），
 // 而三份都有同一個 1000 倍的錯誤——我先在其中一份修好，另外兩份還是錯的。一個共用函式裡的
 // 修正比三個呼叫端各修一次小，而且下一個顯示溯源的地方不會再生出第四份。
 //

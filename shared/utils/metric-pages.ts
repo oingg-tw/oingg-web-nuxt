@@ -43,8 +43,8 @@ export interface BadgePageDefinition {
 
 export const BADGE_PAGES: BadgePageDefinition[] = [
   // 三頁刪除 2026-09-28（「徽章不要歷史，有歷史的只有指標」）：f-score、graham-number、peg 是當時唯一只有徽章列連得到的頁；其餘七頁
-  // 同時是 STOCK_METRIC_INDEX 的目的地所以留著。刪掉的三支回到「徽章列開對話框」的處理（StockGuruBadgeDialog 本來就畫 Piotroski 的
-  // 九項訊號）。連帶拿掉：ownRoute 欄位、[slug].vue 的 404 防線、SERIES_PLANS 的 'f-score' 與 cachedPiotroskiBreakdown、
+  // 同時是 STOCK_METRIC_INDEX 的目的地所以留著。刪掉的三支當時回到「徽章列開對話框」的處理（那個對話框 2026-10-18 隨「亮點與風險」
+  // 一起刪了）。連帶拿掉：ownRoute 欄位、[slug].vue 的 404 防線、SERIES_PLANS 的 'f-score' 與 cachedPiotroskiBreakdown、
   // check-stock-pages 對 /f-score 的 ssrTables 豁免。
   // chartTimeframe 跟徽章自己的 timeframe（GET /stocks/:symbol/badges 逐徽章回傳，實測 grossMargin／netProfitMargin／roe 是 TTM、
   // piotroskiFScore 是 Q、liveGrahamNumber 是 EOD），不跟指標頁 2026-09-21 的「預設單季」走：門檻是在那個基準上判定的，

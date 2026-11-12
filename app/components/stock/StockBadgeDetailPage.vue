@@ -121,8 +121,7 @@ const provenanceExpectedValue = computed(() =>
 )
 const provenance = computed(() => badgeData.value?.provenance ?? null)
 
-// 不適用（產業排除）vs 尚無資料 — same distinction StockGuruBadgeDialog.vue's currentValueText()
-// makes, off the same `nullReason` field.
+// 不適用（產業排除）vs 尚無資料, told apart by the `nullReason` field.
 const valueText = computed(() => {
   const value = entry.value?.value ?? null
   if (value === null) return nullReasonShortText(entry.value?.nullReason)

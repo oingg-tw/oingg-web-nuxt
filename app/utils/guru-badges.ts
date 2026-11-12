@@ -37,8 +37,8 @@ export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> =
   growth: '成長動能'
 }
 
-// 固定的一行免責文字，由顯示徽章明細的元件各自顯示一次（GuruBadgeCard、StockGuruBadgeDialog、StockBadgeDetailPage、
-// StockFinancialHighlightsRisksCard）——「與其文案在那邊寫非投資建議，不如把這個彈窗共用元件下面放固定文案就好」（2026-09-09）。
+// 固定的一行免責文字，由顯示徽章明細的元件各自顯示一次（GuruBadgeCard、StockBadgeDetailPage）——「與其文案在那邊寫非投資建議，
+// 不如把這個彈窗共用元件下面放固定文案就好」（2026-09-09）。
 export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介紹，不代表本站對任何個股之評等或投資建議。'
 
 // 方法論自己文獻裡的單一已發表比較值（機率輸出的模型用教科書的 0.5 分類邊界）——「每個都會像現在的F-score那樣有分子分母」。措辭
@@ -50,8 +50,8 @@ export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介
 export interface GuruBadgeThreshold {
   description: string
   // How many "points" this badge is out of. Piotroski F-Score is the one genuine 0-9 checklist
-  // (denominator 9 — see PIOTROSKI_FIELD_ID's own comment for its 2026-09-10→2026-09-19 split-
-  // then-remerge history); every other badge here is a single real published comparison
+  // (denominator 9; split into 3 badges 2026-09-10, merged back into one 2026-09-19 by the
+  // user's decision); every other badge here is a single real published comparison
   // (denominator 1) — its pass/fail comes directly from GET /stocks/:symbol/badges' own `passed`
   // field, not from comparing numerator===denominator here.
   denominator: number
@@ -85,12 +85,6 @@ export interface GuruBadge {
   // 連結；沒有連結不代表門檻是本站發明的（見 author）。
   sourceUrl: string | null
 }
-
-// Piotroski F-Score 2026-09-10 拆成 3 個徽章、2026-09-19 依使用者決定合併回「一個指標、一個徽章」：型錄的 badge 欄位直接帶
-// name／author／summary／detail／denominator(9)，GET /stocks/:symbol/badges 帶 passed／value（0–9），跟其他徽章一樣走
-// metricBadgeToGuruBadge()。唯一的特殊處理在明細：九項訊號（GET /stocks/:symbol/piotroski-breakdown）在 StockGuruBadgeDialog 裡
-// 用 fieldId === PIOTROSKI_FIELD_ID 判斷要不要畫成清單（仍照論文的三組 groupMetadata 分組）。
-export const PIOTROSKI_FIELD_ID = 'piotroskiFScore.Q'
 
 // 其餘徽章（Altman Z／Beneish M／Ohlson O／Zmijewski／Graham Number／NCAV／S&P 500 盈餘門檻／Sloan 應計／Fidelity 發放率／SUE／
 // Chowder＋2026-09-14 加的 roe／grossMargin／netProfitMargin）原本是這裡手寫的物件各帶一支 numerator 函式：2026-09-10 定義搬到後端
@@ -136,9 +130,8 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: Metric): Gu
 }
 
 // Builds the full, current badge list from a live GET /metrics response — every metric across
-// every category that has a real `badge` field, piotroskiFScore included (see PIOTROSKI_FIELD_ID's
-// own comment for its split-then-remerge history; it's a plain badge like any other again as of
-// 2026-09-19). Every real consumer already has `categories` on hand from its own
+// every category that has a real `badge` field, piotroskiFScore included (a plain badge like any
+// other since 2026-09-19). Every real consumer already has `categories` on hand from its own
 // `await useFilterSchema()` call (see feedback_useasyncdata_shared_key_race memory for why that
 // await matters), so this takes it as a plain argument rather than fetching again.
 export function buildGuruBadges(categories: MetricCategory[]): GuruBadge[] {

@@ -2,6 +2,8 @@
 import type { FactItem } from '~/components/shared/SharedFactList.vue'
 
 // 特別股個別頁：權利條款（2026-10-18 從個別頁的第二段拆成自己一個面向）。上游 null 是「未知」不是「沒有」
+// shortcut: 權利資料停在 2026-09-13（公開觀測站因法律風險退役 t47sb12，使用者 11-12 決定維持），之後發行的特別股這頁每一欄都是「－」；
+// 2026-11-12 的 28 檔都在那之前發行。出現第一檔之後發行的時，答案要改成說明沒有這份資料
 const preferred = await usePreferredStock()
 const { code, entry, shortName } = preferred
 
