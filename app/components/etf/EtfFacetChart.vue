@@ -146,10 +146,8 @@ const compositionPerYear = computed(() => {
 })
 const { period: compositionPeriod, shown: compositionShown } = useChartPeriod({ all: compositionEntries, keyOf: event => event.exDividendDate, perYear: compositionPerYear })
 
-// ---- 持有人結構（堆疊柱，每週一根，五組的集保比例）----
+// ---- 持有人結構：圖在 SharedHoldersChart（個股 /holders 與指標速覽也用）----
 const holderWeeks = computed(() => props.data.holders?.weeks ?? [])
-const { period: holdersPeriod, shown: holdersShown } = useChartPeriod({ all: holderWeeks, keyOf: week => week.dataDate, perYear: 52 })
-const holderLayers = computed(() => (holdersShown.value[0]?.groups ?? []).map((group, index) => ({ name: group.name, values: holdersShown.value.map(week => week.groups[index]?.custodyPct ?? 0) })))
 const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ name: part.name, values: compositionShown.value.map(event => event.composition![part.key] ?? 0) })))
 </script>
 
@@ -167,19 +165,11 @@ const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ n
       :tooltip-header="index => `${compositionShown[index]?.exDividendDate} 除息　每單位 ${yuan(compositionShown[index]?.distributionPerUnit ?? null)}`"
     />
   </SharedChartCard>
-  <SharedChartCard v-else-if="facet === 'holders' && holderWeeks.length" :period="holdersPeriod">
+  <SharedHoldersChart v-else-if="facet === 'holders' && holderWeeks.length" :weeks="holderWeeks">
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <StockStackedBarChart
-      :categories="holdersShown.map(week => week.dataDate)"
-      :layers="holderLayers"
-      unit="%"
-      total-name="合計"
-      :value-formatter="value => `${value.toFixed(2)}%`"
-      :tooltip-header="index => `${holdersShown[index]?.dataDate} 集保股權分散`"
-    />
-  </SharedChartCard>
+  </SharedHoldersChart>
   <SharedChartCard v-else-if="lineSpec" :period="lineSpec.perYear === null ? undefined : period">
     <template v-if="$slots.header" #header>
       <slot name="header" />

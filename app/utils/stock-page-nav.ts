@@ -79,9 +79,11 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   // 能釘，側邊欄也就從自選指標進得去。排第一組：先知道這是什麼公司（設計頁 https://claude.ai/artifact/56HsmA1SowvPxnZ4vJzha4）
   {
     label: '公司',
-    answer: '這家公司是什麼、誰在經營、股本多大、誰簽證財報、怎麼聯絡。',
+    answer: '這家公司是什麼、誰在經營、誰在持有、股本多大、誰簽證財報、怎麼聯絡。',
     children: [
-      { label: '基本資料', to: code => `/stock/${code}/profile`, hook: '上市多久、董事長是誰、資本額多大' }
+      { label: '基本資料', to: code => `/stock/${code}/profile`, hook: '上市多久、董事長是誰、資本額多大' },
+      // 持有人結構（2026-11-12，使用者選的盤點第 1 項）：集保股權分散，跟 ETF 的持有人結構同一份資料
+      { label: '持有人結構', to: code => `/stock/${code}/holders`, hook: '持有幾張的人各有多少，合起來占多少股份' }
     ]
   },
   // 分子是**股價**不是財報科目，所以自成一組（它們共用型錄的 EOD-only 資料牆，見 METRIC_PAGES 為何指向 peRatio／pbRatio）。

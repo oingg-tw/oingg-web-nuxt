@@ -271,7 +271,7 @@ export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' | 'intangible' }
-  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
@@ -284,6 +284,8 @@ function compositionChart(parentSlug: string): QuickViewChart {
 const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart }> = {
   // 基本資料（2026-11-08，使用者：「這個卡片要跟指標一樣 可以自選」）：不是圖，是一張表格卡片，但跟指標一樣能釘
   profile: { topic: '基本資料', chart: { kind: 'profile' } },
+  // 持有人結構（2026-11-12）：集保股權分散的堆疊柱，跟那一頁同一張圖
+  holders: { topic: '持有人結構', chart: { kind: 'holders' } },
   dividend: { topic: '配股配息', chart: { kind: 'dividend' } },
   margins: { topic: '財報三率', chart: { kind: 'margins' } },
   solvency: { topic: '安全韌性的組成', chart: { kind: 'solvency' } },

@@ -1,4 +1,4 @@
-import type { EtfDetail, EtfDistributions, EtfHolders, EtfMonthlyPoint, EtfPremiumMonth, LatestClose, PreferredStockEntry } from '#shared/types/screener-detail'
+import type { EtfDetail, EtfDistributions, EtfMonthlyPoint, EtfPremiumMonth, LatestClose, PreferredStockEntry, ShareholdingDistribution } from '#shared/types/screener-detail'
 
 // 篩選區兩種個別頁（ETF、特別股）與它們的 sitemap 的伺服器端讀取（2026-10-15 三組篩選重新設計）。同 stock-data.ts 的規則：
 // businessFetch 丟錯就不快取、具名、stale-while-revalidate。
@@ -43,7 +43,8 @@ export const cachedEtfPremiumMonths = defineCachedFunction(
 )
 
 // 集保股權分散（每週，2026-09-18 起）：15 個級距併成 5 組畫圖（用每級的股數上限分，不寫死級數），最新一週的 15 級原樣給表格。
-// 第 16 級（調整）與第 17 級（合計）不畫
+// 第 16 級（調整）與第 17 級（合計）不畫。個股（/stock/{code}/holders）也走 /etfs 這條：上游用代號查、不限 ETF（數據中台與業務中台
+// 2026-11-12 確認，不另開股票路徑）。查無的 404 detail 寫著 ETF，所以不顯示上游原文
 const HOLDER_GROUPS = [
   { name: '不到 1 張', upTo: 999 },
   { name: '1～10 張', upTo: 10_000 },
@@ -51,9 +52,9 @@ const HOLDER_GROUPS = [
   { name: '100～1,000 張', upTo: 1_000_000 },
   { name: '1,000 張以上', upTo: Infinity }
 ]
-export const cachedEtfHolders = defineCachedFunction(
-  async (symbol: string): Promise<EtfHolders> => {
-    type Level = EtfHolders['latestLevels'][number] & { levelKind: string }
+export const cachedShareholdingDistribution = defineCachedFunction(
+  async (symbol: string): Promise<ShareholdingDistribution> => {
+    type Level = ShareholdingDistribution['latestLevels'][number] & { levelKind: string }
     const { entries } = await businessFetch<{ entries: { dataDate: string; levels: Level[] }[] }>(`/etfs/${symbol}/shareholding-distribution`)
     const weeks = (entries ?? []).map(({ dataDate, levels }) => {
       const brackets = levels.filter(level => level.levelKind === 'bracket')
@@ -68,7 +69,7 @@ export const cachedEtfHolders = defineCachedFunction(
     const latest = entries?.at(-1)?.levels.filter(level => level.levelKind === 'bracket') ?? []
     return { weeks, latestLevels: latest.map(({ level, minShares, maxShares, holders, shares, custodyPct }) => ({ level, minShares, maxShares, holders, shares, custodyPct })) }
   },
-  { name: 'etf-holders', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
+  { name: 'shareholding-distribution', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )
 
 // 28 檔一次讀完；個別頁與 sitemap 共用

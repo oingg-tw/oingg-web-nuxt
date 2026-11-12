@@ -36,7 +36,7 @@ export default defineEventHandler(async (event): Promise<EtfPageResponse> => {
     settle(cachedDailyCloses(code)),
     settle(cachedEtfMonthlyHistory(code)),
     settle(cachedEtfPremiumMonths(code)),
-    settle(cachedEtfHolders(code))
+    settle(cachedShareholdingDistribution(code))
   ])
   return {
     etf,

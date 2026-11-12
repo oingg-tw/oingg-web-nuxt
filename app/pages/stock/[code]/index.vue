@@ -10,6 +10,7 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
+import type { ShareholdingDistribution } from '#shared/types/screener-detail'
 import type { RiverCellsByTimeframe, RiverLatest, RiverMissing } from '#shared/types/stock-metric-page'
 import type { RiverKind } from '#shared/utils/metric-pages'
 import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
@@ -226,7 +227,8 @@ const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric' | 'pr
   'book-value-flow': 'book-value-breakdown',
   'margins': 'margins',
   'solvency': 'solvency',
-  'cash-cycle': 'series?page=cash-cycle'
+  'cash-cycle': 'series?page=cash-cycle',
+  'holders': 'holders'
 }
 const pinnedKinds = computed(() => new Set(pinnedSlugs.value.map(slug => quickViewChartOf(slug)?.kind)))
 const pageData = new Map<string, Ref<unknown>>()
@@ -261,6 +263,7 @@ const bookValueFlow = usePageData<StockBookValueBreakdownResponse>('book-value-f
 const marginsData = usePageData<StockMarginsPageResponse>('margins')
 const solvencyData = usePageData<StockSolvencyPageResponse>('solvency')
 const cashCycleSeries = usePageData<StockSeriesResponse>('cash-cycle')
+const holdersData = usePageData<ShareholdingDistribution>('holders')
 // 金融業的資產負債表不分流動與非流動，那兩塊沒有可畫的期別：落到下面的空卡，不要整格消失
 const hasBalanceRows = (part: BalanceCompositionKind) => !!balanceComposition.value?.periods.some(period => pickBalanceComposition(part, period))
 const cashCycleEntry = computed(() => latestCashCycleEntry(cashCycleSeries.value?.groups?.TTM_CYCLE_20?.entries ?? []))
@@ -361,6 +364,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockCashCycleTimeline v-else-if="item.spec.kind === 'cash-cycle' && cashCycleEntry" :entry="cashCycleEntry">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockCashCycleTimeline>
+        <SharedHoldersChart v-else-if="item.spec.kind === 'holders' && holdersData?.weeks.length" :weeks="holdersData.weeks">
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
+        </SharedHoldersChart>
         <StockMetricHistoryChartInteractive
           v-else-if="item.spec.kind === 'metric'"
           :symbol="code"

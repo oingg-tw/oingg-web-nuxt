@@ -2,7 +2,7 @@
 // 動態頁各挑一個有資料的代號；個股頁的固定子頁全列、ETF、特別股與類股的每個面向全列。新增頁面模板時加在這裡，兩支檢查一起涵蓋。
 import { INDUSTRY_FACETS } from '../shared/utils/hub-slugs.ts'
 
-const STOCK_FIXED = ['/profile', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition',
+const STOCK_FIXED = ['/profile', '/holders', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition',
   '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition',
   '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/monthly-revenue', '/monthly-revenue-growth', '/metrics', '/financial-statements', '/balance-sheet',
   '/income-statement', '/cash-flow-statement']

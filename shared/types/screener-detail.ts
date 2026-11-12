@@ -72,7 +72,7 @@ export interface EtfPageResponse {
   // 第二批（2026-10-18）：每月快照歷史、每月折溢價、集保股權分散。讀不到是 null
   monthly: EtfMonthlyPoint[] | null
   premium: EtfPremiumMonth[] | null
-  holders: EtfHolders | null
+  holders: ShareholdingDistribution | null
 }
 
 // GET /etfs/{代號}/monthly-history 的一列（定義同 /etfs/{代號}；2024-01 起）
@@ -97,8 +97,8 @@ export interface EtfPremiumMonth {
   lowest: number
 }
 
-// 集保股權分散：每週併成 5 組（畫圖），最新一週的 15 級原樣（表格）
-export interface EtfHolders {
+// 集保股權分散：每週併成 5 組（畫圖），最新一週的 15 級原樣（表格）。ETF 與個股共用（個股 /holders，2026-11-12）
+export interface ShareholdingDistribution {
   weeks: { dataDate: string; groups: { name: string; holders: number; custodyPct: number }[] }[]
   latestLevels: { level: number; minShares: number | null; maxShares: number | null; holders: number; shares: number; custodyPct: number }[]
 }

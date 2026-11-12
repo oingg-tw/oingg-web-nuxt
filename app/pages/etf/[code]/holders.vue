@@ -1,57 +1,21 @@
 <script setup lang="ts">
 // ETF 面向：持有人結構（2026-10-18 第二批）。集保股權分散每週一筆（2026-09-18 起，資料還很短）：15 個級距併成 5 組畫堆疊柱，表列最新一週的
-// 15 級原樣。只陳述「持有多少的人占多少」，不寫散戶、大戶、籌碼集中這種帶判斷的詞
+// 15 級原樣。表格與答句跟個股 /holders 共用（SharedHoldersTable、utils/holders-text.ts）
 const etfData = await useEtf()
 const { code, data, shortName } = etfData
 
 const weeks = computed(() => data.value?.holders?.weeks ?? [])
-const latest = computed(() => weeks.value.at(-1) ?? null)
 const levels = computed(() => data.value?.holders?.latestLevels ?? [])
-const lots = (shares: number) => groupThousands(Math.round(shares / 1000))
-const rangeText = (minShares: number | null, maxShares: number | null) => {
-  if (maxShares === null) return `${groupThousands(minShares ?? 0)} 股以上`
-  return `${groupThousands(minShares ?? 0)}～${groupThousands(maxShares)} 股`
-}
-
-// 答句寫比例最高的兩組，每一組都在下面的表裡（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）；全部列出的長句給搜尋結果
-const answer = computed(() => {
-  const week = latest.value
-  if (!week) return null
-  const [first, second] = [...week.groups].sort((a, b) => b.custodyPct - a.custodyPct)
-  if (!first) return null
-  return `${week.dataDate} 集保資料，比例最高的是 ${first.name} ${first.custodyPct.toFixed(2)}%${second ? `，其次是 ${second.name} ${second.custodyPct.toFixed(2)}%` : ''}。`
-})
-const description = computed(() => {
-  const week = latest.value
-  if (!week) return null
-  const groups = week.groups.map(group => `${group.name} ${group.custodyPct.toFixed(2)}%`).join('、')
-  return `${week.dataDate} 集保資料，${shortName.value}（${code.value}）依持有張數分組的集保比例：${groups}。資料從 ${weeks.value[0]!.dataDate} 起，共 ${weeks.value.length} 週。`
-})
+const answer = computed(() => holdersAnswer(weeks.value.at(-1)))
+const description = computed(() => holdersDescription(weeks.value, `${shortName.value}（${code.value}）`))
 </script>
 
 <template>
   <EtfPage :etf-data="etfData" facet="holders" :description="description">
     <StockQuestionSection id="etf-holders" :question="`${shortName}（${code}）是誰在持有？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="holders" />
-      <SharedTable v-if="levels.length" :label="`${shortName}最新一週的集保股權分散`" :caption="`${shortName} ${code} ${latest?.dataDate ?? ''} 集保股權分散表，15 個持股級距`">
-        <thead>
-          <tr>
-            <th scope="col">持股級距</th>
-            <th scope="col" class="seo-table__num">人數</th>
-            <th scope="col" class="seo-table__num">張數</th>
-            <th scope="col" class="seo-table__num">占集保比例</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in levels" :key="row.level">
-            <th scope="row">{{ rangeText(row.minShares, row.maxShares) }}</th>
-            <td class="seo-table__num">{{ groupThousands(row.holders) }}</td>
-            <td class="seo-table__num">{{ lots(row.shares) }}</td>
-            <td class="seo-table__num">{{ row.custodyPct.toFixed(2) }}%</td>
-          </tr>
-        </tbody>
-      </SharedTable>
-      <p class="hub-answer">資料來源是臺灣集中保管結算所每週公布的集保股權分散表；1 張是 1,000 股。這一面的資料從 2026 年 9 月才開始，週數還不多。</p>
+      <SharedHoldersTable v-if="levels.length" :levels="levels" :short-name="shortName" :code="code" :date="weeks.at(-1)?.dataDate ?? ''" />
+      <p class="hub-answer">資料來源是臺灣集中保管結算所每週公布的集保股權分散表；1 張是 1,000 股，每一級含上限（5～10 張是 5,001～10,000 股）。這一面的資料從 2026 年 9 月才開始，週數還不多。</p>
     </StockQuestionSection>
   </EtfPage>
 </template>
