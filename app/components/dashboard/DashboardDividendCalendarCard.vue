@@ -146,11 +146,10 @@ function detailMeta(event: DividendCalendarEvent): string[] {
   if (amount) parts.push(amount)
   if (event.fiscalYear !== null) parts.push(`${event.fiscalYear} 年度`)
   if (event.status === 'announced') parts.push('尚未除息（公司預告）')
-  else {
-    if (event.paymentDate) parts.push(`發放日 ${event.paymentDate}`)
-    // 配股的發放日（2026-10-20 起才有，只有個股）
-    if (event.stockDividendDistributionDate) parts.push(`配股發放日 ${event.stockDividendDistributionDate}`)
-  }
+  // 預告的項目有發放日也寫（2026-11-12 使用者照建議：ETF 從預告起就有發放日；只寫「公司預告」是以前沒有發放日時的寫法）
+  if (event.paymentDate) parts.push(`發放日 ${event.paymentDate}`)
+  // 配股的發放日（2026-10-20 起才有，只有個股）
+  if (event.stockDividendDistributionDate) parts.push(`配股發放日 ${event.stockDividendDistributionDate}`)
   return parts
 }
 
