@@ -80,7 +80,7 @@ watch(rows, (list) => {
 const firstLoad = computed(() => !realized.value && !failed.value)
 
 // 收盤價（2026-10-16「holdings/realized 希望外面表格可以放今日收盤價」）：最近一筆有成交的收盤（stock.latestClose，跟持股總覽算市值
-// 的同一份）。表頭寫是哪一天；比那天舊的（上市隔天早上才更新、或已經不交易）在數字後面標自己的日期，不讓人當成今天
+// 的同一份）。表頭寫是哪一天；比那天舊的（上市比上櫃晚更新、或已經不交易）在數字後面標自己的日期，不讓人當成今天
 const latestPriceDate = computed(() => rows.value.map(row => row.priceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
 const dayText = (date: string) => (date.slice(0, 4) === latestPriceDate.value?.slice(0, 4) ? date.slice(5) : date).replaceAll('-', '/')
 

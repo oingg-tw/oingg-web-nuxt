@@ -88,8 +88,8 @@ const baseRows = computed(() => holdings.value.map((holding) => {
   }
 }))
 const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.input)))
-// 今日漲跌是哪一天的：各檔收盤日期最新的那天。總覽只加總那一天的——上市隔天早上才更新、上櫃當天傍晚就有
-// （2026-10-15 twse-ts／tpex-ts 確認），晚上兩邊差一天，加在一起只標一個日期是錯的
+// 今日漲跌是哪一天的：各檔收盤日期最新的那天。總覽只加總那一天的——上櫃約 17:00、上市約 17:50 才有當天收盤
+// （twse-ts／tpex-ts 的 scheduler.config.ts，2026-11-12），中間那段兩邊差一天，加在一起只標一個日期是錯的
 const dayDate = computed(() => Object.values(market.value).map(quote => quote.dayPriceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
 const dayTotals = computed(() => summarizeDayChange(baseRows.value.map(row => row.dayInput), dayDate.value))
 const shortDate = (date: string) => date.slice(5).replace('-', '/')
@@ -120,7 +120,7 @@ const excludedText = computed(() => [
   excludedClause(totals.value.unpricedCount, '無報價', row => row.figures.marketValue === null),
   excludedClause(totals.value.dividendMissingCount, '無股利資料', row => row.figures.annualDividend === null),
   excludedClause(totals.value.costUnknownCount, '有成本不明的股數', row => (row.input.costUnknownQuantity ?? 0) > 0),
-  // 收盤還停在前一個交易日的（上市隔天早上才更新），不算進總覽的今日漲跌
+  // 收盤還停在前一個交易日的（上市比上櫃晚更新），不算進總覽的今日漲跌
   excludedClause(dayTotals.value.staleCount, '今日漲跌尚未更新', row => !!row.dayInput.date && !!dayDate.value && row.dayInput.date < dayDate.value && dayChange(row.dayInput).pct !== null)
 ].filter(Boolean).join('；'))
 
@@ -516,9 +516,12 @@ async function submit() {
               <li>股數與成本由交易紀錄以先進先出（跟券商相同）算出，買進手續費計入成本；平均成本是目前還持有的那幾批的平均。成本不明的股數市值照算，未實現損益只算成本已知的部分。</li>
               <li>「報酬含息」關著時，未實現損益與報酬率只看股價，不含已經領到的股利（跟券商對帳單相同）。打開時是含息損益＝未實現損益＋這批持股領過的現金股利：除息日計入，股數用除息前一天收盤時的持股（ETF 用每單位配息），各帳戶分開算，部位歸零後重新買進從 0 算，沒扣匯費與二代健保補充保費；含息報酬率＝含息損益 ÷ 成本。有成本不明的股數時，股利照股數比例只算成本已知的那一份。</li>
               <li v-if="priceDates.length">市值以 {{ priceDates.at(-1) }} 收盤價計算<template v-if="olderPriceText">；{{ olderPriceText }}</template>。</li>
-              <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上櫃股票的收盤價當天傍晚就更新，上市股票目前要到隔天早上；還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
+              <li v-if="dayDate">今日漲跌是 {{ dayDate }} 的收盤價對前一個有成交日的收盤價（跟觀察清單的漲跌相同），總覽的漲跌幅依前一日市值加權；那天沒有成交的持股不計入。上市、上櫃的收盤價更新時間不同（見下面的資料更新時間），還沒更新的那幾檔，明細標出它的日期、不計入總覽。除息當天的漲跌包含配息造成的下跌，不是對除息參考價。</li>
               <li>預估年度股利＝持有股數 × 每股現金股利。普通股是一年份的現金股利（已換算配股後的股數）：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。ETF 採近 12 個月已除息的配息<template v-if="etfWindow">，區間是 {{ etfWindow.from }}～{{ etfWindow.to }}</template>。特別股採發行條件所訂年股息。只反映已除息、董事會已決議或已公告的股利，不代表未來配息金額。</li>
               <li>殖利率是交易所公布的每檔殖利率，依市值加權<template v-if="yieldDates">（{{ yieldDates }}）</template><template v-if="portfolioYield.coverage < 0.995">，涵蓋 {{ (portfolioYield.coverage * 100).toFixed(0) }}% 的市值（ETF 等沒有公布殖利率的不計入）</template>。<template v-if="marketYield">大盤是上市公司依市值加權<template v-if="marketYield.date">（{{ marketYield.date }}）</template>，不含上櫃，台積電等權值股的占比很大。</template>殖利率是股利除以股價，股價下跌也會讓它變高，不是報酬率。</li>
+              <!-- shortcut: 時間抄自上游排程（twse-ts、tpex-ts、fundclear-ts 的 scheduler.config.ts，mops-ts deploy/README.md，2026-11-12），
+                   上游改排程不會通知這裡；上游有提供排程時間的 API 時改讀它 -->
+              <li>資料更新時間（台北時間）：收盤價在每個交易日上櫃約 17:00、上市約 17:50 更新；殖利率上市約 17:35、上櫃約 18:35；股利每天 06:10～09:00。交易所或公司晚發布時會跟著延後。</li>
             </ul>
           </details>
 

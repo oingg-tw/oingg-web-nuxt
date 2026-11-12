@@ -149,8 +149,8 @@ export interface DayChangeInput {
   quantity: number
   price: number | null | undefined
   previousClose: number | null | undefined
-  // 這筆收盤是哪一天。上市與上櫃更新時間不同（2026-10-15 twse-ts／tpex-ts 確認）：上櫃當天 18:00 前就有當天收盤，
-  // 上市要到隔天 07:15 後（證交所 OpenAPI 隔天清晨才給前一交易日）。所以晚上的持股會一半是今天、一半是昨天
+  // 這筆收盤是哪一天。上市與上櫃更新時間不同（twse-ts／tpex-ts 的 scheduler.config.ts，2026-11-12）：上櫃約 17:00 就有當天收盤，
+  // 上市約 17:50（舊版 MI_INDEX 的暫定值，隔天 07:05 用 OpenAPI 定版覆蓋）。所以那段時間的持股會一半是今天、一半是昨天
   date?: string | null
 }
 
