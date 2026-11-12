@@ -28,7 +28,7 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 // 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁。
 // lazy（2026-10-23，使用者：「手機…點按頁面以後，仍是呈現上一個頁面，經過一段時間以後才切換」）：瀏覽器裡換頁不等這一頁的資料，
 // 先換上結構與骨架；伺服器照樣等資料再輸出（Nuxt 的 lazy 只影響瀏覽器，asyncData.js 的 onServerPrefetch）
-const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, pending: metricPending, refresh: refreshMetricData }] = await Promise.all([
+const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, pending: metricPending, refresh: refreshMetricData }, { data: metricText }] = await Promise.all([
   useFilterSchema(),
   useAsyncData<StockMetricPageResponse | null>(
     () => `stock-metric-${code.value}-${slug.value}`,
@@ -36,7 +36,9 @@ const [{ data: filterSchema }, { data: metricData, error: metricError, status: m
       return readOrNull($fetch<StockMetricPageResponse>(`/api/stock/${code.value}/metric`, { query: { slug: slug.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-metric')
     },
     { watch: [code, slug], default: () => null, lazy: true }
-  )
+  ),
+  // 說明與參考網址（長文字不在精簡目錄裡，2026-11-13）：只抓這一支
+  useMetricText(metricPage.metricCode)
 ])
 
 // The metric's own catalog entry — unit, formula, sources and (when analysis-ts has written them)
@@ -70,7 +72,7 @@ const related = resolveRelatedPages(metricPage.related)
 const footerLinks = computed(() => [
   { to: metricPath(metricPage.metricCode), label: `${metricPage.topic}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/financial-statements`, label: `${stockShortName.value} ${code.value} 的財務報表原始數字` },
-  ...(metricEntry.value?.referenceUrl ? [{ to: metricEntry.value.referenceUrl, label: `${metricPage.topic}的公開說明`, external: true }] : []),
+  ...(metricText.value?.referenceUrl ? [{ to: metricText.value.referenceUrl, label: `${metricPage.topic}的公開說明`, external: true }] : []),
   ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic }))
 ])
 
@@ -101,7 +103,7 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
 })
 
 // 通則區（StockMetricGuide）的內容：前端文案優先、型錄補空，徽章頁共用同一個解析
-const guide = computed(() => metricGuideFrom(copy.value, metricEntry.value))
+const guide = computed(() => metricGuideFrom(copy.value, metricText.value))
 const definition = computed(() => guide.value.definition[0] ?? null)
 // 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回頁面本身的口徑
 const historySeries = computed(() => pickQuarterlyHistory(metricData.value?.quarterly, metricData.value?.series, metricPage.metricCode))

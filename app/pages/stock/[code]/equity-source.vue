@@ -37,18 +37,20 @@ const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(c
 // await 在 page top-level：同 key 的 useAsyncData 沒 await 而被多個同時掛載的子元件呼叫會靜默卡在初始值（2026-09-09 根因過一次）。
 // 型錄與淨值變動同時抓（2026-10-26，冷啟動）：互不相依，原本一個等一個是兩波上游呼叫。
 // lazy（2026-10-23）：瀏覽器裡換頁不等淨值變動，讀取中放答句與圖的骨架（伺服器照樣等）。仍在 top-level await，上面那條規則照守
-const [{ data: filterSchema }, { data: breakdown, error: breakdownError, pending: breakdownPending, refresh: refreshBreakdown }] = await Promise.all([
+const [{ data: filterSchema }, { data: breakdown, error: breakdownError, pending: breakdownPending, refresh: refreshBreakdown }, { data: bvpsText }] = await Promise.all([
   useFilterSchema(),
   useAsyncData(
     () => `stock-book-value-breakdown-${code.value}`,
     () => $fetch<StockBookValueBreakdownResponse>(`/api/stock/${code.value}/book-value-breakdown`),
     { watch: [code], default: () => null, lazy: true }
-  )
+  ),
+  // 定義段讀這一支的說明（長文字不在精簡目錄裡，2026-11-13）
+  useMetricText('bvps')
 ])
 
 // 頁尾（2026-10-11 統一進 StockPageFooter）：來源取每股淨值這支的型錄來源；頁尾前的定義也是它（同其他個股頁的模板）
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], ['bvps']))
-const definition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'bvps')?.metric.description))
+const definition = computed(() => firstSentence(bvpsText.value?.description))
 const footerLinks = computed(() => [
   { to: metricPath('bvps'), label: '每股淨值怎麼看（新手專區）' },
   { to: `/stock/${code.value}/equity-composition`, label: '淨值組成' },

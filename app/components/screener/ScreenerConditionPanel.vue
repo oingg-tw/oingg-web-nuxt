@@ -36,6 +36,13 @@ const emit = defineEmits<{
 }>()
 
 const open = computed(() => props.listVisible || props.pickerVisible || (props.rangeVisible && !!props.slot))
+// 挑指標面板要的長文字（英文名、別名、期別說明，不在精簡目錄裡，2026-11-13）：這個面板在篩選頁一直掛著，頁面閒下來時先抓，打開就不用等。
+// Safari 沒有 requestIdleCallback，晚兩秒抓
+const { load: loadMetricTexts } = useMetricTexts()
+onMounted(() => {
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(loadMetricTexts)
+  else setTimeout(loadMetricTexts, 2000)
+})
 type Step = 'list' | 'pick' | 'range'
 const liveStep = computed<Step | null>(() => (props.rangeVisible && props.slot ? 'range' : props.pickerVisible ? 'pick' : props.listVisible ? 'list' : null))
 // 關掉的時候停在最後開著的那一頁：關閉動畫裡內容不換，關著的面板也不會多畫一份條件清單（電腦版從來不開清單）

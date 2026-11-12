@@ -23,16 +23,18 @@ const { data: exDividendNotices } = useExDividendNotices(computed(() => [code.va
 // 型錄仍在頁面頂層、卡片掛上之前 await 完（feedback_useasyncdata_shared_key_race memory），只是跟另外兩支一起等。
 // lazy（2026-10-23，換頁延遲）：瀏覽器裡換頁不等摘要與殖利率歷史，第一段讀取中放骨架；伺服器照樣等。
 // 殖利率歷史是次要資料，讀不到不擋整頁（scope section），只少第一段的圖與「自己的區間」那半句
-const [{ data: filterSchema }, { digest, description, series }, { data: yieldHistory, pending: yieldPending, refresh: refreshYieldHistory }] = await Promise.all([
+const [{ data: filterSchema }, { digest, description, series }, { data: yieldHistory, pending: yieldPending, refresh: refreshYieldHistory }, { data: dividendText }] = await Promise.all([
   useFilterSchema(),
   useStockPageDigest(code, 'dividend', { shortName: stockShortName, exDividendNotices, lazy: true }),
   useFetch<StockDividendYieldHistoryResponse>(() => `/api/stock/${code.value}/dividend-yield-history`, {
     key: () => `stock-dividend-yield-history-${code.value}`,
     watch: [code],
     lazy: true
-  })
+  }),
+  // 定義段讀這一支的說明（長文字不在精簡目錄裡，2026-11-13）
+  useMetricText('liveCashDividendYield')
 ])
-const dividendDefinition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'liveCashDividendYield')?.metric.description))
+const dividendDefinition = computed(() => firstSentence(dividendText.value?.description))
 watchLoadFailure(() => `stock-dividend-yield-history:${code.value}`, () => yieldHistory.value?.entries === null, refreshYieldHistory, { scope: 'section' })
 const yieldEntries = computed(() => yieldHistory.value?.entries ?? [])
 

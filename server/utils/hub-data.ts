@@ -626,9 +626,11 @@ export const getFilterSchemaCatalog = defineCachedFunction(
         metrics: (category.metrics as LooseRecord[]).map((metric) => {
           const badge = metric.badge as LooseRecord | null | undefined
           return {
-            // formulaLatex 不帶：公式改由 getFormulaHtml 在伺服器排好（/api/hub/formula/[key]），瀏覽器用不到原始 LaTeX
-            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'nameEn', 'searchAliases', 'unit', 'sort', 'description', 'referenceUrl', 'sources', 'kind', 'options', 'conditionOnly', 'hasProvenance']),
-            fields: (metric.fields as LooseRecord[]).map(field => pickKeys(field, ['key', 'name', 'period', 'description', 'aliases', 'unit', 'sort'])),
+            // formulaLatex 不帶：公式改由 getFormulaHtml 在伺服器排好（/api/hub/formula/[key]），瀏覽器用不到原始 LaTeX。
+            // 長文字也不帶（2026-11-13，PageSpeed 第二階段）：英文名、搜尋別名、說明、參考網址、期別的說明與別名占這份的 70 KB，每一頁的
+            // payload 都有，卻只有挑指標的面板（打開時）和幾頁的定義段在讀——它們改讀 getMetricTexts（/api/hub/metric-texts）
+            ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'unit', 'sort', 'sources', 'kind', 'options', 'conditionOnly', 'hasProvenance']),
+            fields: (metric.fields as LooseRecord[]).map(field => pickKeys(field, ['key', 'name', 'period', 'unit', 'sort'])),
             ...(badge
               ? {
                   badge: {
@@ -643,8 +645,28 @@ export const getFilterSchemaCatalog = defineCachedFunction(
     }
   },
   // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）；-v3：最新財報季別的選項多了 fiscalYear／fiscalQuarter（2026-11-04），舊快取沒有；
-  // -v4：同日跟著 hub-metrics-catalog-v3 換（v3 是從還沒有是／否欄位的目錄建的）
-  { name: 'hub-filter-schema-v4', ...swrCache(TTL_CATALOG, TTL_STATIC) }
+  // -v4：同日跟著 hub-metrics-catalog-v3 換（v3 是從還沒有是／否欄位的目錄建的）；-v5：2026-11-13 長文字移到 getMetricTexts
+  { name: 'hub-filter-schema-v5', ...swrCache(TTL_CATALOG, TTL_STATIC) }
+)
+
+// 精簡目錄拿掉的長文字，以指標代號為鍵（2026-11-13，/api/hub/metric-texts）：挑指標的面板在頁面閒下來時抓整份（搜尋英文名、別名，
+// 顯示期別說明）；伺服器要畫定義段、參考連結的頁只抓它那一支（?key=），payload 只多那一支的字
+export const getMetricTexts = defineCachedFunction(
+  async (): Promise<Record<string, LooseRecord>> => {
+    const catalog = await getMetricsCatalog()
+    const texts: Record<string, LooseRecord> = {}
+    for (const category of catalog.categories as LooseRecord[]) {
+      for (const metric of category.metrics as LooseRecord[]) {
+        const fields = Object.fromEntries((metric.fields as LooseRecord[]).flatMap((field) => {
+          const text = pickKeys(field, ['description', 'aliases'])
+          return Object.keys(text).length ? [[field.key as string, text]] : []
+        }))
+        texts[metric.key as string] = { ...pickKeys(metric, ['nameEn', 'searchAliases', 'description', 'referenceUrl']), ...(Object.keys(fields).length ? { fields } : {}) }
+      }
+    }
+    return texts
+  },
+  { name: 'hub-metric-texts', ...swrCache(TTL_CATALOG, TTL_STATIC) }
 )
 
 // 一個指標的公式，在伺服器用 KaTeX 排好的 HTML（2026-10-16，/api/hub/formula/[key]）：瀏覽器不必載入 KaTeX。顯示模式，

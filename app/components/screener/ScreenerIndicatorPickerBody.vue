@@ -175,7 +175,7 @@ function expandFields(fields: MetricField[], metricKey: string, metricName: stri
     fieldId: `${metricKey}.${field.key}`,
     fieldLabel: formatFieldLabel(metricName, field),
     fieldIds: [`${metricKey}.${field.key}`],
-    description: field.description
+    description: fieldTextOf(metricKey, field)?.description
   }))
 }
 
@@ -202,7 +202,7 @@ function collapseFields(fields: MetricField[], metricKey: string, metricName: st
       // The best-ranked period's own description — every period variant of one concept
       // describes the same underlying thing, so this doesn't need to track which variant is
       // currently assigned the way fieldId does.
-      description: best.description
+      description: fieldTextOf(metricKey, best)?.description
     }
   ]
 }
@@ -221,9 +221,9 @@ function browseFieldsOf(metric: Metric): IndicatorEntry[] {
 // whatever's actually on screen either way. Also matches against aliases (e.g. "股東權益報酬率"
 // finding ROE) even though those are never shown — search should find a field by a name the
 // user knows it by, without the row itself needing to display every alternate name.
-function fieldMatchesQuery(metricName: string, field: MetricField, query: string): boolean {
+function fieldMatchesQuery(metricKey: string, metricName: string, field: MetricField, query: string): boolean {
   const label = props.hidePeriod ? metricName : formatFieldLabel(metricName, field)
-  return searchKey(label).includes(query) || (field.aliases?.some(alias => searchKey(alias).includes(query)) ?? false)
+  return searchKey(label).includes(query) || (fieldTextOf(metricKey, field)?.aliases?.some(alias => searchKey(alias).includes(query)) ?? false)
 }
 
 // Whether a metric (中分類) counts as matching the current search — its own name, or any
@@ -241,7 +241,7 @@ function metricMatchesQuery(metric: Metric, query: string): boolean {
   // metricDisplayName 而不是 metric.name（2026-09-28）：畫面上的標題是「交易所 本益比」，但比對只看
   // `name`，所以搜「交易所」「即時」一筆都搜不到——使用者搜的是他看得到的字。六組同名指標（本益比、
   // 股價淨值比、市值、葛拉漢倍數、本益成長比、盈餘收益率）全都只靠後綴分辨。
-  return metricNameMatches(metric, query) || metric.fields.some(field => fieldMatchesQuery(metricDisplayName(metric), field, query))
+  return metricNameMatches(metric, query) || metric.fields.some(field => fieldMatchesQuery(metric.key, metricDisplayName(metric), field, query))
 }
 
 // 指標本身的名稱：畫面上的中文、英文名、上游的搜尋別名（searchAliases：縮寫、其他英文寫法、俗稱，2026-10-22）、代碼，以及母指標的
@@ -249,7 +249,14 @@ function metricMatchesQuery(metric: Metric, query: string): boolean {
 // 代碼加後綴（pbRatio → pbRatioRiverBand、psr → psrRiverBand、eps → epsGrowthRate），從型錄找母指標。
 // 代碼只比對整個相同，不比對片段——operatingIncomePerShare 裡面也有 per
 const allMetrics = computed(() => props.categories.flatMap(category => category.metrics))
-const englishNames = (metric: Metric) => [metric.nameEn, ...(metric.searchAliases ?? [])].filter((name): name is string => !!name)
+// 英文名、別名、期別的說明不在精簡目錄裡（2026-11-13）：面板一掛上就抓整份長文字（篩選頁在閒下來時已經先抓了），到之前只比對中文名稱
+const { texts: metricTexts, load: loadMetricTexts } = useMetricTexts()
+onMounted(loadMetricTexts)
+const fieldTextOf = (metricKey: string, field: MetricField) => metricTexts.value?.[metricKey]?.fields?.[field.key]
+const englishNames = (metric: Metric) => {
+  const text = metricTexts.value?.[metric.key]
+  return [text?.nameEn, ...(text?.searchAliases ?? [])].filter((name): name is string => !!name)
+}
 function metricNameMatches(metric: Metric, query: string): boolean {
   const own = (target: Metric) => target.key.toLowerCase() === query || englishNames(target).some(name => nameEnMatches(name, query))
   if (searchKey(metricDisplayName(metric)).includes(query) || own(metric)) return true
@@ -308,7 +315,7 @@ const displayedIndicators = computed<IndicatorEntry[]>(() => {
     return searchOrderedMetrics.value.flatMap(metric => {
       // 英文縮寫也算（2026-10-20）：搜「ROE」原本只在中欄找到指標，右欄卻是空的、沒有東西可以點
       const nameMatches = metricNameMatches(metric, query)
-      const matchingFields = bySort(metric.fields.filter(field => nameMatches || fieldMatchesQuery(metricDisplayName(metric), field, query)))
+      const matchingFields = bySort(metric.fields.filter(field => nameMatches || fieldMatchesQuery(metric.key, metricDisplayName(metric), field, query)))
       return entriesOf(matchingFields, metric.key, metricDisplayName(metric))
     })
   }

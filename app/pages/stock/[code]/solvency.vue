@@ -32,7 +32,7 @@ const TOPIC = '安全韌性的組成'
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 // 型錄與這一頁的資料同時抓（2026-10-26，冷啟動，同 StockMetricDetailPage）：互不相依，原本一個等一個是兩波上游呼叫。
 // 瀏覽器裡換頁不等資料（lazy，2026-10-23）：讀取中（pending）放答句與圖的骨架，不落到「目前沒有資料」
-const [{ data: filterSchema }, { data: solvencyData, error: solvencyError, status: solvencyDataStatus, pending: solvencyPending, refresh: refreshSolvencyData }] = await Promise.all([
+const [{ data: filterSchema }, { data: solvencyData, error: solvencyError, status: solvencyDataStatus, pending: solvencyPending, refresh: refreshSolvencyData }, { data: currentRatioText }] = await Promise.all([
   useFilterSchema(),
   useAsyncData<StockSolvencyPageResponse | null>(
     () => `stock-solvency-${code.value}`,
@@ -40,7 +40,9 @@ const [{ data: filterSchema }, { data: solvencyData, error: solvencyError, statu
       return readOrNull($fetch<StockSolvencyPageResponse>(`/api/stock/${code.value}/solvency`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }), 'stock-solvency')
     },
     { watch: [code], default: () => null, lazy: true }
-  )
+  ),
+  // 定義段讀這一支的說明（長文字不在精簡目錄裡，2026-11-13）
+  useMetricText('currentRatio')
 ])
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
@@ -72,7 +74,7 @@ const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], SOLVENCY_METRIC_CODES))
 // 頁尾的相關頁面（2026-10-11 從兩個段落末移進 StockPageFooter）：各比率自己的頁，原始金額在資產負債表
 // 頁尾前的定義區（2026-10-14 指標頁一致性盤點，「關係頁補定義區」）：這一頁的主線是流動比率，定義取型錄的第一句
-const definition = computed(() => firstSentence(findMetricInSchema(filterSchema.value?.categories ?? [], 'currentRatio')?.metric.description))
+const definition = computed(() => firstSentence(currentRatioText.value?.description))
 const footerLinks = computed(() => [
   { to: metricPath('currentRatio'), label: '流動比率怎麼看（新手專區）' },
   { to: `/stock/${code.value}/current-ratio`, label: '流動比率' },

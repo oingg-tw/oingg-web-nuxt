@@ -404,3 +404,34 @@ export function useFilterSchema() {
   watchLoadFailure('filter-schema', () => result.error.value, () => result.refresh(), { scope: 'section' })
   return result
 }
+
+// 精簡目錄拿掉的長文字（2026-11-13，PageSpeed 第二階段；server/utils/hub-data.ts 的 getMetricTexts）。每一頁的 payload 都帶它們
+// 有 70 KB，讀的卻只有挑指標的面板與幾頁的定義段、參考連結
+export interface MetricText {
+  nameEn?: string
+  searchAliases?: string[]
+  description?: string | null
+  referenceUrl?: string | null
+  // 期別代號 → 那一期的說明與搜尋別名（只有有字的期別）
+  fields?: Record<string, { description?: string, aliases?: string[] }>
+}
+
+// 伺服器要畫的那一支：payload 只多這一支的字。讀不到就沒有定義段與參考連結，不擋整頁
+export function useMetricText(metricKey: string) {
+  return useFetch<MetricText>('/api/hub/metric-texts', { key: `metric-text-${metricKey}`, query: { key: metricKey }, default: () => ({}) })
+}
+
+// 整份（挑指標的面板）：只在瀏覽器抓、抓一次，同一頁的面板共用。篩選頁在閒下來時先抓（ScreenerConditionPanel），打開面板不用等；
+// 沒抓到時搜尋仍比對中文名稱，只少了英文名、別名與期別說明
+let metricTextsRequest: Promise<void> | null = null
+export function useMetricTexts() {
+  const texts = useState<Record<string, MetricText> | null>('metric-texts', () => null)
+  const load = () => {
+    if (texts.value || metricTextsRequest) return
+    metricTextsRequest = $fetch<Record<string, MetricText>>('/api/hub/metric-texts')
+      .then((result) => { texts.value = result })
+      .catch((error) => { devWarn('metrics', 'GET /api/hub/metric-texts unavailable', error) })
+      .finally(() => { metricTextsRequest = null })
+  }
+  return { texts, load }
+}

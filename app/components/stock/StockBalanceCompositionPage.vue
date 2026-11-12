@@ -41,13 +41,15 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 // await 在頂層：同 key 的 useAsyncData 沒 await 會被多個同時掛載的元件卡在初始值（2026-09-09 根因過一次）。
 // 型錄與組成同時抓（2026-10-26，冷啟動）：互不相依，原本一個等一個是兩波上游呼叫。
 // lazy（2026-10-23）：瀏覽器裡換頁不等組成，讀取中放答句與圖的骨架、不落到「沒有申報」（伺服器照樣等）
-const [{ data: filterSchema }, { data, error, pending, refresh }] = await Promise.all([
+const [{ data: filterSchema }, { data, error, pending, refresh }, { data: metricText }] = await Promise.all([
   useFilterSchema(),
   useAsyncData(
     () => `stock-${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition-${code.value}`,
     () => $fetch<StockBalanceCompositionResponse | StockCashFlowCompositionResponse>(`/api/stock/${code.value}/${props.kind === 'cashFlow' ? 'cash-flow' : 'balance'}-composition`),
     { watch: [code], default: () => null, lazy: true }
-  )
+  ),
+  // 沒有自己定義的頁，定義段讀這一支的說明（長文字不在精簡目錄裡，2026-11-13）
+  useMetricText(page.metricCode)
 ])
 watchLoadFailure(() => `stock-balance-composition:${code.value}`, () => error.value, refresh)
 
@@ -105,7 +107,7 @@ const emptyAnswer = computed(() => (props.kind === 'intangible'
     : `${stockShortName.value}沒有可以拆開的${page.total}。銀行、保險、證券與金控的資產負債表不分流動與非流動，這一頁不適用。`))
 
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], page.metricCode)?.metric ?? null)
-const definition = computed(() => ('definition' in page ? page.definition : firstSentence(metricEntry.value?.description)))
+const definition = computed(() => ('definition' in page ? page.definition : firstSentence(metricText.value?.description)))
 const SIBLINGS = [
   { slug: 'current-asset-composition', topic: '流動資產組成' },
   { slug: 'non-current-asset-composition', topic: '非流動資產組成' },
