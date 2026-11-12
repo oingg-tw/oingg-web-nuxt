@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
+import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 
 
 // 指標頁的目前值圖表（2026-09-21，「卡片要可以切換單季或是近四季，期間要可以選1235年」；同日澄清「不是每個卡片都要用TTM，
@@ -230,8 +231,8 @@ watchChartEmpty(() => (emptyReason.value ? { symbol: props.symbol, chart: 'metri
 // 配色是 compare（主角用強調色、對照用灰，2026-10-07），見 StockMultiSeriesLineChart。右軸那一條的名稱帶單位：
 // 權益乘數 1.5 倍會穿過左軸 40% 附近的格線，圖例不寫「（倍）」就會被讀成百分比（同杜邦圖）
 const compareSeries = computed<LineSeriesSpec[]>(() => [
-  { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle' },
-  { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle' },
+  { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle', marginCap: MARGIN_CAP_METRICS.has(props.metricCode) },
+  { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle', marginCap: MARGIN_CAP_METRICS.has(compareCode.value ?? '') },
   ...(rightCode.value && props.rightMetric
     ? [{
         code: rightCode.value,
@@ -250,13 +251,18 @@ const stackedTooltipHeader = (index: number): string => {
   return `${periodLabel(periodKey(point))} 合計 ${point.value === null ? nullReasonShortText(point.nullReason) : `${formatSignificantDigits(point.value, 4)}${props.unit}`}`
 }
 
-const { chartOption } = useMetricHistoryChartOption(
+// 三率截到 ±100% 時，柱狀圖上方多一列箭頭的說明（同折線圖的圖例列）；那一列從圖的 20rem 裡分，整張卡片不變高
+const { resolvedMode } = useAppTheme()
+const capLegend = computed<ChartLegendGroup[]>(() => [{ items: [{ name: MARGIN_CAP_NOTE, color: getChartInk(resolvedMode.value).muted, kind: 'arrow' }] }])
+const { chartOption, capped } = useMetricHistoryChartOption(
   points,
   computed(() => props.topic),
   computed(() => props.unit),
   timeframe,
   // 營收這類年增率的柱子用對數刻度（GROWTH_LOG_METRICS）；指標頁、指標速覽、自選釘選的都經過這裡
-  GROWTH_LOG_METRICS.has(props.metricCode)
+  GROWTH_LOG_METRICS.has(props.metricCode),
+  // 三率的柱子最多畫到 ±100%（MARGIN_CAP_METRICS，app/utils/margin-cap.ts）
+  MARGIN_CAP_METRICS.has(props.metricCode)
 )
 
 </script>
@@ -301,7 +307,10 @@ const { chartOption } = useMetricHistoryChartOption(
       :neutral-layer-name="UNSPLIT"
       :tooltip-header="stackedTooltipHeader"
     />
-    <SharedChart v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart" :option="chartOption" autoresize />
+    <div v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart stock-metric-history-chart-interactive__bars">
+      <SharedChartLegend v-if="capped" :groups="capLegend" />
+      <SharedChart class="stock-metric-history-chart-interactive__plot" :option="chartOption" autoresize />
+    </div>
     <div v-else-if="!pending" class="stock-metric-history-chart-interactive__empty"><SharedEmptyState description="這個期間沒有足夠的資料可以畫圖" /></div>
     <div v-else class="stock-metric-history-chart-interactive__chart app-skeleton" aria-hidden="true" />
 
@@ -314,6 +323,18 @@ const { chartOption } = useMetricHistoryChartOption(
   height: 20rem;
   width: 100%;
   margin-top: 12px;
+}
+
+.stock-metric-history-chart-interactive__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stock-metric-history-chart-interactive__plot {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 /* 沒有圖的說明佔一張圖的位置（2026-11-12）：讀取中是圖高的骨架，原本換成一行字，下面整段往上跳 */

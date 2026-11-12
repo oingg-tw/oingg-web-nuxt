@@ -16,7 +16,9 @@ export function useMetricHistoryChartOption(
   unit: Ref<string>,
   timeframe: Ref<MetricsHistoryTimeframe>,
   // 營收這類年增率畫成「是去年的幾倍」的對數（GROWTH_LOG_METRICS，app/utils/growth-log-scale.ts）；營收 0（−100%）畫到最底、灰色
-  growthLog = false
+  growthLog = false,
+  // 三率（MARGIN_CAP_METRICS，app/utils/margin-cap.ts）：柱子最多畫到 ±100%，超出的畫到邊上、邊上加箭頭，提示框照舊寫原數字
+  marginCap = false
 ) {
   const periodLabel = (fiscalYear: number, fiscalQuarter: number | null): string =>
     timeframe.value === 'FY' ? `${fiscalYear}` : `${fiscalYear} Q${fiscalQuarter}`
@@ -28,6 +30,11 @@ export function useMetricHistoryChartOption(
   const mutedInk = computed(() => getChartInk(resolvedMode.value).muted)
 
   interface BarTooltipParam { dataIndex?: number }
+
+  // 截不截、截哪一邊；呼叫端照 capped 在圖上方畫箭頭的說明（SharedChartLegend）
+  const bounds = computed(() => (marginCap ? marginBounds(points.value.flatMap(entry => (entry.value === null ? [] : [entry.value]))) : null))
+  const capped = computed(() => bounds.value !== null)
+  const capOf = (value: number | null) => (value === null ? null : cappedPoint(value, bounds.value))
 
   const chartOption = computed(() => {
     const list = points.value
@@ -50,7 +57,8 @@ export function useMetricHistoryChartOption(
       yAxis: {
         type: 'value',
         name: unit.value,
-        ...(growthLog ? growthLogAxis(list.flatMap(entry => (entry.value === null ? [] : [entry.value]))) : {})
+        ...(growthLog ? growthLogAxis(list.flatMap(entry => (entry.value === null ? [] : [entry.value]))) : {}),
+        ...bounds.value
       },
       series: [
         {
@@ -73,13 +81,32 @@ export function useMetricHistoryChartOption(
           // 讀者看不出它是負的。
           // growthLog：營收 0（−100%）沒有倍數，畫到最底、灰色
           data: list.map(entry => ({
-            value: growthLog && entry.value !== null ? growthLogValue(entry.value) : entry.value,
+            value: capOf(entry.value)?.value ?? (growthLog && entry.value !== null ? growthLogValue(entry.value) : entry.value),
             itemStyle: { color: growthLog && entry.value !== null && entry.value <= -100 ? mutedInk.value : (entry.value ?? 0) < 0 ? priceColors.value.down : priceColors.value.up }
           }))
-        }
+        },
+        // 截到邊上的柱子，邊上畫一個箭頭：只有箭頭、沒有線的一條折線（不用多註冊 markPoint）。往裡收半個箭頭，不被繪圖區切掉。
+        // 不給名字：SharedChart 用各 series 的名字組 aria-label，箭頭不是資料
+        ...(bounds.value
+          ? [{
+              name: '',
+              type: 'line',
+              silent: true,
+              z: 4,
+              tooltip: { show: false },
+              emphasis: { disabled: true },
+              lineStyle: { opacity: 0 },
+              itemStyle: { color: mutedInk.value },
+              connectNulls: false,
+              data: list.map((entry) => {
+                const cap = capOf(entry.value)
+                return cap ? { value: cap.value, symbol: 'arrow', symbolSize: 12, symbolRotate: cap.up ? 0 : 180, symbolOffset: [0, cap.up ? 6 : -6] } : null
+              })
+            }]
+          : [])
       ]
     }
   })
 
-  return { chartOption }
+  return { chartOption, capped }
 }

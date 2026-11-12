@@ -71,6 +71,9 @@ export interface LineSeriesSpec {
   // 這條所在的那一軸整條換成這種刻度，刻度標回百分比；營收 0（−100%）沒有倍數，畫到最底、灰色。提示框照舊寫原始的百分比。
   // 換算與刻度在 app/utils/growth-log-scale.ts
   growthLog?: boolean
+  // 利益率：這條所在的軸最多畫到 ±100%（2026-11-12，5314 的 −522% 把其餘期別壓成一條線，使用者選 B）。超出的點畫在邊上、換成箭頭，
+  // 提示框照舊寫原數字；大多數期別都超出就照實撐開。規則在 app/utils/margin-cap.ts
+  marginCap?: boolean
 }
 
 // What this chart needs from a row, which is less than a MetricsHistoryEntry carries. Widened
@@ -185,7 +188,19 @@ interface AxisTooltipParam { dataIndex?: number }
 
 const axisIndexOf = (series: LineSeriesSpec) => (series.axis === 'right' ? 1 : 0)
 
-// 圖例與單位畫在圖外（SharedChartLegend）：單軸一組；雙軸左右各一組，各帶自己那一軸的單位
+// 有 marginCap 序列的軸：截不截、截哪一邊從這段畫得到的值算（左軸、右軸各自）
+const capBounds = computed(() => [0, 1].map((axisIndex) => {
+  const capped = props.series.filter(series => series.marginCap && axisIndexOf(series) === axisIndex)
+  return capped.length
+    ? marginBounds(props.entries.flatMap(entry => capped.flatMap((series) => {
+        const value = entry.values[series.code]?.value
+        return value == null ? [] : [value]
+      })))
+    : null
+}))
+const capOf = (series: LineSeriesSpec, value: number | null) => (series.marginCap && value !== null ? cappedPoint(value, capBounds.value[axisIndexOf(series)]!) : null)
+
+// 圖例與單位畫在圖外（SharedChartLegend）：單軸一組；雙軸左右各一組，各帶自己那一軸的單位。截了的那一軸多一項箭頭的說明
 const legendGroups = computed<ChartLegendGroup[]>(() => {
   const items: ChartLegendItem[] = props.series.map((series, index) => series.type === 'bar'
     ? { name: series.name, color: series.signColored ? priceColors.value.up : seriesColors.value[index]!, kind: 'bar' }
@@ -193,10 +208,11 @@ const legendGroups = computed<ChartLegendGroup[]>(() => {
       ? { name: series.name, color: seriesColors.value[index]!, kind: 'band' }
       : { name: series.name, color: seriesColors.value[index]!, kind: 'line', dash: series.lineType, symbol: series.symbol })
   const periods: ChartLegendItem[] = periodNames.value.map(name => ({ name, color: periodFill.value.color, kind: 'band' }))
+  const cap = (axis: number): ChartLegendItem[] => (capBounds.value[axis] ? [{ name: MARGIN_CAP_NOTE, color: chartInk.value.muted, kind: 'arrow' }] : [])
   const onAxis = (axis: number) => items.filter((_, index) => axisIndexOf(props.series[index]!) === axis)
   return props.unitRight
-    ? [{ unit: props.unit, items: [...onAxis(0), ...periods] }, { unit: props.unitRight, items: onAxis(1), right: true }]
-    : [{ unit: props.unit, items: [...items, ...periods] }]
+    ? [{ unit: props.unit, items: [...onAxis(0), ...periods, ...cap(0)] }, { unit: props.unitRight, items: [...onAxis(1), ...cap(1)], right: true }]
+    : [{ unit: props.unit, items: [...items, ...periods, ...cap(0)] }]
 })
 
 // 區間帶：一條透明的下緣，上面疊「上緣 − 下緣」塗淡色。stackStrategy 'all'：下緣是負的（折價）時照樣往上疊，預設只疊同號的
@@ -265,14 +281,16 @@ const chartOption = computed(() => {
       {
         type: 'value',
         axisLabel: { formatter: axisNumber },
-        ...logAxis[0]
+        ...logAxis[0],
+        ...capBounds.value[0]
       },
       ...(props.unitRight
         ? [{
             type: 'value',
             splitLine: { show: false },
             axisLabel: { formatter: axisNumber },
-            ...logAxis[1]
+            ...logAxis[1],
+            ...capBounds.value[1]
           }]
         : [])
     ],
@@ -292,7 +310,10 @@ const chartOption = computed(() => {
             lineStyle: { width: 2.5 + HALO_WIDTH * 2, color: CARD_SURFACE[resolvedMode.value] },
             itemStyle: { color: CARD_SURFACE[resolvedMode.value] },
             connectNulls: false,
-            data: list.map(entry => entry.values[series.code]?.value ?? null)
+            data: list.map((entry) => {
+              const value = entry.values[series.code]?.value ?? null
+              return capOf(series, value)?.value ?? value
+            })
           }]
         : []),
       {
@@ -321,6 +342,8 @@ const chartOption = computed(() => {
             // 高齡友善介面的線條規格（2026-09-30 直接指示）：折線 ≤ 2 條、線寬 ≥ 2.5px、轉折點
             // ≥ 8px 實心標記。規格表寫主要資料折線最小 2.0px、建議 2.5–3.0px，這裡取建議區間的下緣。
             symbolSize: 8,
+            // 截了的線每一點都畫：ECharts 在窄圖上會自動略過一些點，箭頭也跟著不見（375 寬時 5314 的 −100% 那排只剩一兩個）
+            showAllSymbol: series.marginCap && capBounds.value[axisIndexOf(series)] ? true : 'auto',
             lineStyle: { width: 2.5, type: series.lineType, color: seriesColors.value[index] },
             itemStyle: { color: seriesColors.value[index] },
             // `connectNulls: false` on purpose — a period with no filed figure leaves a real gap
@@ -343,6 +366,9 @@ const chartOption = computed(() => {
         : {}),
       data: list.map((entry) => {
         const value = entry.values[series.code]?.value ?? null
+        // 截到邊上的點換成箭頭，往裡收半個箭頭，不被繪圖區切掉
+        const cap = capOf(series, value)
+        if (cap) return { value: cap.value, symbol: 'arrow', symbolSize: 12, symbolRotate: cap.up ? 0 : 180, symbolOffset: [0, cap.up ? 6 : -6] }
         const plotted = value !== null && series.growthLog ? growthLogValue(value) : value
         if (value === null || !(series.type === 'bar' && series.signColored)) return plotted
         const color = series.growthLog && value <= -100 ? chartInk.value.muted : value < 0 ? priceColors.value.down : priceColors.value.up

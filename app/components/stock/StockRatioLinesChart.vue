@@ -16,9 +16,9 @@ const basis = defineModel<'TTM' | 'Q'>('basis')
 // （差距＝營業費用率）；稅後淨利率有 46.3% 的期別高過營業利益率，那兩條交叉的地方就是業外損益大過所得稅
 const SERIES: Record<'margins' | 'solvency', readonly LineSeriesSpec[]> = {
   margins: [
-    { code: 'grossMargin', name: '毛利率', lineType: 'solid', symbol: 'circle' },
-    { code: 'operatingMargin', name: '營業利益率', lineType: 'dashed', symbol: 'triangle' },
-    { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dotted', symbol: 'rect' }
+    { code: 'grossMargin', name: '毛利率', lineType: 'solid', symbol: 'circle', marginCap: true },
+    { code: 'operatingMargin', name: '營業利益率', lineType: 'dashed', symbol: 'triangle', marginCap: true },
+    { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dotted', symbol: 'rect', marginCap: true }
   ],
   solvency: [
     { code: 'currentRatio', name: '流動比率', lineType: 'solid', symbol: 'circle' },
