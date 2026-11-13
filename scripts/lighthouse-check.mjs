@@ -28,6 +28,13 @@ const SAMPLES = 3
 const CONCURRENCY = 4
 const CATEGORIES = { performance: 'performance', accessibility: 'accessibility', 'best-practices': 'bestPractices', seo: 'seo' }
 const METRICS = { fcpMs: 'first-contentful-paint', lcpMs: 'largest-contentful-paint', tbtMs: 'total-blocking-time', cls: 'cumulative-layout-shift', speedIndexMs: 'speed-index' }
+// PSI 手機版偶爾晚一兩秒才畫第一格：Chrome（viz）把啟動時回不了畫格的分頁降成每秒一格（ThrottleUnresponsiveClient），那一次分數最多低約 30 分，不是網站變慢。
+// 這種樣本的第一次繪製晚於 DOMContentLoaded 0.6 秒以上，正常的從沒晚過（2026-11-09～13：手機 62 份、桌機 38 份），門檻取兩者之間
+const STALL_MS = 300
+const stalled = (result) => {
+  const timing = result.audits.metrics?.details?.items?.[0]
+  return timing?.observedFirstPaint - timing?.observedDomContentLoaded > STALL_MS
+}
 
 const args = process.argv.slice(2)
 // 指定頁面時報告資料夾標成 custom，免得跟基準組混在一起比
@@ -137,6 +144,7 @@ for (const path of routes) {
 
 const jobs = routes.flatMap(path => FORM_FACTORS.map(formFactor => ({ path, formFactor })))
 const pages = []
+const stalledPages = []
 let lighthouseVersion = null
 let aborted = null
 let cursor = 0
@@ -165,10 +173,12 @@ async function worker() {
     const byPerformance = [...results].sort((a, b) => (scoreOf(a, 'performance') ?? 0) - (scoreOf(b, 'performance') ?? 0))
     const representative = byPerformance[Math.floor(byPerformance.length / 2)]
     pages.push({ path, formFactor, samples: results.length, scores, metrics, failedAudits: failedAudits(representative) })
+    const stalls = results.filter(stalled).length
+    if (stalls) stalledPages.push(`${formFactor === 'mobile' ? '手機' : '桌機'} ${path} ${stalls}/${results.length}`)
     // 完整報告：只存中位數那一次，拿掉截圖
     for (const id of ['screenshot-thumbnails', 'final-screenshot', 'full-page-screenshot']) delete representative.audits[id]
     writeFileSync(`${reportDir}/${formFactor}${path.replace(/[/?=&]/g, '_') || '_'}.json`, JSON.stringify(representative))
-    console.log(`  ${formFactor.padEnd(7)} ${String(scores.performance).padStart(3)} ${String(scores.accessibility).padStart(3)} ${String(scores.bestPractices).padStart(3)} ${String(scores.seo).padStart(3)}  LCP ${Math.round(metrics.lcpMs ?? 0)}ms CLS ${(metrics.cls ?? 0).toFixed(3)} TBT ${Math.round(metrics.tbtMs ?? 0)}ms  ${path}`)
+    console.log(`  ${formFactor.padEnd(7)} ${String(scores.performance).padStart(3)} ${String(scores.accessibility).padStart(3)} ${String(scores.bestPractices).padStart(3)} ${String(scores.seo).padStart(3)}  LCP ${Math.round(metrics.lcpMs ?? 0)}ms CLS ${(metrics.cls ?? 0).toFixed(3)} TBT ${Math.round(metrics.tbtMs ?? 0)}ms  ${path}${stalls ? `  節流 ${stalls}/${results.length}` : ''}`)
   }
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, worker))
@@ -189,7 +199,10 @@ const run = {
   lighthouseVersion,
   samplesPerPage: SAMPLES,
   aborted,
-  notes: ['DEV 全站 noindex，SEO 的 is-crawlable 必扣'],
+  notes: [
+    'DEV 全站 noindex，SEO 的 is-crawlable 必扣',
+    ...(stalledPages.length ? [`PSI 有樣本被 Chrome 的畫格節流拖晚第一次繪製（那一次分數最多低約 30 分，不是網站變慢；一頁過半的樣本被拖晚時，中位數也是）：${stalledPages.sort().join('、')}`] : [])
+  ],
   pages: pages.sort((a, b) => routes.indexOf(a.path) - routes.indexOf(b.path) || a.formFactor.localeCompare(b.formFactor)),
   summary
 }
