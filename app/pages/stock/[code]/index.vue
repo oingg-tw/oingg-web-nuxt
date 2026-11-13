@@ -114,15 +114,17 @@ const fields = computed(() => [...new Set(rows.value.map(row => row.field).filte
 const dataSources = computed(() => collectMetricSources(schema.value?.categories ?? [], fields.value.map(field => field.split('.')[0]!)))
 
 interface ScreenerValue { value: string | number | null; knowledgeDate: string | null; fiscalYear?: number | null; fiscalQuarter?: number | null; yearMonth?: string | null }
+// 鍵用排好的欄位：調整順序不是換一批欄位，不重抓（2026-11-13 前每按一次上移／下移就重抓同一份）
+const fieldsKey = computed(() => [...fields.value].sort().join(','))
 const { data: values, status: valuesStatus, error: valuesError, refresh: refreshValues } = useAsyncData(
-  () => `quick-view-${code.value}-${fields.value.join(',')}`,
+  () => `quick-view-${code.value}-${fieldsKey.value}`,
   async () => {
     if (!fields.value.length) return {}
     const response = await fetchScreenerValues<ScreenerValue>([code.value], fields.value)
     return response.results[0]?.values ?? {}
   },
-  // 伺服器端算的是預設釘選（給搜尋引擎）；登入後同步成帳號的釘選，fields 變了再抓一次
-  { watch: [fields], default: () => ({}) as Record<string, ScreenerValue | undefined> }
+  // 伺服器端算的是預設釘選（給搜尋引擎）；登入後同步成帳號的釘選，欄位換了再抓一次
+  { watch: [fieldsKey], default: () => ({}) as Record<string, ScreenerValue | undefined> }
 )
 // 讀不到時交給全站的讀取失敗彈窗（AppLoadFailureDialog），畫面上不再各自出訊息
 watchLoadFailure(() => `quick-view-values:${code.value}`, () => valuesError.value, refreshValues)
@@ -133,14 +135,16 @@ const riverKindOf = (slug: string): RiverKind | null => {
   const spec = quickViewChartOf(slug)
   return spec?.kind === 'river' ? spec.river : null
 }
-const riverKinds = computed(() => [...new Set(rows.value.flatMap(row => riverKindOf(row.slug) ?? []))])
+// 排好的：同上，調整順序不重抓
+const riverKinds = computed(() => [...new Set(rows.value.flatMap(row => riverKindOf(row.slug) ?? []))].sort())
 type RiverLatestByKind = Partial<Record<RiverKind, RiverCellsByTimeframe>>
+const riverKindsKey = computed(() => riverKinds.value.join(','))
 const { data: riverLatestByKind, status: riverStatus } = useAsyncData<RiverLatestByKind>(
-  () => `quick-view-river-${code.value}-${riverKinds.value.join(',')}`,
+  () => `quick-view-river-${code.value}-${riverKindsKey.value}`,
   async () => (riverKinds.value.length
-    ? await $fetch<RiverLatestByKind>(`/api/stock/${code.value}/river-latest`, { query: { kinds: riverKinds.value.join(',') }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => ({}))
+    ? await $fetch<RiverLatestByKind>(`/api/stock/${code.value}/river-latest`, { query: { kinds: riverKindsKey.value }, retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => ({}))
     : {}),
-  { watch: [riverKinds], default: () => ({}) }
+  { watch: [riverKindsKey], default: () => ({}) }
 )
 // undefined＝還在讀，null＝讀不到，RiverMissing＝那天沒有比值（帶數據中台的原因）
 function riverLatestOfRow(slug: string): RiverLatest | RiverMissing | null | undefined {
@@ -293,6 +297,41 @@ function periodText(field: string | null): string {
   return `${(TIMEFRAME_LABELS as Record<string, string | undefined>)[basis] ?? basis}${cell?.knowledgeDate ? `（${cellPeriodText(cell)}）` : ''}`
 }
 
+// 「這些數字是哪一期的？」的答句（2026-11-13，使用者：「改」）：財報類最新到哪一季、跟股價有關的用哪天收盤，伺服器端就算得出來。原本寫的是
+// 「每一列都可以調整順序或刪除…」，是在說怎麼操作，不合卡片前文字只寫答案的規則（按鈕上已經寫了上移、下移、刪除）。
+// 手上有資料就照常回答（換一批欄位重抓時也是），完全沒有資料又在讀才放骨架
+const periodLoading = computed(() => (valuesStatus.value !== 'success' && valuesStatus.value !== 'error')
+  || (riverKinds.value.length > 0 && riverStatus.value !== 'success' && riverStatus.value !== 'error'))
+const periodAnswer = computed(() => {
+  const quarters = rows.value.flatMap((row) => {
+    const cell = row.field ? values.value[row.field] : undefined
+    return cell?.fiscalYear && cell.fiscalQuarter ? [cell.fiscalYear * 10 + cell.fiscalQuarter] : []
+  })
+  const closes = rows.value.flatMap((row) => {
+    const latest = riverLatestOfRow(row.slug)
+    if (latest && 'tradeDate' in latest) return [latest.tradeDate]
+    return row.field?.endsWith('.EOD') && values.value[row.field]?.knowledgeDate ? [values.value[row.field]!.knowledgeDate!] : []
+  })
+  const quarter = quarters.length ? Math.max(...quarters) : null
+  const close = closes.sort().at(-1)
+  const parts = [quarter ? `財報類是 ${Math.floor(quarter / 10)} 年第 ${quarter % 10} 季` : '', close ? `跟股價有關的是 ${close} 收盤` : ''].filter(Boolean)
+  return parts.length ? `${parts.join('，')}。` : null
+})
+
+// 卡片區「自選指標最新是多少？」的答句（2026-11-13，使用者：「也改」）：照自選的順序取前兩個有數字的（河流圖那幾支同卡片與表格，用圖的
+// 最後一點），其他幾項的數字在卡片上。原本寫「側邊欄『自選指標』裡的每一項…點名稱可以看它的歷年變化」，是在說怎麼操作。
+// 資料到齊才回答（之前放骨架）：數值先到、河流圖後到時，前兩個會從別支換成本益比，句子中途改字
+const latestAnswer = computed(() => {
+  if (periodLoading.value) return null
+  const numbers = rows.value.flatMap((row) => {
+    const text = riverKindOf(row.slug) ? riverValueText(riverLatestOfRow(row.slug), row.field) : valueText(row.field, row.slug)
+    return /\d/.test(text) ? [`${row.label} ${text}`] : []
+  })
+  if (!numbers.length) return null
+  const rest = numbers.length - 2
+  return `${numbers.slice(0, 2).join('、')}${rest > 0 ? `，連同其他 ${rest} 項都是最新一期` : ''}。`
+})
+
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: TOPIC, titleKeywords: '本益比、殖利率、EPS 指標速覽', pathSuffix: '', stock, summary, description, sectorCode })
 </script>
@@ -308,7 +347,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources }"
   >
-    <StockQuestionSection id="stock-quick-view" :question="`${stockShortName}的自選指標最新是多少？`" answer="側邊欄「自選指標」裡的每一項，這檔股票最新一期的數字。點名稱可以看它的歷年變化。">
+    <StockQuestionSection
+      id="stock-quick-view"
+      :question="`${stockShortName}的自選指標最新是多少？`"
+      :answer="latestAnswer"
+      :answer-skeleton="periodLoading ? '本益比 27.24、ROE 40.94%，連同其他 3 項都是最新一期。' : null"
+    >
       <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
       <ClientOnly>
         <div class="stock-quick-view-page__grid">
@@ -429,7 +473,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <template #fallback>
           <div class="stock-quick-view-page__grid">
             <SharedChartCard v-for="item in charts" :key="item.slug">
-              <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
+              <!-- 河流圖那幾張的數字同畫好的卡片與表格：圖的最後一點（伺服器端算好的 river-latest）。原本這裡寫篩選器的數值，伺服器輸出的
+                   本益比 27.76 跟表格的 27.24 不一樣，圖畫好後標題又跳成 27.24（2026-11-13） -->
+              <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="riverKindOf(item.slug) ? riverHeaderText(undefined, item.slug, item.field) : valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
               <div class="stock-quick-view-page__placeholder app-skeleton" aria-hidden="true" />
             </SharedChartCard>
             <button type="button" class="stock-quick-view-page__add">
@@ -441,7 +487,12 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     </StockQuestionSection>
 
     <!-- 表格自成一段、有自己的 h2（2026-10-07「quick-view 表格幫我加上H2」） -->
-    <StockQuestionSection id="stock-quick-view-table" question="這些數字是哪一期的？" answer="每一項的期別與資料時間。每一列都可以調整順序或刪除，上面的卡片與側邊欄會跟著變。">
+    <StockQuestionSection
+      id="stock-quick-view-table"
+      question="這些數字是哪一期的？"
+      :answer="periodAnswer"
+      :answer-skeleton="periodLoading && !periodAnswer ? '財報類是 2026 年第 2 季，跟股價有關的是 2026-11-13 收盤。' : null"
+    >
       <!-- 不畫捲動區（:scrollable="false"）：窄的時候是堆疊列、寬的時候四欄放得下，兩種都不需要左右捲動。
            卡片本身是窄寬切換的容器（.stock-quick-view-page__table-wrap） -->
       <SharedTable
