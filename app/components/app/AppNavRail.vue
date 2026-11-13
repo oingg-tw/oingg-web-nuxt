@@ -104,23 +104,29 @@ const contentWidthMode = useContentWidthMode()
    unexpanded nav at 100% zoom: 194px content-sized (correctly centered) on the translateY version,
    808px — mostly empty — under that rewrite. flex:1 children make an absolutely-positioned
    parent's own auto-height ill-defined for the browser to shrink-to-fit against, so that
-   "fill the band, never overflow it" trick isn't safe to use with this rail's own child structure. */
-.app-nav-rail--centered {
-  top: 50%;
-  bottom: auto;
-  left: max(
-    0px,
-    calc((100vw - (var(--app-sidebar-width) + var(--app-sidebar-gap-centered) + var(--app-content-max-width) + 16px)) / 2)
-  );
-  transform: translateY(max(-50%, calc(var(--app-header-height) + var(--app-banner-height) + 16px - 50vh)));
-  max-height: calc(100vh - 96px);
-  border: 1px solid var(--el-card-border-color);
-  border-radius: var(--el-card-border-radius);
-  background: var(--el-card-bg-color);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
-  /* Clip content to the rounded shape — the list's links run edge to edge, so without this the
-     active row's own background tint would paint square over the corners it touches. */
-  overflow: hidden;
+   "fill the band, never overflow it" trick isn't safe to use with this rail's own child structure.
+
+   只在畫面放得下置中版面時浮動（2026-11-13，使用者：「sidebar 樣式有機會在筆電上面時，常駐為全寬那樣子嗎? 就是上下不留間距那樣子」）：
+   側欄 240＋間距 24＋內容 1440＋右邊 16＝1720px，比這窄的畫面（筆電 1280～1536）內容兩旁本來就沒有留白，浮動的側欄只是貼在左邊、上下空著。
+   那時改用滿版的樣子（上面那條：頁首下面到畫面底、貼左邊），內容的位置不變。1720 是 left 算式裡那四個數的和，改變數時一起改 */
+@media (min-width: 1720px) {
+  .app-nav-rail--centered {
+    top: 50%;
+    bottom: auto;
+    left: max(
+      0px,
+      calc((100vw - (var(--app-sidebar-width) + var(--app-sidebar-gap-centered) + var(--app-content-max-width) + 16px)) / 2)
+    );
+    transform: translateY(max(-50%, calc(var(--app-header-height) + var(--app-banner-height) + 16px - 50vh)));
+    max-height: calc(100vh - 96px);
+    border: 1px solid var(--el-card-border-color);
+    border-radius: var(--el-card-border-radius);
+    background: var(--el-card-bg-color);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+    /* Clip content to the rounded shape — the list's links run edge to edge, so without this the
+       active row's own background tint would paint square over the corners it touches. */
+    overflow: hidden;
+  }
 }
 
 /* Fills the rail so the nav list lays out top-to-bottom and scrolls internally once it's taller
