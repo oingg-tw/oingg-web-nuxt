@@ -318,12 +318,15 @@ const qrDialogVisible = ref(false)
    lives in .summary-card__mobile-actions above instead; kept as a separate element (not just a
    CSS-repositioned copy of the same one) so it can stay absolutely positioned in the corner at
    desktop without also having to solve the mobile-width overlap the in-flow row above exists to
-   avoid. display:none is the mobile default; the ≥601px media query below turns it back on. */
+   avoid. display:none is the mobile default; the ≥601px media query below turns it back on.
+   右邊跟左邊內容一樣離卡片邊 20px（卡片內距），在卡片高度上置中（2026-11-13，使用者：「按鈕本身呢？有垂直置中嗎？間隔合理嗎」；
+   原本 top／right 12px，貼在右上角、右邊比左邊少 8px）。框只有按鈕高（最愛清單的選單掛在它下面），所以用 top 減半個按鈕高（44px 的一半），
+   不用 transform */
 .summary-card__corner-right {
   display: none;
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: calc(50% - 22px);
+  right: 20px;
   z-index: 1;
 }
 
@@ -331,6 +334,13 @@ const qrDialogVisible = ref(false)
   min-height: 44px;
   padding: 0 12px;
   font-size: 1rem;
+}
+
+/* 圖示跟字之間 6px，同 Element 用 icon 屬性時的間距：這幾顆的圖示寫在按鈕字裡，Element 不會自己留，原本貼在一起 */
+.summary-card__favorite-btn .el-icon,
+.summary-card__action-btn .el-icon,
+.summary-card__action-btn svg {
+  margin-right: 6px;
 }
 
 /* Real WCAG failure found live via axe 2026-09-19, once these three favorite-toggle buttons
@@ -391,24 +401,24 @@ html.dark .summary-card__favorite-btn.is-plain {
    before the image arrives; without them a lazily-loaded logo would shift the whole card. */
 /* 手機（2B）：標題左邊一個小的；桌機在下面的 min-width 區塊改成跨列、撐滿卡片高 */
 /* 每個 logo 都墊白底（2026-11-13，使用者：「5902 德記 Logo 在黑色主題時不明顯。能否給每個LOGO預設白色背景。這樣就不受主題色影響」）：
-   362 個 logo 是深色圖案、透明底（5902 亮度 38.7、不透明 37%），在深色卡片上看不見。白底不跟主題換色；內距 4px 吃在框裡
-  （全站 border-box），所以框高 40px、寬上限多 8px，圖跟原本一樣 32px 高、最寬 96px */
+   362 個 logo 是深色圖案、透明底（5902 亮度 38.7、不透明 37%），在深色卡片上看不見。白底不跟主題換色。
+   底色就畫在圖框上、不加內距（同日，使用者：「個股summary感覺有點歪掉」）：內距 4px 讓淺色卡片上看不出白底的圖往內縮，
+   手機上 logo 左緣跟下面價格差 4px、桌機上下緣跟標題頂、價格底各差 4px；不加內距，淺色時跟原本一樣，深色時白底的邊就是圖框、跟字對齊 */
 .summary-card__logo {
   grid-column: 1;
   grid-row: 1;
-  height: 40px;
+  height: 32px;
   width: auto;
-  max-width: 104px;
+  max-width: 96px;
   margin-right: 10px;
-  padding: 4px;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #ffffff;
   object-fit: contain;
   object-position: left center;
 }
 
-/* The chip for near-white artwork, which the white chip above would hide: the same chip in the
-   app's own inverse surface, not a new hex. */
+/* The backdrop for near-white artwork, which the white one above would hide: the app's own
+   inverse surface, not a new hex. Unpadded like the white one, so both line up with the text. */
 .summary-card__logo--needs-dark {
   background: var(--el-color-info-dark-2, #303133);
 }
@@ -559,8 +569,7 @@ html.dark .summary-card__favorite-btn.is-plain {
     align-self: stretch;
     height: 0;
     min-height: 100%;
-    /* 白底的內距 4px 吃在框裡：上限多 8px，寬版商標的圖仍是最寬 160px */
-    max-width: 168px;
+    max-width: 160px;
     margin-right: 16px;
   }
 
