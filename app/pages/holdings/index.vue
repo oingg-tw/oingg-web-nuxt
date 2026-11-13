@@ -6,6 +6,7 @@ import type { Holding, OpeningPosition, Transaction } from '~/composables/holdin
 import type { ImportedTrade } from '~/utils/broker-trade-csv'
 import type { HoldingsSymbolColumn } from '~/components/holdings/HoldingsSymbolTable.vue'
 import type { HoldingRowFigures } from '~/utils/holdings-summary'
+import type { WatchlistKind, WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 
 // 持股管理（2026-10-05）。**持股是交易紀錄的唯讀投影**（業務中台 4467c44，使用者決定）：這一頁能做的
 // 寫入只有「記一筆交易」「改／刪一筆交易」「刪除一檔（＝它的所有交易）」，股數與成本（先進先出）由
@@ -126,8 +127,9 @@ const excludedText = computed(() => [
 
 const namesReady = useCompanyNamesReady()
 const { sample: excludedSample, remember: rememberExcluded } = useLineHint('holdings-excluded')
+// 有持股才記：重新整理一開始還沒開始讀（pending 還是 false）、持股是空的，那時記下的「沒有這一行」會讓骨架少畫一行（2026-11-14 量到推動 36px）
 watch([excludedText, pending, namesReady], ([text, reading, ready]) => {
-  if (!reading && ready) rememberExcluded(text && `未計入：${text}`)
+  if (!reading && ready && holdings.value.length) rememberExcluded(text && `未計入：${text}`)
 })
 
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
@@ -210,6 +212,52 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
   },
   { key: 'annualDividend', label: '預估年股利', minWidth: 120, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
 ])
+
+// ---- 持股明細的兩種檢視（2026-11-14，使用者：「持股管理 也要有地方可以切換顯示的欄位，共用欄位設定」，看過設計圖選方案 A：「A很好，請這樣做」）----
+// 損益：持股自己的那一張表（上面的 columns，全部類別一起、依市值排）。指標：每一類一段、那一類篩選的欄位組合，表格同觀察清單（WatchlistTable，
+// 篩選的結果表，窄的時候是卡片）；組合跟篩選、觀察清單同一組（useWatchlistColumns），在這裡換組合或改欄位，篩選與觀察清單也跟著變，反過來也是。
+// 選了哪一個記在 cookie：重新整理時伺服器的第一個畫面就是那一個。自訂欄位頁（/holdings/columns）照舊藏著
+const view = useCookie<'pnl' | 'metrics'>('holdings-view', { default: () => 'pnl', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
+onMounted(() => {
+  watch(currentUser, (user) => {
+    if (user) void loadColumns()
+    else clearColumns()
+  }, { immediate: true })
+})
+// 指標只在指標檢視才問：損益檢視用不到，不多發請求
+const metricCodes = computed(() => (view.value === 'metrics' ? baseRows.value.map(row => row.symbol) : []))
+const metricFields = computed(() => ({
+  common: columnsOf('common').map(column => column.field),
+  etf: columnsOf('etf').map(column => column.field),
+  preferred: columnsOf('preferred').map(column => column.field)
+}))
+const { rows: metricRows, pending: metricPending, priceDate: metricPriceDate, kindsReady } = useWatchlistStocks(metricCodes, metricFields, sources)
+
+// 指標的分段：只有這一類有持股才有這一段，只有一段時不寫標題（同觀察清單）。讀的時候照上次各類的檔數畫骨架列（useLayoutHint）；公司目錄到之前
+// 分不出 ETF，也先畫骨架。第一次沒有分類的紀錄時，照上次的總檔數當成都是普通股
+const kindRowHints: Record<WatchlistKind, WritableComputedRef<number>> = {
+  common: useLayoutHint('holdings-rows-common', holdingsCountHint.value),
+  etf: useLayoutHint('holdings-rows-etf', 0),
+  preferred: useLayoutHint('holdings-rows-preferred', 0)
+}
+watch(() => (!pending.value && namesReady.value && holdings.value.length ? baseRows.value : null), (list) => {
+  if (!list) return
+  for (const kind of WATCHLIST_KINDS) kindRowHints[kind].value = list.filter(row => row.kind === kind).length
+})
+// 骨架列的代號跟真的一樣短（同觀察清單：表格拿它估欄寬）
+const skeletonRowsOf = (kind: WatchlistKind) => Array.from({ length: kindRowHints[kind].value }, (_, index): WatchlistRow => ({
+  code: `${kind[0]}${index}`, name: '', kind, values: {}, change: null, changePercent: null, nextDividendEvent: null
+}))
+// 讀完（HoldingsPageShell 的 loading）、分得出類別、欄位組合與第一批數字都到了才畫真的列
+function metricSections(loading: boolean) {
+  const waiting = loading || !namesReady.value || !columnsLoaded.value || (metricPending.value && !metricPriceDate.value) || (metricCodes.value.length > 0 && !kindsReady.value)
+  const list = WATCHLIST_KINDS.flatMap((kind) => {
+    const rows = waiting ? skeletonRowsOf(kind) : metricRows.value.filter(row => row.kind === kind)
+    return rows.length ? [{ kind, label: WATCHLIST_KIND_LABELS[kind], rows, skeleton: waiting }] : []
+  })
+  return list.map(section => ({ ...section, multi: list.length > 1 }))
+}
 
 // 平均成本只算成本已知的股數；有成本不明的股數時照實寫出來，不讓人以為均價涵蓋全部股數
 function averageCostText(holding: Holding): string {
@@ -469,10 +517,27 @@ async function submit() {
         </section>
 
         <section aria-labelledby="holdings-list-title">
-          <h2 id="holdings-list-title" class="holdings-page__section-title">
-            持股明細<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（{{ holdingsCountHint }} 檔）</span><template v-else>（{{ holdings.length }} 檔）</template>
-          </h2>
+          <!-- 標題、檢視切換、分享同一行（設計圖方案 A）：分享的是整份持股（側欄選的帳戶），兩種檢視都看得到 -->
+          <div class="holdings-page__list-head">
+            <h2 id="holdings-list-title" class="holdings-page__section-title">
+              持股明細<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（{{ holdingsCountHint }} 檔）</span><template v-else>（{{ holdings.length }} 檔）</template>
+            </h2>
+            <el-radio-group v-model="view" aria-label="持股明細的檢視">
+              <el-radio-button value="pnl">損益</el-radio-button>
+              <el-radio-button value="metrics">指標</el-radio-button>
+            </el-radio-group>
+            <SharedShareButton
+              class="holdings-page__share"
+              kind="holdings"
+              :target-id="selectedPortfolio?.id ?? null"
+              :name="shareName"
+              :columns="SHARE_COLUMNS"
+              sensitive-heading="部位大小，預設不分享"
+              :accounts="portfolios"
+            />
+          </div>
           <HoldingsSymbolTable
+            v-if="view === 'pnl'"
             :skeleton-rows="loading ? holdingsCountHint : 0"
             v-model:expanded="expanded"
             :rows="baseRows"
@@ -481,17 +546,6 @@ async function submit() {
             :toggle-labels="['明細', '收合']"
             @open="loadTransactions"
           >
-            <template #toolbar>
-              <SharedShareButton
-                class="holdings-page__share"
-                kind="holdings"
-                :target-id="selectedPortfolio?.id ?? null"
-                :name="shareName"
-                :columns="SHARE_COLUMNS"
-                sensitive-heading="部位大小，預設不分享"
-                :accounts="portfolios"
-              />
-            </template>
             <template #detail="{ row, variant }">
               <HoldingsDetailPanel
                 :variant="variant"
@@ -509,6 +563,37 @@ async function submit() {
               />
             </template>
           </HoldingsSymbolTable>
+          <div v-else class="holdings-page__metrics">
+            <section v-for="section in metricSections(loading)" :key="section.kind" class="holdings-kind" :aria-label="section.label">
+              <WatchlistTable
+                :rows="section.rows"
+                :columns="columnsOf(section.kind)"
+                :categories="categoriesOf(section.kind)"
+                :links="linksOf(section.kind)"
+                :layout-key="`holdings-metrics-${section.kind}`"
+                :label="section.multi ? `${section.label}持股的指標` : '持股的指標'"
+                editable
+                :column-defaults="basicColumns(section.kind).map(({ field, label }) => ({ field, label }))"
+                :skeleton="section.skeleton"
+                :save="fields => saveFields(section.kind, fields, '持股欄位')"
+              >
+                <template #toolbar>
+                  <h3 v-if="section.multi" class="holdings-kind__title">{{ section.label }}<span class="holdings-kind__count">{{ section.rows.length }} 檔</span></h3>
+                  <SharedColumnSetMenu
+                    :id="`holdings-columns-${section.kind}`"
+                    class="holdings-columns"
+                    :items="setItemsOf(section.kind)"
+                    :active-id="activeIdOf(section.kind)"
+                    :kind-label="section.multi ? section.label : undefined"
+                    :screener-path="SCREENER_PATHS[section.kind]"
+                    :screener-label="section.label"
+                    :disabled="section.skeleton"
+                    @select="id => selectColumnSet(section.kind, id)"
+                  />
+                </template>
+              </WatchlistTable>
+            </section>
+          </div>
 
           <details class="holdings-page__method app-disclosure">
             <summary>計算方式</summary>
@@ -740,8 +825,44 @@ async function submit() {
   }
 }
 
-/* 明細表工具列的最右邊（卡片模式左邊是排序選單）。HoldingsSymbolTable 已經替它保留一個按鈕高，讀到連結狀態後才出現也不推動表格 */
+/* 持股明細的標題、檢視切換、分享同一行，分享靠右（2026-11-14 設計圖方案 A；分享原本在表格的工具列，指標檢視沒有那張表）。
+   分享鈕讀到連結狀態之前畫自己的骨架，同樣大小，這一行不會長高 */
+.holdings-page__list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.holdings-page__list-head .holdings-page__section-title {
+  margin: 0;
+}
+
 .holdings-page__share {
+  margin-left: auto;
+}
+
+/* 指標檢視：每一類一張卡片（WatchlistTable），段與段之間同觀察清單 32px；標題在卡片工具列的左邊，欄位選單靠右 */
+.holdings-page__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.holdings-kind__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.holdings-kind__count {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--el-text-color-regular);
+}
+
+.holdings-columns {
   margin-left: auto;
 }
 

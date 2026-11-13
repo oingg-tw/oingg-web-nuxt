@@ -127,3 +127,17 @@ async function save(fields: string[]) {
   }
 }
 </style>
+
+<style>
+/* 工具列裡的欄位選單（SharedColumnSetMenu）打開時會長出卡片（表格只有一兩列時）：這一段疊在後面幾段上面（container-type 讓每一段自成一層），
+   卡片也不裁（SharedTable 的 clip）。原本選單下半截被裁掉、被下一段的工具列蓋住（2026-11-14 持股指標檢視量到，觀察清單同一套）。
+   不寫在 scoped 裡：選單是呼叫端放進來的，帶的是呼叫端的 scope */
+.watchlist-table:has(.column-set-menu.is-open) {
+  position: relative;
+  z-index: 3;
+}
+
+.watchlist-table:has(.column-set-menu.is-open) > .watchlist-table__card {
+  overflow: visible;
+}
+</style>

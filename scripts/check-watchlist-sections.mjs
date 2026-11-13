@@ -127,8 +127,8 @@ const cellOf = async (section, rowName, header) => {
   return (await row.locator('td').nth(headers.findIndex(text => sameHeader(text, header))).innerText()).trim()
 }
 const openMenu = async (section) => {
-  await section.locator('.watchlist-columns__button').click()
-  return section.locator('.watchlist-columns__panel')
+  await section.locator('.column-set-menu__button').click()
+  return section.locator('.column-set-menu__panel')
 }
 const pick = async (page, section, name) => {
   await (await openMenu(section)).getByRole('button', { name, exact: true }).click()
@@ -167,10 +167,10 @@ console.log('混合清單（1440）')
   await page.getByRole('button', { name: '完成', exact: true }).click()
   check(await page.locator('.smt-table-view .smt-actions').count() === 0, '按完成收起來')
   // 欄位選單：寫著現在用哪一組；Esc 關掉、焦點回到按鈕
-  const menuButton = common.locator('.watchlist-columns__button')
+  const menuButton = common.locator('.column-set-menu__button')
   check((await menuButton.innerText()).includes('欄位：基本欄位'), `按鈕寫著現在用哪一組（${(await menuButton.innerText()).trim()}）`)
   await menuButton.click()
-  check(await menuButton.getAttribute('aria-expanded') === 'true' && await common.locator('.watchlist-columns__panel').isVisible(), '欄位選單打開')
+  check(await menuButton.getAttribute('aria-expanded') === 'true' && await common.locator('.column-set-menu__panel').isVisible(), '欄位選單打開')
   await page.keyboard.press('Escape')
   check(await menuButton.getAttribute('aria-expanded') === 'false' && await menuButton.evaluate(el => el === document.activeElement), 'Esc 關掉、焦點回到按鈕')
 
@@ -234,7 +234,7 @@ console.log('只有一種類別')
   await mock(ctx, state)
   const page = await open(ctx, '/watchlist')
   check(await page.locator('.watchlist-section').count() === 1 && await page.locator('.watchlist-section__title').count() === 0, '一段、沒有標題')
-  check(await page.locator('.watchlist-columns__button').count() === 1, '一顆欄位選單')
+  check(await page.locator('.column-set-menu__button').count() === 1, '一顆欄位選單')
   check(state.etfBodies.length === 0, `清單沒有 ETF 就不問（${state.etfBodies.length} 次）`)
   await ctx.close()
 }

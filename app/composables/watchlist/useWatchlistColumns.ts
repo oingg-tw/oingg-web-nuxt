@@ -135,15 +135,16 @@ export function useWatchlistColumns() {
     showErrorMessage('顯示欄位沒有存到，已回到原本的那一組')
   }
 
-  function unusedName(kind: WatchlistKind) {
+  function unusedName(kind: WatchlistKind, name: string) {
     const names = new Set(sets.value[kind].map(set => set.name))
     let suffix = 1
-    while (names.has(suffix === 1 ? NEW_SET_NAME : `${NEW_SET_NAME} ${suffix}`)) suffix++
-    return suffix === 1 ? NEW_SET_NAME : `${NEW_SET_NAME} ${suffix}`
+    while (names.has(suffix === 1 ? name : `${name} ${suffix}`)) suffix++
+    return suffix === 1 ? name : `${name} ${suffix}`
   }
 
-  // 改的是目前這一組；還在內建的基本欄位時新增一組並設成這一類的預設，會用掉一組欄位組合的額度
-  async function saveFields(kind: WatchlistKind, fields: string[]): Promise<boolean> {
+  // 改的是目前這一組；還在內建的基本欄位時新增一組並設成這一類的預設，會用掉一組欄位組合的額度。新的那組叫 name（持股頁給「持股欄位」：
+  // 組合三邊共用，名字寫出是在哪裡建的）
+  async function saveFields(kind: WatchlistKind, fields: string[], name = NEW_SET_NAME): Promise<boolean> {
     const previous = sets.value[kind]
     const current = activeSet(kind)
     if (current) {
@@ -153,7 +154,7 @@ export function useWatchlistColumns() {
       showErrorMessage('欄位設定沒有存到，已回到上次存的樣子')
       return false
     }
-    const created = await presets[kind].create(unusedName(kind), fields)
+    const created = await presets[kind].create(unusedName(kind, name), fields)
     const saved = created && await presets[kind].update(created.id, { isDefault: true })
     if (saved) {
       sets.value = { ...sets.value, [kind]: [...previous, saved] }

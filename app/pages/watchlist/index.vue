@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ArrowDown, Check } from '@element-plus/icons-vue'
 import type { WatchlistKind, WatchlistRow } from '~/composables/watchlist/useWatchlistStocks'
 import type { RankingPageData } from '#shared/types/hub'
 // Personal/settings page (2026-09-19): nothing here is content for a crawler — keep it out of the
@@ -51,28 +50,7 @@ const openGuestColumnSettings = () => openLogin('免費註冊或登入後，就�
 
 // 每一類的「欄位」選單（2026-11-07 改版方案 A）：每一類原本一排工具——顯示欄位、欄位設定、到篩選管理，手機還有排序——收成一顆，寫著現在用哪一組。
 // 2026-11-11 表格換成篩選的結果表：欄位設定回到表格自己的按鈕（電腦版「欄位設定」、卡片版面「欄位 N 個」），排序也在表頭選單與卡片的排序列，選單只剩組合與到篩選管理。
-// 照頁首導覽（AppNavMenu）的可展開模式：按鈕的 aria-expanded 控制緊接在後的清單，Tab 自然走進去；Esc 關掉並回到按鈕，焦點離開或點外面就關，
-// 一次只開一個。選了組合、按欄位設定都先關掉選單、焦點回到按鈕：欄位設定的對話框關掉時把焦點還給打開前的那一顆，藏起來的選項接不住
-const columnsMenu = ref<WatchlistKind | null>(null)
-const columnsButtonId = (kind: WatchlistKind) => `watchlist-columns-${kind}`
-const columnSetName = (kind: WatchlistKind) => setItemsOf(kind).find(item => item.id === activeIdOf(kind))?.name ?? '基本欄位'
-function closeColumnsMenu(returnFocus = false) {
-  const kind = columnsMenu.value
-  columnsMenu.value = null
-  if (returnFocus && kind) document.getElementById(columnsButtonId(kind))?.focus()
-}
-function onColumnsFocusout(event: FocusEvent) {
-  if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) closeColumnsMenu()
-}
-function onPointerdown(event: PointerEvent) {
-  if (columnsMenu.value && !(event.target as Element).closest('.watchlist-columns')) closeColumnsMenu()
-}
-onMounted(() => document.addEventListener('pointerdown', onPointerdown))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerdown))
-function pickColumnSet(kind: WatchlistKind, id: string) {
-  closeColumnsMenu(true)
-  void selectColumnSet(kind, id)
-}
+// 選單本身是 SharedColumnSetMenu（2026-11-14 抽出來，持股總覽也用）
 
 // 備註與移除收進「編輯」（2026-11-07 方案 A）：原本每一列都有紅字「移除」，最危險的動作最搶眼；平常點名稱就進個股頁
 const editing = ref(false)
@@ -274,32 +252,17 @@ async function submitNote() {
           >
             <template #toolbar>
               <h2 v-if="sections.length > 1" class="watchlist-section__title">{{ section.label }}<span class="watchlist-section__count">{{ section.rows.length }} 檔</span></h2>
-              <div v-if="member" class="watchlist-columns" @keydown.esc="closeColumnsMenu(true)" @focusout="onColumnsFocusout">
-                <el-button
-                  :id="columnsButtonId(section.kind)"
-                  class="watchlist-columns__button"
-                  :aria-label="sections.length > 1 ? `${section.label}的欄位：${columnSetName(section.kind)}` : undefined"
-                  :aria-expanded="columnsMenu === section.kind"
-                  :aria-controls="`${columnsButtonId(section.kind)}-menu`"
-                  @click="columnsMenu = columnsMenu === section.kind ? null : section.kind"
-                >
-                  <span class="watchlist-columns__text">欄位：{{ columnSetName(section.kind) }}</span>
-                  <el-icon class="watchlist-columns__chevron" :class="{ 'is-open': columnsMenu === section.kind }" aria-hidden="true"><ArrowDown /></el-icon>
-                </el-button>
-                <div v-show="columnsMenu === section.kind" :id="`${columnsButtonId(section.kind)}-menu`" class="watchlist-columns__panel">
-                  <p :id="`${columnsButtonId(section.kind)}-sets`" class="rail-heading">顯示欄位</p>
-                  <ul class="rail-list watchlist-columns__sets" :aria-labelledby="`${columnsButtonId(section.kind)}-sets`">
-                    <li v-for="item in setItemsOf(section.kind)" :key="item.id">
-                      <button type="button" class="rail-item" :aria-current="item.id === activeIdOf(section.kind) ? 'true' : undefined" @click="pickColumnSet(section.kind, item.id)">
-                        <el-icon class="watchlist-columns__check" aria-hidden="true"><Check v-if="item.id === activeIdOf(section.kind)" /></el-icon>{{ item.name }}
-                      </button>
-                    </li>
-                  </ul>
-                  <ul class="rail-list watchlist-columns__more">
-                    <li><NuxtLink :to="SCREENER_PATHS[section.kind]" class="rail-item">到{{ section.label }}篩選管理</NuxtLink></li>
-                  </ul>
-                </div>
-              </div>
+              <SharedColumnSetMenu
+                v-if="member"
+                :id="`watchlist-columns-${section.kind}`"
+                class="watchlist-columns"
+                :items="setItemsOf(section.kind)"
+                :active-id="activeIdOf(section.kind)"
+                :kind-label="sections.length > 1 ? section.label : undefined"
+                :screener-path="SCREENER_PATHS[section.kind]"
+                :screener-label="section.label"
+                @select="id => selectColumnSet(section.kind, id)"
+              />
               <!-- 訪客沒有欄位組合，按了是登入 -->
               <el-button v-else class="watchlist-toolbar__settings" :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openGuestColumnSettings">欄位設定</el-button>
             </template>
@@ -438,62 +401,14 @@ async function submitNote() {
   color: var(--el-text-color-regular);
 }
 
-/* 每一類的「欄位」選單：靠右；清單掛在按鈕正下方、靠右對齊，列的樣子跟側欄一樣（.rail-item），同頁首導覽的下拉 */
+/* 每一類的「欄位」選單（SharedColumnSetMenu）靠右 */
 .watchlist-columns {
-  position: relative;
   margin-left: auto;
 }
 
 /* 按鈕高照全站（滑鼠 32px、觸控 44px），跟同一列表格的「欄位設定」一樣高，同篩選的「顯示欄位」（2026-11-11 換成篩選的結果表） */
 .watchlist-toolbar__settings {
   margin-left: auto;
-}
-
-.watchlist-columns__text {
-  max-width: min(16rem, calc(100vw - 120px));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.watchlist-columns__chevron {
-  margin-left: 4px;
-  transition: transform 0.15s ease;
-}
-
-.watchlist-columns__chevron.is-open {
-  transform: rotate(180deg);
-}
-
-.watchlist-columns__panel {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 20;
-  width: max-content;
-  min-width: 240px;
-  max-width: calc(100vw - 32px);
-  border: 1px solid var(--app-surface-border);
-  border-radius: 8px;
-  background: var(--el-bg-color-overlay);
-  box-shadow: var(--el-box-shadow-light);
-}
-
-.watchlist-columns__panel > .rail-heading {
-  margin: 0;
-  border-top: 0;
-}
-
-.watchlist-columns__sets {
-  padding-top: 0;
-}
-
-.watchlist-columns__more {
-  border-top: 1px solid var(--app-divider);
-}
-
-.watchlist-columns__check {
-  flex-shrink: 0;
 }
 
 .watchlist-note-dialog__label {

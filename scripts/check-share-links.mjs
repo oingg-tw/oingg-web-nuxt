@@ -317,8 +317,9 @@ console.log('持股：擁有者（1440）')
   const page = await ctx.newPage()
   await page.goto(`${base}/holdings`, { waitUntil: 'networkidle', timeout: 180000 }); await page.waitForTimeout(2000)
   await page.addStyleTag({ content: '#nuxt-devtools-container{display:none!important}' })
-  const button = page.locator('.symbol-table__toolbar .shared-share__button')
-  check(await button.count() === 1 && (await button.innerText()).trim() === '分享', '持股明細表的工具列有「分享」')
+  // 分享在持股明細的標題列（2026-11-14 設計圖方案 A：損益／指標兩種檢視都看得到，原本在損益表的工具列）
+  const button = page.locator('.holdings-page__list-head .shared-share__button')
+  check(await button.count() === 1 && (await button.innerText()).trim() === '分享', '持股明細的標題列有「分享」')
   await button.click(); await page.waitForTimeout(400)
   check(await page.getByRole('dialog', { name: '分享「我的持股」' }).isVisible(), '一個帳戶時標題寫 分享「我的持股」')
   const dialog = page.getByRole('dialog')
@@ -370,7 +371,7 @@ console.log('持股：擁有者（1440）')
   await ctx.close()
 }
 {
-  // /shares 晚 6 秒才回：分享鈕出現時表格不動（工具列先保留了一個按鈕高）
+  // /shares 晚 6 秒才回：分享鈕出現時表格不動（分享鈕先畫同樣大小的骨架）
   storedShares = []
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await ctx.addInitScript(() => {
@@ -384,17 +385,17 @@ console.log('持股：擁有者（1440）')
   await table.waitFor({ state: 'visible', timeout: 60000 })
   await page.waitForTimeout(3000)
   check(await page.locator('.shared-share__button').count() === 0, '（前提）/shares 還沒回來時分享鈕還沒出現')
-  // 量分享鈕自己的影響：表格到工具列的距離、按鈕跟骨架一樣大。不量整頁的 y 與 CLS：總覽的「未計入」那一行等公司名稱，第一次造訪
+  // 量分享鈕自己的影響：表格到標題列的距離、按鈕跟骨架一樣大。不量整頁的 y 與 CLS：總覽的「未計入」那一行等公司名稱，第一次造訪
   // 會晚到、把整段推一次（CLAUDE.md 的骨架那一列：首訪可能動一次），本機上游慢時剛好落在這幾秒裡（2026-11-09 量到 458 → 494）。
   // 不能把 /shares 拖得更久來避開：超過網站的 15 秒逾時，分享鈕就不出現了
-  const toolbar = page.locator('.symbol-table__toolbar')
+  const toolbar = page.locator('.holdings-page__list-head')
   const gap = async () => Math.round((await table.boundingBox()).y - (await toolbar.boundingBox()).y)
   const before = await gap()
   const skeleton = await page.locator('.shared-share__skeleton').boundingBox()
   await page.locator('.shared-share__button').waitFor({ state: 'visible', timeout: 10000 }); await page.waitForTimeout(500)
   const after = await gap()
   const shown = await page.locator('.shared-share__button').boundingBox()
-  check(before === after, `分享鈕出現時表格不動（離工具列 ${before} → ${after}px）`)
+  check(before === after, `分享鈕出現時表格不動（離標題列 ${before} → ${after}px）`)
   check(!!skeleton && Math.abs(skeleton.width - shown.width) < 1 && Math.abs(skeleton.height - shown.height) < 1, `分享鈕跟原本的骨架一樣大（${skeleton?.width}×${skeleton?.height} → ${shown.width}×${shown.height}）`)
   await ctx.close()
 }
