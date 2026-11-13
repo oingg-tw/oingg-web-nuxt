@@ -42,7 +42,8 @@ const guest = useGuestScreener()
 // 範本與「總覽」欄位一進來就先抓（2026-10-16）：不必等登入狀態確定（hydration 之後），?template 的解析與選範本稍後會等同一個請求。
 // 登入的人用不到也只是一支有伺服器快取的小請求。
 // 伺服器端也抓、等它回來再畫（2026-10-18）：訪客的範本格子第一次繪製就在。原本只在瀏覽器抓，先畫一行「載入中…」再換成整片格子，
-// 「套用這組條件」那一列被推下去（全站量測 1440 寬 0.022）
+// 「套用這組條件」那一列被推下去（全站量測 1440 寬 0.022）。2026-11-13 起沒登入過的瀏覽器在伺服器的 HTML 裡就有這片格子（guest-ready）；
+// 抓失敗就沒有範本，照舊先畫骨架、等 hydration 之後重抓
 const templatesReady = guest.loadTemplates()
 if (import.meta.server) await templatesReady
 const { open: openLogin } = useLoginDialog()
@@ -151,7 +152,7 @@ async function confirmGuestOnboarding() {
 </script>
 
 <template>
-  <ScreenerPageShell universe="common" :screener="screener" :pending="templatePending">
+  <ScreenerPageShell universe="common" :screener="screener" :pending="templatePending" :guest-ready="guest.templates.value.length > 0">
     <!-- 只有普通股有期別（TTM、單季…）與每格各自的資料日期 -->
     <template #result-meta>
       <label class="common-screener__period-toggle">

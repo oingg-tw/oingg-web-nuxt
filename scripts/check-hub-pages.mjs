@@ -336,8 +336,14 @@ const browser = await chromium.launch()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
   const pickerCalls = watchScreenerCalls(page)
+  // 格子在伺服器的 HTML 裡就有（2026-11-13，ScreenerPageShell 的 guestReady）：hydration 之前點了沒反應
+  const hydrated = () => page.waitForFunction(() => document.getElementById('__nuxt')?.__vue_app__?.config.globalProperties.$nuxt?.isHydrating === false, null, { timeout: 60000 })
+  // 手機 PageSpeed 的 LCP 就是這片格子：要在伺服器的 HTML 裡，不等 hydration 與 Firebase
+  const serverHtml = await (await fetch(`${baseUrl}/screener/common`)).text()
+  expect('/screener/common (guest picker)', 'tiles in the server HTML', serverHtml.includes('guest-picker__tile'))
   await page.goto(`${baseUrl}/screener/common`, { waitUntil: 'load', timeout: 180000 })
   await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 })
+  await hydrated()
   const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
   expect('/screener/common (guest picker)', 'no dialog on load', noDialogOnLoad)
   const tileCount = await page.locator('.guest-picker__tile').count()
@@ -360,6 +366,7 @@ const browser = await chromium.launch()
     // 重載會回到還沒選策略的狀態，所以要重走一次「選第一塊 → 確認」。
     await page.reload({ waitUntil: 'load', timeout: 180000 })
     await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+    await hydrated().catch(() => {})
     await page.locator('.guest-picker__tile').first().click().catch(() => {})
     await page.locator('.guest-picker__confirm').click().catch(() => {})
     pickerTimedOut = !await pickerWait()

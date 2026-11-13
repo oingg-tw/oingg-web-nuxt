@@ -20,7 +20,7 @@ const { open: openLogin } = useLoginDialog()
 const mounted = ref(false)
 onMounted(() => { mounted.value = true })
 const authResolved = useAuthResolved()
-const authHint = useCookie<boolean | null>('auth-hint')
+const authHint = useAuthHint()
 const resolving = computed(() => !mounted.value || !authResolved.value)
 
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')

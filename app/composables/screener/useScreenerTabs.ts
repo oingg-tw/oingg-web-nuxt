@@ -599,14 +599,18 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
 
   watch(
     [authResolved, currentUser],
-    async ([resolved, user]) => {
+    async ([resolved, user], previous) => {
       if (!resolved) return
       if (!user) {
-        for (const tab of tabs.value) stopAutoSearch(tab.id)
-        tabs.value = []
+        // 這次載入才確定是訪客（之前是「還不知道」）就留著：沒登入過的瀏覽器從伺服器的第一個畫面就是選範本（ScreenerPageShell 的
+        // guestReady），Firebase 還原完之前訪客可能已經開了一組。登出、站內換頁回來照舊清掉
+        if (previous?.[0] !== false) {
+          for (const tab of tabs.value) stopAutoSearch(tab.id)
+          tabs.value = []
+          activeTabId.value = ''
+        }
         columnPresetOptions.value = []
         hasLoadedTabs.value = false
-        activeTabId.value = ''
         tabsBootstrapped.value = true
         return
       }

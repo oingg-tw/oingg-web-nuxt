@@ -12,9 +12,14 @@ import { ALL_ROUTES } from './site-routes.mjs'
 const base = process.env.BASE ?? 'http://localhost:3000'
 const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+// 提示過期的瀏覽器（auth-hint 說登入過、其實沒登入，2026-11-13）：Firebase 在 hydration 前就改掉這個 cookie，第一次渲染要照伺服器那一刻的
+// 提示（useAuthHint）。用它分會員、訪客畫面的頁原本都對不上
+const staleHint = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+await staleHint.addCookies([{ name: 'auth-hint', value: 'true', url: base }])
+const runs = [...ALL_ROUTES.map(route => [context, route, '']), ...['/holdings', '/watchlist', '/screener/common'].map(route => [staleHint, route, '（auth-hint 過期）'])]
 let failed = 0
-for (const route of ALL_ROUTES) {
-  const page = await context.newPage()
+for (const [pageContext, route, label] of runs) {
+  const page = await pageContext.newPage()
   const found = []
   page.on('console', async (msg) => {
     if (!/hydrat|mismatch/i.test(msg.text())) return
@@ -28,13 +33,13 @@ for (const route of ALL_ROUTES) {
     found.push(`LOAD ERROR ${String(error).slice(0, 120)}`)
   }
   if (found.length) failed += 1
-  console.log(`${found.length ? 'FAIL' : 'ok  '} ${route}`)
+  console.log(`${found.length ? 'FAIL' : 'ok  '} ${route}${label}`)
   for (const line of found) console.log(`    ${line}`)
   await page.close()
 }
 await browser.close()
 if (failed) {
-  console.log(`\n${failed} / ${ALL_ROUTES.length} 頁有 hydration 訊息`)
+  console.log(`\n${failed} / ${runs.length} 頁有 hydration 訊息`)
   process.exit(1)
 }
-console.log(`\nPASS: hydration（${ALL_ROUTES.length} 頁）`)
+console.log(`\nPASS: hydration（${runs.length} 頁）`)

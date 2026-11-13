@@ -22,11 +22,17 @@ const props = defineProps<{
   screener: ScreenerWorkspace
   // 頁面還在決定要開哪一組（普通股的 ?template 解析中）：維持骨架，不先畫 #no-tab 再整塊換掉（2026-10-16，手機 CLS 0.112）
   pending?: boolean
+  // 訪客的畫面（#no-tab）不必等登入狀態就畫得出來：普通股的選範本，範本在伺服器就抓好了。ETF、特別股的訪客畫面是瀏覽器才查的結果，不傳
+  guestReady?: boolean
 }>()
 
 const zone = computed(() => SCREENER_ZONE_ITEMS.find(item => item.key === props.universe)!)
 const uid = useId()
-const hasHydrated = useHasHydrated()
+// 登入狀態確定（hydration 之後、Firebase 還原完）、這一組讀好才畫內容。還在確定時，這台瀏覽器沒登入過、頁面又有現成的訪客畫面，
+// 就從伺服器的第一個畫面畫訪客的樣子（useMemberGate，同持股與觀察清單）：普通股的選範本原本要等 hydration 完、Firebase 還原完才畫，
+// 手機 PageSpeed 的 LCP 就是它（2026-11-13，本機正式版模擬 13.5 秒，改了之後跟 FCP 同時）
+const { resolving, member } = useMemberGate()
+const contentReady = computed(() => !props.pending && (resolving.value ? !member.value && !!props.guestReady : props.screener.ready))
 const tab = computed(() => props.screener.activeTab)
 const hasConditions = computed(() => !!tab.value?.slots.some(slot => slot.fieldId !== null))
 const goneCondition = computed(() => goneSlot(tab.value?.slots ?? []))
@@ -134,8 +140,8 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
     <!-- 標題下面的說明文字 2026-10-22 拿掉（使用者：「screener-shell__intro 文字說明拿掉」） -->
     <ScreenerNav />
 
-    <!-- hasHydrated 也要等：登入狀態在伺服器與瀏覽器第一次渲染時一定是「還不知道」，兩邊才畫得一樣（見 useHasHydrated） -->
-    <template v-if="hasHydrated && screener.ready && !pending">
+    <!-- 伺服器與瀏覽器第一次渲染時登入狀態一定是「還不知道」，兩邊都照 auth-hint 決定，才畫得一樣（contentReady） -->
+    <template v-if="contentReady">
       <template v-if="tab">
         <section ref="setupRef" class="screener-shell__setup" :aria-labelledby="`${uid}-setup`">
           <h2 :id="`${uid}-setup`" class="visually-hidden">篩選條件</h2>

@@ -83,13 +83,14 @@ export function useWatchlistColumns() {
 
   // 副本放在 cookie：帳號裡的組合要等登入還原才讀得到，重新整理的第一個畫面就要是自己的欄位（2026-10-20，使用者：「然後不要閃動」）。
   // 一類一個 cookie，三類擠一個會超過 4KB
-  const authHint = useCookie<boolean | null>('auth-hint')
+  // 登入狀態還沒確定時看伺服器那一刻的 auth-hint，確定之後看真的登入狀態（useMemberGate）：直接讀 cookie 會被 Firebase 在 hydration 前改掉
+  const { member } = useMemberGate()
   const hints: Record<WatchlistKind, Ref<ColumnHint | null | undefined>> = {
     common: useCookie<ColumnHint | null>('watchlist-columns-common', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' }),
     etf: useCookie<ColumnHint | null>('watchlist-columns-etf', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' }),
     preferred: useCookie<ColumnHint | null>('watchlist-columns-preferred', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
   }
-  const hintOf = (kind: WatchlistKind) => (!loaded.value && authHint.value ? hints[kind].value ?? null : null)
+  const hintOf = (kind: WatchlistKind) => (!loaded.value && member.value ? hints[kind].value ?? null : null)
 
   const activeSet = (kind: WatchlistKind) => sets.value[kind].find(set => set.isDefault) ?? null
 
