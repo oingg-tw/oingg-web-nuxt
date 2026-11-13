@@ -295,7 +295,7 @@ function sortMethodFor(field: string) {
     const x = a.values[field]?.value ?? null
     const y = b.values[field]?.value ?? null
     if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
-    return compareFieldValues(x, y)
+    return compareFieldValues(x, y, locateFieldInSchema(props.categories, field)?.metric.options)
   }
 }
 

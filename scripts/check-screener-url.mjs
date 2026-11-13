@@ -1,7 +1,7 @@
 // 篩選狀態放進網址的編碼與解析（app/utils/screener-url.ts，2026-10-22）。網址是任何人都能改的輸入：格式不對的要略過，不能讓頁面拿去查
 import assert from 'node:assert/strict'
 import { decodeScreenerQuery, encodeScreenerQuery, sameFilters } from '../app/utils/screener-url.ts'
-import { EX_DIVIDEND_MONTH_OPTIONS, findScreenerOption, formatScreenerValue, wireFilters, wireValue } from '../app/utils/screener-value.ts'
+import { EX_DIVIDEND_MONTH_OPTIONS, compareFieldValues, findScreenerOption, formatScreenerValue, wireFilters, wireValue } from '../app/utils/screener-value.ts'
 
 // 來回一趟不變
 const state = {
@@ -57,6 +57,9 @@ assert.equal(findScreenerOption(quarters, 'older')?.label, '更早')
 assert.equal(findScreenerOption(quarters, '2024Q1'), null)
 assert.equal(formatScreenerValue('2026Q2', undefined, 'latestReportedQuarter.EOD', quarters), '26Q2')
 assert.equal(formatScreenerValue('older', undefined, 'latestReportedQuarter.EOD', quarters), '更早')
+// 由小到大照時間：更早 < 26Q2 < 26Q3（值是 latest、latest-1，照字串比的話 latest 最小，2026-11-14 使用者看到 26Q3 排在最上面）
+assert.deepEqual(['latest', 'older', 'latest-1', '2026Q2'].sort((x, y) => compareFieldValues(x, y, quarters)), ['older', 'latest-1', '2026Q2', 'latest'])
+assert.ok(compareFieldValues('b', 'a') > 0 && compareFieldValues(2, 10) < 0, '沒有季別選項的照舊：文字照字串、數字照大小')
 assert.equal(findScreenerOption([{ value: 3, label: '中軌' }], '3')?.label, '中軌') // 河道位置：值是數字、網址與存檔裡是字串
 
 // 送給業務中台時照型別送（wireValue）：勾選框裡的 "true"／"false" 換回布林；其他照原樣，代碼（類股 "24"、季別）不轉

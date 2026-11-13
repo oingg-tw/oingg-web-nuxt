@@ -50,6 +50,16 @@ export function formatScreenerValue(raw: string | number | null | undefined, uni
 
 // 兩個欄位值的升冪比較：數字比數字，文字（例如日期）照字串比。null 由呼叫端決定放哪裡。
 // 觀察清單的表格（el-table 的 sort-method）與手機卡片的排序選單共用（2026-10-08）。
-export function compareFieldValues(x: string | number, y: string | number): number {
+// 選項帶財報年季的（最新財報季別）照時間比，「更早」最小：值是 latest、latest-1…，照字串比的話最新的 latest 最小（2026-11-14，使用者：
+//「最新財報季別 由小到大排序 為什麼是 26Q3 在上面?」）
+export function compareFieldValues(x: string | number, y: string | number, options?: readonly ScreenerOption[] | null): number {
+  if (options?.some(option => option.fiscalYear != null)) {
+    const rank = (value: string | number) => {
+      const option = findScreenerOption(options, value)
+      return option ? (option.fiscalYear ?? 0) * 10 + (option.fiscalQuarter ?? 0) : null
+    }
+    const [rx, ry] = [rank(x), rank(y)]
+    if (rx !== null && ry !== null) return rx - ry
+  }
   return typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))
 }
