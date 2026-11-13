@@ -158,6 +158,8 @@ const qrDialogVisible = ref(false)
            1.5:1 — mops now takes them from a company's own site, where JSON-LD/og:image/header
            artwork is routinely a horizontal lockup rather than an icon. A 400×80 wordmark inside a
            64×64 `contain` box renders 64×13 and cannot be read.
+           Every logo sits on a white chip（2026-11-13: dark artwork on transparency vanished on the dark
+           theme's card）, so it reads the same in both themes.
            `needs-dark` flips the chip behind the ~108 logos that are near-white on transparency:
            they are correct artwork, just drawn for a dark site footer, and on this app's light card
            they would be invisible. Measured per file by mops（mean luminance over opaque pixels
@@ -388,22 +390,26 @@ html.dark .summary-card__favorite-btn.is-plain {
    attributes on the element give the browser the intrinsic ratio so the row is the right size
    before the image arrives; without them a lazily-loaded logo would shift the whole card. */
 /* 手機（2B）：標題左邊一個小的；桌機在下面的 min-width 區塊改成跨列、撐滿卡片高 */
+/* 每個 logo 都墊白底（2026-11-13，使用者：「5902 德記 Logo 在黑色主題時不明顯。能否給每個LOGO預設白色背景。這樣就不受主題色影響」）：
+   362 個 logo 是深色圖案、透明底（5902 亮度 38.7、不透明 37%），在深色卡片上看不見。白底不跟主題換色；內距 4px 吃在框裡
+  （全站 border-box），所以框高 40px、寬上限多 8px，圖跟原本一樣 32px 高、最寬 96px */
 .summary-card__logo {
   grid-column: 1;
   grid-row: 1;
-  height: 32px;
+  height: 40px;
   width: auto;
-  max-width: 96px;
+  max-width: 104px;
   margin-right: 10px;
+  padding: 4px;
+  border-radius: 6px;
+  background: #ffffff;
   object-fit: contain;
   object-position: left center;
 }
 
-/* The chip for near-white artwork. Padded and rounded rather than a bare dark rectangle so it reads
-   as a deliberate backdrop; the colour is the app's own inverse surface, not a new hex. */
+/* The chip for near-white artwork, which the white chip above would hide: the same chip in the
+   app's own inverse surface, not a new hex. */
 .summary-card__logo--needs-dark {
-  padding: 4px 8px;
-  border-radius: 6px;
   background: var(--el-color-info-dark-2, #303133);
 }
 
@@ -553,7 +559,8 @@ html.dark .summary-card__favorite-btn.is-plain {
     align-self: stretch;
     height: 0;
     min-height: 100%;
-    max-width: 160px;
+    /* 白底的內距 4px 吃在框裡：上限多 8px，寬版商標的圖仍是最寬 160px */
+    max-width: 168px;
     margin-right: 16px;
   }
 
