@@ -1,5 +1,5 @@
 diff --git a/dist/runtime/internal/cache.mjs b/dist/runtime/internal/cache.mjs
-index 897f3a4..d1cb9ba 100644
+index 897f3a4778532cb12fc2e70226891a56c99a8da0..7d84c5dfd7d077280563ff493254021c79e0b96c 100644
 --- a/dist/runtime/internal/cache.mjs
 +++ b/dist/runtime/internal/cache.mjs
 @@ -9,6 +9,7 @@ import {
@@ -10,7 +10,17 @@ index 897f3a4..d1cb9ba 100644
  import { hash } from "./hash.mjs";
  function defaultCacheOptions() {
    return {
-@@ -114,7 +115,7 @@ export function defineCachedFunction(fn, opts = {}) {
+@@ -69,6 +70,9 @@ export function defineCachedFunction(fn, opts = {}) {
+           let setOpts;
+           if (opts.maxAge && !opts.swr) {
+             setOpts = { ttl: opts.maxAge };
++          } else if (opts.maxAge && opts.staleMaxAge > 0) {
++            // oingg: swr keys expire at maxAge + staleMaxAge (server/utils/swr-cache.ts never serves them past that); unpatched they never expire
++            setOpts = { ttl: opts.maxAge + opts.staleMaxAge };
+           }
+           const promise = useStorage().setItem(cacheKey, entry, setOpts).catch((error) => {
+             console.error(`[cache] Cache write error.`, error);
+@@ -114,7 +118,7 @@ export function defineCachedFunction(fn, opts = {}) {
        key,
        () => fn(...args),
        shouldInvalidateCache,
