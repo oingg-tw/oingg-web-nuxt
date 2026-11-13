@@ -143,8 +143,12 @@ function sortOrdersFor(field: string): ('ascending' | 'descending' | null)[] {
 // price or ratio keeps every digit the backend sent rather than being cut to 4 significant digits
 // (nothing that size ever overflows this column to begin with).
 function formatValue(column: ScreenerResultTableColumn, row: ScreenerResultRow): string {
-  const raw = row.values[column.field]?.value
+  const cell = row.values[column.field]
+  const raw = cell?.value
   if (column.format) return column.format(raw, row)
+  // 幾年期的指標歷史不夠長：「未滿 5 年」（windowShortfallText）
+  const shortfall = raw == null ? windowShortfallText(column.field, cell?.nullReason) : null
+  if (shortfall) return shortfall
   // 上面的理由（市值有效數字、千分位、其他數字不截位）的實作在 app/utils/screener-value.ts，觀察清單共用
   const located = locateFieldInSchema(props.categories, column.field)
   return formatScreenerValue(raw, located?.field.unit, column.field, located?.metric.options)

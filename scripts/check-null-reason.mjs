@@ -2,7 +2,7 @@
 // 近四季跨到只申報半年報那一年時提示框寫的原因，與頭尾修掉、中間留著
 // Run: node scripts/check-null-reason.mjs
 import assert from 'node:assert/strict'
-import { NULL_REASON_LABELS, nullReasonShortText, semiannualWindowNote } from '../app/utils/metric-null-reason.ts'
+import { NULL_REASON_LABELS, nullReasonShortText, semiannualWindowNote, windowShortfallText } from '../app/utils/metric-null-reason.ts'
 import { trimEmptyEnds } from '../app/utils/metric-history-points.ts'
 
 const codes = ['roe', 'netProfitMargin']
@@ -44,4 +44,11 @@ assert.equal(nullReasonShortText('semiannual_only'), '不適用')
 const has = value => value !== null
 assert.deepEqual(trimEmptyEnds([null, 1, null, 2, null], has), [1, null, 2])
 assert.deepEqual(trimEmptyEnds([null, null], has), [])
+// 篩選結果的格子：幾年期的指標歷史不夠長寫「未滿 N 年」，年數從期別開頭或指標代碼結尾讀；其他原因、讀不出年數的不改（照舊「－」）
+assert.equal(windowShortfallText('roeWeighted5y.FY', 'insufficient_history'), '未滿 5 年')
+assert.equal(windowShortfallText('beta.5Y_1M', 'insufficient_history'), '未滿 5 年')
+assert.equal(windowShortfallText('peRatioRiverBand.3Y_1D', 'insufficient_history'), '未滿 3 年')
+assert.equal(windowShortfallText('holdingDividendGrowthRate3y.EOD', 'insufficient_history'), '未滿 3 年')
+assert.equal(windowShortfallText('epsCagr5y.FY', 'zero_or_negative_denominator'), null)
+assert.equal(windowShortfallText('roe.TTM', 'insufficient_history'), null)
 console.log('check-null-reason: ok')

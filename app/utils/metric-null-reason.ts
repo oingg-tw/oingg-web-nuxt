@@ -63,6 +63,16 @@ export function semiannualWindowNote(entry: MetricsHistoryEntry, quarterly: read
   return `${period}只申報半年報，這一季的近四季算不出來${codes.some(code => single?.values[code]?.value != null) ? '（單季看得到）' : ''}`
 }
 
+// 篩選結果的格子（篩選、觀察清單、持股的指標）：幾年期的指標歷史不夠長時寫「未滿 N 年」，不只是「－」（2026-11-14，使用者：「五年加權平均ROE
+// 等指標 如果上市未滿五年 比起 - 取代 希望可以簡短說明原因 比如 未滿五年」）。年數從欄位代碼讀：期別開頭的 5Y（beta.5Y_1M、河流圖 5Y_1D），
+// 或指標代碼結尾的 5y（roeWeighted5y、epsCagr5y）。寫「未滿」不寫「上市未滿」：缺的是歷史資料的年數。其他原因照舊「－」
+export function windowShortfallText(field: string, nullReason: string | null | undefined): string | null {
+  if (nullReason !== 'insufficient_history') return null
+  const [metric = '', period = ''] = field.split('.')
+  const years = /^(\d+)Y_/.exec(period)?.[1] ?? /(\d+)y$/.exec(metric)?.[1]
+  return years ? `未滿 ${years} 年` : null
+}
+
 export function nullReasonTitle(point: NullablePoint | null | undefined): string | undefined {
   if (!point || point.value !== null || !point.nullReason) return undefined
   return NULL_REASON_LABELS[point.nullReason] ?? '這一期沒有數值'
