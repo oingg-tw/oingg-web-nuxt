@@ -191,8 +191,8 @@ onMounted(() => {
   min-height: 44px;
 }
 
-/* 手機：整份存起來是這一頁唯一的主要動作，換到標題下面、整行寬 */
-@media (max-width: 639px) {
+/* 手機：整份存起來是這一頁唯一的主要動作，換到標題下面、整行寬（同 HoldingsPageShell） */
+@media (max-width: 767.98px) {
   .share-page__actions {
     flex: 1 1 100%;
   }

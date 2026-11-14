@@ -415,6 +415,7 @@ const planName = computed(() => {
 
 <style scoped>
 .profile-page {
+  container-type: inline-size;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -548,16 +549,17 @@ const planName = computed(() => {
   color: var(--el-text-color-regular);
 }
 
-/* 名稱（1.25rem）＋間距＋一行說明（1rem），行高照全站 1.5；跟卡片同樣的 12px 間距 */
+/* 名稱（1.25rem）＋間距＋說明（1rem），行高照全站 1.5；跟卡片同樣的 12px 間距。說明的行數照試用說明：一行要 608px，這一頁最寬 480，
+   卡片裡至少折成兩行，頁面窄於 21.125rem（338px，370 寬以下的手機：卡片扣框線 2 與內距 32 後字寬不到 304px）三行（2026-11-14 量的；
+   原本只有 600 寬以下留兩行，電腦版的試用帳號讀到方案時往下推 24px）。三行是基本樣式，寬的才改兩行。免費版沒有說明，名稱下面是空白 */
 .profile-page__plan-head {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: calc(1.25rem * 1.5 + 12px + 1rem * 1.5);
+  min-height: calc(1.25rem * 1.5 + 12px + 1rem * 1.5 * 3);
 }
 
-/* 手機上試用說明折成兩行（量到 375 寬多長 24px），留兩行 */
-@media (max-width: 600px) {
+@container (min-width: 21.125rem) {
   .profile-page__plan-head {
     min-height: calc(1.25rem * 1.5 + 12px + 1rem * 1.5 * 2);
   }

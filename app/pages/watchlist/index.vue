@@ -325,7 +325,7 @@ async function submitNote() {
 }
 
 /* 手機：檔數換到標題下一行，動作留在標題右邊 */
-@media (max-width: 639px) {
+@media (max-width: 767.98px) {
   .watchlist-page__count {
     display: block;
     margin: 4px 0 0;

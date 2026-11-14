@@ -425,7 +425,7 @@ const methodGroups = computed(() => [
   color: var(--el-text-color-regular);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .holdings-traits__method-item {
     grid-template-columns: 12rem minmax(0, 1fr);
   }
