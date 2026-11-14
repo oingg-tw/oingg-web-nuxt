@@ -525,7 +525,8 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     check(metricsBox.y >= figureBox.y + figureBox.height && Math.abs(metricsBox.width - figureBox.width) < 2, `${label}：指標表在九宮格下面、跟九宮格那一層一樣寬（${metricsBox.width.toFixed(0)}／${figureBox.width.toFixed(0)}）`)
   }
   if (width >= 1280) {
-    const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.trim()).filter(Boolean)
+    // 表頭按鈕後面藏著給讀屏的排序狀態（「，由大到小排序中」，2026-11-14 方案 A），只比欄名
+    const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.split('，')[0].trim()).filter(Boolean)
     if (payload === 'market') {
       check(JSON.stringify(headers) === '["名稱","占比"]', `${label}：各檔只有占比（${headers.join('、')}）`)
     } else if (payload === 'ratios') {

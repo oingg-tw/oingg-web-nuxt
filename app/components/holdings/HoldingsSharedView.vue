@@ -52,10 +52,10 @@ type SharedRow = (typeof rows.value)[number]
 
 const tone = (value: number | null, digits: number) => (value === null ? null : Number(value.toFixed(digits)))
 const DEFINITIONS: Record<string, (label: string) => HoldingsSymbolColumn<SharedRow>> = {
-  weight: label => ({ key: 'weight', label, minWidth: 100, card: 'summary', sortLabel: `${label}（大到小）`, text: row => holdingsMetricText(row.weight, 'pct'), sortValue: row => row.weight }),
-  returnPct: label => ({ key: 'returnPct', label, minWidth: 110, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.returnRatio), sortValue: row => row.returnRatio, tone: row => tone(row.returnRatio === null ? null : row.returnRatio * 100, 2) }),
-  dayChange: label => ({ key: 'dayChange', label, minWidth: 120, card: 'summary', sortLabel: `${label}（高到低）`, text: row => holdingsSignedPct(row.dayPct === null ? null : row.dayPct / 100), sortValue: row => row.dayPct, tone: row => tone(row.dayPct, 2) }),
-  quantity: label => ({ key: 'quantity', label, minWidth: 100, card: 'summary', sortLabel: `${label}（多到少）`, text: row => (row.quantity === null ? '－' : groupThousands(row.quantity)), sortValue: row => row.quantity }),
+  weight: label => ({ key: 'weight', label, minWidth: 100, card: 'summary', text: row => holdingsMetricText(row.weight, 'pct'), sortValue: row => row.weight }),
+  returnPct: label => ({ key: 'returnPct', label, minWidth: 110, card: 'summary', text: row => holdingsSignedPct(row.returnRatio), sortValue: row => row.returnRatio, tone: row => tone(row.returnRatio === null ? null : row.returnRatio * 100, 2) }),
+  dayChange: label => ({ key: 'dayChange', label, minWidth: 120, card: 'summary', text: row => holdingsSignedPct(row.dayPct === null ? null : row.dayPct / 100), sortValue: row => row.dayPct, tone: row => tone(row.dayPct, 2) }),
+  quantity: label => ({ key: 'quantity', label, minWidth: 100, card: 'summary', text: row => (row.quantity === null ? '－' : groupThousands(row.quantity)), sortValue: row => row.quantity }),
   marketValue: label => ({ key: 'marketValue', label, minWidth: 120, card: 'summary', text: row => (row.figures?.marketValue == null ? '－' : holdingsMoney(row.figures.marketValue)), sortValue: row => row.figures?.marketValue ?? null }),
   unrealizedPnl: label => ({ key: 'unrealizedPnl', label, minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.figures?.pnl ?? null), sortValue: row => row.figures?.pnl ?? null, tone: row => tone(row.figures?.pnl ?? null, 0) }),
   annualDividend: label => ({ key: 'annualDividend', label, minWidth: 120, card: 'summary', text: row => (row.figures?.annualDividend == null ? '－' : holdingsMoney(row.figures.annualDividend)), sortValue: row => row.figures?.annualDividend ?? null })
