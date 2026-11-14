@@ -146,8 +146,8 @@ function formatValue(column: ScreenerResultTableColumn, row: ScreenerResultRow):
   const cell = row.values[column.field]
   const raw = cell?.value
   if (column.format) return column.format(raw, row)
-  // 幾年期的指標歷史不夠長：「未滿 5 年」（windowShortfallText）
-  const shortfall = raw == null ? windowShortfallText(column.field, cell?.nullReason) : null
+  // 空值的簡短原因：幾年期的指標歷史不夠長「未滿 5 年」、興櫃的上市櫃年數「未上市櫃」（screenerNullText）
+  const shortfall = raw == null ? screenerNullText(column.field, cell?.nullReason) : null
   if (shortfall) return shortfall
   // 上面的理由（市值有效數字、千分位、其他數字不截位）的實作在 app/utils/screener-value.ts，觀察清單共用
   const located = locateFieldInSchema(props.categories, column.field)

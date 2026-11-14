@@ -24,6 +24,9 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 近四季（數據中台 2026-11-12 起）：第一、三季的近四季跨到前一年只申報半年報的那半年，缺單季數字。這一期算不出來，不是不適用；
   // 用近四季 EPS 的即時指標（即時本益比等）也會有
   semiannual_window: '近四季跨到只申報半年報的期間，缺那幾季的單季數字，所以算不出來',
+  // 上市櫃年數（數據中台 2026-11-16 起）：興櫃公司還沒上市、上櫃。數據中台先等這裡認得這個代碼才上（讀者先行），使用者選了這個新代碼
+  //（2026-11-14「照建議」），沒用現有的：not_applicable_industry 是產業不適用、not_published_by_exchange 是交易所不公布
+  not_listed: '還沒有上市或上櫃（興櫃公司）',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
@@ -65,8 +68,10 @@ export function semiannualWindowNote(entry: MetricsHistoryEntry, quarterly: read
 
 // 篩選結果的格子（篩選、觀察清單、持股的指標）：幾年期的指標歷史不夠長時寫「未滿 N 年」，不只是「－」（2026-11-14，使用者：「五年加權平均ROE
 // 等指標 如果上市未滿五年 比起 - 取代 希望可以簡短說明原因 比如 未滿五年」）。年數從欄位代碼讀：期別開頭的 5Y（beta.5Y_1M、河流圖 5Y_1D），
-// 或指標代碼結尾的 5y（roeWeighted5y、epsCagr5y）。寫「未滿」不寫「上市未滿」：缺的是歷史資料的年數。其他原因照舊「－」
-export function windowShortfallText(field: string, nullReason: string | null | undefined): string | null {
+// 或指標代碼結尾的 5y（roeWeighted5y、epsCagr5y）。寫「未滿」不寫「上市未滿」：缺的是歷史資料的年數。興櫃的上市櫃年數寫「未上市櫃」。
+// 其他原因照舊「－」
+export function screenerNullText(field: string, nullReason: string | null | undefined): string | null {
+  if (nullReason === 'not_listed') return '未上市櫃'
   if (nullReason !== 'insufficient_history') return null
   const [metric = '', period = ''] = field.split('.')
   const years = /^(\d+)Y_/.exec(period)?.[1] ?? /(\d+)y$/.exec(metric)?.[1]
@@ -88,7 +93,7 @@ export function reasonedCellText(point: NullablePoint | null | undefined, format
 //（資料在，這個指標算不出來——本身就是關於公司的事實）、尚無資料（我們沒有這家公司這一期的紀錄）。原本全部塌成不適用或尚無資料，
 // 10 檔樣本 108 個 null 徽章有 96 個被說成「我們沒有數字」，含 35 個 insufficient_history。業務中台 之後把同一個區分寫進契約（3a59133）。
 // 不適用＝結構性、不會恢復：模型不適用於這個產業，或興櫃本來就沒有這項數字（交易所不公布、只申報半年報）
-const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_published_by_exchange', 'semiannual_only'])
+const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_published_by_exchange', 'semiannual_only', 'not_listed'])
 export function nullReasonShortText(nullReason: string | null | undefined): string {
   if (nullReason && NOT_APPLICABLE_REASONS.has(nullReason)) return '不適用'
   return nullReason ? '無法計算' : '尚無資料'
