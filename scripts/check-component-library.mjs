@@ -15,8 +15,7 @@ const CARD_RADIUS = { min: 8, max: 20 }
 const CONTROLS = {
   '.appearance-page__swatch': '外觀設定的選項鈕，是控制項，框要 3:1',
   '.learn-group__pager-link': '上一篇／下一篇，按鈕樣子的連結，是控制項',
-  '.header-nav__panel': '頁首的下拉選單，是浮層（讀 --el-border-color-light，同 Element 的彈出層）',
-  '.column-set-menu__panel': '觀察清單、持股總覽每一類的「欄位」下拉選單（SharedColumnSetMenu），是浮層（框是卡片的暖色，同 .el-popover）'
+  '.header-nav__panel': '頁首的下拉選單，是浮層（讀 --el-border-color-light，同 Element 的彈出層）'
 }
 
 // 頁面外殼：讀 --el-bg-color 的只有這幾個

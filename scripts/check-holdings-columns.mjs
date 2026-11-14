@@ -121,9 +121,10 @@ const metricCell = async (section, symbol, header) => {
   const headers = await metricHeaders(section)
   return (await section.locator('.smt-table-view .el-table__body tr.el-table__row', { hasText: symbol }).locator('td').nth(headers.findIndex(text => text.startsWith(header))).innerText()).trim()
 }
+// 顯示欄位同篩選的下拉（ScreenerPresetSelect，2026-11-14「欄位組合也比照確保ux一致性」）
 const pick = async (page, section, name) => {
-  await section.locator('.column-set-menu__button').click()
-  await section.locator('.column-set-menu__panel').getByRole('button', { name, exact: true }).click()
+  await section.locator('.screener-preset-select__select').click()
+  await page.locator('.el-select-dropdown__item:visible', { hasText: name }).first().click()
   await page.waitForTimeout(2000)
 }
 const saveWithout = async (page, section, column) => {
@@ -200,7 +201,11 @@ console.log('損益（1440，預設）')
   const gm = await metricCell(common, '2330', '毛利率')
   check(/\d/.test(pe) && gm.endsWith('%'), `指標有值：本益比 ${pe}、毛利率 ${gm}`)
   check(state.etfReads > 0, '切到指標才問 ETF 的數字')
-  check(await common.locator('.column-set-menu__button').getAttribute('aria-label') === '普通股的欄位：估值兩欄', '分段時念出是哪一類的欄位')
+  // 每一類一列顯示欄位，同普通股篩選：下拉寫著那一組，旁邊是＋新增、管理、欄位設定
+  check((await common.locator('.screener-preset-select__select').innerText()).trim() === '估值兩欄' && await common.getByRole('button', { name: '管理顯示欄位' }).isVisible() && await common.getByRole('button', { name: '新增欄位組合' }).isVisible() && await common.locator('.smt-toolbar__settings').isVisible(), '顯示欄位同篩選：下拉、新增、管理、欄位設定')
+  const metricsGap = await stuckGap(page, '.holdings-kind[aria-label="ETF"] .smt-table-view')
+  check(metricsGap === 0, `指標：捲到表格中段，表頭黏在頁首下面（差 ${metricsGap}px）`)
+  await page.evaluate(() => window.scrollTo(0, 0))
   await shot(page, 'metrics-1440')
   check(await axe(page, '.holdings-page__metrics') === '0', 'axe（指標）')
 
@@ -239,7 +244,7 @@ console.log('只有普通股（指標）')
   const ctx = await newContext(1440, newState(['2330', '2317']), { view: 'metrics' })
   const page = await open(ctx)
   check(await page.locator('.holdings-kind').count() === 1 && await page.locator('.holdings-kind__title').count() === 0, '一段、沒有標題')
-  check(await page.locator('.column-set-menu__button').getAttribute('aria-label') === null, '只有一段時念按鈕上的字')
+  check(await page.locator('.screener-preset-select').count() === 1, '只有一組顯示欄位')
   await ctx.close()
 }
 
@@ -294,6 +299,18 @@ console.log('手機（375）')
   await page.locator('.el-radio-button', { hasText: '指標' }).click()
   await settled(page)
   check(await page.locator('.holdings-kind .smt-card:visible').count() === 4 && await page.locator('.holdings-kind .smt-table-view:visible').count() === 0, '指標：篩選的卡片')
+  // 方案 A：工具列也是一行字——「排序：預設順序」、方向、「欄位 N 個」同一排，欄位組合的選單沒有框（同損益的排序）
+  const quiet = await page.evaluate(() => {
+    const section = document.querySelector('.holdings-kind')
+    const mid = el => { const rect = el.getBoundingClientRect(); return Math.round(rect.top + rect.height / 2) }
+    const [sort, direction, columnsOpen] = ['.smt-sort', '.smt-direction', '.smt-columns-open'].map(selector => section.querySelector(selector))
+    return {
+      text: section.querySelector('.smt-sort__text')?.textContent.trim(),
+      oneRow: [direction, columnsOpen].every(el => Math.abs(mid(el) - mid(sort)) <= 2),
+      frames: [direction, columnsOpen].map(el => getComputedStyle(el).borderTopColor)
+    }
+  })
+  check(quiet.text === '排序：預設順序' && quiet.oneRow && quiet.frames.every(color => color === 'rgba(0, 0, 0, 0)'), `指標的工具列是一行字（${quiet.text}；同一排 ${quiet.oneRow}；框 ${quiet.frames.join('／')}）`)
   check(await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth) <= 0, '指標：沒有橫向捲動')
   await shot(page, 'metrics-375')
   check(await axe(page, '.holdings-page__metrics') === '0', 'axe（指標卡片）')

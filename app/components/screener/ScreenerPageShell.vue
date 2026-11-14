@@ -81,28 +81,9 @@ function focusNewCondition() {
   setupRef.value?.querySelector<HTMLElement>(`[data-slot-id="${slots.at(-1)!.id}"] .condition-pill__value`)?.focus()
 }
 
-// 管理彈窗按「儲存」之後的套用（我的篩選、顯示欄位各一個）：一項做完再做下一項。改名 → 複製 → 刪除 → 排序：複製要在刪除前
-// （原本那一組可能也要刪），刪除要先做完才排序——業務中台 的排序要「全部已存的 id」，還沒刪掉的那一組不能少；刪到目前這一組時，
-// 換選哪一組由各自的 remove 決定。排序裡副本的暫時 id 換成建好的 id，沒建成的拿掉
-interface GroupOps {
-  rename(id: string, name: string): Promise<void> | void
-  remove(id: string): Promise<void> | void
-  reorder(ids: string[]): Promise<void> | void
-  copy(id: string, name: string): Promise<string | null>
-  select(id: string): void
-}
-async function applyChanges({ renames, copies, removals, order }: PresetChanges, ops: GroupOps) {
-  for (const [id, name] of renames) await ops.rename(id, name)
-  const created = new Map<string, string | null>()
-  for (const { id, from, name } of copies) created.set(id, await ops.copy(from, name))
-  for (const id of removals) await ops.remove(id)
-  if (order) await ops.reorder(order.flatMap(id => (created.has(id) ? created.get(id) ?? [] : [id])))
-  // 複製出來的那一組，儲存後立刻切過去（2026-11-04，使用者：「藉由複製新增 條件組合以後 確認以後 要立刻切換到該條件組合」）；
-  // 一次複製好幾組就切到最後一組。欄位組合的管理照同一套
-  const lastCopy = [...created.values()].filter(id => id !== null).at(-1)
-  if (lastCopy) ops.select(lastCopy)
-}
-const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
+// 管理彈窗按「儲存」之後的套用（我的篩選、顯示欄位各一個）：順序與規則在 runPresetChanges（app/utils/preset-changes.ts，觀察清單與持股的
+// 顯示欄位也用）
+const applyPresetChanges = (changes: PresetChanges) => runPresetChanges(changes, {
   rename: props.screener.renamePreset,
   remove: props.screener.removePreset,
   reorder: props.screener.reorderTabs,
@@ -110,7 +91,7 @@ const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
   select: props.screener.selectTab
 })
 // 欄位組合的管理跟欄位設定分開（2026-11-01，使用者：「希望管理 欄位設定 分開」）：「顯示欄位」自己的「管理」，同「我的篩選」
-const applyColumnSetChanges = (changes: PresetChanges) => applyChanges(changes, {
+const applyColumnSetChanges = (changes: PresetChanges) => runPresetChanges(changes, {
   rename: props.screener.renameColumnSet,
   remove: props.screener.removeColumnSet,
   reorder: props.screener.reorderColumnSets,

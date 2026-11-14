@@ -225,7 +225,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
 // 篩選的結果表，窄的時候是卡片）；組合跟篩選、觀察清單同一組（useWatchlistColumns），在這裡換組合或改欄位，篩選與觀察清單也跟著變，反過來也是。
 // 選了哪一個記在 cookie：重新整理時伺服器的第一個畫面就是那一個。自訂欄位頁（/holdings/columns）照舊藏著
 const view = useCookie<'pnl' | 'metrics'>('holdings-view', { default: () => 'pnl', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
-const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
+const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
 onMounted(() => {
   watch(currentUser, (user) => {
     if (user) void loadColumns()
@@ -584,17 +584,7 @@ async function submit() {
               >
                 <template #toolbar>
                   <h3 v-if="section.multi" class="holdings-kind__title">{{ section.label }}<span class="holdings-kind__count">{{ section.rows.length }} 檔</span></h3>
-                  <SharedColumnSetMenu
-                    :id="`holdings-columns-${section.kind}`"
-                    class="holdings-columns"
-                    :items="setItemsOf(section.kind)"
-                    :active-id="activeIdOf(section.kind)"
-                    :kind-label="section.multi ? section.label : undefined"
-                    :screener-path="SCREENER_PATHS[section.kind]"
-                    :screener-label="section.label"
-                    :disabled="section.skeleton"
-                    @select="id => selectColumnSet(section.kind, id)"
-                  />
+                  <WatchlistColumnSetSelect :kind="section.kind" />
                 </template>
               </WatchlistTable>
             </section>
@@ -990,10 +980,6 @@ async function submit() {
   margin-left: 8px;
   font-weight: 400;
   color: var(--el-text-color-regular);
-}
-
-.holdings-columns {
-  margin-left: auto;
 }
 
 /* 頁尾、計算方式下面：同計算方式的字色與上距 */
