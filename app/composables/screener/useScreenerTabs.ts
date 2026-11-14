@@ -24,6 +24,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // 搜尋讀不到（2026-10-11）：交給全站讀取失敗彈窗，重試＝同一個分頁、同一頁再搜一次。4xx（例如條件不合法）是可以
   // 行動的回饋，照舊用提示顯示上游給的理由；「載入更多」失敗也照舊用提示（已載入的列留著）。
   const searchFailure = shallowRef<{ tab: ScreenerTab; page?: number; error: unknown } | null>(null)
+  let searchCount = 0
   watchLoadFailure('screener-search', () => searchFailure.value?.error ?? null, async () => {
     const failed = searchFailure.value
     if (!failed) return
@@ -374,7 +375,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     else tab.loading = true
     tab.searched = true
     lastError.value = null
-    const debugLabel = `[screener] tab ${tab.id} search`
+    // 每次搜尋一個計時器名稱：同一個分頁的兩次搜尋會重疊（新的開始時舊的還沒回來），同名的話主控台警告 Timer already exists
+    const debugLabel = `[screener] tab ${tab.id} search #${++searchCount}`
     if (import.meta.dev) console.time(debugLabel)
     try {
       // Every request inside this already has its own timeout (getIdToken at 10s, each
