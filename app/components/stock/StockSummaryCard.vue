@@ -223,7 +223,7 @@ const qrDialogVisible = ref(false)
       <!-- 真正的 QR 圖示（2026-09-15，「請找真正的qr code icon」）：@element-plus/icons-vue 沒有 QR 字形（Grid 看起來只是格子），
            用一個內嵌 SVG（三個定位角＋散點，QR 閱讀器圖示的通用語法），不打網路、不加套件。 -->
       <el-button text class="summary-card__action-btn" @click="qrDialogVisible = true">
-        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
+        <svg class="summary-card__qr-icon" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
           <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
         </svg>QR 碼
       </el-button>
@@ -319,13 +319,12 @@ const qrDialogVisible = ref(false)
    CSS-repositioned copy of the same one) so it can stay absolutely positioned in the corner at
    desktop without also having to solve the mobile-width overlap the in-flow row above exists to
    avoid. display:none is the mobile default; the ≥601px media query below turns it back on.
-   右邊跟左邊內容一樣離卡片邊 20px（卡片內距），在卡片高度上置中（2026-11-13，使用者：「按鈕本身呢？有垂直置中嗎？間隔合理嗎」；
-   原本 top／right 12px，貼在右上角、右邊比左邊少 8px）。框只有按鈕高（最愛清單的選單掛在它下面），所以用 top 減半個按鈕高（44px 的一半），
-   不用 transform */
+   固定在右上角（2026-11-14，使用者：「電腦版本的加入最愛請固定在右上角」；11-13 曾改成在卡片高度上置中）：上面離卡片邊 12px、右邊
+   20px，同卡片的上、左右內距，右邊跟左邊內容一樣離卡片邊 20px（原本 top／right 都 12px，右邊比左邊少 8px） */
 .summary-card__corner-right {
   display: none;
   position: absolute;
-  top: calc(50% - 22px);
+  top: 12px;
   right: 20px;
   z-index: 1;
 }
@@ -336,10 +335,12 @@ const qrDialogVisible = ref(false)
   font-size: 1rem;
 }
 
-/* 圖示跟字之間 6px，同 Element 用 icon 屬性時的間距：這幾顆的圖示寫在按鈕字裡，Element 不會自己留，原本貼在一起 */
+/* 圖示跟字之間 6px，同 Element 用 icon 屬性時的間距：這幾顆的圖示寫在按鈕字裡，Element 不會自己留，原本貼在一起。
+   只加在圖示框（.el-icon）與自己畫的 QR 碼上：原本寫 `.summary-card__action-btn svg` 也選到 .el-icon 裡面的 svg，6px 塞進 16px 的框，
+   分享與星星被擠成 10px（2026-11-14，使用者：「個股summary 按鈕icon視覺大小異常」） */
 .summary-card__favorite-btn .el-icon,
 .summary-card__action-btn .el-icon,
-.summary-card__action-btn svg {
+.summary-card__qr-icon {
   margin-right: 6px;
 }
 
