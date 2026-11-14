@@ -14,7 +14,10 @@ import type { ConditionTab, TabFilterSlot } from '~/composables/screener/screene
 //
 // 手機的條件清單是草稿（2026-11-09，使用者：「篩選條件這邊 手機版要有 儲存取消 電腦版不需要 電腦版可以改了就反應」）：打開清單時把
 // 那一組的條件複製一份，清單裡新增、修改、刪除都改這份；「儲存」才整份換回頁籤，查詢與已存的那組存回帳號照舊由 useScreenerTabs／
-// useUniverseScreener 的監看接手（一次儲存只查一次）；「取消」、×、Esc、點外面就丟掉。電腦版沒有清單，膠囊打開的面板直接改頁籤，改了就反應
+// useUniverseScreener 的監看接手（一次儲存只查一次）；「取消」、×、Esc、點外面就丟掉。
+// 選指標、設定範圍這兩步也是草稿（2026-11-14，使用者：「選擇項目 如果是彈窗呈現 就必須要等到按下完成時 才更新 而不是選擇時就更新」，推翻
+// 11-09 電腦版「改了就反應」）：編輯器綁的是那一個條件的副本，「完成」（輸入框按 Enter 也是）才寫回——電腦版寫回頁籤、馬上查，手機寫回清單的
+// 草稿；×、Esc、點外面、「上一步：換指標」丟掉副本。電腦版的「重置」是清空後完成
 type DraftTab = Pick<ConditionTab, 'slots'>
 const cloneSlots = (slots: TabFilterSlot[]): TabFilterSlot[] => JSON.parse(JSON.stringify(slots))
 
@@ -72,8 +75,8 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
   })
 
   // 條件的數值編輯器——所有膠囊共用一個（ScreenerRangeEditor），不屬於任何一顆，新條件才能跟編輯既有條件走同一條 UI／資料流。
-  // `rangeEditorDraftSlot` 放新增中、還不是真 slot 的那一個；`rangeEditorSlotId` 放編輯既有膠囊時的 id——兩者不會同時有值。
-  // 下面的 rangeEditorSlot 是兩種情況共同綁定的來源，min／max／exclude 的 v-model 接法一致。
+  // `rangeEditorDraftSlot` 是編輯中的副本（新條件就是一個新物件）；`rangeEditorSlotId` 是它要寫回的那個條件（新條件是 null）。
+  // 「完成」寫回之後副本清掉、rangeEditorSlot 改指真的那一個，面板關掉的動畫裡內容照舊
   const rangeEditorVisible = ref(false)
   const rangeEditorTab = shallowRef<DraftTab | null>(null)
   const rangeEditorSlotId = ref<number | null>(null)
@@ -92,12 +95,16 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     pickerVisible.value = false
   }
 
+  const copyOf = (slot: TabFilterSlot): TabFilterSlot => JSON.parse(JSON.stringify(slot))
   // Opens the value editor for an already-filled pill (its own value button, not the field
-  // picker chain) — the counterpart to the draft-slot path handleSelect takes below.
+  // picker chain) — on a copy, written back on 完成.
   function openRangeEditor(tab: T, slotId: number) {
-    rangeEditorTab.value = targetOf(tab)
+    const target = targetOf(tab)
+    const slot = target.slots.find((item: TabFilterSlot) => item.id === slotId)
+    if (!slot) return
+    rangeEditorTab.value = target
     rangeEditorSlotId.value = slotId
-    rangeEditorDraftSlot.value = null
+    rangeEditorDraftSlot.value = copyOf(slot)
     rangeEditorVisible.value = true
   }
 
@@ -112,18 +119,19 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     if (rangeEditorSlot.value) rangeEditorSlot.value.fieldId = fieldId
   }
 
-  // 新條件在設了值的那一刻放進條件裡（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」）：電腦版直接進頁籤、自動查詢；手機進清單的草稿，
-  // 按「儲存」才查（2026-11-09）。之後跟編輯既有條件一樣直接綁在那一個 slot 上。只挑了指標、沒設值，照舊不算一個條件（使用者明文要求：
-  // 指標與值都設了才算）。同一個物件從新條件搬進條件裡，編輯器綁的還是它，輸入框不會重建、焦點不會掉
+  // 「完成」把副本寫回：既有的條件換成副本的內容（指標、期別、值都在副本裡），新條件有值才放進條件裡——只挑了指標、沒設值，照舊不算一個
+  // 條件（使用者明文要求：指標與值都設了才算）。電腦版寫回頁籤就自動查詢，手機寫回清單的草稿、按「儲存」才查
   const hasValue = (slot: TabFilterSlot) => slot.min !== null || slot.max !== null || (slot.values?.length ?? 0) > 0
   function commitDraft() {
     const draft = rangeEditorDraftSlot.value
-    if (!draft || !rangeEditorTab.value || !hasValue(draft)) return
-    rangeEditorTab.value.slots.push(draft)
+    if (!draft || !rangeEditorTab.value) return
+    const existing = rangeEditorSlotId.value === null ? undefined : rangeEditorTab.value.slots.find((slot: TabFilterSlot) => slot.id === rangeEditorSlotId.value)
+    if (existing) Object.assign(existing, draft)
+    else if (hasValue(draft)) rangeEditorTab.value.slots.push(draft)
+    else return
     rangeEditorSlotId.value = draft.id
     rangeEditorDraftSlot.value = null
   }
-  watch(() => rangeEditorDraftSlot.value && hasValue(rangeEditorDraftSlot.value), commitDraft)
 
   function closeRangeEditor() {
     commitDraft()
@@ -150,7 +158,7 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     if (existingSector) {
       rangeEditorTab.value = tab
       rangeEditorSlotId.value = existingSector.id
-      rangeEditorDraftSlot.value = null
+      rangeEditorDraftSlot.value = copyOf(existingSector)
       switchToRangeStep()
       return
     }
@@ -168,23 +176,18 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     const slot = tab.slots.find((item: TabFilterSlot) => item.id === pickerTargetSlotId.value)
     if (!slot) return
     // Assigning a *different* field than before — the old range no longer means anything
-    // against a different metric, so it resets rather than carrying over.
-    slot.fieldId = fieldId
-    slot.fieldLabel = fieldLabel
-    slot.min = null
-    slot.max = null
-    slot.exclude = false
-    slot.values = undefined
+    // against a different metric, so it resets rather than carrying over. On the copy: the pill
+    // keeps its old field and value until 完成.
     rangeEditorTab.value = tab
     rangeEditorSlotId.value = slot.id
-    rangeEditorDraftSlot.value = null
+    rangeEditorDraftSlot.value = { ...copyOf(slot), fieldId, fieldLabel, min: null, max: null, exclude: false, values: undefined }
     switchToRangeStep()
   }
 
-  // 面板的「上一步：換指標」：回到第一步；新條件的草稿丟掉（選了新指標會再開一份），已存在的條件則是換它的指標
+  // 面板的「上一步：換指標」：回到第一步，副本丟掉（選了指標會再開一份）；新條件是新增，已存在的條件是換它的指標
   function backToPicker() {
     pickerTargetTab.value = rangeEditorTab.value
-    pickerTargetSlotId.value = rangeEditorDraftSlot.value ? null : rangeEditorSlotId.value
+    pickerTargetSlotId.value = rangeEditorSlotId.value
     rangeEditorDraftSlot.value = null
     rangeEditorVisible.value = false
     pickerVisible.value = true
@@ -203,16 +206,14 @@ export function useScreenerConditionEditor<T extends ConditionTab>() {
     listVisible.value = false
   }
 
-  // 手機清單的「儲存」：設定範圍裡的新條件有值就收進來，整份草稿換回頁籤
+  // 手機清單的「儲存」：整份草稿換回頁籤（設定範圍的那一步已經在「完成」時寫回草稿）
   function savePanel() {
-    commitDraft()
     if (draft.value) draft.value.source.slots = cloneSlots(draft.value.copy.slots)
     closeAll()
   }
 
-  // 「取消」、×、Esc、點外面：手機的草稿丟掉；電腦版改了就已經套用，有值的新條件照舊收進來（同「完成」）
+  // 「取消」、×、Esc、點外面：草稿丟掉，手機是整份清單，電腦版是設定範圍的那一個副本
   function closePanel() {
-    if (!draft.value) commitDraft()
     closeAll()
   }
 

@@ -169,7 +169,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 
     // **挑了欄位之後膠囊數「不該」增加**，那是明文要求的行為，不是漏掉：早期版本按下「新增條件」
     // 就立刻塞一個空白膠囊，使用者指出那讀起來像「已經有一個條件了」。現在挑欄位只產生一個 draft
-    // （useScreenerConditionEditor 的 handleSelect），值設好的那一刻才變成真的 slot（commitDraft，2026-10-31 起不用等「完成」）。
+    // （useScreenerConditionEditor 的 handleSelect），按「完成」才變成真的 slot（commitDraft；2026-11-14 起彈窗裡要按完成才套用）。
     // 我第一版把這條寫成「要多一個」，是我沒讀那段註解。
     const pillsDraft = await page.locator('.screener-shell__setup .condition-pill').count()
     expect('條件', '挑了欄位還不算一個條件（要等值也設好）', pillsDraft === pillsBefore, `${pillsBefore} → ${pillsDraft}`)
@@ -192,26 +192,41 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
         // 沒有篩選（beta ≤ 50 全部命中），所以「結果有沒有變」永遠是沒變。用「不可能」的下限就
         // 跟挑到哪一支指標無關——任何數值指標都會變成 0 列，而那是一個明確、可斷言的結果。
         await inputs.first().fill('999999999')
-        // 電腦版面板還開著就要套用（2026-10-31，使用者：「篩選條件 點了以後就要馬上套入」；11-09 手機改成草稿，電腦版照舊：
-        // 「手機版要有 儲存取消 電腦版不需要 電腦版可以改了就反應」）：不按「完成」，結果就該換一批
-        const changed = await waitForRowsChange(page, before)
-        const lastStatus = upstream[upstream.length - 1]
-        pillsAfter = await page.locator('.screener-shell__setup .condition-pill').count()
-        expect('條件', `設好值、面板還開著就多一個條件（${picked}）`, pillsAfter === pillsBefore + 1 && await page.locator('.condition-panel .range-editor').isVisible(),
-          `${pillsBefore} → ${pillsAfter}`)
-        expect('條件', '不可能的下限不按完成就讓結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
-          `${before.count}列/${before.first} → ${changed.now.count}列，業務中台 ${lastStatus}，等了 ${changed.ms}ms`)
+        // 彈窗裡改的要按「完成」才套用（2026-11-14，使用者：「選擇項目 如果是彈窗呈現 就必須要等到按下完成時 才更新 而不是選擇時就更新」；
+        // 推翻 10-31「點了以後就要馬上套入」與 11-09 電腦版「改了就反應」）：面板開著，膠囊與結果都不動、不查
+        const sentWhileOpen = querySentAt.length
+        await page.waitForTimeout(1500)
+        const stillBefore = await rowsSignature(page)
+        expect('條件', `設好值、還沒按完成：不多一個條件、不查（${picked}）`, await page.locator('.screener-shell__setup .condition-pill').count() === pillsBefore
+          && querySentAt.length === sentWhileOpen && stillBefore.count === before.count && stillBefore.first === before.first, `${querySentAt.length - sentWhileOpen} 次查詢`)
         expect('條件', '電腦版面板沒有儲存、取消', !await page.locator('.condition-panel').getByRole('button', { name: /^(儲存|取消)$/ }).count())
-        // 設定範圍按 Enter 就是「完成」（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）：面板關掉，還在等的那一次馬上查
-        await inputs.first().fill('999999998')
+        // 設定範圍按 Enter 就是「完成」（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）：面板關掉、寫回條件、馬上查
         const enterAt = Date.now()
         await inputs.first().press('Enter')
         await page.waitForTimeout(800)
         const enterSentAt = querySentAt.find(time => time >= enterAt)
         expect('條件', 'Enter 就是完成：面板關掉', await page.locator('.condition-panel .range-editor').isHidden())
-        expect('條件', 'Enter 之後馬上查，不等 0.6 秒', enterSentAt !== undefined && enterSentAt - enterAt < 400,
+        expect('條件', 'Enter 之後馬上查', enterSentAt !== undefined && enterSentAt - enterAt < 400,
           enterSentAt === undefined ? '0.8 秒內沒有送出查詢' : `${enterSentAt - enterAt}ms 送出`)
-        expect('條件', '關掉面板後條件還在', await page.locator('.screener-shell__setup .condition-pill').count() === pillsAfter)
+        const changed = await waitForRowsChange(page, before)
+        const lastStatus = upstream[upstream.length - 1]
+        pillsAfter = await page.locator('.screener-shell__setup .condition-pill').count()
+        expect('條件', `完成之後多一個條件（${picked}）`, pillsAfter === pillsBefore + 1, `${pillsBefore} → ${pillsAfter}`)
+        expect('條件', '不可能的下限按完成後結果變成 0 列', changed.now.count === 0 && lastStatus === 200,
+          `${before.count}列/${before.first} → ${changed.now.count}列，業務中台 ${lastStatus}，等了 ${changed.ms}ms`)
+        // ×、Esc 丟掉：再打開這個條件改值、按 Esc，膠囊照舊、不查
+        const lastPill = page.locator('.screener-shell__setup .condition-pill').last()
+        const pillText = (await lastPill.textContent())?.replace(/\s+/g, ' ').trim()
+        await lastPill.locator('.condition-pill__value').click()
+        const reopened = await waitFor(page.locator('.condition-panel input[role="spinbutton"]').first(), 10000)
+        if (reopened.ok) {
+          await page.locator('.condition-panel input[role="spinbutton"]').first().fill('1')
+          const escAt = Date.now()
+          await page.keyboard.press('Escape')
+          await page.waitForTimeout(1500)
+          expect('條件', 'Esc 丟掉改到一半的值：膠囊照舊、不查', (await lastPill.textContent())?.replace(/\s+/g, ' ').trim() === pillText && !querySentAt.some(time => time >= escAt),
+            `${pillText} → ${(await lastPill.textContent())?.replace(/\s+/g, ' ').trim()}`)
+        } else expect('條件', '再打開條件的設定範圍', false)
       } else {
         await page.keyboard.press('Escape')
         await page.waitForTimeout(800)
@@ -327,10 +342,12 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
       const sent = sentBodies.length
       const pillsBefore = await page.locator('.screener-shell__setup .condition-pill').count()
       if (labels.includes('興櫃')) await options.filter({ hasText: '興櫃' }).click()
-      await page.waitForTimeout(400)
-      await page.keyboard.press('Escape')
       // 等的是帶這個條件的那一次，不是下一次：先送出去的可能是別的查詢（換條件前排進去的下一頁）
       const sentCondition = () => sentBodies.slice(sent).some(body => body.includes('"market.EOD"') && body.includes('"rotc"'))
+      // 勾了選項還不算（2026-11-14，使用者：「選擇項目 如果是彈窗呈現 就必須要等到按下完成時 才更新 而不是選擇時就更新」）：按「完成」才套用
+      await page.waitForTimeout(1500)
+      expect('市場別', '勾選、還沒按完成：不多一個條件、不查', !sentCondition() && await page.locator('.screener-shell__setup .condition-pill').count() === pillsBefore)
+      await page.locator('.condition-panel').getByRole('button', { name: '完成' }).click()
       const start = Date.now()
       while (!sentCondition() && Date.now() - start < 30000) await page.waitForTimeout(300)
       const added = await page.locator('.screener-shell__setup .condition-pill').count() === pillsBefore + 1

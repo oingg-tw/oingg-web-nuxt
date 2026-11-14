@@ -27,7 +27,7 @@ const emit = defineEmits<{
   back: []
   // 「完成」（設定範圍的輸入框按 Enter 也是）與「上一步：條件清單」：手機回到清單；電腦版沒有清單，就是關掉
   done: []
-  // 手機的條件清單是草稿（2026-11-09，使用者：「手機版要有 儲存取消 電腦版不需要 電腦版可以改了就反應」）：儲存才套用；取消、×、Esc、點外面是 close，作廢
+  // 手機的條件清單是草稿（2026-11-09，使用者：「手機版要有 儲存取消」）：儲存才套用；取消、×、Esc、點外面是 close，作廢（電腦版的設定範圍也是，2026-11-14）
   save: []
   close: []
   // 關閉動畫結束（Element Plus 已經把焦點還給打開它的按鈕之後）
@@ -110,13 +110,14 @@ const formId = useId()
         :periods="periods"
         :current-field-id="slot.fieldId"
         :visible="open"
-        @reset="listVisible || emit('close')"
+        @reset="listVisible || emit('done')"
         @update:field-id="(fieldId: string) => emit('changePeriod', fieldId)"
       />
     </form>
 
-    <!-- 儲存、取消只在手機的條件清單（從清單進去的設定範圍「完成」回到清單）；電腦版改了就套用，「完成」關掉面板。
-         「重置」在手機只清這一個條件的值，面板不關（關掉就是取消）；電腦版清完就關，同 10/31 起 -->
+    <!-- 儲存、取消只在手機的條件清單（從清單進去的設定範圍「完成」回到清單）。設定範圍兩邊都是按「完成」才寫回（2026-11-14，使用者：
+         「選擇項目 如果是彈窗呈現 就必須要等到按下完成時 才更新」）：電腦版寫回頁籤、關掉面板，×、Esc、點外面丟掉。
+         「重置」在手機只清這一個條件的值，面板不關（關掉就是取消）；電腦版清完就是「完成」 -->
     <template v-if="step === 'list'" #footer>
       <div class="condition-panel__footer">
         <el-button size="large" @click="emit('close')">取消</el-button>
