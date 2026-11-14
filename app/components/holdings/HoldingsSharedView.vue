@@ -51,14 +51,15 @@ const rows = computed(() => props.holdings.map((holding) => {
 type SharedRow = (typeof rows.value)[number]
 
 const tone = (value: number | null, digits: number) => (value === null ? null : Number(value.toFixed(digits)))
+// 表格裡股數在市值下面、報酬率在未實現損益下面（under，同持股總覽；兩欄都分享了才併）：七欄全勾也放得進 720 寬的表格
 const DEFINITIONS: Record<string, (label: string) => HoldingsSymbolColumn<SharedRow>> = {
   weight: label => ({ key: 'weight', label, minWidth: 100, card: 'summary', text: row => holdingsMetricText(row.weight, 'pct'), sortValue: row => row.weight }),
-  returnPct: label => ({ key: 'returnPct', label, minWidth: 110, card: 'summary', text: row => holdingsSignedPct(row.returnRatio), sortValue: row => row.returnRatio, tone: row => tone(row.returnRatio === null ? null : row.returnRatio * 100, 2) }),
-  dayChange: label => ({ key: 'dayChange', label, minWidth: 120, card: 'summary', text: row => holdingsSignedPct(row.dayPct === null ? null : row.dayPct / 100), sortValue: row => row.dayPct, tone: row => tone(row.dayPct, 2) }),
-  quantity: label => ({ key: 'quantity', label, minWidth: 100, card: 'summary', text: row => (row.quantity === null ? '－' : groupThousands(row.quantity)), sortValue: row => row.quantity }),
+  returnPct: label => ({ key: 'returnPct', label, minWidth: 110, card: 'summary', under: 'unrealizedPnl', text: row => holdingsSignedPct(row.returnRatio), sortValue: row => row.returnRatio, tone: row => tone(row.returnRatio === null ? null : row.returnRatio * 100, 2) }),
+  dayChange: label => ({ key: 'dayChange', label, minWidth: 90, card: 'summary', text: row => holdingsSignedPct(row.dayPct === null ? null : row.dayPct / 100), sortValue: row => row.dayPct, tone: row => tone(row.dayPct, 2) }),
+  quantity: label => ({ key: 'quantity', label, minWidth: 100, card: 'summary', under: 'marketValue', text: row => (row.quantity === null ? '－' : groupThousands(row.quantity)), sortValue: row => row.quantity }),
   marketValue: label => ({ key: 'marketValue', label, minWidth: 120, card: 'summary', text: row => (row.figures?.marketValue == null ? '－' : holdingsMoney(row.figures.marketValue)), sortValue: row => row.figures?.marketValue ?? null }),
   unrealizedPnl: label => ({ key: 'unrealizedPnl', label, minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.figures?.pnl ?? null), sortValue: row => row.figures?.pnl ?? null, tone: row => tone(row.figures?.pnl ?? null, 0) }),
-  annualDividend: label => ({ key: 'annualDividend', label, minWidth: 120, card: 'summary', text: row => (row.figures?.annualDividend == null ? '－' : holdingsMoney(row.figures.annualDividend)), sortValue: row => row.figures?.annualDividend ?? null })
+  annualDividend: label => ({ key: 'annualDividend', label, minWidth: 100, card: 'summary', text: row => (row.figures?.annualDividend == null ? '－' : holdingsMoney(row.figures.annualDividend)), sortValue: row => row.figures?.annualDividend ?? null })
 }
 // 照分享時勾的順序；不認得的 key 不畫
 const tableColumns = computed(() => props.columns.flatMap(column => (DEFINITIONS[column.key] ? [DEFINITIONS[column.key]!(column.label)] : [])))

@@ -199,13 +199,13 @@ function priceText(transaction: Transaction): string {
   color: var(--el-text-color-regular);
 }
 
-/* 跟持股表同一個門檻、量同一個容器（HoldingsSymbolTable 的 983px；交易紀錄只出現在持股表的明細裡）。清單是基本樣式（卡片模式），
-   表格放得下才換成表格 */
+/* 跟持股表同一個門檻、量同一個容器（HoldingsSymbolTable 的 720px；交易紀錄只出現在持股表的明細裡）。清單是基本樣式（卡片模式），
+   持股表是表格時換成表格 */
 .ledger__table {
   display: none;
 }
 
-@container (min-width: 983px) {
+@container (min-width: 720px) {
   .ledger__table {
     display: block;
   }

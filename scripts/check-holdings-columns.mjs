@@ -1,7 +1,9 @@
 // 持股明細的兩種檢視（2026-11-14，使用者：「持股管理 也要有地方可以切換顯示的欄位，共用欄位設定」，看過設計圖選方案 A：「A很好，請這樣做」）：
 //   - 標題列有「損益／指標」切換與分享；選了哪一個記在 cookie，重新整理還是那一個
-//   - 損益：一張持股表、全部類別一起；寬螢幕名稱下面一行是代號與類別（00878・ETF），「明細」是無框文字鈕；1280、1440 都放得下、不左右捲；
-//     這個檢視不問指標（不呼叫 /etf-screener）
+//   - 損益：一張持股表、全部類別一起；寬螢幕名稱下面一行是代號與類別（00878・ETF），「明細」是無框文字鈕；市值下面是股數、損益下面是
+//     報酬率（2026-11-14「合併成兩行的格子」）；這個檢視不問指標（不呼叫 /etf-screener）
+//   - 損益與指標同一條斷點（使用者：「「損益」和「指標」我認為可以用同樣斷點」）：持股明細這一塊 720 起兩個都是表格、719 兩個都是卡片；
+//     720 的損益表也放得下、不左右捲
 //   - 指標：每一類一段，表格同觀察清單（代號、名稱、那一類的欄位組合）；選單換組合＝那一類的預設；欄位設定有組合就改那一組，基本欄位就新增
 //     一組「持股欄位」並設成預設
 //   - 手機：損益是持股自己的卡片，指標是篩選的卡片；沒有橫向捲動。2026-11-14 的手機整理：總覽每一列左右（名稱左、金額右）、未計入收成一行、
@@ -115,7 +117,8 @@ const shot = (page, name) => (dir ? page.screenshot({ path: `${dir}/holdings-col
 const axe = async (page, include) => (await new AxeBuilder({ page }).include(include).analyze()).violations.map(v => `${v.id}(${v.nodes.length})`).join(',') || '0'
 const sectionOf = (page, label) => page.locator(`.holdings-kind[aria-label="${label}"]`)
 // 表頭按鈕後面藏著給讀屏的排序狀態（「，由大到小排序中」），只比欄名
-const pnlHeaders = page => page.locator('.view-table .el-table__header-wrapper thead th:not(.symbol-table__expand-col)').allInnerTexts().then(list => list.map(text => text.split('，')[0].trim()))
+// 一顆表頭按鈕一個欄名（兩行的格子是同一格兩顆）；按鈕後面藏著排序狀態「，由大到小排序中」
+const pnlHeaders = page => page.locator('.view-table .el-table__header-wrapper thead .symbol-table__head').allInnerTexts().then(list => list.map(text => text.split('，')[0].trim()))
 const metricHeaders = section => section.locator('.smt-table-view .el-table__header-wrapper thead th').allInnerTexts().then(list => list.map(text => text.trim()))
 const metricCell = async (section, symbol, header) => {
   const headers = await metricHeaders(section)
@@ -135,7 +138,7 @@ const saveWithout = async (page, section, column) => {
   await dialog.getByRole('button', { name: '儲存' }).click()
   await page.waitForTimeout(2000)
 }
-const HOLDING_HEADERS = ['名稱', '股數', '市值', '今日漲跌', '未實現損益', '報酬率', '預估年股利']
+const HOLDING_HEADERS = ['名稱', '市值', '股數', '今日漲跌', '未實現損益', '報酬率', '預估年股利']
 // 表頭黏在頁首下面，同篩選（2026-11-14「為什麼股票篩選表格可以貼頂表頭 但是 持股明細表格沒有貼頂」）：捲到表格裡 40px，量表頭離頁首下緣多遠。
 // 量的時候視窗矮一點：四檔的頁面在 900 高時捲不到那麼深
 const stuckGap = async (page, selector) => {
@@ -230,13 +233,33 @@ console.log('損益（1440，預設）')
   await darkContext.close()
 }
 
-console.log('損益（1280）')
+console.log('損益與指標同一條斷點（持股明細這一塊 720）')
 {
-  const ctx = await newContext(1280, newState(MIXED))
-  const page = await open(ctx)
-  const overflow = await page.evaluate(() => { const wrap = document.querySelector('.view-table .el-scrollbar__wrap'); return wrap.scrollWidth - wrap.clientWidth })
-  check(overflow <= 0, `表格最窄的寬度也放得下（${overflow}）`)
-  await ctx.close()
+  // 直放沒有側欄：視窗寬跟這一塊一比一，調到剛好 720／719
+  const listWidth = page => page.evaluate(() => Math.round(document.querySelector('.holdings-page__list-head').getBoundingClientRect().width))
+  const fitTo = async (page, width) => {
+    for (let i = 0; i < 3 && await listWidth(page) !== width; i++) {
+      const size = page.viewportSize()
+      await page.setViewportSize({ width: size.width + width - await listWidth(page), height: size.height })
+      await page.waitForTimeout(400)
+    }
+    return listWidth(page)
+  }
+  const visible = (page, selector) => page.evaluate(sel => [...document.querySelectorAll(sel)].some(element => element.offsetParent), selector)
+  for (const view of ['pnl', 'metrics']) {
+    const ctx = await newContext(800, newState(MIXED), { view })
+    const page = await open(ctx)
+    const table = view === 'pnl' ? '.view-table' : '.smt-table-view'
+    const wide = await fitTo(page, 720)
+    check(wide === 720 && await visible(page, table), `${view}：720 是表格（${wide}）`)
+    if (view === 'pnl') {
+      const overflow = await page.evaluate(() => { const wrap = document.querySelector('.view-table .el-scrollbar__wrap'); return wrap.scrollWidth - wrap.clientWidth })
+      check(overflow <= 0, `pnl：720 放得下、不左右捲（${overflow}）`)
+    }
+    const narrow = await fitTo(page, 719)
+    check(narrow === 719 && !await visible(page, table), `${view}：719 是卡片（${narrow}）`)
+    await ctx.close()
+  }
 }
 
 console.log('只有普通股（指標）')

@@ -21,6 +21,9 @@ export interface HoldingsSymbolColumn<T> {
   // 卡片上：summary＝一眼看到，detail＝展開後才看到，不給＝只在表格出現
   card?: 'summary' | 'detail'
   cardText?: (row: T) => string
+  // 表格裡排在哪一欄的第二行（那一欄的 key；那一欄不在就自己一欄）。2026-11-14，使用者：「「損益」和「指標」我認為可以用同樣斷點，
+  // 是要去調整設計來配合斷點」，選了「合併成兩行的格子」：市值下面是股數、損益下面是報酬率，持股總覽六欄放得進 720 寬的表格。卡片不受影響
+  under?: string
 }
 </script>
 
@@ -55,12 +58,18 @@ const expanded = defineModel<string[]>('expanded', { default: () => [] })
 const slots = defineSlots<{ detail?: (props: { row: T; variant: 'table' | 'card' }) => unknown }>()
 const KIND_SUFFIX: Record<string, string> = { etf: '・ETF', preferred: '・特別股' }
 
+// 表格的欄：排到別欄第二行的（under）不自己一欄
+const tableColumns = computed(() => props.columns.filter(column => !column.under || !props.columns.some(other => other.key === column.under)))
+const subOf = (column: HoldingsSymbolColumn<T>) => props.columns.find(other => other.under === column.key)
+// 一格裡由上到下的欄（表頭兩顆按鈕、格子兩行）
+const stackOf = (column: HoldingsSymbolColumn<T>) => [column, ...props.columns.filter(other => other.under === column.key)]
+
 // 名稱欄與明細欄的 min-width：el-table 與骨架表共用。el-table 把多出來的寬度照 min-width 的比例分給各欄，骨架表用同樣的比例。
-// 名稱欄 150（原本 170）：代號移到第二行後只放名稱，持股總覽 7 欄在 1280 寬（表格框 983px）才放得下（2026-11-14 量到 170 時超出 18px）
-const NAME_MIN_WIDTH = 150
+// 名稱欄 140（原本 170、150）：代號在第二行，名稱一行放得下七個字；持股總覽六欄加總 701，放得進 720 寬的表格（見檔尾）
+const NAME_MIN_WIDTH = 140
 const DETAIL_MIN_WIDTH = 110
 const skeletonShare = (minWidth: number) => {
-  const total = NAME_MIN_WIDTH + props.columns.reduce((sum, column) => sum + column.minWidth, 0) + (slots.detail ? DETAIL_MIN_WIDTH : 0)
+  const total = NAME_MIN_WIDTH + tableColumns.value.reduce((sum, column) => sum + column.minWidth, 0) + (slots.detail ? DETAIL_MIN_WIDTH : 0)
   return `${(minWidth / total) * 100}%`
 }
 
@@ -152,21 +161,26 @@ function toggle(symbol: string, event?: MouseEvent) {
     <SharedTable v-if="skeletonRows" :ssr="false" :scrollable="false" table-class="symbol-table__skeleton" class="view-table" aria-hidden="true">
       <colgroup>
         <col :style="{ width: skeletonShare(NAME_MIN_WIDTH) }">
-        <col v-for="column in columns" :key="column.key" :style="{ width: skeletonShare(column.minWidth) }">
+        <col v-for="column in tableColumns" :key="column.key" :style="{ width: skeletonShare(column.minWidth) }">
         <col v-if="slots.detail" :style="{ width: skeletonShare(DETAIL_MIN_WIDTH) }">
       </colgroup>
       <thead>
         <tr>
           <!-- 表頭跟資料到了的表頭按鈕同一個樣子（圖示、欄名、折行），只是不能按 -->
           <th><span class="symbol-table__head">名稱<SharedSortIcon :state="sort.key === 'symbol' ? sort.order : null" /></span></th>
-          <th v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num"><span class="symbol-table__head"><SharedSortIcon :state="sort.key === column.key ? sort.order : null" />{{ column.label }}</span></th>
+          <th v-for="column in tableColumns" :key="column.key" class="symbol-table__skeleton-num">
+            <span class="symbol-table__stack"><span v-for="item in stackOf(column)" :key="item.key" class="symbol-table__head"><SharedSortIcon :state="sort.key === item.key ? sort.order : null" />{{ item.label }}</span></span>
+          </th>
           <th v-if="slots.detail"><span class="visually-hidden">明細</span></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="index in skeletonRows" :key="index">
           <td><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /><span class="symbol-table__sub"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-code" /></span></td>
-          <td v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" /></td>
+          <td v-for="column in tableColumns" :key="column.key" class="symbol-table__skeleton-num">
+            <span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" />
+            <span v-if="subOf(column)" class="symbol-table__sub"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-code" /></span>
+          </td>
           <td v-if="slots.detail"><el-button text type="primary" disabled tabindex="-1">{{ toggleLabels[0] }}<el-icon class="symbol-table__chevron" aria-hidden="true"><ArrowDown /></el-icon></el-button></td>
         </tr>
       </tbody>
@@ -195,21 +209,25 @@ function toggle(symbol: string, event?: MouseEvent) {
           </template>
         </el-table-column>
         <el-table-column
-          v-for="column in columns"
+          v-for="column in tableColumns"
           :key="column.key"
           :label="column.label"
           :prop="column.key"
           align="right"
           :min-width="column.minWidth"
         >
-          <!-- 靠右的欄圖示在前：欄名跟下面的數字對齊 -->
+          <!-- 靠右的欄圖示在前：欄名跟下面的數字對齊。併成兩行的格子，表頭也是兩顆按鈕，各排各的 -->
           <template #header>
-            <button type="button" class="symbol-table__head" aria-haspopup="menu" :aria-expanded="menu.open && menu.key === column.key" @click="openMenu(column.key, $event)">
-              <SharedSortIcon :state="sort.key === column.key ? sort.order : null" />{{ column.label }}<span class="visually-hidden">{{ sortStateText(column.key) }}</span>
-            </button>
+            <span class="symbol-table__stack">
+              <button v-for="item in stackOf(column)" :key="item.key" type="button" class="symbol-table__head" aria-haspopup="menu" :aria-expanded="menu.open && menu.key === item.key" @click="openMenu(item.key, $event)">
+                <SharedSortIcon :state="sort.key === item.key ? sort.order : null" />{{ item.label }}<span class="visually-hidden">{{ sortStateText(item.key) }}</span>
+              </button>
+            </span>
           </template>
+          <!-- 第二行的漲跌色寫在裡面那一層：外層的灰字（.symbol-table__sub）特異性比全站的漲跌色高 -->
           <template #default="{ row }">
             <span :class="toneClass(column, tableRow<T>(row))">{{ column.text(tableRow<T>(row)) }}</span>
+            <span v-if="subOf(column)" class="symbol-table__sub"><span :class="toneClass(subOf(column)!, tableRow<T>(row))">{{ subOf(column)!.text(tableRow<T>(row)) }}</span></span>
           </template>
         </el-table-column>
         <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。 -->
@@ -336,7 +354,17 @@ function toggle(symbol: string, event?: MouseEvent) {
   font: inherit;
   font-weight: inherit;
   text-align: inherit;
+  /* 欄名在窄欄裡折兩行時平均分（「預估年／股利」，不是「預估年股／利」） */
+  text-wrap: balance;
   cursor: pointer;
+}
+
+/* 一格裡疊兩顆表頭按鈕（市值／股數），靠右；只有一顆時跟原本一樣 */
+.symbol-table__stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  vertical-align: top;
 }
 
 .symbol-table__select {
@@ -495,7 +523,7 @@ function toggle(symbol: string, event?: MouseEvent) {
 
 /* 表頭黏在頁首下面，同篩選與指標檢視的表格（SharedMetricTable 的 sticky；2026-11-14，使用者：「為什麼股票篩選表格可以貼頂表頭 但是
    持股明細表格沒有貼頂」）。Element 在根元素、body-wrapper、el-scrollbar 三層用 overflow: hidden，會變成捲動容器、表頭只在框裡黏；
-   clip 裁切一樣但不是捲動容器（SharedTable 的卡片也是 clip）。這張表在 1280 以上放得下、不左右捲，所以不用黏底部的橫向捲軸 */
+   clip 裁切一樣但不是捲動容器（SharedTable 的卡片也是 clip）。這張表放得下才是表格、不左右捲，所以不用黏底部的橫向捲軸 */
 .view-table :deep(.el-table),
 .view-table :deep(.el-table__body-wrapper),
 .view-table :deep(.el-table__body-wrapper > .el-scrollbar) {
@@ -509,10 +537,11 @@ function toggle(symbol: string, event?: MouseEvent) {
   z-index: calc(var(--el-table-index) + 2);
 }
 
-/* 表格放得下才是表格，不然是卡片（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。看這一塊自己的寬度，不看視窗：
-   持股總覽 7 欄的 min-width 加總 150＋720＋110，加展開欄 1 與表格框線 2＝983px。原本看視窗 1279：1024 橫放有側欄時內容只剩約
-   750 放不下，但 1100 寬直放內容約 1050 放得下、卻也是卡片（2026-11-14）。欄少的頁面（已實現損益）用同一個門檻，兩頁在同一個
-   寬度長一樣。卡片是基本樣式：手機、不支援容器查詢的舊瀏覽器都是卡片 */
+/* 表格或卡片跟全站的表格同一條斷點（使用者 2026-11-14：「「損益」和「指標」我認為可以用同樣斷點，是要去調整設計來配合斷點比較正常」）：
+   這一塊寬 720 起是表格，同 SharedMetricTable 換成卡片的門檻：持股的指標檢視在這一塊同樣 720 時切（2026-11-14 量的）。
+   設計配合這條：持股總覽併成六欄（市值／股數、損益／報酬率兩行，見 under），min-width 加總 140＋120＋90＋140＋100＋110
+   加展開欄 1＝701，720 寬扣表格框線 2 還放得下、不左右捲（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。已實現損益、分享出去的持股用同一條。
+   卡片是基本樣式：手機、不支援容器查詢的舊瀏覽器都是卡片 */
 .view-table {
   display: none;
 }
@@ -521,7 +550,7 @@ function toggle(symbol: string, event?: MouseEvent) {
   display: flex;
 }
 
-@container (min-width: 983px) {
+@container (min-width: 720px) {
   .view-table {
     display: block;
   }

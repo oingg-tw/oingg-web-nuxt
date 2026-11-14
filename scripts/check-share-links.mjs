@@ -527,8 +527,9 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     check(metricsBox.y >= figureBox.y + figureBox.height && Math.abs(metricsBox.width - figureBox.width) < 2, `${label}：指標表在九宮格下面、跟九宮格那一層一樣寬（${metricsBox.width.toFixed(0)}／${figureBox.width.toFixed(0)}）`)
   }
   if (tableMode) {
-    // 表頭按鈕後面藏著給讀屏的排序狀態（「，由大到小排序中」，2026-11-14 方案 A），只比欄名
-    const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.split('，')[0].trim()).filter(Boolean)
+    // 表頭按鈕後面藏著給讀屏的排序狀態（「，由大到小排序中」，2026-11-14 方案 A），只比欄名。一顆按鈕一個欄名：股數在市值下面一行
+    //（2026-11-14「合併成兩行的格子」），同一格兩顆
+    const headers = (await page.locator('.view-table th .symbol-table__head').allInnerTexts()).map(text => text.split('，')[0].trim()).filter(Boolean)
     if (payload === 'market') {
       check(JSON.stringify(headers) === '["名稱","占比"]', `${label}：各檔只有占比（${headers.join('、')}）`)
     } else if (payload === 'ratios') {
@@ -536,7 +537,7 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
       const first = (await page.locator('.view-table tbody tr').first().innerText()).replace(/\s+/g, ' ')
       check(first.includes('2330') && first.includes('60.0%') && first.includes('+25.00%'), `${label}：依占比排、2330 在第一列，占比 60.0%、報酬率 +25.00%（${first}）`)
     } else {
-      check(JSON.stringify(headers) === '["名稱","股數","市值","未實現損益"]', `${label}：欄位只有勾的那三欄（${headers.join('、')}）`)
+      check(JSON.stringify(headers) === '["名稱","市值","股數","未實現損益"]', `${label}：欄位只有勾的那三欄，股數在市值下面（${headers.join('、')}）`)
       const row = (await page.locator('.view-table tbody tr', { hasText: '2330' }).innerText()).replace(/\s+/g, ' ')
       const value = (1000 * priceOf('2330')).toLocaleString('en-US')
       const pnl = (1000 * (priceOf('2330') - 80)).toLocaleString('en-US')

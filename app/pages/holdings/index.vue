@@ -183,13 +183,14 @@ const pnlPctOf = (figures: HoldingRowFigures) => (withDividends.value ? figures.
 const pnlLabel = computed(() => (withDividends.value ? '含息損益' : '未實現損益'))
 const pnlPctLabel = computed(() => (withDividends.value ? '含息報酬率' : '報酬率'))
 
-// 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。
+// 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。表格裡股數在市值下面、報酬率在損益下面
+//（under，2026-11-14「合併成兩行的格子」）：六欄放得進 720 寬的表格，跟指標檢視同一條斷點
 const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
-  { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
+  { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', under: 'marketValue', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
   { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
   // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
   {
-    key: 'dayChange', label: '今日漲跌', minWidth: 120, card: 'summary',
+    key: 'dayChange', label: '今日漲跌', minWidth: 90, card: 'summary',
     text: row => dayChangeText(row, false),
     cardText: row => dayChangeText(row, true),
     sortValue: row => dayChange(row.dayInput).pct,
@@ -209,7 +210,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
     }
   },
   {
-    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 120,
+    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 120, under: 'pnl',
     text: row => signedPct(pnlPctOf(row.figures)) || '－',
     sortValue: row => pnlPctOf(row.figures),
     tone: (row) => {
@@ -217,7 +218,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
       return pct === null ? null : Number(pct.toFixed(2))
     }
   },
-  { key: 'annualDividend', label: '預估年股利', minWidth: 120, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
+  { key: 'annualDividend', label: '預估年股利', minWidth: 100, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
 ])
 
 // ---- 持股明細的兩種檢視（2026-11-14，使用者：「持股管理 也要有地方可以切換顯示的欄位，共用欄位設定」，看過設計圖選方案 A：「A很好，請這樣做」）----
