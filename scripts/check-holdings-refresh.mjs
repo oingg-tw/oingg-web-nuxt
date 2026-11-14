@@ -106,8 +106,17 @@ console.log('記一筆賣出')
   await page.getByRole('button', { name: '記一筆交易' }).first().click()
   const dialog = page.getByRole('dialog', { name: '記一筆交易' })
   await dialog.waitFor({ state: 'visible' })
-  await dialog.getByPlaceholder('代號或名稱，例如 2330').fill('2330')
+  // 選了建議的一列，el-autocomplete 把那一列的 value 寫回輸入框（2026-11-14 之前建議沒有 value：寫回 undefined，主控台有 Vue 的
+  //「Invalid event arguments」，點「找不到」那一列還會清掉打的字）。全站五個搜尋框都是 useStockSearch 的建議，這裡驗持股表單這一個
+  const vueWarnings = []
+  page.on('console', (message) => { if (/Invalid event arguments/.test(message.text())) vueWarnings.push(message.text().slice(0, 100)) })
+  const search = dialog.getByPlaceholder('代號或名稱，例如 2330')
+  await search.fill('zzzz')
+  await page.locator('.el-autocomplete-suggestion li:visible', { hasText: '找不到符合' }).click()
+  check(await search.inputValue() === 'zzzz', `點「找不到」那一列，打的字還在（${await search.inputValue()}）`)
+  await search.fill('2330')
   await page.locator('.el-autocomplete-suggestion li:visible').first().click()
+  check((await search.inputValue()).startsWith('2330 ') && vueWarnings.length === 0, `選了 2330：輸入框寫著它、沒有 Vue 的事件警告（${await search.inputValue()}；${vueWarnings.join('、') || '無'}）`)
   await dialog.getByText('賣出', { exact: true }).click()
   await dialog.getByLabel('股數（股）').fill('500')
   await dialog.getByLabel('成交價（元／股）').fill('100')
