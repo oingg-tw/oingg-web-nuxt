@@ -131,7 +131,7 @@ const stageStyle = computed(() => {
   display: none;
 }
 
-/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。 */
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。各處必須一致（scripts/check-breakpoints.mjs）。 */
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .landing-shell .app-shell__header-desktop {
     display: flex;

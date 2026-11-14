@@ -93,7 +93,7 @@ const loading = computed(() => resolving.value || !ready.value || props.pending)
 }
 
 /* 手機上動作鈕換到標題下面時撐滿整行：持股總覽的兩顆等寬並排（2026-11-14） */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .holdings-shell__actions {
     flex-basis: 100%;
   }

@@ -800,7 +800,7 @@ async function submit() {
 }
 
 /* 窄：開關疊在總覽卡的右上角、標題只留給讀屏；殖利率另起一列，「殖利率」靠左、數字與大盤靠右（第三欄太窄放不下「（大盤 3.12%）」） */
-@container (max-width: 479px) {
+@container not (min-width: 480px) {
   .holdings-page__overview-head {
     position: absolute;
     top: 4px;
@@ -842,7 +842,7 @@ async function submit() {
 }
 
 /* 更窄（320、360 寬，或字放大；21rem 跟著字級）：名稱那欄放不下「預估年度股利」，會斷成「今日漲／跌」——名稱自己一行，數字照樣靠右對齊 */
-@container (max-width: 20.99rem) {
+@container not (min-width: 21rem) {
   .holdings-overview__row {
     row-gap: 2px;
   }
@@ -931,7 +931,7 @@ async function submit() {
 /* 手機照設計圖方案 B（2026-11-14，使用者：「持股明細除了卡片以外的UI比照B方案」）：標題、切換、分享之間 8px；切換左右內距 10px、
    分享 4px，375 寬不到 10 檔、390 寬兩位數檔數都排得進一行（量過：再寬 2px 就換行）。分享是一行主色字、沒有框，寬度固定成放得下
   「已分享」、字靠右——讀到連結狀態之前的骨架同寬，分享前後這一行不會因此換行或不換行 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .holdings-page__list-head,
   .holdings-page__list-tools {
     column-gap: 8px;
@@ -1010,7 +1010,7 @@ async function submit() {
 }
 
 /* 手機上頁首的兩顆等寬並排、撐滿整行（2026-11-14，使用者選的手機整理）；空狀態裡那兩顆照舊置中 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .holdings-page__actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

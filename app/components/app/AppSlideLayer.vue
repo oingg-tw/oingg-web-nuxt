@@ -184,7 +184,7 @@ function onKeydown(event: KeyboardEvent) {
    a layer sliding over them would be answering a question nobody asked. Kept in the markup rather
    than removed so the server HTML is identical at every width, the rule layouts/default.vue exists
    to enforce. */
-/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。八處必須一致。
+/* 見 layouts/default.vue 的同一條查詢——平板直向吃手機、橫向吃桌面。各處必須一致（scripts/check-breakpoints.mjs）。
    例外（2026-10-21）：平板橫放（桌機版面、不到 1280 寬）時桌機頁首的搜尋框收成「搜尋」按鈕，開的就是這裡的搜尋層（右側），所以那個寬度
    只藏選單層；1280 以上兩層都藏 */
 @media (min-width: 1280px) {

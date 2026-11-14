@@ -224,7 +224,7 @@ html .el-alert.el-alert .el-alert__description {
 }
 
 /* 日期面板寫死 322px 寬（加框 324），320 寬的手機放不下，整頁多出橫向捲動（2026-11-10 量到）：窄螢幕改成螢幕寬扣左右各 8px，日期格跟著分 */
-@media (max-width: 339px) {
+@media not all and (min-width: 340px) {
   html .el-date-picker {
     width: calc(100vw - 18px);
   }

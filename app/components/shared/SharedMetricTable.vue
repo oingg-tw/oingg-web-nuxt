@@ -1061,7 +1061,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   flex-wrap: wrap;
 }
 
-@container (max-width: 719px) {
+@container not (min-width: 720px) {
   .smt-toolbar--quiet {
     row-gap: 0;
   }

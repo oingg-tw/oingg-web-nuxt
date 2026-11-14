@@ -11,8 +11,8 @@
 // disagree with the client and nothing ever re-mounts on hydration.
 //
 // Mobile-first: the base rules are the phone layout (mobile header, floating 功能選單 button);
-// `@media (min-width: 1280px)` — the same breakpoint AppLogo.vue already
-// use — turns on the desktop header and gives the content its rail-width padding. The hidden
+// the desktop shell condition below (1280px, or 1024px in landscape) turns on the desktop header
+// and gives the content its rail-width padding. The hidden
 // header is `display: none`, so it is out of the accessibility tree and the tab order as well as
 // out of sight; the two headers therefore never both expose a banner landmark.
 // useHeaderHeightMeasure ignores a hidden header's 0px so --app-header-height always comes from
@@ -214,10 +214,10 @@ const stageStyle = computed(() => {
    number puts both orientations on the same shell. Adding the landscape clause at 1024px splits
    them — upright tablets keep the phone shell, turned ones get the desktop one — while a phone in
    landscape（844×390）stays below 1024 and is unaffected.
-   Repeated verbatim in the seven other files that switch shell（layouts/landing.vue, AppLogo,
-   AppNavRail, AppSlideLayer, MacroNav, StockPageNav, main.css）. CSS has no way to share a media
-   query without a preprocessor, and this app has no SCSS pipeline, so the string is the contract —
-   change one, change all eight. */
+   Repeated verbatim wherever the shell switches（main.css, layouts/landing.vue, AppBottomNav, AppLogo,
+   AppNavRail; AppSlideLayer splits it in two）. CSS has no way to share a media query without a
+   preprocessor, and this app has no SCSS pipeline, so the string is the contract: change it everywhere.
+   scripts/check-breakpoints.mjs fails any other wide viewport query, so one left behind shows up there. */
 @media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .app-shell .app-shell__header-desktop {
     display: flex;

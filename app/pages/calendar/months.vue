@@ -504,7 +504,7 @@ html.dark .ex-bar {
 }
 
 /* 窄螢幕：名字固定在第二行，跟日期對齊（箭頭 13px＋間距 12px） */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .ex-day__preview {
     flex-basis: 100%;
     padding-left: 25px;
@@ -537,7 +537,7 @@ html.dark .ex-bar {
 
 /* 手機（2026-11-02，方案 A）：熱力表 6×2（原本一個月一列，約 600px 高，清單要滑過一個半畫面才開始）；種類搬進黏著的切換列；
    清單每一檔兩行 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .ex-heat {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     row-gap: 8px;

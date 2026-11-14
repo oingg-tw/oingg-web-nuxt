@@ -187,7 +187,7 @@ a.stock-news__link:focus-visible {
   color: var(--el-text-color-secondary);
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .stock-news__link {
     font-size: 16px;
   }

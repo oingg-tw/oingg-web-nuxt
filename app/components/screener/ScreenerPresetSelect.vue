@@ -141,7 +141,7 @@ function optionLabel(item: PresetSelectItem) {
 }
 /* compactLabel：外框窄於 720px——結果區（SharedMetricTable，同卡片版面的斷點）或設定區（ScreenerPageShell）——時標籤收進選單框、
    ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 528px 那段 */
-@container (max-width: 719px) {
+@container not (min-width: 720px) {
   .screener-preset-select--compact {
     flex: 1 1 auto;
     flex-wrap: wrap;

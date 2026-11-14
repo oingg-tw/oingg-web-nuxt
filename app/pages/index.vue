@@ -299,7 +299,7 @@ useHead({
   line-height: 1.7;
   letter-spacing: 0.02em;
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     gap: 64px;
     padding-top: 8px;
     letter-spacing: 0.01em;
@@ -367,7 +367,7 @@ useHead({
   font-weight: 600;
 
   /* 手機讓月曆早一點出現 */
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     display: none;
   }
 }
@@ -460,7 +460,7 @@ useHead({
   gap: 16px;
   padding: 24px;
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     padding: 16px;
   }
 }
@@ -677,7 +677,7 @@ useHead({
   gap: 16px;
 
   /* 手機一欄：說明是網站導覽的原文，兩欄會擠成四、五行 */
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
@@ -708,7 +708,7 @@ useHead({
     border-color: var(--el-color-primary-light-5);
   }
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     min-height: 64px;
     padding: 8px 12px;
   }
@@ -739,7 +739,7 @@ useHead({
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 40px 48px;
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
   }
@@ -759,7 +759,7 @@ useHead({
   color: var(--el-text-color-secondary);
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   /* stretch：直排的 flex 預設是撐滿，不寫的話每一列會縮成內容寬 */
   .landing-year {
     display: flex;

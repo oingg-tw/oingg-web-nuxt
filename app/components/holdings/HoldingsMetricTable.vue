@@ -92,7 +92,7 @@ const VALUE_SAMPLE = '12.3%'
 }
 
 /* 窄：每一列一張小卡片（tr 上的 .holdings-card），外面那張表格卡片不畫——同篩選結果在手機上 */
-@container (max-width: 639px) {
+@container not (min-width: 640px) {
   .holdings-metric-table__card {
     border: 0;
     border-radius: 0;

@@ -363,7 +363,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
    顯示欄位、表格）一張卡片，一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張卡片，外面再包一張就是
    卡片包卡片，所以窄的時候拿掉。門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。卡片的 overflow: clip（SharedTable）
    不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸就黏在卡片裡、不黏在畫面上 */
-@container (max-width: 721px) {
+@container not (min-width: 722px) {
   .screener-shell__results-card {
     border: 0;
     border-radius: 0;
@@ -444,7 +444,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 
 /* 手機（頁面寬不到 528，即視窗 560 以下；操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，太窄就省略號——
    推不動開關，上面那條 2026-10-16 的位移不會回來 */
-@container (max-width: 527.98px) {
+@container not (min-width: 528px) {
   .screener-shell__count {
     flex: 1 1 0;
     min-width: 0;

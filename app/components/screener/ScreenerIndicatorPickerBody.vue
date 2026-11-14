@@ -684,7 +684,7 @@ function selectIndicator(entry: IndicatorEntry) {
    side-by-side columns — category list, then its metrics, then that metric's fields. Each
    keeps its own 3.5-row height from above; only the layout direction and dividers (bottom
    instead of right) change. */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .indicator-dialog__body {
     flex-direction: column;
   }

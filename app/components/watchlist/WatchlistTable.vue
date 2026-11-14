@@ -111,7 +111,7 @@ async function save(fields: string[]) {
 }
 
 /* 同篩選結果的卡片（ScreenerPageShell 的 .screener-shell__results-card）：門檻 722＝表格換成卡片的 720 加左右框線 2px */
-@container (max-width: 721px) {
+@container not (min-width: 722px) {
   .watchlist-table__card {
     border: 0;
     border-radius: 0;

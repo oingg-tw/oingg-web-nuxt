@@ -48,7 +48,7 @@ function select(field: string, label: string) {
 }
 
 /* 手機滿版：外框固定是整個畫面，換分類、搜尋結果變少都不會讓它跳動，只有裡面固定高度的清單捲動。取消全站的 85vh 上限 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .el-dialog.metric-column-picker {
     --el-dialog-width: 100%;
     height: 100%;
