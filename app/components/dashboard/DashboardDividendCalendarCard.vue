@@ -281,8 +281,9 @@ watch(view, current => {
           </div>
         </template>
         <!-- 有事件的日子是真的 <button>（2026-10-08；原本是 click-div，鍵盤到不了），沒事件的日子維持 <div>——42 顆 disabled 按鈕
-             對螢幕閱讀器只是噪音。aria-label 含可見的日號（2.5.3）。手機只放筆數：375px 的格子約 45px 寬，兩顆四位數代號的 chip
-             放不下；768px 起才顯示 chip。今天與過去的日子用 main.css 的 .app-calendar-day 那一組 -->
+             對螢幕閱讀器只是噪音。aria-label 含可見的日號（2.5.3）。格子放什麼看格子自己的寬度，永遠一行：窄的（手機約 45px）只放筆數，
+             6.25rem 起一顆代號加「+N」，10.625rem 起兩顆（兩顆六位數代號加「+12」約 160px）。原本 768px 起一律兩顆，768～1024 寬的格子
+             只有 136px，兩顆折成兩行，資料到了每一列長高、下面被推下去（2026-11-15 正式建置量到 0.014）。今天與過去的日子用 main.css 的 .app-calendar-day 那一組 -->
         <template #date-cell="{ data }">
           <component
             :is="cellEvents(data).length ? 'button' : 'div'"
@@ -304,15 +305,20 @@ watch(view, current => {
               <span class="dividend-calendar-card__cell-count">{{ cellEvents(data).length }} 筆</span>
               <span class="dividend-calendar-card__cell-chips">
                 <el-tag
-                  v-for="event in cellEvents(data).slice(0, 2)"
+                  v-for="(event, index) in cellEvents(data).slice(0, 2)"
                   :key="event.symbol"
                   size="small"
                   :type="EX_TYPE_TAG_KIND[event.exType]"
                   class="dividend-calendar-card__chip"
+                  :class="{ 'dividend-calendar-card__chip--second': index === 1 }"
                 >
                   {{ event.symbol }}
                 </el-tag>
-                <span v-if="cellEvents(data).length > 2" class="dividend-calendar-card__cell-more">
+                <!-- 一顆時的「+N」與兩顆時的「+N」各一個，哪一個出現看格子寬（見樣式） -->
+                <span v-if="cellEvents(data).length > 1" class="dividend-calendar-card__cell-more dividend-calendar-card__cell-more--one">
+                  +{{ cellEvents(data).length - 1 }}
+                </span>
+                <span v-if="cellEvents(data).length > 2" class="dividend-calendar-card__cell-more dividend-calendar-card__cell-more--two">
                   +{{ cellEvents(data).length - 2 }}
                 </span>
               </span>
@@ -353,6 +359,7 @@ watch(view, current => {
 }
 
 .dividend-calendar-card__cell {
+  container-type: inline-size;
   height: 100%;
   min-height: 64px;
   display: flex;
@@ -383,7 +390,7 @@ watch(view, current => {
   font-size: 1rem;
 }
 
-/* 手機只放筆數，768px 起換成 chip（見 template 的註解） */
+/* 格子窄只放筆數，寬一點一顆代號、再寬兩顆（見 template 的註解）；門檻用 rem，字放大時跟著放寬 */
 .dividend-calendar-card__cell-chips {
   display: none;
   flex-wrap: wrap;
@@ -391,13 +398,32 @@ watch(view, current => {
   align-items: center;
 }
 
-@media (min-width: 768px) {
+@container (min-width: 6.25rem) {
   .dividend-calendar-card__cell-count {
     display: none;
   }
 
   .dividend-calendar-card__cell-chips {
     display: flex;
+  }
+
+  .dividend-calendar-card__chip--second,
+  .dividend-calendar-card__cell-more--two {
+    display: none;
+  }
+}
+
+@container (min-width: 10.625rem) {
+  .dividend-calendar-card__chip--second {
+    display: inline-flex;
+  }
+
+  .dividend-calendar-card__cell-more--one {
+    display: none;
+  }
+
+  .dividend-calendar-card__cell-more--two {
+    display: inline;
   }
 }
 
