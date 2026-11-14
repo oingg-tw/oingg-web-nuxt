@@ -158,7 +158,6 @@ function priceText(transaction: Transaction): string {
   margin: 0;
 }
 .ledger__list {
-  display: none;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -200,14 +199,19 @@ function priceText(transaction: Transaction): string {
   color: var(--el-text-color-regular);
 }
 
-/* 跟持股表同一個切換點（holdings/index.vue 的 1279px）：卡片模式裡就用清單 */
-@media (max-width: 1279px) {
+/* 跟持股表同一個門檻、量同一個容器（HoldingsSymbolTable 的 983px；交易紀錄只出現在持股表的明細裡）。清單是基本樣式（卡片模式），
+   表格放得下才換成表格 */
+.ledger__table {
+  display: none;
+}
+
+@container (min-width: 983px) {
   .ledger__table {
-    display: none;
+    display: block;
   }
 
   .ledger__list {
-    display: block;
+    display: none;
   }
 }
 </style>

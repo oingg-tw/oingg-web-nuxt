@@ -486,7 +486,9 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
   check(await page.title() === `${heading}｜安盈選股`, `${label}：分頁標題`)
   check(await page.getByRole('button', { name: /明細/ }).count() === 0, `${label}：沒有「明細」展開`)
   const traitsBox = await page.locator('.holdings-traits').count() ? await page.locator('.holdings-traits').boundingBox() : null
-  const tableBox = await page.locator(width >= 1280 ? '.view-table' : '.symbol-table__cards').boundingBox()
+  // 表格或卡片由持股表自己的寬度決定（HoldingsSymbolTable 的容器查詢），看哪一個看得見
+  const tableMode = await page.locator('.view-table').first().isVisible()
+  const tableBox = await page.locator(tableMode ? '.view-table' : '.symbol-table__cards').first().boundingBox()
   if (payload === 'sizes') check(!traitsBox, `${label}：沒勾持股特色就沒有那一段`)
   else check(!!traitsBox && traitsBox.y < tableBox.y, `${label}：持股特色在表格上面`)
   if (payload === 'market') {
@@ -524,7 +526,7 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     }
     check(metricsBox.y >= figureBox.y + figureBox.height && Math.abs(metricsBox.width - figureBox.width) < 2, `${label}：指標表在九宮格下面、跟九宮格那一層一樣寬（${metricsBox.width.toFixed(0)}／${figureBox.width.toFixed(0)}）`)
   }
-  if (width >= 1280) {
+  if (tableMode) {
     // 表頭按鈕後面藏著給讀屏的排序狀態（「，由大到小排序中」，2026-11-14 方案 A），只比欄名
     const headers = (await page.locator('.view-table th').allInnerTexts()).map(text => text.split('，')[0].trim()).filter(Boolean)
     if (payload === 'market') {

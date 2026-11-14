@@ -131,7 +131,7 @@ function toggle(symbol: string, event?: MouseEvent) {
 </script>
 
 <template>
-  <div>
+  <div class="symbol-table">
     <!-- view-card：只跟卡片一起出現（寬螢幕點表頭）。一行字「排序：市值 ⌄」加方向，沒有框（2026-11-14 方案 A，指標檢視同一套）：
          字與箭頭是畫的，原生 select 透明地疊在上面，點了照樣打開手機自己的選單 -->
     <div class="symbol-table__toolbar view-card">
@@ -276,6 +276,11 @@ function toggle(symbol: string, event?: MouseEvent) {
 </template>
 
 <style scoped>
+/* 表格或卡片看這一塊自己的寬度（見檔尾） */
+.symbol-table {
+  container-type: inline-size;
+}
+
 /* 排序那一行（只在卡片模式）：欄位與方向之間 20px（方案 A 的設計圖） */
 .symbol-table__toolbar {
   display: flex;
@@ -504,21 +509,25 @@ function toggle(symbol: string, event?: MouseEvent) {
   z-index: calc(var(--el-table-index) + 2);
 }
 
-.view-card {
+/* 表格放得下才是表格，不然是卡片（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。看這一塊自己的寬度，不看視窗：
+   持股總覽 7 欄的 min-width 加總 150＋720＋110，加展開欄 1 與表格框線 2＝983px。原本看視窗 1279：1024 橫放有側欄時內容只剩約
+   750 放不下，但 1100 寬直放內容約 1050 放得下、卻也是卡片（2026-11-14）。欄少的頁面（已實現損益）用同一個門檻，兩頁在同一個
+   寬度長一樣。卡片是基本樣式：手機、不支援容器查詢的舊瀏覽器都是卡片 */
+.view-table {
   display: none;
 }
 
-/* 表格／卡片的切換點設在 1279px，不是全站的 767px（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。
-   量過（持股總覽 7 欄）：1920 寬放大 200%（=960px）溢出 148px；1024px 橫向螢幕會出現左側導覽欄，內容只剩約
-   750px，7 欄表格至少要約 870px，溢出 142px。1280px 以上（含字型 120%）量到 0。欄少的頁面（已實現損益 3 欄）
-   用同一個切換點，兩頁在同一個寬度長一樣。 */
-@media (max-width: 1279px) {
+.view-card {
+  display: flex;
+}
+
+@container (min-width: 983px) {
   .view-table {
-    display: none;
+    display: block;
   }
 
   .view-card {
-    display: flex;
+    display: none;
   }
 }
 </style>

@@ -903,18 +903,17 @@ async function submit() {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .holdings-page__list-head .holdings-page__section-title {
   margin: 0;
 }
 
-/* 卡片模式（HoldingsSymbolTable 的切換點 1279px）損益表最上面是「排序：…」那一行字，貼著標題列（方案 B：中間 4px）；指標檢視照舊 12px */
-@media (max-width: 1279px) {
-  .holdings-page__list-head:has(+ .holdings-page__pnl) {
-    margin-bottom: 4px;
-  }
+/* 卡片模式的損益表最上面是「排序：…」那一行字，貼著標題列（方案 B：中間 4px）；表格與指標檢視離標題列 12px，自己補 8px。
+   表格什麼時候出現由 HoldingsSymbolTable 自己的寬度決定，所以補在表格上（卡片模式它是 display: none） */
+.holdings-page__pnl :deep(.view-table) {
+  margin-top: 8px;
 }
 
 /* 換到下一行時整組撐滿那一行：切換在左、分享在右 */
@@ -968,6 +967,7 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  margin-top: 8px;
 }
 
 .holdings-kind__title {
