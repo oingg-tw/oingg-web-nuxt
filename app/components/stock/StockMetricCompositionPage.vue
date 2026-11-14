@@ -106,7 +106,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 
     <StockQuestionSection id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
     <template #guide>
-      <StockMetricGuide id-prefix="stock-metric-composition" :topic="metricPage.topic" :definition="definition ? [definition] : []" />
+      <StockMetricGuide id-prefix="stock-metric-composition" :topic="metricPage.topic" :definition="[...(definition ? [definition] : []), ...(metricPage.partsNote ? [metricPage.partsNote] : [])]" />
     </template>
   </StockPageShell>
 </template>

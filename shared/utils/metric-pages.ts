@@ -134,6 +134,8 @@ export interface MetricPageDefinition {
   // 「折舊攤銷」兩個科目——不是沒標，是欄位不存在，重爬無效。tifrs-notes:ShortTermEmployeeBenefits 看起來像員工福利，實際是
   // 主要管理階層薪酬（2330 115Q2 50.8 億）。之後真的拿到成分，就把這一欄換成 partMetricCodes。
   compositionNote?: string
+  // 組成頁（StockMetricCompositionPage）定義段接在定義後面的一句：組成裡會出現、讀者容易看反的東西
+  partsNote?: string
   // 同一支指標開第二頁時用（2026-10-09「總負債比率與負債組成拆開成兩個頁面」）。valueTopic：數值句裡的名字（「負債比率為 30.94%」），
   // topic 留給頁面本身（標題、「是什麼」）；有它時 <title> 固定用 titleKeywords，不跟原頁的「第 N 季 X 為…」標題撞。預設等於 topic。
   // （同一天還有 copyKey 讓兩頁讀不同文案；唯一的使用者負債組成 2026-10-12 改成金額的自訂頁之後拿掉了。）
@@ -225,7 +227,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
   { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
-  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', topic: '每股營業費用', titleKeywords: '每股營業費用與推銷管理研發', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['operating-expense-composition', 'selling-expense', 'administrative-expense', 'rd-expense'] },
+  { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', partsNote: '預期信用減損是正數時是損失，負數時是迴轉利益（例如收回先前提列的呆帳），會讓營業費用變少。', topic: '每股營業費用', titleKeywords: '每股營業費用與推銷管理研發', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['operating-expense-composition', 'selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
   { slug: 'administrative-expense', metricCode: 'administrativeExpensePerShare', timeframe: 'TTM', topic: '每股管理費用', titleKeywords: '每股管理費用逐季數據', related: ['operating-expense', 'selling-expense'] },
   // rd-intensity 是比率、這一支是它的每股金額，所以是不同的 slug 不是同主題的第二頁
