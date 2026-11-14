@@ -86,7 +86,7 @@ defineProps<{
   gap: 16px;
 }
 
-/* 讀取中的骨架：摘要卡同高（多數股票實測手機 163px、601px 以上 131px；停止買賣、下市的會多一行）、麵包屑 48px */
+/* 讀取中的骨架：摘要卡同高（多數股票實測手機 163px、768px 以上 131px；停止買賣、下市的會多一行）、麵包屑 48px */
 .stock-page-shell__card-skeleton {
   height: 163px;
 }
@@ -112,7 +112,7 @@ defineProps<{
   gap: 12px;
 }
 
-@media (min-width: 601px) {
+@media (min-width: 768px) {
   .stock-page-shell__card-skeleton {
     height: 131px;
   }

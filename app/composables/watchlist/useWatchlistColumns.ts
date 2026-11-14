@@ -106,7 +106,7 @@ export function useWatchlistColumns() {
   function setItemsOf(kind: WatchlistKind): PresetSelectItem[] {
     const hint = hintOf(kind)
     if (hint) return [{ id: hint.id, name: hint.name, editable: false }]
-    return [{ id: BASIC_SET_ID, name: '基本欄位', editable: false }, ...sets.value[kind].map(set => ({ id: set.id, name: set.name, editable: false }))]
+    return [{ id: BASIC_SET_ID, name: '基本欄位', editable: false }, ...sets.value[kind].map(set => ({ id: set.id, name: set.name }))]
   }
 
   async function load() {
@@ -165,5 +165,65 @@ export function useWatchlistColumns() {
     return false
   }
 
-  return { ...catalog, loaded, load, clear, columnsOf, activeIdOf, setItemsOf, select, saveFields }
+  // 顯示欄位的新增與管理，同篩選頁的「顯示欄位」（useScreenerTabColumnPresets；2026-11-14，使用者：「欄位組合也比照確保ux一致性」）。
+  // 這裡用的那一組＝這一類的預設：新增的、複製出來的、刪掉之後鄰近的那一組都設成預設
+  function failed(kind: WatchlistKind, text: string) {
+    if (presets[kind].lastErrorCode.value === 'quota_exceeded') showQuotaReached('columnPresets')
+    else showErrorMessage(text)
+  }
+  const setList = (kind: WatchlistKind, list: ScreenerColumnPreset[]) => {
+    sets.value = { ...sets.value, [kind]: list }
+  }
+  async function rename(kind: WatchlistKind, id: string, name: string) {
+    const previous = sets.value[kind]
+    setList(kind, previous.map(set => (set.id === id ? { ...set, name } : set)))
+    if (await presets[kind].update(id, { name })) return
+    setList(kind, previous)
+    showErrorMessage('重新命名失敗')
+  }
+  async function copy(kind: WatchlistKind, id: string, name: string): Promise<string | null> {
+    const source = sets.value[kind].find(set => set.id === id)
+    const created = source && await presets[kind].create(name, source.columns.map(column => column.field))
+    if (!created) {
+      failed(kind, '複製欄位組合失敗')
+      return null
+    }
+    setList(kind, [...sets.value[kind], { ...created, isDefault: false }])
+    return created.id
+  }
+  async function remove(kind: WatchlistKind, id: string) {
+    const list = sets.value[kind]
+    const index = list.findIndex(set => set.id === id)
+    if (!(await presets[kind].remove(id))) {
+      showErrorMessage('刪除欄位組合失敗')
+      return
+    }
+    const rest = list.filter(set => set.id !== id)
+    setList(kind, rest)
+    // 刪到正在用的那一組：同篩選頁，換到後一組（刪的是最後一組就換前一組）；一組都不剩就是基本欄位
+    const next = rest[Math.min(index, rest.length - 1)]
+    if (list[index]?.isDefault && next) await select(kind, next.id)
+  }
+  async function reorder(kind: WatchlistKind, ids: string[]) {
+    const previous = sets.value[kind]
+    const byId = new Map(previous.map(set => [set.id, set]))
+    const saved = ids.filter(id => byId.has(id))
+    setList(kind, saved.map(id => byId.get(id)!))
+    if (await presets[kind].reorder(saved)) return
+    setList(kind, previous)
+    showErrorMessage('排序欄位組合失敗')
+  }
+  // 新增：官方範本，或空白的一組（同篩選頁，欄位之後在欄位設定加）；建好就用它
+  async function add(kind: WatchlistKind, templateKey?: string) {
+    const created = templateKey ? await presets[kind].applyTemplate(templateKey) : await presets[kind].create(`欄位組合 ${sets.value[kind].length + 1}`, [])
+    if (!created) {
+      failed(kind, '新增欄位組合失敗')
+      return
+    }
+    setList(kind, [...sets.value[kind], { ...created, isDefault: false }])
+    await select(kind, created.id)
+  }
+  const templatesOf = (kind: WatchlistKind) => presets[kind].listTemplates()
+
+  return { ...catalog, loaded, load, clear, columnsOf, activeIdOf, setItemsOf, select, saveFields, rename, copy, remove, reorder, add, templatesOf }
 }

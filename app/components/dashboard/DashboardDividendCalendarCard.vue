@@ -588,7 +588,7 @@ watch(view, current => {
   margin: 0;
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .dividend-calendar-card__month--week {
     display: none;
   }

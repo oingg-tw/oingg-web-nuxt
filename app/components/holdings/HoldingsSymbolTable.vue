@@ -21,22 +21,22 @@ export interface HoldingsSymbolColumn<T> {
   // 卡片上：summary＝一眼看到，detail＝展開後才看到，不給＝只在表格出現
   card?: 'summary' | 'detail'
   cardText?: (row: T) => string
-  // 排序選單的字；預設「欄名（大到小）」
-  sortLabel?: string
+  // 表格裡排在哪一欄的第二行（那一欄的 key；那一欄不在就自己一欄）。2026-11-14，使用者：「「損益」和「指標」我認為可以用同樣斷點，
+  // 是要去調整設計來配合斷點」，選了「合併成兩行的格子」：市值下面是股數、損益下面是報酬率，持股總覽六欄放得進 720 寬的表格。卡片不受影響
+  under?: string
 }
 </script>
 
 <script setup lang="ts" generic="T extends HoldingsSymbolRow">
 import { ArrowDown } from '@element-plus/icons-vue'
+import type { ColumnMenuAction } from '~/components/shared/SharedColumnMenu.vue'
 
 // 持股的「一檔一列、可展開明細」表格（2026-10-08 從持股總覽抽出來，使用者：「持股總覽的 Table 做得很好，
 // 已經實現損益的頁面不能用嗎? 我希望可以設計共用元件」）。持股總覽與已實現損益共用。
 //
 // 寬螢幕 el-table、窄的是卡片——兩份 DOM、CSS 決定哪個顯示（不在渲染時看寬度，見 layouts/default.vue）。
-// 寬螢幕點表頭排序：Element Plus 2.14 的排序箭頭是 <button>（可 Tab、Enter），<th> 帶 aria-sort；按鈕的中文名稱
-// 在 app.vue 的語系覆寫（2026-10-07 曾誤以為不能用鍵盤而拿掉，10-08 查原始碼後恢復）。卡片沒有表頭，
-// 用「排序」選單，只跟卡片一起出現；點表頭也會同步選單。
-// 選單：數字大到小、代號小到大；沒有值的一律排最後（表頭升冪時排最前，el-table 只會把同一個比較反過來）。
+// 排序（2026-11-14 方案 A）：寬螢幕點表頭打開排序選單（SharedColumnMenu，同指標檢視），卡片上是一行字的排序與方向；兩邊同一個狀態，
+// 見下面的 sort。
 //
 // 展開的狀態放在頁面（v-model:expanded）：登出、清空時頁面要能一次收起；第一次展開某檔時 emit open，頁面去載交易紀錄。
 // 沒給 #detail（分享出去的持股，2026-10-19）就沒有展開：沒有「明細」欄、展開列、卡片上的按鈕。
@@ -58,41 +58,65 @@ const expanded = defineModel<string[]>('expanded', { default: () => [] })
 const slots = defineSlots<{ detail?: (props: { row: T; variant: 'table' | 'card' }) => unknown }>()
 const KIND_SUFFIX: Record<string, string> = { etf: '・ETF', preferred: '・特別股' }
 
+// 表格的欄：排到別欄第二行的（under）不自己一欄
+const tableColumns = computed(() => props.columns.filter(column => !column.under || !props.columns.some(other => other.key === column.under)))
+const subOf = (column: HoldingsSymbolColumn<T>) => props.columns.find(other => other.under === column.key)
+// 一格裡由上到下的欄（表頭兩顆按鈕、格子兩行）
+const stackOf = (column: HoldingsSymbolColumn<T>) => [column, ...props.columns.filter(other => other.under === column.key)]
+
 // 名稱欄與明細欄的 min-width：el-table 與骨架表共用。el-table 把多出來的寬度照 min-width 的比例分給各欄，骨架表用同樣的比例。
-// 名稱欄 150（原本 170）：代號移到第二行後只放名稱，持股總覽 7 欄在 1280 寬（表格框 983px）才放得下（2026-11-14 量到 170 時超出 18px）
-const NAME_MIN_WIDTH = 150
+// 名稱欄 140（原本 170、150）：代號在第二行，名稱一行放得下七個字；持股總覽六欄加總 701，放得進 720 寬的表格（見檔尾）
+const NAME_MIN_WIDTH = 140
 const DETAIL_MIN_WIDTH = 110
 const skeletonShare = (minWidth: number) => {
-  const total = NAME_MIN_WIDTH + props.columns.reduce((sum, column) => sum + column.minWidth, 0) + (slots.detail ? DETAIL_MIN_WIDTH : 0)
+  const total = NAME_MIN_WIDTH + tableColumns.value.reduce((sum, column) => sum + column.minWidth, 0) + (slots.detail ? DETAIL_MIN_WIDTH : 0)
   return `${(minWidth / total) * 100}%`
 }
 
-const sortKey = ref(props.defaultSort)
-const sortOptions = computed(() => [
-  ...props.columns.map(column => ({ value: column.key, label: column.sortLabel ?? `${column.label}（大到小）` })),
-  { value: 'symbol', label: '代號' }
-])
-
-// 升冪比較，沒有值當最小。選單與表頭共用。
-function compareBy(key: string) {
-  const column = props.columns.find(item => item.key === key)
-  const pick = column ? column.sortValue : (row: T) => row.symbol
-  return (a: T, b: T) => {
-    const x = pick(a)
-    const y = pick(b)
-    if (typeof x === 'string' && typeof y === 'string') return x.localeCompare(y)
-    if (x === null || y === null) return x === y ? 0 : x === null ? -1 : 1
-    return (x as number) - (y as number)
-  }
+// 排序是一個狀態（欄＋方向），表格與卡片共用（2026-11-14 方案 A，使用者：「排序UI的風格請兩邊保持一致」「採用A方案」）：卡片是一行字
+// 「排序：市值 ⌄」加方向，寬螢幕點表頭打開指標檢視同一個選單（SharedColumnMenu，只有排序）。換欄時方向回到那一欄的預設：數字大到小、
+// 代號小到大。沒有值的一律排最後（sortRowsBy）
+type SortOrder = 'ascending' | 'descending'
+const naturalOrder = (key: string): SortOrder => (key === 'symbol' ? 'ascending' : 'descending')
+const sort = reactive({ key: props.defaultSort, order: naturalOrder(props.defaultSort) })
+const labelOf = (key: string) => (key === 'symbol' ? '代號' : props.columns.find(column => column.key === key)?.label ?? '')
+const sortOptions = computed(() => [...props.columns.map(column => ({ value: column.key, label: column.label })), { value: 'symbol', label: '代號' }])
+function pickSort(key: string, order = naturalOrder(key)) {
+  sort.key = key
+  sort.order = order
 }
-
 const sortedRows = computed(() => {
-  const compare = compareBy(sortKey.value)
-  return [...props.rows].sort(sortKey.value === 'symbol' ? compare : (a, b) => compare(b, a))
+  const column = props.columns.find(item => item.key === sort.key)
+  return sortRowsBy(props.rows, column ? column.sortValue : (row: T) => row.symbol, sort.order)
 })
+// el-table 的表頭沒有 aria-sort：排序狀態寫在表頭按鈕裡（SharedSortIcon 是裝飾）
+const sortStateText = (key: string) => (sort.key === key ? `，${sort.order === 'ascending' ? '由小到大' : '由大到小'}排序中` : '')
 
-function onSortChange({ prop }: { prop: string | null }) {
-  if (prop) sortKey.value = prop
+// 表頭的選單（同 SharedMetricTable）：開在這一欄時再點一下是關；換一欄先關再開，焦點才會進到新的選單
+const menu = reactive<{ open: boolean, key: string | null, anchor: HTMLElement | null }>({ open: false, key: null, anchor: null })
+const menuStatus = ref('')
+function openMenu(key: string, event: MouseEvent) {
+  const anchor = event.currentTarget as HTMLElement
+  const wasOpenHere = menu.open && menu.key === key
+  menu.open = false
+  if (wasOpenHere) return
+  nextTick(() => {
+    menu.key = key
+    menu.anchor = anchor
+    menu.open = true
+  })
+}
+// 名稱欄依代號排，選單上寫表頭的字
+const menuLabel = computed(() => (menu.key === 'symbol' ? '名稱' : labelOf(menu.key ?? '')))
+function onMenuAction(action: ColumnMenuAction) {
+  if (!menu.key) return
+  if (action === 'clear') {
+    pickSort(props.defaultSort)
+    menuStatus.value = '取消排序'
+  } else if (action === 'ascending' || action === 'descending') {
+    pickSort(menu.key, action)
+    menuStatus.value = `依「${menuLabel.value}」${action === 'ascending' ? '由小到大' : '由大到小'}排序`
+  }
 }
 
 const summaryColumns = computed(() => props.columns.filter(column => column.card === 'summary'))
@@ -116,15 +140,20 @@ function toggle(symbol: string, event?: MouseEvent) {
 </script>
 
 <template>
-  <div>
-    <div class="symbol-table__toolbar">
-      <!-- view-card：選單只跟卡片一起出現（寬螢幕用表頭） -->
-      <label class="symbol-table__sort view-card">
-        <span>排序</span>
-        <select v-model="sortKey" class="app-select symbol-table__select">
+  <div class="symbol-table">
+    <!-- view-card：只跟卡片一起出現（寬螢幕點表頭）。一行字「排序：市值 ⌄」加方向，沒有框（2026-11-14 方案 A，指標檢視同一套）：
+         字與箭頭是畫的，原生 select 透明地疊在上面，點了照樣打開手機自己的選單 -->
+    <div class="symbol-table__toolbar view-card">
+      <label class="symbol-table__sort">
+        <span aria-hidden="true">排序：{{ labelOf(sort.key) }}</span>
+        <el-icon size="0.875rem" aria-hidden="true"><ArrowDown /></el-icon>
+        <select :value="sort.key" class="symbol-table__select" aria-label="排序" @change="pickSort(($event.target as HTMLSelectElement).value)">
           <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
+      <button type="button" class="symbol-table__direction" @click="sort.order = sort.order === 'ascending' ? 'descending' : 'ascending'">
+        <span class="visually-hidden">排序方向：</span><SharedSortIcon :state="sort.order" />{{ sort.order === 'ascending' ? '小到大' : '大到小' }}
+      </button>
     </div>
 
     <!-- 骨架表：el-table 在伺服器不畫列（欄位要 mount 才登記），所以自己畫一張。欄寬照 el-table 的分法、表頭與列高照它的樣式，
@@ -132,28 +161,33 @@ function toggle(symbol: string, event?: MouseEvent) {
     <SharedTable v-if="skeletonRows" :ssr="false" :scrollable="false" table-class="symbol-table__skeleton" class="view-table" aria-hidden="true">
       <colgroup>
         <col :style="{ width: skeletonShare(NAME_MIN_WIDTH) }">
-        <col v-for="column in columns" :key="column.key" :style="{ width: skeletonShare(column.minWidth) }">
+        <col v-for="column in tableColumns" :key="column.key" :style="{ width: skeletonShare(column.minWidth) }">
         <col v-if="slots.detail" :style="{ width: skeletonShare(DETAIL_MIN_WIDTH) }">
       </colgroup>
       <thead>
         <tr>
-          <!-- 排序欄的表頭後面留 el-table 排序箭頭的寬（24px），靠右的欄名才在同一個位置 -->
-          <th>名稱<span class="symbol-table__skeleton-caret" /></th>
-          <th v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num">{{ column.label }}<span class="symbol-table__skeleton-caret" /></th>
+          <!-- 表頭跟資料到了的表頭按鈕同一個樣子（圖示、欄名、折行），只是不能按 -->
+          <th><span class="symbol-table__head">名稱<SharedSortIcon :state="sort.key === 'symbol' ? sort.order : null" /></span></th>
+          <th v-for="column in tableColumns" :key="column.key" class="symbol-table__skeleton-num">
+            <span class="symbol-table__stack"><span v-for="item in stackOf(column)" :key="item.key" class="symbol-table__head"><SharedSortIcon :state="sort.key === item.key ? sort.order : null" />{{ item.label }}</span></span>
+          </th>
           <th v-if="slots.detail"><span class="visually-hidden">明細</span></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="index in skeletonRows" :key="index">
           <td><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-name" /><span class="symbol-table__sub"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-code" /></span></td>
-          <td v-for="column in columns" :key="column.key" class="symbol-table__skeleton-num"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" /></td>
+          <td v-for="column in tableColumns" :key="column.key" class="symbol-table__skeleton-num">
+            <span class="app-skeleton app-skeleton--inline symbol-table__skeleton-value" />
+            <span v-if="subOf(column)" class="symbol-table__sub"><span class="app-skeleton app-skeleton--inline symbol-table__skeleton-code" /></span>
+          </td>
           <td v-if="slots.detail"><el-button text type="primary" disabled tabindex="-1">{{ toggleLabels[0] }}<el-icon class="symbol-table__chevron" aria-hidden="true"><ArrowDown /></el-icon></el-button></td>
         </tr>
       </tbody>
     </SharedTable>
 
     <SharedTable v-else custom class="view-table">
-      <el-table :data="sortedRows" row-key="symbol" :expand-row-keys="expanded" @sort-change="onSortChange">
+      <el-table :data="sortedRows" row-key="symbol" :expand-row-keys="expanded">
         <!-- 展開列只拿來放明細；開關是「明細」那顆按鈕（aria-expanded）。el-table 自己的展開箭頭藏起來，
              免得同一件事有兩個開關 -->
         <el-table-column v-if="slots.detail" type="expand" label="交易紀錄" width="1" class-name="symbol-table__expand-col" label-class-name="symbol-table__expand-col">
@@ -162,24 +196,38 @@ function toggle(symbol: string, event?: MouseEvent) {
             <slot v-if="expanded.includes(tableRow<T>(row).symbol)" name="detail" :row="tableRow<T>(row)" :variant="'table'" />
           </template>
         </el-table-column>
-        <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH" sortable :sort-method="compareBy('symbol')">
+        <el-table-column label="名稱" prop="symbol" :min-width="NAME_MIN_WIDTH">
+          <!-- 點表頭打開排序選單（同指標檢視）；靠左的欄圖示在欄名後面 -->
+          <template #header>
+            <button type="button" class="symbol-table__head" aria-haspopup="menu" :aria-expanded="menu.open && menu.key === 'symbol'" @click="openMenu('symbol', $event)">
+              名稱<SharedSortIcon :state="sort.key === 'symbol' ? sort.order : null" /><span class="visually-hidden">{{ sortStateText('symbol') }}</span>
+            </button>
+          </template>
           <template #default="{ row }">
             <NuxtLink :to="tableRow<T>(row).link" class="stock-name-link">{{ tableRow<T>(row).name }}</NuxtLink>
             <span class="symbol-table__sub">{{ tableRow<T>(row).symbol }}{{ KIND_SUFFIX[tableRow<T>(row).kind ?? ''] ?? '' }}</span>
           </template>
         </el-table-column>
         <el-table-column
-          v-for="column in columns"
+          v-for="column in tableColumns"
           :key="column.key"
           :label="column.label"
           :prop="column.key"
           align="right"
           :min-width="column.minWidth"
-          sortable
-          :sort-method="compareBy(column.key)"
         >
+          <!-- 靠右的欄圖示在前：欄名跟下面的數字對齊。併成兩行的格子，表頭也是兩顆按鈕，各排各的 -->
+          <template #header>
+            <span class="symbol-table__stack">
+              <button v-for="item in stackOf(column)" :key="item.key" type="button" class="symbol-table__head" aria-haspopup="menu" :aria-expanded="menu.open && menu.key === item.key" @click="openMenu(item.key, $event)">
+                <SharedSortIcon :state="sort.key === item.key ? sort.order : null" />{{ item.label }}<span class="visually-hidden">{{ sortStateText(item.key) }}</span>
+              </button>
+            </span>
+          </template>
+          <!-- 第二行的漲跌色寫在裡面那一層：外層的灰字（.symbol-table__sub）特異性比全站的漲跌色高 -->
           <template #default="{ row }">
             <span :class="toneClass(column, tableRow<T>(row))">{{ column.text(tableRow<T>(row)) }}</span>
+            <span v-if="subOf(column)" class="symbol-table__sub"><span :class="toneClass(subOf(column)!, tableRow<T>(row))">{{ subOf(column)!.text(tableRow<T>(row)) }}</span></span>
           </template>
         </el-table-column>
         <!-- 每列只留一顆「明細」（2026-10-05 UI 盤點：原本每列三顆按鈕，26 檔就是 78 顆，比數字還搶眼）。 -->
@@ -194,6 +242,8 @@ function toggle(symbol: string, event?: MouseEvent) {
         </el-table-column>
       </el-table>
     </SharedTable>
+    <SharedColumnMenu v-model:open="menu.open" :anchor="menu.anchor" :label="menuLabel" :sort="sort.key === menu.key ? sort.order : null" @action="onMenuAction" />
+    <p class="visually-hidden" role="status">{{ menuStatus }}</p>
 
     <!-- 手機卡片（2026-10-20 重新設計，使用者：「不展開還好，一展開看起來有夠髒」）：所有數字一種排法——名稱靠左、數字靠右，
          一列一項；展開後接著列下去，交易紀錄與動作在最後（HoldingsDetailPanel 的 card）。開關是卡片的頁尾（「明細按鈕放在右上角不太順，
@@ -217,9 +267,7 @@ function toggle(symbol: string, event?: MouseEvent) {
       <li v-for="row in sortedRows" v-else :key="row.symbol" class="app-card symbol-table__card holdings-card">
         <div class="symbol-table__name">
           <NuxtLink :to="row.link" class="stock-name-link">{{ row.name }}</NuxtLink>
-          <span class="symbol-table__code">{{ row.symbol }}</span>
-          <el-tag v-if="row.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
-          <el-tag v-else-if="row.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+          <span class="symbol-table__code">{{ row.symbol }}{{ KIND_SUFFIX[row.kind ?? ''] ?? '' }}</span>
         </div>
         <dl v-if="summaryColumns.length" class="holdings-card__rows">
           <div v-for="column in summaryColumns" :key="column.key" class="holdings-card__row">
@@ -246,34 +294,109 @@ function toggle(symbol: string, event?: MouseEvent) {
 </template>
 
 <style scoped>
-/* 排序選單（只在卡片模式） */
+/* 表格或卡片看這一塊自己的寬度（見檔尾） */
+.symbol-table {
+  container-type: inline-size;
+}
+
+/* 排序那一行（只在卡片模式）：欄位與方向之間 20px（方案 A 的設計圖） */
 .symbol-table__toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 0 20px;
   margin-bottom: 12px;
 }
 
-.symbol-table__toolbar:empty {
-  display: none;
-}
-
+/* 名稱是 select 的 aria-label「排序」，值是選到的那一項；焦點框畫在整行字上 */
 .symbol-table__sort {
-  flex-wrap: wrap;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  min-height: 44px;
+  cursor: pointer;
 }
 
+/* 方向：一行字，跟排序同一種寫法（沒有框） */
+.symbol-table__direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.symbol-table__direction:focus-visible,
+.symbol-table__head:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--el-border-radius-base);
+}
+
+/* 表頭按鈕（同 SharedMetricTable 的 .screener-result-table__head）：點了打開排序選單。24px 高＝原本 el-table 排序箭頭撐出來的表頭高。
+   vertical-align: top：圖示在前的欄沒有文字基線，貼著基線排會把格子撐高 4～7px、欄名比「名稱」低一截 */
+.symbol-table__head {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: top;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+  /* 欄名在窄欄裡折兩行時平均分（「預估年／股利」，不是「預估年股／利」） */
+  text-wrap: balance;
+  cursor: pointer;
+}
+
+/* 一格裡疊兩顆表頭按鈕（市值／股數），靠右；只有一顆時跟原本一樣 */
+.symbol-table__stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  vertical-align: top;
+}
+
+.symbol-table__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.symbol-table__sort:has(.symbol-table__select:focus-visible) {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--el-border-radius-base);
+}
+
+/* 卡片的標頭同指標卡片（SharedMetricTable 的 .smt-card__head，2026-11-14 卡片做法 1，使用者選的）：名稱 18px 粗體黑字，
+   代號與類別灰字接在後面（00878・ETF，同寬螢幕名稱下面那一行），不再是標籤 */
 .symbol-table__name {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
 .symbol-table__code {
-  color: var(--el-text-color-regular);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -298,8 +421,8 @@ function toggle(symbol: string, event?: MouseEvent) {
   line-height: 23px;
 }
 
-/* 表頭在欄寬裡折行，同 el-table 的表頭（.cell 的 white-space、overflow-wrap）：1280 寬各欄只剩 min-width，「預估年股利」的排序箭頭
-   換到第二行，骨架照樣換，資料到的時候表頭不長高 */
+/* 表頭在欄寬裡折行，同 el-table 的表頭（.cell 的 white-space、overflow-wrap）：1280 寬各欄只剩 min-width，「預估年股利」換到
+   第二行，骨架照樣換，資料到的時候表頭不長高 */
 .symbol-table__skeleton th {
   white-space: normal;
   overflow-wrap: break-word;
@@ -307,14 +430,6 @@ function toggle(symbol: string, event?: MouseEvent) {
 
 .symbol-table__skeleton .symbol-table__skeleton-num {
   text-align: right;
-}
-
-/* 同 el-table 的排序箭頭（element-plus.css 的 24×24）：表頭的高是它撐出來的，矮了資料到的時候整張表下面跳 3px */
-.symbol-table__skeleton-caret {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  vertical-align: middle;
 }
 
 .symbol-table__skeleton-name {
@@ -355,18 +470,19 @@ function toggle(symbol: string, event?: MouseEvent) {
   white-space: nowrap;
 }
 
+/* 卡片之間、卡片裡各段之間 8px：同指標卡片（.smt-cards、.smt-card__head 的下距） */
 .symbol-table__cards {
   list-style: none;
   margin: 0;
   padding: 0;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .symbol-table__card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   /* 收合後捲回來時不躲到固定的頁首底下 */
   scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 8px);
 }
@@ -394,7 +510,7 @@ function toggle(symbol: string, event?: MouseEvent) {
   transform: rotate(180deg);
 }
 
-/* 所有數字一種排法：名稱靠左、數字靠右，一列一項——.holdings-card__rows（main.css，觀察清單的卡片也用） */
+/* 所有數字一種排法：名稱靠左、數字靠右，一列一項——.holdings-card__rows（main.css）；欄名灰字、數字粗體同指標卡片 */
 
 /* 展開的部分：一條分隔線之後接著列下去（股數、預估年股利，再來是明細面板的平均成本…），列與列之間跟上面一樣 4px */
 .symbol-table__more {
@@ -405,21 +521,42 @@ function toggle(symbol: string, event?: MouseEvent) {
   border-top: 1px solid var(--app-divider);
 }
 
-.view-card {
+/* 表頭黏在頁首下面，同篩選與指標檢視的表格（SharedMetricTable 的 sticky；2026-11-14，使用者：「為什麼股票篩選表格可以貼頂表頭 但是
+   持股明細表格沒有貼頂」）。Element 在根元素、body-wrapper、el-scrollbar 三層用 overflow: hidden，會變成捲動容器、表頭只在框裡黏；
+   clip 裁切一樣但不是捲動容器（SharedTable 的卡片也是 clip）。這張表放得下才是表格、不左右捲，所以不用黏底部的橫向捲軸 */
+.view-table :deep(.el-table),
+.view-table :deep(.el-table__body-wrapper),
+.view-table :deep(.el-table__body-wrapper > .el-scrollbar) {
+  overflow: clip;
+}
+
+.view-table :deep(.el-table__header-wrapper) {
+  position: sticky;
+  top: calc(var(--app-header-height) + var(--app-banner-height));
+  /* 蓋過捲上來的列：一般格 index、固定欄 index + 1 */
+  z-index: calc(var(--el-table-index) + 2);
+}
+
+/* 表格或卡片跟全站的表格同一條斷點（使用者 2026-11-14：「「損益」和「指標」我認為可以用同樣斷點，是要去調整設計來配合斷點比較正常」）：
+   這一塊寬 720 起是表格，同 SharedMetricTable 換成卡片的門檻：持股的指標檢視在這一塊同樣 720 時切（2026-11-14 量的）。
+   設計配合這條：持股總覽併成六欄（市值／股數、損益／報酬率兩行，見 under），min-width 加總 140＋120＋90＋140＋100＋110
+   加展開欄 1＝701，720 寬扣表格框線 2 還放得下、不左右捲（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。已實現損益、分享出去的持股用同一條。
+   卡片是基本樣式：手機、不支援容器查詢的舊瀏覽器都是卡片 */
+.view-table {
   display: none;
 }
 
-/* 表格／卡片的切換點設在 1279px，不是全站的 767px（使用者 2026-10-05：「a11y 要求放大 200% 也不可以跑版」）。
-   量過（持股總覽 7 欄）：1920 寬放大 200%（=960px）溢出 148px；1024px 橫向螢幕會出現左側導覽欄，內容只剩約
-   750px，7 欄表格至少要約 870px，溢出 142px。1280px 以上（含字型 120%）量到 0。欄少的頁面（已實現損益 3 欄）
-   用同一個切換點，兩頁在同一個寬度長一樣。 */
-@media (max-width: 1279px) {
+.view-card {
+  display: flex;
+}
+
+@container (min-width: 720px) {
   .view-table {
-    display: none;
+    display: block;
   }
 
   .view-card {
-    display: flex;
+    display: none;
   }
 }
 </style>

@@ -29,7 +29,7 @@ watch(() => activeWatchlist.value?.id, (id) => {
 // ---- 欄位 ----
 // 依類別分段，每一段的欄位是那一類篩選的欄位組合（useWatchlistColumns，2026-11-06）：收盤價、漲跌、除息／發放固定在前面，後面是選的那一組；
 // 欄位設定、表頭的移動與移除都改那一組，篩選也跟著變。欄位設定所有清單共用一套（使用者的決定）。
-const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
+const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
 await useFilterSchema()
 const currentUser = useCurrentUser()
 onMounted(() => {
@@ -48,9 +48,8 @@ const fieldsByKind = computed(() => ({
 // 訪客沒有組合：工具列放一顆「欄位設定」，按了是登入
 const openGuestColumnSettings = () => openLogin('免費註冊或登入後，就能設定觀察清單的欄位。')
 
-// 每一類的「欄位」選單（2026-11-07 改版方案 A）：每一類原本一排工具——顯示欄位、欄位設定、到篩選管理，手機還有排序——收成一顆，寫著現在用哪一組。
-// 2026-11-11 表格換成篩選的結果表：欄位設定回到表格自己的按鈕（電腦版「欄位設定」、卡片版面「欄位 N 個」），排序也在表頭選單與卡片的排序列，選單只剩組合與到篩選管理。
-// 選單本身是 SharedColumnSetMenu（2026-11-14 抽出來，持股總覽也用）
+// 每一類的顯示欄位同篩選結果：下拉＋新增＋管理（WatchlistColumnSetSelect，2026-11-14，使用者：「欄位組合也比照確保ux一致性」，
+// 持股的指標檢視同一個）；欄位設定是表格自己的按鈕（電腦版「欄位設定」、卡片版面「欄位 N 個」），排序在表頭選單與卡片的排序列
 
 // 備註與移除收進「編輯」（2026-11-07 方案 A）：原本每一列都有紅字「移除」，最危險的動作最搶眼；平常點名稱就進個股頁
 const editing = ref(false)
@@ -252,17 +251,7 @@ async function submitNote() {
           >
             <template #toolbar>
               <h2 v-if="sections.length > 1" class="watchlist-section__title">{{ section.label }}<span class="watchlist-section__count">{{ section.rows.length }} 檔</span></h2>
-              <SharedColumnSetMenu
-                v-if="member"
-                :id="`watchlist-columns-${section.kind}`"
-                class="watchlist-columns"
-                :items="setItemsOf(section.kind)"
-                :active-id="activeIdOf(section.kind)"
-                :kind-label="sections.length > 1 ? section.label : undefined"
-                :screener-path="SCREENER_PATHS[section.kind]"
-                :screener-label="section.label"
-                @select="id => selectColumnSet(section.kind, id)"
-              />
+              <WatchlistColumnSetSelect v-if="member" :kind="section.kind" />
               <!-- 訪客沒有欄位組合，按了是登入 -->
               <el-button v-else class="watchlist-toolbar__settings" :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openGuestColumnSettings">欄位設定</el-button>
             </template>
@@ -336,7 +325,7 @@ async function submitNote() {
 }
 
 /* 手機：檔數換到標題下一行，動作留在標題右邊 */
-@media (max-width: 639px) {
+@media not all and (min-width: 768px) {
   .watchlist-page__count {
     display: block;
     margin: 4px 0 0;
@@ -387,7 +376,8 @@ async function submitNote() {
   gap: 32px;
 }
 
-/* 分段標題跟工具列同一列 */
+/* 分段標題放得下就跟顯示欄位、欄位設定同一行，手機才換行。不強迫自己一行：第一次造訪時資料到了才知道有幾類、標題才出現，
+   自己一行會多一行把工具列往下推（2026-11-14 check-share-links 量到 CLS 0.0063） */
 .watchlist-section__title {
   margin: 0;
   font-size: 1.125rem;
@@ -399,11 +389,6 @@ async function submitNote() {
   font-size: 1rem;
   font-weight: 400;
   color: var(--el-text-color-regular);
-}
-
-/* 每一類的「欄位」選單（SharedColumnSetMenu）靠右 */
-.watchlist-columns {
-  margin-left: auto;
 }
 
 /* 按鈕高照全站（滑鼠 32px、觸控 44px），跟同一列表格的「欄位設定」一樣高，同篩選的「顯示欄位」（2026-11-11 換成篩選的結果表） */

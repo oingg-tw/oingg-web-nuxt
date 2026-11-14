@@ -39,7 +39,7 @@ const description = computed(() => clampDescription(`${sectorName}（證交所�
             <template #header>
               <h3 class="industry-quick-view__title"><NuxtLink :to="industryFacetPath(code, facet)" class="hub-inline-link">{{ labelOf(facet) }}</NuxtLink></h3>
             </template>
-            <SharedFactList :items="facts" :label="`${sectorName}的公司家數與資料日期`" class="industry-quick-view__facts" />
+            <SharedFactList :items="facts" :label="`${sectorName}的公司家數與資料日期`" />
           </SharedChartCard>
           <IndustryFacetChart v-else :data="data" :sector-name="sectorName" :facet="facet">
             <template #header>
@@ -76,11 +76,6 @@ const description = computed(() => clampDescription(`${sectorName}（證交所�
 
 .industry-quick-view__grid :deep(.shared-chart-card) {
   margin-bottom: 0;
-}
-
-/* 卡片只有格子的三分之一寬：清單固定一欄（SharedFactList 在 768px 以上預設兩欄） */
-.industry-quick-view__facts.fact-list {
-  grid-template-columns: 1fr;
 }
 
 .industry-quick-view__title {

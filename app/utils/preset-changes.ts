@@ -45,3 +45,25 @@ export function presetNameErrors(rows: PresetDraftRow[]): Record<string, string>
   }
   return errors
 }
+
+// 管理彈窗按「儲存」之後的套用（篩選頁的我的篩選、顯示欄位，觀察清單與持股的顯示欄位）：一項做完再做下一項。改名 → 複製 → 刪除 →
+// 排序：複製要在刪除前（原本那一組可能也要刪），刪除要先做完才排序——業務中台 的排序要「全部已存的 id」，還沒刪掉的那一組不能少；
+// 刪到目前這一組時，換選哪一組由各自的 remove 決定。排序裡副本的暫時 id 換成建好的 id，沒建成的拿掉
+export interface PresetOps {
+  rename(id: string, name: string): Promise<void> | void
+  remove(id: string): Promise<void> | void
+  reorder(ids: string[]): Promise<void> | void
+  copy(id: string, name: string): Promise<string | null>
+  select(id: string): void
+}
+export async function runPresetChanges({ renames, copies, removals, order }: PresetChanges, ops: PresetOps) {
+  for (const [id, name] of renames) await ops.rename(id, name)
+  const created = new Map<string, string | null>()
+  for (const { id, from, name } of copies) created.set(id, await ops.copy(from, name))
+  for (const id of removals) await ops.remove(id)
+  if (order) await ops.reorder(order.flatMap(id => (created.has(id) ? created.get(id) ?? [] : [id])))
+  // 複製出來的那一組，儲存後立刻切過去（2026-11-04，使用者：「藉由複製新增 條件組合以後 確認以後 要立刻切換到該條件組合」）；
+  // 一次複製好幾組就切到最後一組
+  const lastCopy = [...created.values()].filter(id => id !== null).at(-1)
+  if (lastCopy) ops.select(lastCopy)
+}

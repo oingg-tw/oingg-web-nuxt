@@ -97,17 +97,22 @@ function confirm() {
 }
 
 /* 1 column by default, 2 from 600px, 3 from 960px (2026-09-19) — same step progression as the
-   homepage's own highlights grid (Phase C), matching the reference doc's card-grid guidance. */
+   homepage's own highlights grid (Phase C), matching the reference doc's card-grid guidance.
+   2026-11-14：看頁面寬（.screener-shell，視窗減左右邊距 32），不看視窗：1024 橫放有側欄時頁面只剩約 750，原本照視窗排三欄擠在一起 */
 .guest-picker__grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+}
 
-  @media (min-width: 600px) {
+@container (min-width: 568px) {
+  .guest-picker__grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
 
-  @media (min-width: 960px) {
+@container (min-width: 928px) {
+  .guest-picker__grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }

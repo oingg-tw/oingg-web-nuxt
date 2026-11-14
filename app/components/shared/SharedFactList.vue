@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // 個別頁的「基本資料」（2026-10-15，ETF 與特別股個別頁）：一串「名稱：值」用定義清單，不用表格——它們不是同一種東西的多筆紀錄，
 // 沒有欄可以比；也不是一格一張的卡片（使用者：卡片一張一個指標＝畫面髒亂）。窄的時候一欄、寬的時候兩欄。
+// 窄寬看的是外面那張卡片（SharedChartCard 是容器），不是視窗：速覽格子裡三分之一寬的卡片自然一欄，不用各頁覆寫
 export interface FactItem {
   label: string
   value: string
@@ -39,7 +40,8 @@ defineProps<{
   margin: 0;
 }
 
-@media (min-width: 768px) {
+/* 卡片寬 ≥600 才兩欄：手機（600 寬的卡片 566）一欄、1024 橫放有側欄的內容區（約 730）兩欄 */
+@container (min-width: 600px) {
   .fact-list {
     grid-template-columns: 1fr 1fr;
   }
@@ -68,8 +70,9 @@ defineProps<{
   overflow-wrap: anywhere;
 }
 
-/* 「（另開新視窗）」整句換到下一行，不拆成「（另」「開新視窗）」。320 寬的欄放不下整句，照一般中文斷行（keep-all 會把「）」單獨擠到下一行） */
-@media (min-width: 360px) {
+/* 「（另開新視窗）」整句換到下一行，不拆成「（另」「開新視窗）」。值那一欄放不下整句（7em）時照一般中文斷行（keep-all 會把「）」單獨擠到
+   下一行）：值欄＝卡片寬減內距 40、標籤 7em、間距 16，卡片寬 ≥290 時至少 122px（2026-11-14 量的，320 寬的手機卡片 286） */
+@container (min-width: 290px) {
   .fact-list__value a {
     word-break: keep-all;
   }

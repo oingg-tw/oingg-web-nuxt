@@ -412,7 +412,7 @@ async function commit() {
   width: 100%;
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .import__unknown {
     grid-template-columns: minmax(0, 1fr);
   }

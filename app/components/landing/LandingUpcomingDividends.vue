@@ -300,7 +300,7 @@ const hasPending = computed(() => tracks.value.some(track => track.days.some(day
   color: var(--el-color-primary-dark-2);
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .upcoming__head {
     padding: 16px 16px 8px;
   }

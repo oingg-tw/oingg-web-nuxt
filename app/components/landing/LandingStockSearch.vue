@@ -142,7 +142,7 @@ function handleSubmit() {
 }
 
 /* 手機：按鈕在輸入框下面、占滿一列（2026-11-11，使用者：「手機版 首頁 搜尋 文字被截斷了」：並排時 320 寬的輸入框只剩 91px） */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .landing-stock-search {
     flex-direction: column;
   }

@@ -13,7 +13,10 @@ export interface NoMatchSuggestion {
   name: string
 }
 
-export type StockSuggestion = CompanyIndexEntry | NoMatchSuggestion
+// value：el-autocomplete 選了一列時寫回輸入框的字（它讀 item.value，2026-11-14）。少了這個鍵它寫回 undefined：主控台出現 Vue 的
+// 「Invalid event arguments」，點「找不到」那一列還會把打的字清掉。公司那幾列寫什麼都一樣（每個呼叫端選了之後都自己改 keyword），
+// 「找不到」那一列寫回原本打的字
+export type StockSuggestion = (CompanyIndexEntry | NoMatchSuggestion) & { value: string }
 
 // Narrowing the union properly rather than asserting past it（2026-09-23）. The sentinel row has no
 // `kind`, so every read of that field — the ETF/特別股 tags in both search dropdowns — and every
@@ -21,7 +24,7 @@ export type StockSuggestion = CompanyIndexEntry | NoMatchSuggestion
 // StockSuggestion really can be undefined at runtime, on exactly the row that must never navigate.
 // The guard is the same check handleSelect already made by hand, given a name and a return type so
 // the compiler can use it too.
-export function isCompanyEntry(suggestion: StockSuggestion): suggestion is CompanyIndexEntry {
+export function isCompanyEntry(suggestion: StockSuggestion): suggestion is StockSuggestion & CompanyIndexEntry {
   return suggestion.code !== NO_MATCH_SENTINEL
 }
 
@@ -37,10 +40,10 @@ export function useStockSearch() {
   function fetchSuggestions(query: string, callback: (results: StockSuggestion[]) => void) {
     const matches = searchUniverse(query)
     if (matches.length === 0 && query.trim()) {
-      callback([{ code: NO_MATCH_SENTINEL, name: '找不到符合的股票代號或名稱' }])
+      callback([{ code: NO_MATCH_SENTINEL, name: '找不到符合的股票代號或名稱', value: query }])
       return
     }
-    callback(matches)
+    callback(matches.map(entry => ({ ...entry, value: entry.code })))
   }
 
   // ETF/preferred-stock matches don't resolve under /stock/{code} — see CompanyIndexEntry's own

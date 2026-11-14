@@ -37,7 +37,7 @@ const facetOf = (key: typeof CHART_FACETS[number]) => REIT_FACETS.find(facet => 
           <template #header>
             <h3 class="reit-quick-view__title">最新數字</h3>
           </template>
-          <SharedFactList :items="facts" :label="`${shortName}的最新數字`" class="reit-quick-view__facts" />
+          <SharedFactList :items="facts" :label="`${shortName}的最新數字`" />
         </SharedChartCard>
         <ReitFacetChart v-for="key in CHART_FACETS" :key="key" :data="data" :facet="key">
           <template #header>
@@ -63,11 +63,6 @@ const facetOf = (key: typeof CHART_FACETS[number]) => REIT_FACETS.find(facet => 
 
 .reit-quick-view__grid :deep(.shared-chart-card) {
   margin-bottom: 0;
-}
-
-/* 卡片只有格子的三分之一寬：清單固定一欄 */
-.reit-quick-view__facts.fact-list {
-  grid-template-columns: 1fr;
 }
 
 .reit-quick-view__title {

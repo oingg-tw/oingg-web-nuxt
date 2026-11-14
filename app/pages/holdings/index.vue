@@ -111,25 +111,32 @@ type HoldingRow = (typeof baseRows.value)[number]
 // 沒算進總覽的部分，合成一行（只在有的時候出現）。寫出是哪幾檔（2026-10-07「未計入：1 檔無報價 是哪一檔」）：
 // 只有數字的話，使用者得逐列掃明細表找那一檔。判斷條件跟 summarizeHoldings 的三個計數一致；名單超過 5 檔
 // 只列前 5 檔加「等」，免得這一行比總覽還長。
-function excludedClause(count: number, label: string, pick: (row: (typeof baseRows.value)[number]) => boolean): string {
-  if (!count) return ''
+// 手機只寫件數與原因，名單收在「看哪幾檔」裡（2026-11-14，使用者選的手機整理）：short 是那一半
+function excludedClause(count: number, label: string, pick: (row: (typeof baseRows.value)[number]) => boolean): { full: string, short: string } | null {
+  if (!count) return null
   const names = baseRows.value.filter(pick).map(row => row.label)
   const shown = names.slice(0, 5).join('、')
-  return `${count} 檔${label}（${shown}${names.length > 5 ? ' 等' : ''}）`
+  return { full: `${count} 檔${label}（${shown}${names.length > 5 ? ' 等' : ''}）`, short: `${count} 檔${label}` }
 }
-const excludedText = computed(() => [
+const excludedClauses = computed(() => [
   excludedClause(totals.value.unpricedCount, '無報價', row => row.figures.marketValue === null),
   excludedClause(totals.value.dividendMissingCount, '無股利資料', row => row.figures.annualDividend === null),
   excludedClause(totals.value.costUnknownCount, '有成本不明的股數', row => (row.input.costUnknownQuantity ?? 0) > 0),
   // 收盤還停在前一個交易日的（上市比上櫃晚更新），不算進總覽的今日漲跌
   excludedClause(dayTotals.value.staleCount, '今日漲跌尚未更新', row => !!row.dayInput.date && !!dayDate.value && row.dayInput.date < dayDate.value && dayChange(row.dayInput).pct !== null)
-].filter(Boolean).join('；'))
+].filter(clause => clause !== null))
+const excludedText = computed(() => excludedClauses.value.map(clause => clause.full).join('；'))
+const excludedShort = computed(() => excludedClauses.value.map(clause => clause.short).join('；'))
 
 const namesReady = useCompanyNamesReady()
 const { sample: excludedSample, remember: rememberExcluded } = useLineHint('holdings-excluded')
+const { sample: excludedShortSample, remember: rememberExcludedShort } = useLineHint('holdings-excluded-short')
 // 有持股才記：重新整理一開始還沒開始讀（pending 還是 false）、持股是空的，那時記下的「沒有這一行」會讓骨架少畫一行（2026-11-14 量到推動 36px）
 watch([excludedText, pending, namesReady], ([text, reading, ready]) => {
-  if (!reading && ready && holdings.value.length) rememberExcluded(text && `未計入：${text}`)
+  if (!reading && ready && holdings.value.length) {
+    rememberExcluded(text && `未計入：${text}`)
+    rememberExcludedShort(excludedShort.value && `未計入：${excludedShort.value}`)
+  }
 })
 
 // 組合殖利率 vs 大盤（使用者 2026-10-05 在 業務中台 問「殖利率跟大盤比呢」）：同一個來源（交易所公布的殖利率）、
@@ -176,13 +183,14 @@ const pnlPctOf = (figures: HoldingRowFigures) => (withDividends.value ? figures.
 const pnlLabel = computed(() => (withDividends.value ? '含息損益' : '未實現損益'))
 const pnlPctLabel = computed(() => (withDividends.value ? '含息報酬率' : '報酬率'))
 
-// 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。
+// 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。表格裡股數在市值下面、報酬率在損益下面
+//（under，2026-11-14「合併成兩行的格子」）：六欄放得進 720 寬的表格，跟指標檢視同一條斷點
 const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
-  { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', sortLabel: '股數（多到少）', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
+  { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', under: 'marketValue', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
   { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
   // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
   {
-    key: 'dayChange', label: '今日漲跌', minWidth: 120, card: 'summary', sortLabel: '今日漲跌（高到低）',
+    key: 'dayChange', label: '今日漲跌', minWidth: 90, card: 'summary',
     text: row => dayChangeText(row, false),
     cardText: row => dayChangeText(row, true),
     sortValue: row => dayChange(row.dayInput).pct,
@@ -202,7 +210,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
     }
   },
   {
-    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 120, sortLabel: `${pnlPctLabel.value}（高到低）`,
+    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 120, under: 'pnl',
     text: row => signedPct(pnlPctOf(row.figures)) || '－',
     sortValue: row => pnlPctOf(row.figures),
     tone: (row) => {
@@ -210,7 +218,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
       return pct === null ? null : Number(pct.toFixed(2))
     }
   },
-  { key: 'annualDividend', label: '預估年股利', minWidth: 120, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
+  { key: 'annualDividend', label: '預估年股利', minWidth: 100, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
 ])
 
 // ---- 持股明細的兩種檢視（2026-11-14，使用者：「持股管理 也要有地方可以切換顯示的欄位，共用欄位設定」，看過設計圖選方案 A：「A很好，請這樣做」）----
@@ -218,7 +226,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
 // 篩選的結果表，窄的時候是卡片）；組合跟篩選、觀察清單同一組（useWatchlistColumns），在這裡換組合或改欄位，篩選與觀察清單也跟著變，反過來也是。
 // 選了哪一個記在 cookie：重新整理時伺服器的第一個畫面就是那一個。自訂欄位頁（/holdings/columns）照舊藏著
 const view = useCookie<'pnl' | 'metrics'>('holdings-view', { default: () => 'pnl', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
-const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, activeIdOf, setItemsOf, select: selectColumnSet, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
+const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
 onMounted(() => {
   watch(currentUser, (user) => {
     if (user) void loadColumns()
@@ -433,7 +441,7 @@ async function submit() {
     <template #actions="{ loading }">
       <!-- 讀的時候也畫、先不能按（2026-10-20）：手機上換行在標題下面，晚出現會把內容往下推；帳戶清單到之前按下去，寫入時會多建一個
            「我的帳戶」。讀完沒有持股就收起來，空狀態裡有同樣兩顆 -->
-      <div v-if="!loadFailed && (loading || (currentUser && holdings.length))" class="holding-actions">
+      <div v-if="!loadFailed && (loading || (currentUser && holdings.length))" class="holding-actions holdings-page__actions">
         <el-button size="large" :icon="Upload" :disabled="loading" @click="importVisible = true">匯入成交明細</el-button>
         <el-button type="primary" size="large" :icon="Plus" :disabled="loading" @click="openRecord()">記一筆交易</el-button>
       </div>
@@ -453,7 +461,7 @@ async function submit() {
 
       <template v-else>
         <section class="holdings-page__overview" aria-labelledby="holdings-summary-title">
-          <!-- 報酬含息的開關跟總覽標題同一行：它同時切換總覽與明細的損益、報酬率（見 withDividends） -->
+          <!-- 報酬含息的開關跟總覽標題同一行：它同時切換總覽與明細的損益、報酬率（見 withDividends）。手機上標題只留給讀屏、開關放進總覽卡的右上角（2026-11-14） -->
           <div class="holdings-page__overview-head">
             <h2 id="holdings-summary-title" class="holdings-page__section-title">總覽</h2>
             <label class="holdings-page__basis">
@@ -467,7 +475,7 @@ async function submit() {
           <!-- 讀的時候欄名照畫，數字是同樣長短的範例字骨架（2026-10-20）：欄寬照內容算，換成真的數字時不移動 -->
           <dl v-if="loading" class="app-card holdings-overview" aria-hidden="true">
             <div class="holdings-overview__hero">
-              <dt>總市值<span class="app-skeleton app-skeleton--flow">（10/16 收盤）</span></dt>
+              <dt>總市值<span class="holdings-overview__date app-skeleton app-skeleton--flow">（10/16 收盤）</span></dt>
               <dd><span class="app-skeleton app-skeleton--flow">1,234,567 元</span></dd>
             </div>
             <div class="holdings-overview__row">
@@ -480,15 +488,15 @@ async function submit() {
               <dd><span class="app-skeleton app-skeleton--flow">▲ +12,345 元</span></dd>
               <dd><span class="app-skeleton app-skeleton--flow">+1.23%</span></dd>
             </div>
-            <div class="holdings-overview__row">
+            <div class="holdings-overview__row holdings-overview__row--dividend">
               <dt>預估年度股利</dt>
               <dd><span class="app-skeleton app-skeleton--flow">45,678 元</span></dd>
-              <dd>殖利率 <span class="app-skeleton app-skeleton--flow">3.45%</span><span class="holdings-overview__compare"><span class="app-skeleton app-skeleton--flow">（大盤 3.12%）</span></span></dd>
+              <dd><span class="holdings-overview__yield-label">殖利率</span> <span class="holdings-overview__yield"><span class="app-skeleton app-skeleton--flow">3.45%</span></span><span class="holdings-overview__compare"><span class="app-skeleton app-skeleton--flow">（大盤 3.12%）</span></span></dd>
             </div>
           </dl>
           <dl v-else class="app-card holdings-overview">
             <div class="holdings-overview__hero">
-              <dt>總市值<template v-if="priceDates.length">（{{ shortDate(priceDates.at(-1)!) }} 收盤）</template></dt>
+              <dt>總市值<span v-if="priceDates.length" class="holdings-overview__date">（{{ shortDate(priceDates.at(-1)!) }} 收盤）</span></dt>
               <dd>{{ totals.marketValue === null ? '－' : `${money(totals.marketValue)} 元` }}</dd>
             </div>
             <div class="holdings-overview__row">
@@ -502,18 +510,12 @@ async function submit() {
               <dd :class="toneOf(dayTotals.amount)">{{ signedMoney(dayTotals.amount) }}</dd>
               <dd :class="toneOf(dayTotals.amount)">{{ signedPct(dayTotals.pct) }}</dd>
             </div>
-            <div class="holdings-overview__row">
+            <div class="holdings-overview__row holdings-overview__row--dividend">
               <dt>預估年度股利</dt>
               <dd>{{ totals.annualDividend === null ? '－' : `${money(totals.annualDividend)} 元` }}</dd>
-              <dd>殖利率 {{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}<span v-if="marketYield" class="holdings-overview__compare">（大盤 {{ marketYield.value.toFixed(2) }}%）</span></dd>
+              <dd><span class="holdings-overview__yield-label">殖利率</span> <span class="holdings-overview__yield">{{ portfolioYield.value === null ? '－' : `${portfolioYield.value.toFixed(2)}%` }}</span><span v-if="marketYield" class="holdings-overview__compare">（大盤 {{ marketYield.value.toFixed(2) }}%）</span></dd>
             </div>
           </dl>
-          <!-- 使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」。只在真的有東西沒算進去時出一行；
-               計算口徑全部收進最下面的「計算方式」。 -->
-          <p v-if="loading || !namesReady ? excludedSample : excludedText" class="holdings-page__excluded">
-            <span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
-            <template v-else>未計入：{{ excludedText }}</template>
-          </p>
         </section>
 
         <section aria-labelledby="holdings-list-title">
@@ -522,22 +524,26 @@ async function submit() {
             <h2 id="holdings-list-title" class="holdings-page__section-title">
               持股明細<span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">（{{ holdingsCountHint }} 檔）</span><template v-else>（{{ holdings.length }} 檔）</template>
             </h2>
-            <el-radio-group v-model="view" aria-label="持股明細的檢視">
-              <el-radio-button value="pnl">損益</el-radio-button>
-              <el-radio-button value="metrics">指標</el-radio-button>
-            </el-radio-group>
-            <SharedShareButton
-              class="holdings-page__share"
-              kind="holdings"
-              :target-id="selectedPortfolio?.id ?? null"
-              :name="shareName"
-              :columns="SHARE_COLUMNS"
-              sensitive-heading="部位大小，預設不分享"
-              :accounts="portfolios"
-            />
+            <!-- 切換與分享一組：放得下就跟標題同一行（手機設計圖方案 B），放不下整組換到下一行、分享靠右 -->
+            <div class="holdings-page__list-tools">
+              <el-radio-group v-model="view" class="holdings-page__view" aria-label="持股明細的檢視">
+                <el-radio-button value="pnl">損益</el-radio-button>
+                <el-radio-button value="metrics">指標</el-radio-button>
+              </el-radio-group>
+              <SharedShareButton
+                class="holdings-page__share"
+                kind="holdings"
+                :target-id="selectedPortfolio?.id ?? null"
+                :name="shareName"
+                :columns="SHARE_COLUMNS"
+                sensitive-heading="部位大小，預設不分享"
+                :accounts="portfolios"
+              />
+            </div>
           </div>
           <HoldingsSymbolTable
             v-if="view === 'pnl'"
+            class="holdings-page__pnl"
             :skeleton-rows="loading ? holdingsCountHint : 0"
             v-model:expanded="expanded"
             :rows="baseRows"
@@ -579,17 +585,7 @@ async function submit() {
               >
                 <template #toolbar>
                   <h3 v-if="section.multi" class="holdings-kind__title">{{ section.label }}<span class="holdings-kind__count">{{ section.rows.length }} 檔</span></h3>
-                  <SharedColumnSetMenu
-                    :id="`holdings-columns-${section.kind}`"
-                    class="holdings-columns"
-                    :items="setItemsOf(section.kind)"
-                    :active-id="activeIdOf(section.kind)"
-                    :kind-label="section.multi ? section.label : undefined"
-                    :screener-path="SCREENER_PATHS[section.kind]"
-                    :screener-label="section.label"
-                    :disabled="section.skeleton"
-                    @select="id => selectColumnSet(section.kind, id)"
-                  />
+                  <WatchlistColumnSetSelect :kind="section.kind" />
                 </template>
               </WatchlistTable>
             </section>
@@ -608,6 +604,19 @@ async function submit() {
                    上游改排程不會通知這裡；上游有提供排程時間的 API 時改讀它 -->
               <li>資料更新時間（台北時間）：收盤價在每個交易日上櫃約 17:00、上市約 17:50 更新；殖利率上市約 17:35、上櫃約 18:35；股利每天 06:10～09:00。交易所或公司晚發布時會跟著延後。</li>
             </ul>
+          </details>
+
+          <!-- 沒算進總覽的部分，只在真的有東西沒算進去時出一行（使用者 2026-10-05：「holdings 希望減少不必要的說明，避免注意力分散」）。
+               放在頁尾、計算方式下面（2026-11-14，使用者：「六檔無股利資料放到頁尾就好」；原本在總覽卡片下面）。
+               手機是一行件數與原因、名單收在裡面（同日使用者選的手機整理）。讀的時候照上次那一行的長度畫同樣的一行，
+               inert：骨架的 summary 不能按、Tab 與讀屏都跳過（只用 aria-hidden 的話它還拿得到焦點） -->
+          <p v-if="loading || !namesReady ? excludedSample : excludedText" class="holdings-page__excluded app-wide-only">
+            <span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ excludedSample }}</span>
+            <template v-else>未計入：{{ excludedText }}</template>
+          </p>
+          <details v-if="loading || !namesReady ? excludedShortSample : excludedText" class="holdings-page__excluded app-disclosure app-narrow-only" :inert="loading || !namesReady">
+            <summary><span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow">{{ excludedShortSample }}</span><template v-else>未計入：{{ excludedShort }}</template></summary>
+            <p v-if="!(loading || !namesReady)">{{ excludedText }}</p>
           </details>
 
           <!-- 清除全部放在最後（2026-10-21，使用者：「底下的 "清除按鈕" 還有計算方式看起來就像是沒設計過」）：很少用、又會刪資料的動作，
@@ -701,7 +710,8 @@ async function submit() {
   margin: 0 0 12px;
 }
 
-/* 總覽標題與「報酬含息」開關同一行，開關靠右；標題的下邊距改由這一行給 */
+/* 總覽標題與「報酬含息」開關同一行，開關靠右；標題的下邊距改由這一行給。手機（這一段窄於 480）標題只留給讀屏、開關疊在總覽卡的右上角
+   （2026-11-14，使用者選的手機整理），見下面的 @container */
 .holdings-page__overview-head {
   display: flex;
   flex-wrap: wrap;
@@ -724,19 +734,20 @@ async function submit() {
   cursor: pointer;
 }
 
-/* 總覽：一塊、不分格，三列用 subgrid 對齊，金額靠右（位數一眼比得出大小）。依這一段的寬度排三種（mobile first）：
-   窄：總市值在上，每一項都跟它同一種寫法——名稱一行、金額與比率一行，全部靠左（2026-10-22，使用者：「這個卡片電腦看沒問題 手機版本看起來亂亂的」，
-   方案頁選 3C；原本比率擠在金額下面靠右，長短差三倍、左邊參差，離下一列的名稱跟離自己的金額一樣近）；
-   ≥480：每列「名稱｜金額｜比率」；≥720：總市值放左邊、三列放右邊 */
+/* 總覽：一塊、不分格，每一列「名稱｜金額｜比率」用 subgrid 對齊，金額靠右（位數一眼比得出大小）。依這一段的寬度排三種（mobile first）：
+   窄：總市值在上，下面一列一項、名稱靠左數字靠右，殖利率另起一列（2026-11-14，使用者：「手機版的 持股管理 summary 可以跟電腦版一樣
+   左右印刷嗎?」，選了「每一列左右」，取代同日的 2×2 與 10-22 的 3C）；≥480：欄距放寬；≥720：總市值放左邊、三列放右邊 */
 .holdings-page__overview {
+  position: relative;
   container-type: inline-size;
 }
 
+/* 窄：名稱那欄吃剩下的寬（minmax(0, 1fr)），375 寬七位數的金額也排得進一列；更窄時名稱自己折行 */
 .holdings-overview {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  column-gap: 16px;
-  row-gap: 14px;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  column-gap: 8px;
+  row-gap: 8px;
   margin: 0;
   padding: 16px;
   font-variant-numeric: tabular-nums;
@@ -763,20 +774,24 @@ async function submit() {
   font-weight: 600;
 }
 
+/* 日期整段折行：320 寬時「總市值」一行、「（11/13 收盤）」一行，不會斷在「收盤」中間 */
+.holdings-overview__date {
+  white-space: nowrap;
+}
+
+/* gap: normal＝欄距跟外層的格子走（subgrid） */
 .holdings-overview__row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: 2px 12px;
+  gap: normal;
 }
 
-.holdings-overview__row dt {
-  flex-basis: 100%;
-}
-
+/* 窄的時候 17px：375 寬七位數的金額跟比率排得進一列；≥480 是 18px */
 .holdings-overview__row dd:first-of-type {
-  font-size: 1.125rem;
+  justify-self: end;
+  font-size: 1.0625rem;
   font-weight: 600;
 }
 
@@ -785,23 +800,80 @@ async function submit() {
   color: var(--el-text-color-regular);
 }
 
+/* 窄：開關疊在總覽卡的右上角、標題只留給讀屏；殖利率另起一列，「殖利率」靠左、數字與大盤靠右（第三欄太窄放不下「（大盤 3.12%）」） */
+@container not (min-width: 480px) {
+  .holdings-page__overview-head {
+    position: absolute;
+    top: 4px;
+    right: 12px;
+    z-index: 1;
+    margin: 0;
+  }
+
+  .holdings-page__overview-head .holdings-page__section-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* 右上角的開關不蓋住「總市值（11/13 收盤）」：320 寬時日期折到下一行 */
+  .holdings-overview__hero dt {
+    padding-right: 128px;
+  }
+
+  /* 列距同外層 8px（子格線只接欄，列距 normal 是 0） */
+  .holdings-overview__row--dividend {
+    row-gap: 8px;
+  }
+
+  .holdings-overview__row--dividend > dd:last-of-type {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .holdings-overview__yield-label {
+    margin-right: auto;
+    color: var(--el-text-color-regular);
+  }
+}
+
+/* 更窄（320、360 寬，或字放大；21rem 跟著字級）：名稱那欄放不下「預估年度股利」，會斷成「今日漲／跌」——名稱自己一行，數字照樣靠右對齊 */
+@container not (min-width: 21rem) {
+  .holdings-overview__row {
+    row-gap: 2px;
+  }
+
+  .holdings-overview__row > dt {
+    grid-column: 1 / -1;
+  }
+
+  .holdings-overview__row > dd:first-of-type {
+    grid-column: 2;
+  }
+
+  .holdings-overview__row:not(.holdings-overview__row--dividend) > dd:last-of-type {
+    grid-column: 3;
+  }
+
+  .holdings-overview__row--dividend > dd:last-of-type {
+    margin-top: 6px;
+  }
+}
+
 @container (min-width: 480px) {
   .holdings-overview {
     grid-template-columns: max-content max-content 1fr;
     column-gap: 24px;
-    row-gap: 8px;
     padding: 20px 24px;
   }
 
-  /* gap: normal＝欄距跟外層的格子走（subgrid） */
-  .holdings-overview__row {
-    display: grid;
-    grid-template-columns: subgrid;
-    gap: normal;
-  }
-
   .holdings-overview__row dd:first-of-type {
-    justify-self: end;
+    font-size: 1.125rem;
   }
 }
 
@@ -832,22 +904,71 @@ async function submit() {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .holdings-page__list-head .holdings-page__section-title {
   margin: 0;
 }
 
+/* 卡片模式的損益表最上面是「排序：…」那一行字，貼著標題列（方案 B：中間 4px）；表格與指標檢視離標題列 12px，自己補 8px。
+   表格什麼時候出現由 HoldingsSymbolTable 自己的寬度決定，所以補在表格上（卡片模式它是 display: none） */
+.holdings-page__pnl :deep(.view-table) {
+  margin-top: 8px;
+}
+
+/* 換到下一行時整組撐滿那一行：切換在左、分享在右 */
+.holdings-page__list-tools {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 16px;
+}
+
 .holdings-page__share {
   margin-left: auto;
 }
 
-/* 指標檢視：每一類一張卡片（WatchlistTable），段與段之間同觀察清單 32px；標題在卡片工具列的左邊，欄位選單靠右 */
+/* 手機照設計圖方案 B（2026-11-14，使用者：「持股明細除了卡片以外的UI比照B方案」）：標題、切換、分享之間 8px；切換左右內距 10px、
+   分享 4px，375 寬不到 10 檔、390 寬兩位數檔數都排得進一行（量過：再寬 2px 就換行）。分享是一行主色字、沒有框，寬度固定成放得下
+  「已分享」、字靠右——讀到連結狀態之前的骨架同寬，分享前後這一行不會因此換行或不換行 */
+@media not all and (min-width: 768px) {
+  .holdings-page__list-head,
+  .holdings-page__list-tools {
+    column-gap: 8px;
+  }
+
+  .holdings-page__view :deep(.el-radio-button__inner) {
+    padding-inline: 10px;
+  }
+
+  .holdings-page__share :deep(.shared-share__button) {
+    --el-button-bg-color: transparent;
+    --el-button-border-color: transparent;
+    --el-button-hover-bg-color: transparent;
+    --el-button-hover-border-color: transparent;
+    --el-button-active-bg-color: transparent;
+    --el-button-active-border-color: transparent;
+    --el-button-text-color: var(--el-color-primary);
+    --el-button-hover-text-color: var(--el-color-primary);
+    --el-button-active-text-color: var(--el-color-primary);
+    min-width: 5rem;
+    padding-inline: 4px;
+    justify-content: flex-end;
+  }
+
+  .holdings-page__share.shared-share__skeleton {
+    width: 5rem;
+  }
+}
+
+/* 指標檢視：每一類一張卡片（WatchlistTable），段與段之間同觀察清單 32px。類別標題放得下就跟顯示欄位同一行、手機才換行（不強迫自己一行：
+   第一次造訪時標題晚出現，自己一行會把工具列往下推，同觀察清單） */
 .holdings-page__metrics {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  margin-top: 8px;
 }
 
 .holdings-kind__title {
@@ -862,12 +983,9 @@ async function submit() {
   color: var(--el-text-color-regular);
 }
 
-.holdings-columns {
-  margin-left: auto;
-}
-
+/* 頁尾、計算方式下面：同計算方式的字色與上距 */
 .holdings-page__excluded {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   color: var(--el-text-color-regular);
 }
 
@@ -890,6 +1008,14 @@ async function submit() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* 手機上頁首的兩顆等寬並排、撐滿整行（2026-11-14，使用者選的手機整理）；空狀態裡那兩顆照舊置中 */
+@media not all and (min-width: 768px) {
+  .holdings-page__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .holdings-page__clear {

@@ -318,7 +318,7 @@ const qrDialogVisible = ref(false)
    lives in .summary-card__mobile-actions above instead; kept as a separate element (not just a
    CSS-repositioned copy of the same one) so it can stay absolutely positioned in the corner at
    desktop without also having to solve the mobile-width overlap the in-flow row above exists to
-   avoid. display:none is the mobile default; the ≥601px media query below turns it back on.
+   avoid. display:none is the mobile default; the ≥768px media query below turns it back on.
    固定在右上角（2026-11-14，使用者：「電腦版本的加入最愛請固定在右上角」；11-13 曾改成在卡片高度上置中）：上面離卡片邊 12px、右邊
    20px，同卡片的上、左右內距，右邊跟左邊內容一樣離卡片邊 20px（原本 top／right 都 12px，右邊比左邊少 8px） */
 .summary-card__corner-right {
@@ -516,8 +516,8 @@ html.dark .summary-card__favorite-btn.is-plain {
    one column in source order says the same thing, and the areas would now name an element that
    does not exist. Same children, re-placed; the mobile-only action row is hidden here
    (per "電腦版不會有 share 與 QR Code" — the desktop-only 最愛 button below takes over), which
-   stays top-right. The 600px split reuses stock/[code]'s own long-standing "手機版" convention. */
-@media (min-width: 601px) {
+   stays top-right. Phone and desktop split at the site's 768px, like the rest of the page around it. */
+@media (min-width: 768px) {
   .summary-card__mobile-actions {
     display: none;
   }

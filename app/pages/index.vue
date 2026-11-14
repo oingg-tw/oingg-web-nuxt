@@ -287,8 +287,10 @@ useHead({
 
 <style scoped>
 /* 背景純色（2026-10-21，使用者：「背景不要 再有 樣式 改成純色就好」）。間距與中文排版照《網站首頁高質感設計架構論》（2026-11-02）：
-   區塊之間 96px（手機 64px），內文行高 1.7、字距 0.02em，標題行高 1.35、字距 0.04em */
+   區塊之間 96px（手機 64px），內文行高 1.7、字距 0.02em，標題行高 1.35、字距 0.04em。
+   首頁本身是容器：主視覺與便當格看頁面寬（視窗減左右邊距 32，最寬 1080），不看視窗 */
 .landing-page {
+  container-type: inline-size;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -297,7 +299,7 @@ useHead({
   line-height: 1.7;
   letter-spacing: 0.02em;
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     gap: 64px;
     padding-top: 8px;
     letter-spacing: 0.01em;
@@ -305,21 +307,22 @@ useHead({
 }
 
 /* Grid 不用 flex：單欄版「子元素照自己內容定寬」的 bug 修過三次（f21baf2／4e60a40／b2720c3），Grid 項目預設 stretch。
-   960px 以下單欄，資料來源與免責聲明排到月曆下面，緊貼資料 */
+   單欄是基本樣式（手機；不支援容器查詢的舊瀏覽器也是），資料來源與免責聲明排到月曆下面，緊貼資料；頁面寬 928px 起（沒有捲軸的視窗 960）
+   兩欄 */
 .landing-page__top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
-  grid-template-areas:
-    'intro search'
-    'intro trust'
-    'calendar calendar';
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'intro' 'search' 'calendar' 'trust';
   align-items: end;
-  gap: 16px 48px;
+  gap: 24px;
 
-  @media (max-width: 959px) {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'intro' 'search' 'calendar' 'trust';
-    gap: 24px;
+  @container (min-width: 928px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+    grid-template-areas:
+      'intro search'
+      'intro trust'
+      'calendar calendar';
+    gap: 16px 48px;
   }
 }
 
@@ -345,10 +348,10 @@ useHead({
 
 .landing-page__calendar {
   grid-area: calendar;
-  margin-top: 32px;
+  margin-top: 16px;
 
-  @media (max-width: 959px) {
-    margin-top: 16px;
+  @container (min-width: 928px) {
+    margin-top: 32px;
   }
 }
 
@@ -364,7 +367,7 @@ useHead({
   font-weight: 600;
 
   /* 手機讓月曆早一點出現 */
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     display: none;
   }
 }
@@ -438,15 +441,15 @@ useHead({
   margin: 0;
 }
 
-/* 便當盒格：桌機四欄（配息那格佔兩欄兩列），960px 以下兩欄 */
+/* 便當盒格：兩欄，頁面寬 928px 起（同主視覺）四欄、配息那格佔兩欄兩列 */
 .landing-bento {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 
-  @media (max-width: 959px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+  @container (min-width: 928px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
   }
 }
 
@@ -457,17 +460,16 @@ useHead({
   gap: 16px;
   padding: 24px;
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     padding: 16px;
   }
 }
 
 .landing-bento__tile--year {
   grid-column: span 2;
-  grid-row: span 2;
 
-  @media (max-width: 959px) {
-    grid-row: auto;
+  @container (min-width: 928px) {
+    grid-row: span 2;
   }
 }
 
@@ -675,7 +677,7 @@ useHead({
   gap: 16px;
 
   /* 手機一欄：說明是網站導覽的原文，兩欄會擠成四、五行 */
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
@@ -706,7 +708,7 @@ useHead({
     border-color: var(--el-color-primary-light-5);
   }
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     min-height: 64px;
     padding: 8px 12px;
   }
@@ -737,7 +739,7 @@ useHead({
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 40px 48px;
 
-  @media (max-width: 767px) {
+  @media not all and (min-width: 768px) {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
   }
@@ -757,7 +759,7 @@ useHead({
   color: var(--el-text-color-secondary);
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   /* stretch：直排的 flex 預設是撐滿，不寫的話每一列會縮成內容寬 */
   .landing-year {
     display: flex;

@@ -185,7 +185,8 @@ async function confirmGuestOnboarding() {
   cursor: pointer;
 }
 
-@media (max-width: 559px) {
+/* 跟 ScreenerPageShell 標題列的手機版同一個門檻：.screener-shell 寬不到 528（視窗 560 以下） */
+@container not (min-width: 528px) {
   .common-screener__period-verb {
     position: absolute;
     width: 1px;

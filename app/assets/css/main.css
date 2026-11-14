@@ -182,7 +182,7 @@ textarea {
 /* 圖表高度跟著視窗走：手機 70vw（375 ≈ 262px）、桌機上限 420px、下限 15rem——原本 10 處寫死 320～640px，手機上一張圖佔掉
    大半個第一屏。 */
 /* 手機清單、電腦版圖（CLAUDE.md 的 Charts on the phone）：伺服器兩份都輸出，CSS 決定哪一份看得到；斷點同 useIsDesktop */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .app-wide-only {
     display: none !important;
   }
@@ -197,7 +197,7 @@ textarea {
 /* 手機長清單上方的切換列（2026-11-05，使用者：「不用等別人的都做一做」；原本滑到清單中段想換數字，要滑回上面）：黏在頁首底下。
    父層要包住整份清單，黏的範圍才到清單結束。貼齊畫面左右（版面的 16px 內距），不讓清單從兩側露出來；z-index 在頁首（10）底下。
    切換列後面的連結與收合列，鍵盤移到時要讓開這一列（320 寬折成兩列時約 102px）。換了就整份重排的篩選不用這個：本來就要從頭看，/rank/[slug] 的基金類型還會折成三列 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .app-sticky-bar {
     position: sticky;
     top: calc(var(--app-header-height) + var(--app-banner-height));
@@ -833,8 +833,8 @@ body.has-bottom-nav-bar .load-failure-notice {
   font-variant-numeric: tabular-nums;
 }
 
-/* 卡片裡的數字：名稱靠左、數字靠右，一列一項。持股明細的卡片（原本寫在 HoldingsSymbolTable 裡）與觀察清單共用（2026-10-22，使用者在
-   方案頁選 4B「跟持股卡片同一種排法」） */
+/* 卡片裡的數字：名稱靠左、數字靠右，一列一項。持股明細的卡片（HoldingsSymbolTable；觀察清單 2026-11-11 起改用篩選的卡片）。
+   欄名灰字、數字粗體，同指標卡片（SharedMetricTable 的 .smt-card，2026-11-14 卡片做法 1：「兩邊的卡片有機會在外觀上面靠近嗎?」） */
 .holdings-card__rows {
   display: grid;
   gap: 4px;
@@ -849,16 +849,17 @@ body.has-bottom-nav-bar .load-failure-notice {
 }
 
 .holdings-card__row dt {
-  color: var(--el-text-color-regular);
+  color: var(--el-text-color-secondary);
 }
 
 .holdings-card__row dd {
   margin: 0;
   text-align: right;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-/* 清單裡的股票名稱連結（持股明細、觀察清單的表格與卡片）。2026-10-22 以前沒有樣式，是瀏覽器預設的藍色底線字；卡片上的名稱再加粗 */
+/* 清單裡的股票名稱連結（持股明細的表格與卡片）。2026-10-22 以前沒有樣式，是瀏覽器預設的藍色底線字 */
 .stock-name-link {
   color: var(--el-color-primary-dark-2);
   text-decoration: none;
@@ -869,8 +870,9 @@ body.has-bottom-nav-bar .load-failure-notice {
   text-underline-offset: 3px;
 }
 
+/* 卡片上的名稱同指標卡片是黑字，大小與粗細跟標頭走（HoldingsSymbolTable 的 .symbol-table__name，2026-11-14 卡片做法 1） */
 .holdings-card .stock-name-link {
-  font-weight: 600;
+  color: inherit;
 }
 
 /* 配息月曆（/calendar、/holdings/dividends）不畫週六、週日（2026-10-22，使用者：「是不是沒有人六日配息? 那 calendar 能簡化嗎? 爭取手機版本顯示空間」）。
@@ -944,7 +946,7 @@ html .el-calendar-table td.is-selected {
   font-weight: 700;
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .app-calendar-day__today {
     position: absolute;
     width: 1px;

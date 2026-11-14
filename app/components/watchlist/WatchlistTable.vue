@@ -91,6 +91,8 @@ async function save(fields: string[]) {
         :skeleton="skeleton"
         :layout-key="layoutKey"
         :label="label"
+        quiet
+        sticky
         @sort-change="(field, order) => (sort = { field, order })"
         @row-click="symbol => navigateTo(links.rowLink(symbol))"
         @reorder="save"
@@ -109,7 +111,7 @@ async function save(fields: string[]) {
 }
 
 /* 同篩選結果的卡片（ScreenerPageShell 的 .screener-shell__results-card）：門檻 722＝表格換成卡片的 720 加左右框線 2px */
-@container (max-width: 721px) {
+@container not (min-width: 722px) {
   .watchlist-table__card {
     border: 0;
     border-radius: 0;
@@ -125,19 +127,5 @@ async function save(fields: string[]) {
   .watchlist-table__card :deep(.smt-toolbar) {
     padding-inline: 16px;
   }
-}
-</style>
-
-<style>
-/* 工具列裡的欄位選單（SharedColumnSetMenu）打開時會長出卡片（表格只有一兩列時）：這一段疊在後面幾段上面（container-type 讓每一段自成一層），
-   卡片也不裁（SharedTable 的 clip）。原本選單下半截被裁掉、被下一段的工具列蓋住（2026-11-14 持股指標檢視量到，觀察清單同一套）。
-   不寫在 scoped 裡：選單是呼叫端放進來的，帶的是呼叫端的 scope */
-.watchlist-table:has(.column-set-menu.is-open) {
-  position: relative;
-  z-index: 3;
-}
-
-.watchlist-table:has(.column-set-menu.is-open) > .watchlist-table__card {
-  overflow: visible;
 }
 </style>

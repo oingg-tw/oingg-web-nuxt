@@ -395,7 +395,7 @@ const { breadcrumbs } = useStockPageSeo({
 
 /* 手機：三欄擠在 343px 裡每格折好幾行，改成每一種兩行——種類（例子接在後面），下一行是看哪一期（粗）與為什麼。表頭只是看不見，
    報讀照舊有欄名 */
-@media (max-width: 600px) {
+@media not all and (min-width: 768px) {
   .stock-metric-index-page__periods thead {
     position: absolute;
     width: 1px;
@@ -527,7 +527,7 @@ const { breadcrumbs } = useStockPageSeo({
 /* 手機：整列改成兩欄 grid，釘選鈕跨兩列擺右邊。
    改版前這裡只把 table/tr/td 設成 display: block，而 .pin-cell 一條覆寫都沒有，於是那顆
    88×48 的按鈕變成獨立的一整橫列——量到的列高 132px，六成是它造成的。 */
-@media (max-width: 600px) {
+@media not all and (min-width: 768px) {
   :deep(.stock-metric-index-page__links),
   .stock-metric-index-page__links tbody {
     display: block;

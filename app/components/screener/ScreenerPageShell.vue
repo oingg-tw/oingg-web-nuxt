@@ -81,28 +81,9 @@ function focusNewCondition() {
   setupRef.value?.querySelector<HTMLElement>(`[data-slot-id="${slots.at(-1)!.id}"] .condition-pill__value`)?.focus()
 }
 
-// 管理彈窗按「儲存」之後的套用（我的篩選、顯示欄位各一個）：一項做完再做下一項。改名 → 複製 → 刪除 → 排序：複製要在刪除前
-// （原本那一組可能也要刪），刪除要先做完才排序——業務中台 的排序要「全部已存的 id」，還沒刪掉的那一組不能少；刪到目前這一組時，
-// 換選哪一組由各自的 remove 決定。排序裡副本的暫時 id 換成建好的 id，沒建成的拿掉
-interface GroupOps {
-  rename(id: string, name: string): Promise<void> | void
-  remove(id: string): Promise<void> | void
-  reorder(ids: string[]): Promise<void> | void
-  copy(id: string, name: string): Promise<string | null>
-  select(id: string): void
-}
-async function applyChanges({ renames, copies, removals, order }: PresetChanges, ops: GroupOps) {
-  for (const [id, name] of renames) await ops.rename(id, name)
-  const created = new Map<string, string | null>()
-  for (const { id, from, name } of copies) created.set(id, await ops.copy(from, name))
-  for (const id of removals) await ops.remove(id)
-  if (order) await ops.reorder(order.flatMap(id => (created.has(id) ? created.get(id) ?? [] : [id])))
-  // 複製出來的那一組，儲存後立刻切過去（2026-11-04，使用者：「藉由複製新增 條件組合以後 確認以後 要立刻切換到該條件組合」）；
-  // 一次複製好幾組就切到最後一組。欄位組合的管理照同一套
-  const lastCopy = [...created.values()].filter(id => id !== null).at(-1)
-  if (lastCopy) ops.select(lastCopy)
-}
-const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
+// 管理彈窗按「儲存」之後的套用（我的篩選、顯示欄位各一個）：順序與規則在 runPresetChanges（app/utils/preset-changes.ts，觀察清單與持股的
+// 顯示欄位也用）
+const applyPresetChanges = (changes: PresetChanges) => runPresetChanges(changes, {
   rename: props.screener.renamePreset,
   remove: props.screener.removePreset,
   reorder: props.screener.reorderTabs,
@@ -110,7 +91,7 @@ const applyPresetChanges = (changes: PresetChanges) => applyChanges(changes, {
   select: props.screener.selectTab
 })
 // 欄位組合的管理跟欄位設定分開（2026-11-01，使用者：「希望管理 欄位設定 分開」）：「顯示欄位」自己的「管理」，同「我的篩選」
-const applyColumnSetChanges = (changes: PresetChanges) => applyChanges(changes, {
+const applyColumnSetChanges = (changes: PresetChanges) => runPresetChanges(changes, {
   rename: props.screener.renameColumnSet,
   remove: props.screener.removeColumnSet,
   reorder: props.screener.reorderColumnSets,
@@ -382,7 +363,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
    顯示欄位、表格）一張卡片，一眼分出「篩什麼」跟「結果」、視線落在下半部。只在表格版面：手機的結果本來就是一張張卡片，外面再包一張就是
    卡片包卡片，所以窄的時候拿掉。門檻 722＝表格換成卡片的 720（SharedMetricTable）加左右框線 2px。卡片的 overflow: clip（SharedTable）
    不是 hidden：hidden 會變成捲動容器，表頭與橫向捲軸就黏在卡片裡、不黏在畫面上 */
-@container (max-width: 721px) {
+@container not (min-width: 722px) {
   .screener-shell__results-card {
     border: 0;
     border-radius: 0;
@@ -417,14 +398,15 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 }
 
 /* 標題列右邊的控制項（普通股的期別切換）不能跟著檔數文字移動（2026-10-16）：原本排在檔數後面，檔數從「搜尋中…」變成「符合上述條件
-   933 檔」，412 寬就把它擠到第二行，結果區往下 30px（手機 CLS 0.066）。窄的時候一開始就自己一行；560px 起靠右，檔數變長也推不動。
+   933 檔」，412 寬就把它擠到第二行，結果區往下 30px（手機 CLS 0.066）。窄的時候一開始就自己一行；頁面（.screener-shell，視窗減左右邊距
+   32）寬 528px 起靠右，檔數變長也推不動。
    外層是 flex，裡面的 label 才維持原寬（不會整行都點得到） */
 .screener-shell__result-meta {
   display: flex;
   flex-basis: 100%;
 }
 
-@media (min-width: 560px) {
+@container (min-width: 528px) {
   .screener-shell__result-meta {
     flex-basis: auto;
     margin-left: auto;
@@ -460,9 +442,9 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   }
 }
 
-/* 手機（操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，太窄就省略號——
+/* 手機（頁面寬不到 528，即視窗 560 以下；操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，太窄就省略號——
    推不動開關，上面那條 2026-10-16 的位移不會回來 */
-@media (max-width: 559px) {
+@container not (min-width: 528px) {
   .screener-shell__count {
     flex: 1 1 0;
     min-width: 0;

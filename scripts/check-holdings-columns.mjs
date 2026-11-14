@@ -1,10 +1,14 @@
 // 持股明細的兩種檢視（2026-11-14，使用者：「持股管理 也要有地方可以切換顯示的欄位，共用欄位設定」，看過設計圖選方案 A：「A很好，請這樣做」）：
 //   - 標題列有「損益／指標」切換與分享；選了哪一個記在 cookie，重新整理還是那一個
-//   - 損益：一張持股表、全部類別一起；寬螢幕名稱下面一行是代號與類別（00878・ETF），「明細」是無框文字鈕；1280、1440 都放得下、不左右捲；
-//     這個檢視不問指標（不呼叫 /etf-screener）
+//   - 損益：一張持股表、全部類別一起；寬螢幕名稱下面一行是代號與類別（00878・ETF），「明細」是無框文字鈕；市值下面是股數、損益下面是
+//     報酬率（2026-11-14「合併成兩行的格子」）；這個檢視不問指標（不呼叫 /etf-screener）
+//   - 損益與指標同一條斷點（使用者：「「損益」和「指標」我認為可以用同樣斷點」）：持股明細這一塊 720 起兩個都是表格、719 兩個都是卡片；
+//     720 的損益表也放得下、不左右捲
 //   - 指標：每一類一段，表格同觀察清單（代號、名稱、那一類的欄位組合）；選單換組合＝那一類的預設；欄位設定有組合就改那一組，基本欄位就新增
 //     一組「持股欄位」並設成預設
-//   - 手機：損益是持股自己的卡片，指標是篩選的卡片；沒有橫向捲動
+//   - 手機：損益是持股自己的卡片，指標是篩選的卡片；沒有橫向捲動。2026-11-14 的手機整理：總覽每一列左右（名稱左、金額右）、未計入收成一行、
+//     頁首兩顆並排；持股明細的標題列照方案 B（標題、切換、沒有框的分享同一行）；排序照方案 A：損益與指標都是一行字加方向、沒有框，
+//     寬螢幕損益的表頭打開指標同一個選單（只有排序）
 //   - 重新整理時骨架跟資料一樣高（兩種檢視、寬窄都量；名稱長的 ETF 00878 也在）；登入後沒有 hydration 警告；axe 亮、暗
 // 持股、交易紀錄、欄位組合、方案是攔截的假資料（寫入記下來比對，其他寫入一律擋下），指標數字讀真的本機業務中台。
 //
@@ -112,15 +116,18 @@ const open = async (ctx) => {
 const shot = (page, name) => (dir ? page.screenshot({ path: `${dir}/holdings-columns-${name}.png`, fullPage: true }) : null)
 const axe = async (page, include) => (await new AxeBuilder({ page }).include(include).analyze()).violations.map(v => `${v.id}(${v.nodes.length})`).join(',') || '0'
 const sectionOf = (page, label) => page.locator(`.holdings-kind[aria-label="${label}"]`)
-const pnlHeaders = page => page.locator('.view-table .el-table__header-wrapper thead th:not(.symbol-table__expand-col)').allInnerTexts().then(list => list.map(text => text.trim()))
+// 表頭按鈕後面藏著給讀屏的排序狀態（「，由大到小排序中」），只比欄名
+// 一顆表頭按鈕一個欄名（兩行的格子是同一格兩顆）；按鈕後面藏著排序狀態「，由大到小排序中」
+const pnlHeaders = page => page.locator('.view-table .el-table__header-wrapper thead .symbol-table__head').allInnerTexts().then(list => list.map(text => text.split('，')[0].trim()))
 const metricHeaders = section => section.locator('.smt-table-view .el-table__header-wrapper thead th').allInnerTexts().then(list => list.map(text => text.trim()))
 const metricCell = async (section, symbol, header) => {
   const headers = await metricHeaders(section)
   return (await section.locator('.smt-table-view .el-table__body tr.el-table__row', { hasText: symbol }).locator('td').nth(headers.findIndex(text => text.startsWith(header))).innerText()).trim()
 }
+// 顯示欄位同篩選的下拉（ScreenerPresetSelect，2026-11-14「欄位組合也比照確保ux一致性」）
 const pick = async (page, section, name) => {
-  await section.locator('.column-set-menu__button').click()
-  await section.locator('.column-set-menu__panel').getByRole('button', { name, exact: true }).click()
+  await section.locator('.screener-preset-select__select').click()
+  await page.locator('.el-select-dropdown__item:visible', { hasText: name }).first().click()
   await page.waitForTimeout(2000)
 }
 const saveWithout = async (page, section, column) => {
@@ -131,7 +138,23 @@ const saveWithout = async (page, section, column) => {
   await dialog.getByRole('button', { name: '儲存' }).click()
   await page.waitForTimeout(2000)
 }
-const HOLDING_HEADERS = ['名稱', '股數', '市值', '今日漲跌', '未實現損益', '報酬率', '預估年股利']
+const HOLDING_HEADERS = ['名稱', '市值', '股數', '今日漲跌', '未實現損益', '報酬率', '預估年股利']
+// 表頭黏在頁首下面，同篩選（2026-11-14「為什麼股票篩選表格可以貼頂表頭 但是 持股明細表格沒有貼頂」）：捲到表格裡 40px，量表頭離頁首下緣多遠。
+// 量的時候視窗矮一點：四檔的頁面在 900 高時捲不到那麼深
+const stuckGap = async (page, selector) => {
+  const size = page.viewportSize()
+  await page.setViewportSize({ width: size.width, height: 420 })
+  const gap = await page.evaluate(async (sel) => {
+    const table = document.querySelector(sel)
+    const root = getComputedStyle(document.documentElement)
+    const top = (parseFloat(root.getPropertyValue('--app-header-height')) || 0) + (parseFloat(root.getPropertyValue('--app-banner-height')) || 0)
+    window.scrollTo(0, table.getBoundingClientRect().top + window.scrollY - top + 40)
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    return Math.round(table.querySelector('.el-table__header-wrapper').getBoundingClientRect().top - top)
+  }, selector)
+  await page.setViewportSize(size)
+  return gap
+}
 
 console.log('損益（1440，預設）')
 {
@@ -155,6 +178,17 @@ console.log('損益（1440，預設）')
   check(state.etfReads === 0, `損益檢視不問指標（/etf-screener ${state.etfReads} 次）`)
   await shot(page, 'pnl-1440')
   check(await axe(page, '.holdings-page__list-head, .view-table') === '0', 'axe（損益）')
+  // 方案 A（2026-11-14）：點表頭打開指標檢視同一個選單，只有排序；選了表格照著排（代號由大到小：2881A 在最前面）
+  const nameHead = page.locator('.view-table .symbol-table__head', { hasText: '名稱' })
+  await nameHead.click()
+  const menuItems = (await page.locator('[role="menu"] [role="menuitem"]:visible').allInnerTexts()).map(text => text.replace(/\s+/g, ''))
+  await page.locator('[role="menu"] [role="menuitem"]:visible', { hasText: '由大到小' }).click()
+  await page.waitForTimeout(300)
+  const firstRow = (await page.locator('.view-table .el-table__body tr.el-table__row').first().innerText()).replace(/\s+/g, ' ')
+  check(menuItems.join('、') === '↑由小到大、↓由大到小' && firstRow.includes('2881A') && (await nameHead.innerText()).includes('由大到小排序中'), `表頭選單只有排序，選了照著排（${menuItems.join('、')}；第一列 ${firstRow.slice(0, 20)}）`)
+  const pnlGap = await stuckGap(page, '.view-table')
+  check(pnlGap === 0, `損益：捲到表格中段，表頭黏在頁首下面（差 ${pnlGap}px）`)
+  await page.evaluate(() => window.scrollTo(0, 0))
 
   console.log('切到指標')
   await page.locator('.el-radio-button', { hasText: '指標' }).click()
@@ -170,7 +204,11 @@ console.log('損益（1440，預設）')
   const gm = await metricCell(common, '2330', '毛利率')
   check(/\d/.test(pe) && gm.endsWith('%'), `指標有值：本益比 ${pe}、毛利率 ${gm}`)
   check(state.etfReads > 0, '切到指標才問 ETF 的數字')
-  check(await common.locator('.column-set-menu__button').getAttribute('aria-label') === '普通股的欄位：估值兩欄', '分段時念出是哪一類的欄位')
+  // 每一類一列顯示欄位，同普通股篩選：下拉寫著那一組，旁邊是＋新增、管理、欄位設定
+  check((await common.locator('.screener-preset-select__select').innerText()).trim() === '估值兩欄' && await common.getByRole('button', { name: '管理顯示欄位' }).isVisible() && await common.getByRole('button', { name: '新增欄位組合' }).isVisible() && await common.locator('.smt-toolbar__settings').isVisible(), '顯示欄位同篩選：下拉、新增、管理、欄位設定')
+  const metricsGap = await stuckGap(page, '.holdings-kind[aria-label="ETF"] .smt-table-view')
+  check(metricsGap === 0, `指標：捲到表格中段，表頭黏在頁首下面（差 ${metricsGap}px）`)
+  await page.evaluate(() => window.scrollTo(0, 0))
   await shot(page, 'metrics-1440')
   check(await axe(page, '.holdings-page__metrics') === '0', 'axe（指標）')
 
@@ -195,13 +233,33 @@ console.log('損益（1440，預設）')
   await darkContext.close()
 }
 
-console.log('損益（1280）')
+console.log('損益與指標同一條斷點（持股明細這一塊 720）')
 {
-  const ctx = await newContext(1280, newState(MIXED))
-  const page = await open(ctx)
-  const overflow = await page.evaluate(() => { const wrap = document.querySelector('.view-table .el-scrollbar__wrap'); return wrap.scrollWidth - wrap.clientWidth })
-  check(overflow <= 0, `表格最窄的寬度也放得下（${overflow}）`)
-  await ctx.close()
+  // 直放沒有側欄：視窗寬跟這一塊一比一，調到剛好 720／719
+  const listWidth = page => page.evaluate(() => Math.round(document.querySelector('.holdings-page__list-head').getBoundingClientRect().width))
+  const fitTo = async (page, width) => {
+    for (let i = 0; i < 3 && await listWidth(page) !== width; i++) {
+      const size = page.viewportSize()
+      await page.setViewportSize({ width: size.width + width - await listWidth(page), height: size.height })
+      await page.waitForTimeout(400)
+    }
+    return listWidth(page)
+  }
+  const visible = (page, selector) => page.evaluate(sel => [...document.querySelectorAll(sel)].some(element => element.offsetParent), selector)
+  for (const view of ['pnl', 'metrics']) {
+    const ctx = await newContext(800, newState(MIXED), { view })
+    const page = await open(ctx)
+    const table = view === 'pnl' ? '.view-table' : '.smt-table-view'
+    const wide = await fitTo(page, 720)
+    check(wide === 720 && await visible(page, table), `${view}：720 是表格（${wide}）`)
+    if (view === 'pnl') {
+      const overflow = await page.evaluate(() => { const wrap = document.querySelector('.view-table .el-scrollbar__wrap'); return wrap.scrollWidth - wrap.clientWidth })
+      check(overflow <= 0, `pnl：720 放得下、不左右捲（${overflow}）`)
+    }
+    const narrow = await fitTo(page, 719)
+    check(narrow === 719 && !await visible(page, table), `${view}：719 是卡片（${narrow}）`)
+    await ctx.close()
+  }
 }
 
 console.log('只有普通股（指標）')
@@ -209,7 +267,7 @@ console.log('只有普通股（指標）')
   const ctx = await newContext(1440, newState(['2330', '2317']), { view: 'metrics' })
   const page = await open(ctx)
   check(await page.locator('.holdings-kind').count() === 1 && await page.locator('.holdings-kind__title').count() === 0, '一段、沒有標題')
-  check(await page.locator('.column-set-menu__button').getAttribute('aria-label') === null, '只有一段時念按鈕上的字')
+  check(await page.locator('.screener-preset-select').count() === 1, '只有一組顯示欄位')
   await ctx.close()
 }
 
@@ -219,9 +277,63 @@ console.log('手機（375）')
   const page = await open(ctx)
   check(await page.locator('.symbol-table__card:visible').count() === 4, '損益：持股卡片')
   check(await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth) <= 0, '損益：沒有橫向捲動')
+  // 手機整理（2026-11-14）：總覽每一列左右（使用者：「可以跟電腦版一樣左右印刷嗎?」選了「每一列左右」）——名稱同一條左線、金額同一條右線、
+  // 名稱跟它的金額同一行；未計入收成一行、頁首兩顆並排；持股明細的標題列照方案 B：375 寬不到 10 檔時標題、切換、分享同一行，
+  // 分享是沒有框的一行字、靠右；排序照方案 A 是一行字加方向
+  const phone = await page.evaluate(() => {
+    const box = el => el.getBoundingClientRect()
+    const label = text => [...document.querySelectorAll('.holdings-overview__row dt, .holdings-overview__yield-label')].find(el => el.textContent.trim() === text)
+    const amounts = [...document.querySelectorAll('.holdings-overview__row dd:first-of-type')]
+    const midOf = el => box(el).top + box(el).height / 2
+    const buttons = [...document.querySelectorAll('.holdings-page__actions .el-button')].map(box)
+    const excluded = [...document.querySelectorAll('.holdings-page__excluded')].find(el => el.offsetParent !== null)
+    const head = document.querySelector('.holdings-page__list-head')
+    const share = head.querySelector('.shared-share__button')
+    const mid = el => Math.round(box(el).top + box(el).height / 2)
+    const sort = document.querySelector('.symbol-table__sort')
+    return {
+      lefts: ['未實現損益', '今日漲跌', '預估年度股利', '殖利率'].map(text => Math.round(box(label(text)).left)),
+      rights: amounts.map(el => Math.round(box(el).right)),
+      sameLine: Math.round(Math.abs(midOf(label('未實現損益')) - midOf(amounts[0]))),
+      buttons: buttons.map(rect => `${Math.round(rect.top)}+${Math.round(rect.width)}`),
+      excluded: excluded && `${excluded.tagName} ${excluded.querySelector('summary')?.textContent.trim()} ${excluded.open}`,
+      oneRow: [head.querySelector('.holdings-page__section-title'), head.querySelector('.holdings-page__view'), share].map(mid).every((value, _, all) => Math.abs(value - all[0]) <= 2),
+      shareRight: Math.round(box(head).right - box(share).right),
+      shareFrame: getComputedStyle(share).borderTopColor,
+      sortText: sort.querySelector('span').textContent.trim(),
+      direction: document.querySelector('.symbol-table__direction').textContent.replace('排序方向：', '').trim(),
+      sortGap: Math.round(box(sort).top - box(head).bottom)
+    }
+  })
+  check(new Set(phone.lefts).size === 1 && new Set(phone.rights).size === 1 && phone.sameLine <= 4, `總覽每一列左右：名稱同一條左線、金額同一條右線、同一行（${phone.lefts.join('／')}；${phone.rights.join('／')}；差 ${phone.sameLine}px）`)
+  check(phone.buttons.length === 2 && phone.buttons[0] === phone.buttons[1], `頁首兩顆同一行、一樣寬（${phone.buttons.join('／')}）`)
+  check(phone.excluded === 'DETAILS 未計入：4 檔無股利資料 false', `未計入收成一行（${phone.excluded}）`)
+  await page.locator('.holdings-page__excluded summary:visible').click()
+  check(/2330/.test(await page.locator('.holdings-page__excluded:visible p').innerText()), '打開未計入：列出是哪幾檔')
+  check(phone.oneRow && phone.shareRight === 0 && phone.shareFrame === 'rgba(0, 0, 0, 0)', `標題、切換、分享同一行，分享靠右、沒有框（${phone.oneRow}／${phone.shareRight}px／${phone.shareFrame}）`)
+  check(phone.sortText === '排序：市值' && phone.direction === '大到小' && phone.sortGap === 4, `排序是一行字加方向、貼著標題列（${phone.sortText}・${phone.direction}，${phone.sortGap}px）`)
+  // 字是畫的、select 透明疊在上面：換排序照樣是原生選單；換欄時方向回到那一欄的預設（代號小到大），方向鍵再反過來
+  await page.getByLabel('排序', { exact: true }).selectOption({ label: '代號' })
+  const firstCard = () => page.locator('.symbol-table__card:visible').first().innerText()
+  const directionText = () => page.locator('.symbol-table__direction').innerText().then(text => text.replace('排序方向：', '').trim())
+  check(await page.locator('.symbol-table__sort span').first().innerText() === '排序：代號' && await directionText() === '小到大' && (await firstCard()).includes('0050'), '換排序：字跟著換、代號小到大')
+  await page.locator('.symbol-table__direction').click()
+  check(await directionText() === '大到小' && (await firstCard()).includes('2881A'), '方向鍵：代號大到小，2881A 在最前面')
   await page.locator('.el-radio-button', { hasText: '指標' }).click()
   await settled(page)
   check(await page.locator('.holdings-kind .smt-card:visible').count() === 4 && await page.locator('.holdings-kind .smt-table-view:visible').count() === 0, '指標：篩選的卡片')
+  // 方案 A：工具列也是一行字——「排序：預設順序」、方向、「欄位 N 個」同一排，欄位組合的選單沒有框（同損益的排序）
+  const quiet = await page.evaluate(() => {
+    const section = document.querySelector('.holdings-kind')
+    const mid = el => { const rect = el.getBoundingClientRect(); return Math.round(rect.top + rect.height / 2) }
+    const [sort, direction, columnsOpen] = ['.smt-sort', '.smt-direction', '.smt-columns-open'].map(selector => section.querySelector(selector))
+    return {
+      text: section.querySelector('.smt-sort__text')?.textContent.trim(),
+      oneRow: [direction, columnsOpen].every(el => Math.abs(mid(el) - mid(sort)) <= 2),
+      frames: [direction, columnsOpen].map(el => getComputedStyle(el).borderTopColor)
+    }
+  })
+  check(quiet.text === '排序：預設順序' && quiet.oneRow && quiet.frames.every(color => color === 'rgba(0, 0, 0, 0)'), `指標的工具列是一行字（${quiet.text}；同一排 ${quiet.oneRow}；框 ${quiet.frames.join('／')}）`)
   check(await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth) <= 0, '指標：沒有橫向捲動')
   await shot(page, 'metrics-375')
   check(await axe(page, '.holdings-page__metrics') === '0', 'axe（指標卡片）')

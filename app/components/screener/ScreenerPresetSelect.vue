@@ -53,17 +53,24 @@ function optionLabel(item: PresetSelectItem) {
   <div class="screener-preset-select" :class="{ 'screener-preset-select--compact': compactLabel }" role="group" :aria-labelledby="labelId">
     <span :id="labelId" class="screener-preset-select__label">{{ label }}</span>
     <!-- aria-label（不是 aria-labelledby）：Element Plus 只把 aria-label 轉給裡面真正的輸入框，aria-labelledby 留在外框（2026-10-15 axe 量到） -->
-    <el-select
-      :model-value="activeItem?.id ?? ''"
-      class="screener-preset-select__select"
-      :aria-label="label"
-      @update:model-value="(id: string) => { activeId = id }"
-    >
-      <template v-if="compactLabel" #prefix>
-        <span class="screener-preset-select__prefix" aria-hidden="true">{{ compactLabel }}</span>
+    <!-- ClientOnly：觀察清單與持股的顯示欄位在伺服器就畫（會員頁的第一個畫面），el-select 的 id 與彈出層的 z-index 在伺服器與瀏覽器
+         順序不同，hydration 不一致（2026-11-14 量到）。接手前是同大小的佔位（.select-placeholder，觸控時同樣 44px），寫著現在那一組 -->
+    <ClientOnly>
+      <el-select
+        :model-value="activeItem?.id ?? ''"
+        class="screener-preset-select__select"
+        :aria-label="label"
+        @update:model-value="(id: string) => { activeId = id }"
+      >
+        <template v-if="compactLabel" #prefix>
+          <span class="screener-preset-select__prefix" aria-hidden="true">{{ compactLabel }}</span>
+        </template>
+        <el-option v-for="item in items" :key="item.id" :label="optionLabel(item)" :value="item.id" />
+      </el-select>
+      <template #fallback>
+        <span class="select-placeholder screener-preset-select__placeholder" aria-hidden="true"><span v-if="compactLabel" class="screener-preset-select__prefix">{{ compactLabel }}</span>{{ activeItem ? optionLabel(activeItem) : '' }}</span>
       </template>
-      <el-option v-for="item in items" :key="item.id" :label="optionLabel(item)" :value="item.id" />
-    </el-select>
+    </ClientOnly>
     <el-button v-if="activeItem?.unsaved && !pickOnly" type="primary" class="screener-preset-select__button screener-preset-select__save" @click="emit('save')">{{ saveLabel }}</el-button>
     <el-button v-if="!pickOnly" class="screener-preset-select__button" :aria-label="addLabel" @click="emit('add', $event.currentTarget as HTMLElement)">＋<span class="screener-preset-select__add-text">新增</span></el-button>
     <el-button v-if="!pickOnly" class="screener-preset-select__button" :aria-label="`管理${label}`" @click="manageOpen = true">管理</el-button>
@@ -72,7 +79,8 @@ function optionLabel(item: PresetSelectItem) {
 </template>
 
 <style scoped>
-/* 手機：標籤、選單、按鈕各一行；560px 起排成一行 */
+/* 手機：標籤、選單、按鈕各一行；外框寬 528px 起排成一行。外框是最近的容器：設定區（ScreenerPageShell）或結果表（SharedMetricTable，
+   觀察清單與持股的指標也是），手機上都是視窗減左右邊距 32 */
 .screener-preset-select {
   display: flex;
   flex-wrap: wrap;
@@ -88,7 +96,9 @@ function optionLabel(item: PresetSelectItem) {
 }
 
 /* 手機：選單獨佔一行（名稱不會被按鈕擠掉），按鈕排在下一行。高度跟全站規則走：滑鼠 32px、觸控 44px（element-plus.css 的 pointer: coarse） */
-.screener-preset-select__select {
+/* 佔位（ClientOnly 接手前）跟選單同一套大小 */
+.screener-preset-select__select,
+.screener-preset-select__placeholder {
   flex: 1 1 100%;
   min-width: 0;
 }
@@ -98,7 +108,7 @@ function optionLabel(item: PresetSelectItem) {
   font-size: 1rem;
 }
 
-@media (min-width: 560px) {
+@container (min-width: 528px) {
   /* 一行就不換行（選單會縮）：這一組放在別人的同一列裡時（設定區、結果表工具列）寬度看內容，而 Chrome 算「會換行」的 flex 容器
      的內容寬度只取最寬的一個子項、不是加總，整組會被擠成標籤／選單／按鈕三行（2026-10-15 量到 276px 寬） */
   .screener-preset-select {
@@ -113,7 +123,8 @@ function optionLabel(item: PresetSelectItem) {
 
   /* width 要寫死：只有 flex-basis 的話，整組靠內容決定寬度時選單只算到它最窄的寬度（箭頭加內距），名稱整個不見（2026-10-15 量到）。
      窄的時候還是可以縮，但不小於 160px */
-  .screener-preset-select__select {
+  .screener-preset-select__select,
+  .screener-preset-select__placeholder {
     flex: 0 1 280px;
     width: 280px;
     min-width: 160px;
@@ -124,9 +135,13 @@ function optionLabel(item: PresetSelectItem) {
   display: none;
   color: var(--el-text-color-secondary);
 }
+
+.screener-preset-select__placeholder {
+  gap: 8px;
+}
 /* compactLabel：外框窄於 720px——結果區（SharedMetricTable，同卡片版面的斷點）或設定區（ScreenerPageShell）——時標籤收進選單框、
-   ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 560px 那段 */
-@container (max-width: 719px) {
+   ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 528px 那段 */
+@container not (min-width: 720px) {
   .screener-preset-select--compact {
     flex: 1 1 auto;
     flex-wrap: wrap;
@@ -144,7 +159,8 @@ function optionLabel(item: PresetSelectItem) {
   }
 
   /* 從 0 長：選單吃掉＋與管理剩下的寬度，不會先佔一塊把＋擠到下一行（字級 120%、360 寬時「＋」原本自己一行） */
-  .screener-preset-select--compact .screener-preset-select__select {
+  .screener-preset-select--compact .screener-preset-select__select,
+  .screener-preset-select--compact .screener-preset-select__placeholder {
     flex: 1 1 0;
     width: auto;
     min-width: 0;

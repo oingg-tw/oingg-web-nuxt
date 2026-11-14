@@ -795,7 +795,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
 }
 
 /* 手機：分隔線不畫（換行之後它會落在行首） */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .columns-toolbar__sep {
     display: none;
   }

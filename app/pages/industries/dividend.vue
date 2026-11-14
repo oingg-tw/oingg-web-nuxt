@@ -370,7 +370,7 @@ const payoutLegend = computed(() => [{
 }
 
 /* 手機只剩三欄，要在 320px 放得下：名稱可以折，數字欄貼著內容靠右（同 IndustryQuadrantTables） */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .industries-payout tbody th {
     white-space: normal;
   }

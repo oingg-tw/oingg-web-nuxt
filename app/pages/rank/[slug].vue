@@ -218,7 +218,7 @@ const { breadcrumbs } = useHubPageSeo({
   color: var(--el-text-color-secondary);
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   /* 表頭的年度自己一行：「2025 年總費用率（%）」一行要 189px，表格多捲 69px */
   .rank-page__year {
     display: block;
@@ -231,7 +231,7 @@ const { breadcrumbs } = useHubPageSeo({
   display: none;
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .rank-page__table,
   .rank-page__filter--wide {
     display: none;

@@ -73,7 +73,7 @@ const chartOption = computed(() => {
   height: 360px;
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .holdings-allocation-chart {
     height: 300px;
   }
@@ -94,7 +94,7 @@ const chartOption = computed(() => {
 }
 
 /* 手機的圓環：外徑 50%、內徑 30%（30 ÷ 50 ＝ 0.6），同 series 的 radius；斷點同 useIsDesktop */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .holdings-allocation-chart__ring {
     height: 50%;
     mask: radial-gradient(circle closest-side, transparent 59.9%, #000 60%);

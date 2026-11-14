@@ -4,7 +4,7 @@
 //   - 顯示欄位：選一組＝那一類的 isDefault，選基本欄位＝清掉；欄位設定：有組合就改那一組，基本欄位就新增一組並設成預設，額度滿了開額度彈窗
 //   - ETF 讀不到時只有 ETF 那一段空著，普通股照常顯示
 //   - 訪客沒有選單，欄位設定是登入；手機是對齊的四欄表、沒有橫向捲動；分享頁同樣分段、不送已經持有
-// 2026-11-07 改版（使用者看過方案頁選 A，再加 B 的「今天」）：每一類的工具收成一顆「欄位」選單（顯示欄位、到篩選管理），
+// 2026-11-07 改版（使用者看過方案頁選 A，再加 B 的「今天」）：每一類的工具收成一顆「欄位」選單（2026-11-14 換成篩選的顯示欄位：下拉＋新增＋管理），
 // 備註與移除收進「編輯」（「今天」那一塊 2026-11-08 拿掉：使用者「觀察清單移除summary」）。
 // 2026-11-11 表格換成篩選的結果表（SharedMetricTable，使用者：「以篩選那邊的表格為主」，電腦版「拿掉，跟篩選一樣」、手機「改成篩選的
 // 卡片」）：欄位設定是表格自己的按鈕，窄的時候是卡片與排序列；河道位置有七格軌道（使用者的例子：淨值比河流圖原本是原始文字），格子連到指標頁
@@ -69,6 +69,17 @@ const mock = (ctx, state) => ctx.route('**/*', async (route) => {
     state.presets[universe].push(created)
     return route.fulfill({ json: { columnPreset: created } })
   }
+  // 管理（2026-11-14 顯示欄位同篩選）：排序與刪除
+  if (p === '/api/core/screener/column-presets/reorder' && m === 'POST') {
+    state.writes.push(`REORDER ${body().ids.join(',')}`)
+    return route.fulfill({ status: 204 })
+  }
+  if (p.startsWith('/api/core/screener/column-presets/') && m === 'DELETE') {
+    const id = p.split('/').at(-1)
+    state.writes.push(`DELETE ${id}`)
+    for (const universe of Object.keys(state.presets)) state.presets[universe] = state.presets[universe].filter(set => set.id !== id)
+    return route.fulfill({ status: 204 })
+  }
   if (p.startsWith('/api/core/screener/column-presets/') && m === 'PATCH') {
     const id = p.split('/').at(-1)
     const patch = body()
@@ -126,12 +137,10 @@ const cellOf = async (section, rowName, header) => {
   const row = section.locator('.smt-table-view .el-table__body tr.el-table__row', { hasText: rowName })
   return (await row.locator('td').nth(headers.findIndex(text => sameHeader(text, header))).innerText()).trim()
 }
-const openMenu = async (section) => {
-  await section.locator('.column-set-menu__button').click()
-  return section.locator('.column-set-menu__panel')
-}
+// 顯示欄位同篩選的下拉（ScreenerPresetSelect，2026-11-14）
 const pick = async (page, section, name) => {
-  await (await openMenu(section)).getByRole('button', { name, exact: true }).click()
+  await section.locator('.screener-preset-select__select').click()
+  await page.locator('.el-select-dropdown__item:visible', { hasText: name }).first().click()
   await page.waitForTimeout(1500)
 }
 const openSettings = section => section.locator('.smt-toolbar__settings').click()
@@ -166,13 +175,9 @@ console.log('混合清單（1440）')
   check(await page.locator('.smt-table-view .smt-actions').count() === 3 && (await headersOf(common)).at(-1) === '操作', '按編輯才有操作欄（備註、移除）')
   await page.getByRole('button', { name: '完成', exact: true }).click()
   check(await page.locator('.smt-table-view .smt-actions').count() === 0, '按完成收起來')
-  // 欄位選單：寫著現在用哪一組；Esc 關掉、焦點回到按鈕
-  const menuButton = common.locator('.column-set-menu__button')
-  check((await menuButton.innerText()).includes('欄位：基本欄位'), `按鈕寫著現在用哪一組（${(await menuButton.innerText()).trim()}）`)
-  await menuButton.click()
-  check(await menuButton.getAttribute('aria-expanded') === 'true' && await common.locator('.column-set-menu__panel').isVisible(), '欄位選單打開')
-  await page.keyboard.press('Escape')
-  check(await menuButton.getAttribute('aria-expanded') === 'false' && await menuButton.evaluate(el => el === document.activeElement), 'Esc 關掉、焦點回到按鈕')
+  // 顯示欄位同篩選（2026-11-14，使用者：「欄位組合也比照確保ux一致性」）：下拉寫著現在那一組，旁邊是＋新增與管理
+  const setSelect = common.locator('.screener-preset-select__select')
+  check((await setSelect.innerText()).trim() === '基本欄位' && await common.getByRole('button', { name: '新增欄位組合' }).isVisible() && await common.getByRole('button', { name: '管理顯示欄位' }).isVisible(), `顯示欄位：下拉寫著現在那一組，旁邊是新增與管理（${(await setSelect.innerText()).trim()}）`)
 
   await pick(page, etf, '看配息與成本')
   check(state.writes.at(-1) === 'PATCH e1 {"isDefault":true}', `選組合＝設成預設（${state.writes.at(-1)}）`)
@@ -201,6 +206,31 @@ console.log('混合清單（1440）')
   await page.waitForTimeout(1500)
   check(state.writes.at(-1) === 'PATCH e1 {"columns":[{"field":"trailing12MonthDistributionYieldPct.snapshot"}]}', `有組合就改那一組（${state.writes.at(-1)}）`)
 
+  // 管理同篩選：改名存進那一組
+  await etf.getByRole('button', { name: '管理顯示欄位' }).click()
+  const manage = page.getByRole('dialog', { name: '管理顯示欄位' })
+  await manage.waitFor({ state: 'visible' })
+  await manage.getByLabel('「看配息與成本」的名稱').fill('配息成本')
+  await manage.getByRole('button', { name: '儲存' }).click()
+  await page.waitForTimeout(1200)
+  check(state.writes.at(-1) === 'PATCH e1 {"name":"配息成本"}' && (await etf.locator('.screener-preset-select__select').innerText()).trim() === '配息成本', `管理：改名存進那一組（${state.writes.at(-1)}）`)
+  // 複製：副本用原本那組的欄位建立、排在它後面、儲存後就用它；刪掉正在用的那一組：換到鄰近的那一組（同篩選頁）
+  const writesBefore = state.writes.length
+  await etf.getByRole('button', { name: '管理顯示欄位' }).click()
+  await manage.waitFor({ state: 'visible' })
+  await manage.getByRole('button', { name: '複製「配息成本」' }).click()
+  await manage.getByRole('button', { name: '儲存' }).click()
+  await page.waitForTimeout(1500)
+  const copied = state.writes.slice(writesBefore).join(' | ')
+  // 原本那組上面剛在欄位設定拿掉折溢價率，副本照它現在的欄位
+  check(copied === 'POST etf 配息成本 的副本 trailing12MonthDistributionYieldPct.snapshot | REORDER e1,new-etf | PATCH new-etf {"isDefault":true}', `管理：複製、排在後面、改用副本（${copied}）`)
+  await etf.getByRole('button', { name: '管理顯示欄位' }).click()
+  await manage.waitFor({ state: 'visible' })
+  await manage.getByRole('button', { name: '刪除「配息成本 的副本」' }).click()
+  await manage.getByRole('button', { name: '儲存' }).click()
+  await page.waitForTimeout(1500)
+  check(state.writes.slice(-2).join(' | ') === 'DELETE new-etf | PATCH e1 {"isDefault":true}' && (await etf.locator('.screener-preset-select__select').innerText()).trim() === '配息成本', `管理：刪掉正在用的那一組，換到鄰近的那一組（${state.writes.slice(-2).join(' | ')}）`)
+
   // 額度滿了：開額度彈窗，表格不變
   state.quotaFull = true
   await openSettings(common)
@@ -210,6 +240,16 @@ console.log('混合清單（1440）')
   await page.waitForTimeout(1200)
   check(await page.locator('.quota-dialog').isVisible(), '額度滿了開額度彈窗')
   check((await headersOf(common)).includes('本益比'), '沒存到，表格不變')
+
+  // ＋新增同篩選：「空白開始」建一組空的並設成預設（欄位之後在欄位設定加）
+  state.quotaFull = false
+  await page.locator('.quota-dialog').getByRole('button', { name: '先不用' }).click()
+  await common.getByRole('button', { name: '新增欄位組合' }).click()
+  const add = page.getByRole('dialog', { name: '新增欄位組合' })
+  await add.waitFor({ state: 'visible' })
+  await add.getByRole('button', { name: '空白開始' }).click()
+  await page.waitForTimeout(1500)
+  check(state.writes.slice(-2).join(' | ') === 'POST common 欄位組合 1  | PATCH new-common {"isDefault":true}' && (await common.locator('.screener-preset-select__select').innerText()).trim() === '欄位組合 1', `新增：空白的一組、設成預設（${state.writes.slice(-2).join(' | ')}）`)
   check(state.blocked.length === 0, `沒有意料外的寫入（${state.blocked.join('、')}）`)
   await ctx.close()
 }
@@ -234,7 +274,7 @@ console.log('只有一種類別')
   await mock(ctx, state)
   const page = await open(ctx, '/watchlist')
   check(await page.locator('.watchlist-section').count() === 1 && await page.locator('.watchlist-section__title').count() === 0, '一段、沒有標題')
-  check(await page.locator('.column-set-menu__button').count() === 1, '一顆欄位選單')
+  check(await page.locator('.screener-preset-select').count() === 1, '一組顯示欄位')
   check(state.etfBodies.length === 0, `清單沒有 ETF 就不問（${state.etfBodies.length} 次）`)
   await ctx.close()
 }

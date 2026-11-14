@@ -48,7 +48,7 @@ const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.la
           <template #header>
             <h3 class="etf-quick-view__title">基本資料</h3>
           </template>
-          <SharedFactList :items="facts" :label="`${shortName}的基本資料`" class="etf-quick-view__facts" />
+          <SharedFactList :items="facts" :label="`${shortName}的基本資料`" />
         </SharedChartCard>
         <EtfFacetChart v-for="facet in chartFacets" :key="facet" :data="data" :facet="facet">
           <template #header>
@@ -74,11 +74,6 @@ const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.la
 
 .etf-quick-view__grid :deep(.shared-chart-card) {
   margin-bottom: 0;
-}
-
-/* 卡片只有格子的三分之一寬：清單固定一欄（SharedFactList 在 768px 以上預設兩欄） */
-.etf-quick-view__facts.fact-list {
-  grid-template-columns: 1fr;
 }
 
 .etf-quick-view__title {

@@ -294,7 +294,7 @@ function save() {
 }
 
 /* 手機滿版（同 SharedMetricColumnPicker）：外框固定是整個畫面，清單或挑指標的內容在裡面捲。sheet 是貼底面板（.condition-panel），不滿版 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .el-dialog.column-settings:not(.column-settings--sheet) {
     --el-dialog-width: 100%;
     height: 100%;

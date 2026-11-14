@@ -133,7 +133,7 @@ function focusSearch() {
 }
 
 /* 平板橫放：桌機版面但寬度不夠放一個像樣的搜尋框，收成按鈕 */
-@media (max-width: 1279px) {
+@media not all and (min-width: 1280px) {
   .app-header-menu__center {
     display: none;
   }
