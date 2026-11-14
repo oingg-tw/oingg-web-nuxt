@@ -67,8 +67,10 @@ const props = withDefaults(defineProps<{
   // 符合條件的總檔數：最後一列寫「已顯示全部 N 檔」
   total?: number
   // 表格跟著整頁捲：表頭黏在頁首下面、橫向捲軸黏在畫面底部（2026-10-15 使用者：「我希望橫向scrollbar可以呈現在第一個畫面…才可以
-  // 把卷軸用滑鼠往右邊拉動」）。原本表格限高一個螢幕、自己上下捲，捲軸在表格底部、第一個畫面看不到，滑鼠在表格上滾輪只捲框裡
-  sticky?: boolean
+  // 把卷軸用滑鼠往右邊拉動」）。原本表格限高一個螢幕、自己上下捲，捲軸在表格底部、第一個畫面看不到，滑鼠在表格上滾輪只捲框裡。
+  // 'head'＝只黏表頭，橫向捲軸照 Element 疊在表格底部（觀察清單、持股的指標：一頁好幾段，黏在底部的捲軸佔 24px、要等表格算完寬度
+  // 才出現，把下一段往下推，2026-11-15 正式建置 768 寬量到 0.007）
+  sticky?: boolean | 'head'
   // 查詢中：遮罩只蓋結果（表格或卡片），不蓋工具列裡的控制項
   loading?: boolean
   // ---- 2026-11-11 觀察清單共用 ----
@@ -763,7 +765,7 @@ watch(() => props.loading, (loading, wasLoading) => {
       :key="tableKey"
       ref="tableRef"
       class="screener-result-table"
-      :class="{ 'screener-result-table--sticky': sticky, 'screener-result-table--first-load': loading && !rows.length }"
+      :class="{ 'screener-result-table--sticky': sticky, 'screener-result-table--sticky-bar': sticky === true, 'screener-result-table--first-load': loading && !rows.length }"
       :data="rows"
       row-key="symbol"
       scrollbar-always-on
@@ -1314,7 +1316,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   bottom: 0;
   width: 32px;
   pointer-events: none;
-  /* 儲存格與黏住的表頭（index + 2）之上、橫向捲軸（sticky 時 index + 4，否則 index + 2）之下 */
+  /* 儲存格與黏住的表頭（index + 2）之上、橫向捲軸（黏在底部時 index + 4，否則 index + 2）之下 */
   z-index: calc(var(--el-table-index) + 3);
   background: linear-gradient(to right, transparent, var(--el-table-bg-color));
 }
@@ -1364,8 +1366,8 @@ watch(() => props.loading, (loading, wasLoading) => {
 /* 橫向捲軸：點擊範圍 24px 高（WCAG 2.5.8），把手看起來 12px（上下各 6px 透明邊框）；不透明的軌道，壓在列上面時看得出是捲軸。
    bottom 讓開手機與平板的底部導覽列（main.css 的 --app-bottom-nav-height，桌機是 0）與 GA 同意橫幅（AppConsentBanner 設的
    --app-consent-height，沒有橫幅時是 0）。margin 對上 el-scrollbar 算把手寬度時
-   扣掉的 4px。沒有超出（is-scrolling-none）時不顯示，不留一條空白帶。 */
-.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal) {
+   扣掉的 4px。沒有超出（is-scrolling-none）時不顯示，不留一條空白帶。sticky 是 'head' 的表格沒有這一段（見 props） */
+.screener-result-table--sticky-bar :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal) {
   position: sticky;
   bottom: calc(var(--app-bottom-nav-height, 0px) + var(--app-consent-height, 0px));
   left: auto;
@@ -1378,7 +1380,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   z-index: calc(var(--el-table-index) + 4);
 }
 
-.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+.screener-result-table--sticky-bar :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
   border-block: 6px solid transparent;
   border-radius: 12px;
   background-clip: padding-box;
@@ -1386,11 +1388,11 @@ watch(() => props.loading, (loading, wasLoading) => {
   opacity: 1;
 }
 
-.screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb:hover) {
+.screener-result-table--sticky-bar :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb:hover) {
   background-color: var(--el-text-color-regular);
 }
 
-.screener-result-table--sticky.is-scrolling-none :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal),
+.screener-result-table--sticky-bar.is-scrolling-none :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal),
 /* 表身不再自己上下捲：直向那條只剩看不見、卻會吃掉最後一欄右緣點擊的軌道 */
 .screener-result-table--sticky :deep(.el-table__body-wrapper .el-scrollbar__bar.is-vertical) {
   display: none;
