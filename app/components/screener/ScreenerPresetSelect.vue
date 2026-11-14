@@ -158,11 +158,14 @@ function optionLabel(item: PresetSelectItem) {
     white-space: nowrap;
   }
 
-  /* 從 0 長：選單吃掉＋與管理剩下的寬度，不會先佔一塊把＋擠到下一行（字級 120%、360 寬時「＋」原本自己一行） */
+  /* 從 7rem 長：選單吃掉＋與管理剩下的寬度，不會先佔一大塊把＋擠到下一行（字級 120%、360 寬時「＋」原本自己一行）。選單與接手前
+     的佔位從同一個寬度起算、不看字：真的選單（Element）把選到的字疊在上面，字不算進它的寬度，佔位的字會算——原本兩邊都從 0 長，
+     佔位想要 215px、選單 116px，觀察清單的骨架在 375 寬被擠到分段標題下一行，接手後跳回同一行（2026-11-15 正式建置量到 0.083）。
+     7rem 比真的選單原本的寬（116px）少一點：375 寬「普通股3 檔」加這一組剛好 343px，留一點餘裕才排得進同一行 */
   .screener-preset-select--compact .screener-preset-select__select,
   .screener-preset-select--compact .screener-preset-select__placeholder {
-    flex: 1 1 0;
-    width: auto;
+    flex: 1 1 auto;
+    width: 7rem;
     min-width: 0;
   }
 
