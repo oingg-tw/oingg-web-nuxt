@@ -16,7 +16,9 @@ const basis = defineModel<'TTM' | 'Q'>('basis', { default: 'TTM' })
 const ROE_SERIES = [
   // 左軸的單位寫在圖例那一列的最左邊；右軸兩條單位不同，名字裡各自寫
   { code: 'roe', name: 'ROE', lineType: 'solid', symbol: 'circle' },
-  { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dashed', symbol: 'triangle' },
+  // 同財報三率最多畫到 ±100%（margin-cap.ts）：3708 處分事業後營收幾乎是零，近四季稅後淨利率 +379%／−487%，跟 ROE 共用的左軸被撐到
+  // ±500%，ROE 的走勢壓成一條線（2026-11-15，使用者：「這個圖表上面已經看不出來 ROE的走勢了」）
+  { code: 'netProfitMargin', name: '稅後淨利率', lineType: 'dashed', symbol: 'triangle', marginCap: true },
   { code: 'assetTurnover', name: '資產週轉率（次）', lineType: 'dotted', symbol: 'rect', axis: 'right', format: dupontTimesText },
   { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'solid', symbol: 'diamond', axis: 'right', format: dupontMultipleText }
 ] as const satisfies readonly LineSeriesSpec[]
