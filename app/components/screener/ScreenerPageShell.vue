@@ -398,14 +398,15 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
 }
 
 /* 標題列右邊的控制項（普通股的期別切換）不能跟著檔數文字移動（2026-10-16）：原本排在檔數後面，檔數從「搜尋中…」變成「符合上述條件
-   933 檔」，412 寬就把它擠到第二行，結果區往下 30px（手機 CLS 0.066）。窄的時候一開始就自己一行；560px 起靠右，檔數變長也推不動。
+   933 檔」，412 寬就把它擠到第二行，結果區往下 30px（手機 CLS 0.066）。窄的時候一開始就自己一行；頁面（.screener-shell，視窗減左右邊距
+   32）寬 528px 起靠右，檔數變長也推不動。
    外層是 flex，裡面的 label 才維持原寬（不會整行都點得到） */
 .screener-shell__result-meta {
   display: flex;
   flex-basis: 100%;
 }
 
-@media (min-width: 560px) {
+@container (min-width: 528px) {
   .screener-shell__result-meta {
     flex-basis: auto;
     margin-left: auto;
@@ -441,9 +442,9 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
   }
 }
 
-/* 手機（操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，太窄就省略號——
+/* 手機（頁面寬不到 528，即視窗 560 以下；操作區方案 A，2026-10-22）：標題、檔數、右邊的開關同一行。檔數只畫「528 檔」（字首照樣念）、吃剩下的寬度，太窄就省略號——
    推不動開關，上面那條 2026-10-16 的位移不會回來 */
-@media (max-width: 559px) {
+@container (max-width: 527.98px) {
   .screener-shell__count {
     flex: 1 1 0;
     min-width: 0;

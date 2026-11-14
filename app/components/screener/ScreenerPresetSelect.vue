@@ -79,7 +79,8 @@ function optionLabel(item: PresetSelectItem) {
 </template>
 
 <style scoped>
-/* 手機：標籤、選單、按鈕各一行；560px 起排成一行 */
+/* 手機：標籤、選單、按鈕各一行；外框寬 528px 起排成一行。外框是最近的容器：設定區（ScreenerPageShell）或結果表（SharedMetricTable，
+   觀察清單與持股的指標也是），手機上都是視窗減左右邊距 32 */
 .screener-preset-select {
   display: flex;
   flex-wrap: wrap;
@@ -107,7 +108,7 @@ function optionLabel(item: PresetSelectItem) {
   font-size: 1rem;
 }
 
-@media (min-width: 560px) {
+@container (min-width: 528px) {
   /* 一行就不換行（選單會縮）：這一組放在別人的同一列裡時（設定區、結果表工具列）寬度看內容，而 Chrome 算「會換行」的 flex 容器
      的內容寬度只取最寬的一個子項、不是加總，整組會被擠成標籤／選單／按鈕三行（2026-10-15 量到 276px 寬） */
   .screener-preset-select {
@@ -139,7 +140,7 @@ function optionLabel(item: PresetSelectItem) {
   gap: 8px;
 }
 /* compactLabel：外框窄於 720px——結果區（SharedMetricTable，同卡片版面的斷點）或設定區（ScreenerPageShell）——時標籤收進選單框、
-   ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 560px 那段 */
+   ＋新增只留＋；標籤只是不畫，照樣替整組命名。兩個 class 的選擇器，蓋過上面 528px 那段 */
 @container (max-width: 719px) {
   .screener-preset-select--compact {
     flex: 1 1 auto;
