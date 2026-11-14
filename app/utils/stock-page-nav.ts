@@ -108,7 +108,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   // dividend-yield-history），不另開指標頁。
   {
     label: '股利',
-    answer: '公司把賺到的錢分多少出來，以及那些錢相對股價、相對盈餘、相對現金流各是多少。',
+    answer: '公司把賺到的錢分多少出來，那些錢相對股價、相對盈餘、相對現金流各是多少，以及增資、買回讓股數怎麼變。',
     children: [
       { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
       { label: '現金流量股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
@@ -116,7 +116,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // 填權填息 2026-09-24（「配股配息底下 新增一個填權填息，把現在現金殖利率的部分資訊搬過去」）
       { label: '填權填息', perspective: '相對股價', to: code => `/stock/${code}/dividend-fill`, hook: '除息之後股價有沒有漲回來。領到股利不等於賺到，差別在這裡' },
       { label: '股東總回饋率', perspective: '相對股價', to: code => `/stock/${code}/shareholder-yield`, hook: '除了現金股利，公司買回自己的股票也算還錢給股東' },
-      { label: '股東回饋組成', perspective: '組成', to: code => `/stock/${code}/shareholder-yield-composition`, hook: '回饋裡多少是現金股利、多少是買回庫藏股' }
+      { label: '股東回饋組成', perspective: '組成', to: code => `/stock/${code}/shareholder-yield-composition`, hook: '回饋裡多少是現金股利、多少是買回庫藏股' },
+      // 2026-11-15：型錄分類是股東政策，放這一組；接在股東回饋組成後面，買回的庫藏股有沒有註銷、增資稀釋多少，看的是同一件事
+      { label: '股本變化年增率', perspective: '成長率', to: code => `/stock/${code}/share-count-growth`, hook: '股數比一年前多還是少：增資、配股變多，註銷庫藏股、減資變少' }
     ]
   },
   // 資本報酬率。四支是同一個問題的四個版本——**用什麼當分母**——放在一起讀者才看得出那是一組刻度，

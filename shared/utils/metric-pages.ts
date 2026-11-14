@@ -163,6 +163,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 現金股利＋買回＝總數（誤差 ≤0.01），更早的期別成分還在回填，未滿兩期成立時組成段不顯示。減資退還現金（capitalReductionYield）
   // 上游還沒出，到了加進來；上游把它併進總數之後、加進來之前，有減資的期別會因為加不起來被跳過，不會畫錯。
   { slug: 'shareholder-yield', metricCode: 'shareholderYield', timeframe: 'FY', topic: '股東總回饋率', titleKeywords: '股東總回饋率配息加買回庫藏股', partMetricCodes: ['cashDividendYield', 'buybackYield'], related: ['shareholder-yield-composition'] },
+  // 股本變化年增率（2026-11-15，使用者：「增加 股本變化年增率」，起因是指標總覽搜「股本」找不到）：本季流通股數對去年同季，型錄只有
+  // 單季、分類是股東政策。接著讀：股本那一塊本身（淨值組成）、買回庫藏股花了多少（股東回饋組成）、股數變了每股盈餘跟不跟得上
+  { slug: 'share-count-growth', metricCode: 'shareCountChangeRate', timeframe: 'Q', topic: '股本變化年增率', titleKeywords: '股本變化年增率流通股數逐季變化', related: ['equity-composition', 'shareholder-yield-composition', 'eps'] },
   // ── 三個換分母的報酬率（2026-09-26）── 使用者問「ROIC 不見了？」，答案是從來沒開過：沒有文案就開不了頁。三支一起要（獲利能力
   // 原本只有 ROE 一個報酬率，看不到「換分母看到不同東西」）；croic 刻意不要（複合運算，見 stock-page-nav.ts 的「更忠於財報」）。
   // roic 的覆蓋率與深度比另外兩支低（抽 41 家：roa 41、roic 32，期數中位 19 vs 13），analysis-ts 查過是結構性的：有效稅率要

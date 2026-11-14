@@ -642,6 +642,15 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     ]
   },
 
+  shareCountChangeRate: {
+    pin: '2907d8298ecf',
+    reading: {
+      up: '流通股數比去年同季多：可能是現金增資、發放股票股利（配股），或可轉換公司債轉成了股票。',
+      down: '流通股數比去年同季少：可能是買回並註銷庫藏股，或是減資（退還股款或彌補虧損）。',
+      compare: '跟自己的過去比：多數公司的股數一年內幾乎不變，明顯跳動就代表那一年有增資、配股或減資。再對照每股盈餘，看獲利有沒有跟上股數。'
+    }
+  },
+
   revenueGrowthRate: {
     pin: '74d254417cdd',
     definition:
