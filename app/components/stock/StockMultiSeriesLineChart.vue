@@ -393,26 +393,35 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <div v-if="loading" class="stock-multi-line-chart app-skeleton" aria-hidden="true" />
-  <div v-else-if="entries.length > 1" class="stock-multi-line-chart">
-    <SharedChartLegend :groups="legendGroups" />
-    <SharedChart class="stock-multi-line-chart__plot" :option="chartOption" autoresize />
+  <div v-if="loading || entries.length > 1" class="stock-multi-line-chart" :aria-hidden="loading || undefined">
+    <div v-if="loading" class="stock-multi-line-chart__frame app-skeleton" />
+    <div v-else class="stock-multi-line-chart__frame">
+      <SharedChartLegend :groups="legendGroups" />
+      <SharedChart class="stock-multi-line-chart__plot" :option="chartOption" autoresize />
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* 總高不變（骨架同高、載入不跳）：圖例占幾列，圖就少幾列的高度。手機加高是因為圖例在窄的時候會折成兩列 */
+/* 總高不變（骨架同高、載入不跳）：圖例占幾列，圖就少幾列的高度。手機加高，因為圖例在窄的時候會折成兩列。看的是圖自己的寬度，不是視窗：
+   門檻 438 是桌機上最窄的圖（速覽格子一欄至少 480，扣框線 2、內距 40），所以桌機照舊 320，比它窄的只有手機直拿（2026-11-14 量的，
+   375 寬 301px 圖例兩行）。手機的 400 是基本樣式，不支援容器查詢的舊瀏覽器照樣是手機的高度。根元素是容器，高度放在裡面那一層
+   （容器查詢改不到容器自己） */
 .stock-multi-line-chart {
+  container-type: inline-size;
+  width: 100%;
+}
+
+.stock-multi-line-chart__frame {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: 100%;
-  height: 320px;
+  height: 400px;
 }
 
-@media (max-width: 600px) {
-  .stock-multi-line-chart {
-    height: 400px;
+@container (min-width: 438px) {
+  .stock-multi-line-chart__frame {
+    height: 320px;
   }
 }
 

@@ -544,6 +544,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 /* 卡片排成格狀（2026-10-07「quick-view 圖表希望grid排列」）；欄寬下限讓窄螢幕自然落回單欄。最多三欄（2026-10-17「quick-view 滿版
    的時候最多給3columns就好」）：下限取 480px 與三分之一寬（扣兩個 gap）較大的那個，再寬也排不出第四欄 */
 .stock-quick-view-page__grid {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(max(min(100%, 480px), (100% - 2 * 16px) / 3), 1fr));
   gap: 16px;
@@ -628,8 +629,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   cursor: pointer;
 }
 
-/* 跟旁邊的圖表卡同一列時才需要撐高 */
-@media (min-width: 720px) {
+/* 格子排得出兩欄時才撐高，跟圖卡排在一起像一個空位（格子寬 ≥976：兩欄各至少 480 加一個 16 的間距）。一欄的時候它自己一列，
+   88px 就夠；原本看視窗 720，720～1000 寬時自己一列卻撐高 */
+@container (min-width: 976px) {
   .stock-quick-view-page__add {
     min-height: 160px;
   }

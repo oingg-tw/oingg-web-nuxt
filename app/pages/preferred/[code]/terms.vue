@@ -47,7 +47,7 @@ const facts = computed<FactItem[]>(() => {
 <template>
   <PreferredStockPage :preferred="preferred" topic="權利條款" :description="answer">
     <StockQuestionSection id="preferred-terms" :question="`${shortName}（${code}）有哪些權利與條款？`" :answer="answer">
-      <SharedFactList :items="facts" :label="`${shortName}的權利與條款`" />
+      <SharedChartCard><SharedFactList :items="facts" :label="`${shortName}的權利與條款`" /></SharedChartCard>
       <p v-if="entry?.issuerCreditRatings.length" class="hub-answer">信用評等是發行公司向公開資訊觀測站申報的各家機構評等原文，是發行公司的，不是這檔特別股本身的評等，也不是本站的評等。</p>
     </StockQuestionSection>
   </PreferredStockPage>

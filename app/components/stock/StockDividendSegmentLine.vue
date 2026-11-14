@@ -443,7 +443,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
     visibility 0s linear var(--settle);
 }
 
-/* 逆行的時序。這三條原本寫在 @media (min-width: 640px) 裡面，所以手機完全沒有逆行時序——按「上一步」
+/* 逆行的時序。這三條原本寫在桌機那條 @media 裡面，所以手機完全沒有逆行時序——按「上一步」
    播的是正向順序（2026-09-25 使用者察覺：「手機版上一步的動畫回撤 這邊順序肯定有問題」）。正向兩邊
    逐幀比對是一致的（拍點差 6ms 內），差的只有回撤，所以從正向看不出來。
    它們只設定 transition 與 --dim-delay，而共用的那份過渡清單同時涵蓋手機的 height 與桌機的
@@ -668,7 +668,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
 /* Desktop turns the track on its side: three columns fill the width（「這些拆解要占滿目前版面」）,
    each floating at the level it cut from, so they step down and the only bar standing on the ground
    is the final 每股股利. */
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   /* ONE moving element per column: the part. Bar and label are its children and ride it, so they
      cannot drift apart — an earlier version transformed the two separately and a percentage
      resolving against each one's own width（132px vs however wide the text is）put them 152px apart
@@ -905,7 +905,7 @@ const figures = computed<string | null>(() => figuresAt(index.value))
   }
 }
 
-@media (scripting: none) and (min-width: 640px) {
+@media (scripting: none) and (min-width: 768px) {
   .segline .segline__viewport {
     height: 220px;
   }
