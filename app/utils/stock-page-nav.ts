@@ -81,7 +81,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     label: '公司',
     answer: '這家公司是什麼、誰在經營、誰在持有、股本多大、誰簽證財報、怎麼聯絡，最近又有哪些新聞。',
     children: [
-      { label: '基本資料', to: code => `/stock/${code}/profile`, hook: '上市多久、董事長是誰、資本額多大' },
+      // 說明寫「股本」：讀者搜的是股本，頁上的問句也是「股本多大」；括號留著「實收資本額」，搜資本額也找得到（2026-11-15，使用者：「指標總覽
+      // 搜尋 股本 找不到任何東西?」）
+      { label: '基本資料', to: code => `/stock/${code}/profile`, hook: '上市多久、董事長是誰、股本（實收資本額）多大' },
       // 持有人結構（2026-11-12，使用者選的盤點第 1 項）：集保股權分散，跟 ETF 的持有人結構同一份資料
       { label: '持有人結構', to: code => `/stock/${code}/holders`, hook: '持有幾張的人各有多少，合起來占多少股份' },
       // 近期新聞（2026-11-12）：不是圖，不能釘，只從這裡進得去
@@ -247,7 +249,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     label: '淨值',
     answer: '股東在這家公司帳面上的家底。它是股東投進來的，還是公司自己賺回來累積的，組成那一頁拆給你看。',
     children: [
-      { label: '淨值組成', perspective: '組成', to: code => `/stock/${code}/equity-composition`, hook: '淨值裡多少是股東投的、多少是公司賺來留下的' },
+      // 股本是這一頁五塊裡的一塊、逐期畫出來，說明寫出名字才搜得到（同上）
+      { label: '淨值組成', perspective: '組成', to: code => `/stock/${code}/equity-composition`, hook: '淨值裡多少是股東投的（股本、資本公積）、多少是公司賺來留下的' },
       { label: '淨值從哪來', perspective: '組成', to: code => `/stock/${code}/equity-source`, hook: '每股淨值一年變多變少，是賺的、配掉的，還是股數變了' },
       { label: '每股淨值', perspective: '每股', to: code => `/stock/${code}/bvps`, hook: '每一股背後有多少帳面家底' },
       { label: '淨值成長年增率', perspective: '成長率', to: code => `/stock/${code}/equity-growth`, hook: '賺來的錢留在公司多少，會累積在這裡' }
