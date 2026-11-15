@@ -16,7 +16,7 @@ const DEVICES = [
   { name: '1440', phone: false, options: { viewport: { width: 1440, height: 900 } } },
   { name: '390 觸控', phone: true, options: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }
 ]
-const CONTROLS = '.screener-preset-select__select, .screener-preset-select__button, .screener-shell__conditions-open, .smt-toolbar__settings, .smt-columns-open, .smt-sort, .smt-direction'
+const CONTROLS = '.screener-preset-select__select, .screener-preset-select__button, .screener-shell__conditions-open, .smt-toolbar__settings, .smt-columns-open, .sort-control__field, .sort-control__direction'
 
 const failures = []
 const fail = (key, text) => failures.push(`${key}  ${text}`)

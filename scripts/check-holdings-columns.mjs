@@ -290,7 +290,8 @@ console.log('手機（375）')
     const head = document.querySelector('.holdings-page__list-head')
     const share = head.querySelector('.shared-share__button')
     const mid = el => Math.round(box(el).top + box(el).height / 2)
-    const sort = document.querySelector('.symbol-table__sort')
+    const sort = document.querySelector('.symbol-table__toolbar')
+    const select = sort.querySelector('.sort-control__select')
     return {
       lefts: ['未實現損益', '今日漲跌', '預估年度股利', '殖利率'].map(text => Math.round(box(label(text)).left)),
       rights: amounts.map(el => Math.round(box(el).right)),
@@ -300,8 +301,9 @@ console.log('手機（375）')
       oneRow: [head.querySelector('.holdings-page__section-title'), head.querySelector('.holdings-page__view'), share].map(mid).every((value, _, all) => Math.abs(value - all[0]) <= 2),
       shareRight: Math.round(box(head).right - box(share).right),
       shareFrame: getComputedStyle(share).borderTopColor,
-      sortText: sort.querySelector('span').textContent.trim(),
-      direction: document.querySelector('.symbol-table__direction').textContent.replace('排序方向：', '').trim(),
+      sortText: `${sort.querySelector('.sort-control__label').textContent.trim()} ${select.selectedOptions[0].textContent.trim()}`,
+      sortFrame: getComputedStyle(select).borderTopColor,
+      direction: sort.querySelector('.sort-control__direction').textContent.replace('排序方向：', '').trim(),
       sortGap: Math.round(box(sort).top - box(head).bottom)
     }
   })
@@ -311,29 +313,33 @@ console.log('手機（375）')
   await page.locator('.holdings-page__excluded summary:visible').click()
   check(/2330/.test(await page.locator('.holdings-page__excluded:visible p').innerText()), '打開未計入：列出是哪幾檔')
   check(phone.oneRow && phone.shareRight === 0 && phone.shareFrame === 'rgba(0, 0, 0, 0)', `標題、切換、分享同一行，分享靠右、沒有框（${phone.oneRow}／${phone.shareRight}px／${phone.shareFrame}）`)
-  check(phone.sortText === '排序：市值' && phone.direction === '大到小' && phone.sortGap === 4, `排序是一行字加方向、貼著標題列（${phone.sortText}・${phone.direction}，${phone.sortGap}px）`)
-  // 字是畫的、select 透明疊在上面：換排序照樣是原生選單；換欄時方向回到那一欄的預設（代號小到大），方向鍵再反過來
+  // C 方案（2026-11-15「比照現行篩選」）：有框的排序下拉加方向鈕（SharedSortControl，同篩選），離標題列 8px
+  check(phone.sortText === '排序 市值' && phone.direction === '大到小' && phone.sortGap === 8 && phone.sortFrame !== 'rgba(0, 0, 0, 0)', `排序是有框的下拉加方向鈕（${phone.sortText}・${phone.direction}，離標題列 ${phone.sortGap}px，框 ${phone.sortFrame}）`)
+  // 換排序是原生選單；換欄時方向回到那一欄的預設（代號小到大），方向鍵再反過來
   await page.getByLabel('排序', { exact: true }).selectOption({ label: '代號' })
   const firstCard = () => page.locator('.symbol-table__card:visible').first().innerText()
-  const directionText = () => page.locator('.symbol-table__direction').innerText().then(text => text.replace('排序方向：', '').trim())
-  check(await page.locator('.symbol-table__sort span').first().innerText() === '排序：代號' && await directionText() === '小到大' && (await firstCard()).includes('0050'), '換排序：字跟著換、代號小到大')
-  await page.locator('.symbol-table__direction').click()
+  const directionButton = page.locator('.symbol-table__toolbar .sort-control__direction')
+  const directionText = () => directionButton.innerText().then(text => text.replace('排序方向：', '').trim())
+  check(await page.locator('.symbol-table__toolbar .sort-control__select').inputValue() === 'symbol' && await directionText() === '小到大' && (await firstCard()).includes('0050'), '換排序：選單跟著換、代號小到大')
+  await directionButton.click()
   check(await directionText() === '大到小' && (await firstCard()).includes('2881A'), '方向鍵：代號大到小，2881A 在最前面')
   await page.locator('.el-radio-button', { hasText: '指標' }).click()
   await settled(page)
   check(await page.locator('.holdings-kind .smt-card:visible').count() === 4 && await page.locator('.holdings-kind .smt-table-view:visible').count() === 0, '指標：篩選的卡片')
-  // 方案 A：工具列也是一行字——「排序：預設順序」、方向、「欄位 N 個」同一排，欄位組合的選單沒有框（同損益的排序）
-  const quiet = await page.evaluate(() => {
+  // C 方案：指標的工具列同篩選結果——類別標題自己一排，下面是欄位選單、整排有框的「欄位 N 個」、有框的排序下拉加方向鈕
+  const framed = await page.evaluate(() => {
     const section = document.querySelector('.holdings-kind')
-    const mid = el => { const rect = el.getBoundingClientRect(); return Math.round(rect.top + rect.height / 2) }
-    const [sort, direction, columnsOpen] = ['.smt-sort', '.smt-direction', '.smt-columns-open'].map(selector => section.querySelector(selector))
+    const box = el => el.getBoundingClientRect()
+    const title = section.querySelector('.holdings-kind__title')
+    const columnSet = section.querySelector('.smt-toolbar__row > :not(.holdings-kind__title)')
+    const [columnsOpen, select, direction] = ['.smt-columns-open', '.sort-control__select', '.sort-control__direction'].map(selector => section.querySelector(selector))
     return {
-      text: section.querySelector('.smt-sort__text')?.textContent.trim(),
-      oneRow: [direction, columnsOpen].every(el => Math.abs(mid(el) - mid(sort)) <= 2),
-      frames: [direction, columnsOpen].map(el => getComputedStyle(el).borderTopColor)
+      titleAlone: Boolean(title) && box(title).bottom <= box(columnSet).top,
+      columnsFull: Math.round(box(columnsOpen).width) === Math.round(box(section.querySelector('.smt-toolbar')).width),
+      frames: [columnsOpen, select, direction].map(el => getComputedStyle(el).borderTopColor)
     }
   })
-  check(quiet.text === '排序：預設順序' && quiet.oneRow && quiet.frames.every(color => color === 'rgba(0, 0, 0, 0)'), `指標的工具列是一行字（${quiet.text}；同一排 ${quiet.oneRow}；框 ${quiet.frames.join('／')}）`)
+  check(framed.titleAlone && framed.columnsFull && framed.frames.every(color => color !== 'rgba(0, 0, 0, 0)'), `指標的工具列同篩選：標題自己一排、「欄位 N 個」整排、都有框（${framed.titleAlone}／${framed.columnsFull}／${framed.frames.join('／')}）`)
   check(await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth) <= 0, '指標：沒有橫向捲動')
   await shot(page, 'metrics-375')
   check(await axe(page, '.holdings-page__metrics') === '0', 'axe（指標卡片）')

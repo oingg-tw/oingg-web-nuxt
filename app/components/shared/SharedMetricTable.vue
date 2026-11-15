@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, Loading } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue'
 import type { TableInstance } from 'element-plus'
 import type { ScreenerResultRow } from '~/composables/screener/useFilterSearch'
 import type { MetricCategory } from '~/composables/screener/useFilterSchema'
@@ -87,9 +87,6 @@ const props = withDefaults(defineProps<{
   layoutKey?: string
   // 這張表叫什麼（左右捲動區的名稱「…，可左右捲動」）：一頁有好幾張時要分得開（觀察清單一類一張，同名是 axe landmark-unique）
   label?: string
-  // 卡片版面的工具列是一行字（2026-11-14 方案 A，使用者：「排序UI的風格請兩邊保持一致」「採用A方案」）：排序與方向沒有框，
-  // 「欄位 N 個」跟排序同一排靠右。持股的指標檢視與觀察清單（WatchlistTable）用；篩選頁照舊有框（11/07「篩選結果的手機不用動」）
-  quiet?: boolean
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -441,8 +438,6 @@ const sortFieldOptions = computed(() => [
   { value: 'name', label: '名稱' },
   ...orderedColumns.value.map(column => ({ value: column.field, label: displayLabel(column) }))
 ])
-// quiet 的那一行字「排序：本益比」
-const sortFieldText = computed(() => sortFieldOptions.value.find(option => option.value === activeSort.value.field)?.label ?? '預設順序')
 
 function sortTable(field: string | null, order: 'ascending' | 'descending' | null) {
   activeSort.value = { field: order ? field : null, order: field ? order : null }
@@ -681,35 +676,27 @@ watch(() => props.loading, (loading, wasLoading) => {
          多欄位的使用手感一樣」；10/31 試過的「檢視」面板同日拿掉）：顯示欄位一列、「欄位 N 個」一列（打開貼底面板，2026-11-09 起按儲存才套用）、
          排序＋方向一列。兩顆都在 DOM 裡、CSS 切換。欄位設定與欄位面板都是拖曳表頭換欄的鍵盤替代（WCAG 2.5.7）。排序選單只在卡片版面
          （容器 <720px）出現：卡片沒有表頭；表格的排序箭頭本身就是可聚焦的 button＋aria-sort，再放一個選單只是重複（2026-10-08 使用者同意） -->
-    <div class="smt-toolbar" :class="{ 'smt-toolbar--quiet': quiet }">
+    <div class="smt-toolbar">
       <div class="smt-toolbar__row">
-        <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移） -->
+        <!-- 呼叫端放在同一列最前面的控制項（篩選頁的「顯示欄位」選單，2026-10-15 跟欄位設定併成一列，結果表往上移；觀察清單與持股
+             在它前面再放類別標題，卡片版面時標題自己一排） -->
         <slot name="toolbar" />
         <!-- el-button：跟同一列「顯示欄位」的＋新增同高（滑鼠 32px、觸控 44px） -->
         <el-button v-if="editable" class="smt-toolbar__settings" @click="openColumnSettings(false)">欄位設定</el-button>
       </div>
-      <el-button v-if="editable && !quiet" class="smt-columns-open" aria-haspopup="dialog" @click="openColumnSettings(true)">
+      <el-button v-if="editable" class="smt-columns-open" aria-haspopup="dialog" @click="openColumnSettings(true)">
         <span>欄位 {{ movableColumns.length }} 個</span><span class="smt-columns-open__chevron" aria-hidden="true" />
       </el-button>
-      <div class="smt-toolbar__row smt-toolbar__sort">
-        <!-- 標籤疊在選單框裡（不攔點擊），名稱照樣是「排序」。quiet：一行字「排序：本益比 ⌄」是畫的，原生 select 透明地疊在上面 -->
-        <label class="smt-sort">
-          <span class="smt-sort__label">排序</span>
-          <span v-if="quiet" class="smt-sort__text" aria-hidden="true">排序：{{ sortFieldText }}<el-icon size="0.875rem"><ArrowDown /></el-icon></span>
-          <select class="app-select smt-sort__select" aria-label="排序" :value="activeSort.field ?? ''" @change="onSortFieldChange(($event.target as HTMLSelectElement).value)">
-            <option value="">預設順序</option>
-            <option v-for="option in sortFieldOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-          </select>
-        </label>
-        <!-- 方向一直在（沒選排序欄位時停用），選了欄位不會多冒出一個選單把版面推開。圖示是全站的排序圖示（沒排序兩個三角形、排序中只留
-             那個方向；使用者 2026-10-21 的規範），不用文字箭頭：↑↓ 的高低跟著字型跑，跟旁邊的字對不齊 -->
-        <el-button class="smt-direction" :disabled="!activeSort.field" @click="applySort(activeSort.field, activeSort.order === 'ascending' ? 'descending' : 'ascending')">
-          <span class="visually-hidden">排序方向：</span><SharedSortIcon class="smt-direction__icon" :state="activeSort.field ? activeSort.order : null" />{{ activeSort.order === 'ascending' ? '小到大' : '大到小' }}
-        </el-button>
-        <el-button v-if="editable && quiet" class="smt-columns-open" aria-haspopup="dialog" @click="openColumnSettings(true)">
-          <span>欄位 {{ movableColumns.length }} 個</span><span class="smt-columns-open__chevron" aria-hidden="true" />
-        </el-button>
-      </div>
+      <!-- 排序列：全站卡片共用的那一個（SharedSortControl） -->
+      <SharedSortControl
+        class="smt-toolbar__sort"
+        :options="sortFieldOptions"
+        :field="activeSort.field"
+        :order="activeSort.order"
+        allow-none
+        @field="onSortFieldChange"
+        @toggle="applySort(activeSort.field, activeSort.order === 'ascending' ? 'descending' : 'ascending')"
+      />
     </div>
     <SharedColumnSettings
       v-if="editable"
@@ -962,7 +949,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   }
 
   .smt-cards-view,
-  /* 兩個 class：同特異性時排在後面的 .smt-toolbar__row { display: flex } 會贏 */
+  /* 兩個 class：蓋過排序列（SharedSortControl）自己的 display: flex */
   .smt-toolbar .smt-toolbar__sort,
   .smt-toolbar .smt-columns-open {
     display: none;
@@ -1016,121 +1003,11 @@ watch(() => props.loading, (loading, wasLoading) => {
   margin: 0;
 }
 
-/* 排序列的高度跟著方向鍵（Element 的尺寸：滑鼠 32px、字級 110／120% 40px、觸控 44px）：原生選單（.app-select）本來固定 44px，
-   用滑鼠看手機版面時比旁邊的按鈕高一截（2026-10-22，使用者：「手機版 排序 小到大 高度不對」）。觸控時全站規則把 select 撐到 44px */
-.smt-toolbar__row.smt-toolbar__sort {
-  align-items: stretch;
-}
-
-.smt-sort {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.smt-sort__label {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  transform: translateY(-50%);
-  color: var(--el-text-color-secondary);
-  pointer-events: none;
-}
-
-/* 左邊留給疊上去的「排序」兩個字 */
-.smt-sort__select {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  padding-left: calc(12px + 2em + 8px);
-}
-
-.smt-direction__icon {
-  margin-right: 6px;
-}
-
-/* quiet（方案 A）只在卡片版面：兩排各 44px、中間不再留距；排序、方向、「欄位 N 個」都是一行字，沒有框，同持股損益卡片上的排序
-   （HoldingsSymbolTable）。表格版面的「欄位設定」照舊有框（2026-11-14 量到這段沒包在卡片版面裡時，它在電腦版變成一行字） */
-.smt-sort__text {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* quiet 的呼叫端（觀察清單、持股）把類別標題放在工具列最前面：放得下就同一行，放不下（手機）換行 */
-.smt-toolbar--quiet .smt-toolbar__row {
-  flex-wrap: wrap;
-}
-
+/* 卡片版面：觀察清單與持股把類別標題放在這一列最前面，標題自己一排（2026-11-15，使用者選 C「比照現行篩選」的設計圖，同篩選結果的
+   標題在欄位選單上面）；標題的 flex-basis: 100% 由呼叫端給。篩選頁沒有標題，這一列照舊一排 */
 @container not (min-width: 720px) {
-  .smt-toolbar--quiet {
-    row-gap: 0;
-  }
-
-  /* 類別標題與欄位選單同一條中線（篩選頁靠上：「存成我的欄位組合」會讓選單那一組變兩行） */
-  .smt-toolbar--quiet .smt-toolbar__row {
-    align-items: center;
-  }
-
-  .smt-toolbar--quiet .smt-toolbar__sort {
-    align-items: center;
-    gap: 20px;
-  }
-
-  .smt-toolbar--quiet .smt-sort {
-    flex: none;
-    align-items: center;
-    min-height: 44px;
-    cursor: pointer;
-  }
-
-  .smt-toolbar--quiet .smt-sort__label {
-    display: none;
-  }
-
-  .smt-toolbar--quiet .smt-sort__select {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    padding: 0;
-    opacity: 0;
-  }
-
-  .smt-toolbar--quiet .smt-sort:has(.smt-sort__select:focus-visible) {
-    outline: 2px solid var(--el-color-primary);
-    outline-offset: 2px;
-    border-radius: var(--el-border-radius-base);
-  }
-
-  .smt-toolbar--quiet .smt-toolbar__row > .el-button {
-    --el-button-bg-color: transparent;
-    --el-button-border-color: transparent;
-    --el-button-hover-bg-color: transparent;
-    --el-button-hover-border-color: transparent;
-    --el-button-active-bg-color: transparent;
-    --el-button-active-border-color: transparent;
-    --el-button-disabled-bg-color: transparent;
-    --el-button-disabled-border-color: transparent;
-    --el-button-text-color: var(--el-text-color-primary);
-    --el-button-hover-text-color: var(--el-text-color-primary);
-    --el-button-active-text-color: var(--el-text-color-primary);
-    min-width: 0;
-    min-height: 44px;
-    padding-inline: 0;
-  }
-
-  /* 「欄位 N 個」打開面板，是動作：主色字（同分享），靠右 */
-  .smt-toolbar--quiet .smt-toolbar__row > .smt-columns-open {
-    --el-button-text-color: var(--el-color-primary);
-    --el-button-hover-text-color: var(--el-color-primary);
-    --el-button-active-text-color: var(--el-color-primary);
-    width: auto;
-    margin-left: auto;
-  }
-
-  .smt-toolbar--quiet .smt-columns-open :deep(> span) {
-    gap: 8px;
+  .smt-toolbar__row {
+    flex-wrap: wrap;
   }
 }
 

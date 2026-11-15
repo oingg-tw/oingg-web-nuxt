@@ -141,20 +141,15 @@ function toggle(symbol: string, event?: MouseEvent) {
 
 <template>
   <div class="symbol-table">
-    <!-- view-card：只跟卡片一起出現（寬螢幕點表頭）。一行字「排序：市值 ⌄」加方向，沒有框（2026-11-14 方案 A，指標檢視同一套）：
-         字與箭頭是畫的，原生 select 透明地疊在上面，點了照樣打開手機自己的選單 -->
-    <div class="symbol-table__toolbar view-card">
-      <label class="symbol-table__sort">
-        <span aria-hidden="true">排序：{{ labelOf(sort.key) }}</span>
-        <el-icon size="0.875rem" aria-hidden="true"><ArrowDown /></el-icon>
-        <select :value="sort.key" class="symbol-table__select" aria-label="排序" @change="pickSort(($event.target as HTMLSelectElement).value)">
-          <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-        </select>
-      </label>
-      <button type="button" class="symbol-table__direction" @click="sort.order = sort.order === 'ascending' ? 'descending' : 'ascending'">
-        <span class="visually-hidden">排序方向：</span><SharedSortIcon :state="sort.order" />{{ sort.order === 'ascending' ? '小到大' : '大到小' }}
-      </button>
-    </div>
+    <!-- view-card：只跟卡片一起出現（寬螢幕點表頭）。全站卡片共用的排序列（SharedSortControl，2026-11-15 使用者選 C「比照現行篩選」） -->
+    <SharedSortControl
+      class="symbol-table__toolbar view-card"
+      :options="sortOptions"
+      :field="sort.key"
+      :order="sort.order"
+      @field="pickSort"
+      @toggle="sort.order = sort.order === 'ascending' ? 'descending' : 'ascending'"
+    />
 
     <!-- 骨架表：el-table 在伺服器不畫列（欄位要 mount 才登記），所以自己畫一張。欄寬照 el-table 的分法、表頭與列高照它的樣式，
          列高靠同一顆「明細」按鈕撐出來（觸控裝置按鈕 44px 時一起變高）。兩張都放在全站表格的卡片裡（SharedTable） -->
@@ -299,40 +294,11 @@ function toggle(symbol: string, event?: MouseEvent) {
   container-type: inline-size;
 }
 
-/* 排序那一行（只在卡片模式）：欄位與方向之間 20px（方案 A 的設計圖） */
+/* 排序列（只在卡片模式）跟下面的卡片隔 12px，同 SharedMetricTable 的工具列 */
 .symbol-table__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 20px;
   margin-bottom: 12px;
 }
 
-/* 名稱是 select 的 aria-label「排序」，值是選到的那一項；焦點框畫在整行字上 */
-.symbol-table__sort {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  cursor: pointer;
-}
-
-/* 方向：一行字，跟排序同一種寫法（沒有框） */
-.symbol-table__direction {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.symbol-table__direction:focus-visible,
 .symbol-table__head:focus-visible {
   outline: 2px solid var(--el-color-primary);
   outline-offset: 2px;
@@ -365,21 +331,6 @@ function toggle(symbol: string, event?: MouseEvent) {
   flex-direction: column;
   align-items: flex-end;
   vertical-align: top;
-}
-
-.symbol-table__select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  opacity: 0;
-  font: inherit;
-  cursor: pointer;
-}
-
-.symbol-table__sort:has(.symbol-table__select:focus-visible) {
-  outline: 2px solid var(--el-color-primary);
-  outline-offset: 2px;
-  border-radius: var(--el-border-radius-base);
 }
 
 /* 卡片的標頭同指標卡片（SharedMetricTable 的 .smt-card__head，2026-11-14 卡片做法 1，使用者選的）：名稱 18px 粗體黑字，

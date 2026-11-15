@@ -904,17 +904,17 @@ async function submit() {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .holdings-page__list-head .holdings-page__section-title {
   margin: 0;
 }
 
-/* 卡片模式的損益表最上面是「排序：…」那一行字，貼著標題列（方案 B：中間 4px）；表格與指標檢視離標題列 12px，自己補 8px。
-   表格什麼時候出現由 HoldingsSymbolTable 自己的寬度決定，所以補在表格上（卡片模式它是 display: none） */
+/* 卡片模式的損益表最上面是有框的排序列，離標題列 8px（上下疊的控制項一律 8px；2026-11-15 C 方案，原本一行字貼著 4px）；
+   表格與指標檢視離標題列 12px，自己補 4px。表格什麼時候出現由 HoldingsSymbolTable 自己的寬度決定，所以補在表格上（卡片模式它是 display: none） */
 .holdings-page__pnl :deep(.view-table) {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 /* 換到下一行時整組撐滿那一行：切換在左、分享在右 */
@@ -962,19 +962,25 @@ async function submit() {
   }
 }
 
-/* 指標檢視：每一類一張卡片（WatchlistTable），段與段之間同觀察清單 32px。類別標題放得下就跟顯示欄位同一行、手機才換行（不強迫自己一行：
-   第一次造訪時標題晚出現，自己一行會把工具列往下推，同觀察清單） */
+/* 指標檢視：每一類一張卡片（WatchlistTable），段與段之間同觀察清單 32px。類別標題電腦版跟顯示欄位同一行，卡片版面自己一排
+   （2026-11-15 C 方案，同觀察清單的分段標題） */
 .holdings-page__metrics {
   display: flex;
   flex-direction: column;
   gap: 32px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .holdings-kind__title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
+}
+
+@container not (min-width: 720px) {
+  .holdings-kind__title {
+    flex-basis: 100%;
+  }
 }
 
 .holdings-kind__count {

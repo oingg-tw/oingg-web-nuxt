@@ -91,7 +91,6 @@ async function save(fields: string[]) {
         :skeleton="skeleton"
         :layout-key="layoutKey"
         :label="label"
-        quiet
         sticky="head"
         @sort-change="(field, order) => (sort = { field, order })"
         @row-click="symbol => navigateTo(links.rowLink(symbol))"

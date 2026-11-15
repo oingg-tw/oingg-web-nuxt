@@ -570,7 +570,7 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
 
     // 排序選單：選「本益比」→ 後端排序（多一次 POST）。方向鍵一直在：沒選排序時停用，選了本益比是小到大（估值倍數的第一下），
     // 按一下換成大到小、再打一次後端
-    const direction = m.locator('.smt-direction')
+    const direction = m.locator('.sort-control__direction')
     expect('手機', '沒選排序時方向鍵停用', await direction.isDisabled())
     const requestsBefore = upstream.length
     await m.getByRole('combobox', { name: '排序', exact: true }).selectOption({ label: '本益比' })

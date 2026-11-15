@@ -376,12 +376,19 @@ async function submitNote() {
   gap: 32px;
 }
 
-/* 分段標題放得下就跟顯示欄位、欄位設定同一行，手機才換行。不強迫自己一行：第一次造訪時資料到了才知道有幾類、標題才出現，
-   自己一行會多一行把工具列往下推（2026-11-14 check-share-links 量到 CLS 0.0063） */
+/* 分段標題：電腦版跟顯示欄位、欄位設定同一行；卡片版面（表格容器不到 720px）自己一排，下面才是欄位、新增、管理（2026-11-15，
+   使用者：「應該欄位 + 管理是自己一個row才對」，C 方案比照篩選結果的標題；同一排時 390 寬把組合名稱擠成「基本…」）。
+   骨架的段數照上次（useLayoutHint），重新整理不會跳；第一次造訪資料到了才知道有幾類，可能跳一次 */
 .watchlist-section__title {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
+}
+
+@container not (min-width: 720px) {
+  .watchlist-section__title {
+    flex-basis: 100%;
+  }
 }
 
 .watchlist-section__count {
