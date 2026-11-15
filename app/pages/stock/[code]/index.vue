@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bottom, Check, Delete, Plus, Top } from '@element-plus/icons-vue'
+import { Bottom, Check, Delete, Plus, Search, Top } from '@element-plus/icons-vue'
 import type { MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
 import type { StockMonthlyRevenuePageResponse } from '#shared/types/stock-monthly-revenue-page'
@@ -218,6 +218,19 @@ const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
 const pickerGroups = STOCK_METRIC_INDEX
   .map(group => ({ label: group.label, children: (group.children ?? []).filter(link => hasPinnableChart(slugOf(link))) }))
   .filter(group => group.children.length)
+// 搜尋（2026-11-15，使用者：「加入指標彈窗 這邊要放搜尋欄位」）：名稱裡有就列，沒有的分組整組不畫；比對同篩選挑指標（searchKey：全形、
+// 大小寫、臺／台）。每次打開清空
+const pickerQuery = ref('')
+const shownPickerGroups = computed(() => {
+  const query = searchKey(pickerQuery.value)
+  if (!query) return pickerGroups
+  return pickerGroups
+    .map(group => ({ ...group, children: group.children.filter(link => searchKey(link.label).includes(query)) }))
+    .filter(group => group.children.length)
+})
+watch(pickerOpen, (open) => {
+  if (open) pickerQuery.value = ''
+})
 
 // 河流圖與互動卡片自己讀資料；其餘的圖跟它那一頁讀同一支端點（Nitro 快取的同一份），有釘那一種才抓。以 kind 為鍵：
 // metric-pages.ts 新增一種 kind 而這裡漏接，typecheck 會報。配股配息 2026-10-15 起畫這檔自己的殖利率走勢（全市場分布留在那一頁）
@@ -447,10 +460,19 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         </button>
         </div>
         <el-dialog v-model="pickerOpen" title="加入指標" width="min(720px, 92vw)">
+          <!-- 搜尋框同篩選挑指標（ScreenerIndicatorPickerBody 的 .indicator-dialog__search） -->
+          <el-input v-model="pickerQuery" placeholder="搜尋指標名稱" aria-label="搜尋指標名稱" clearable class="stock-quick-view-page__picker-search">
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
           <p class="stock-quick-view-page__picker-status" aria-live="polite">
             已加入 {{ pinnedSlugs.length }} / {{ PINNED_METRIC_LIMIT }} 個{{ isFull ? '，已到上限，先取消一個才能再加' : '' }}
           </p>
-          <section v-for="group in pickerGroups" :key="group.label" class="stock-quick-view-page__picker-group">
+          <div v-if="!shownPickerGroups.length" role="status">
+            <el-empty description="沒有符合的指標" :image-size="60" />
+          </div>
+          <section v-for="group in shownPickerGroups" :key="group.label" class="stock-quick-view-page__picker-group">
             <h3 class="stock-quick-view-page__picker-title">{{ group.label }}</h3>
             <ul class="stock-quick-view-page__picker-list">
               <li v-for="link in group.children" :key="slugOf(link)">
@@ -640,6 +662,19 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 .stock-quick-view-page__add:hover {
   border-color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
+}
+
+/* 同篩選挑指標的搜尋框：16px 字（iOS 點了不放大）、44px 觸控高度 */
+.stock-quick-view-page__picker-search {
+  margin-bottom: 12px;
+}
+
+.stock-quick-view-page__picker-search :deep(.el-input__inner) {
+  font-size: 1rem;
+}
+
+.stock-quick-view-page__picker-search :deep(.el-input__wrapper) {
+  min-height: 44px;
 }
 
 .stock-quick-view-page__picker-status {
