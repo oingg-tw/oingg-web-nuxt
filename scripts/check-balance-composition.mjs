@@ -31,6 +31,19 @@ assert.equal(pct(result.noncurrent.propertyPlantEquipment), 45.89)
 const sum = parts => Object.values(parts).reduce((a, b) => a + b, 0)
 assert.equal(sum(result.current), result.currentAssets)
 assert.equal(sum(result.noncurrent), result.noncurrentAssets)
+// 合約資產從「其他」拆出來（2026-11-15）：2535 達欣工 2026 Q3（上游原值，千元）。期望值是數據中台同一期的 contractAssetsToAssets 與
+// otherCurrentAssetsToAssets（v2，扣掉合約資產）
+const daxin = assetCompositionOf({
+  assets: 31218702, current_assets: 28664718, noncurrent_assets: 2553984,
+  cash_and_cash_equivalents: 5775277, current_financial_assets_at_amortised_cost: 248110,
+  current_financial_assets_at_fair_value_through_profit_or_loss: 1701964, other_current_financial_assets: 1337417,
+  notes_receivable_net: 7060, accounts_receivable_net: 2037272, inventories: 8757679, current_contract_assets: 7241384
+})
+assert.ok(daxin)
+const daxinPct = value => Math.round((value / daxin.totalAssets) * 10000) / 100
+assert.equal(daxinPct(daxin.current.contractAssets), 23.2)
+assert.equal(daxinPct(daxin.current.other), 4.99)
+assert.equal(sum(daxin.current), daxin.currentAssets)
 // 金融業：不分流動與非流動 → 拆不開
 assert.equal(assetCompositionOf({ assets: 100, current_assets: null, noncurrent_assets: null }), null)
 // 列出的科目超過合計（歸類錯）→ 不畫

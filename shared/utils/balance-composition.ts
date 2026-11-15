@@ -7,6 +7,8 @@
 // 2026-10-12 量 10 檔（2330 1101 2603 2317 1216 2412 9910 2002 3008 2207）× 最近 4 季 = 440 格，用這裡的分組算出的占比
 // 跟上游的值差都在 0.006 個百分點以內（上游存兩位小數），0 格對不上。所以金額跟頁面上的占比是同一個口徑。
 // 「其他」兩項跟上游一樣是殘差（合計減列出的各項），不是單一科目。
+// 合約資產（2026-11-15）對著 contractAssetsToAssets 與 otherCurrentAssetsToAssets v2 量 7 檔（2535 2404 2542 2548 5536 2330 9933）
+// × 最近 4 季，兩支都 0 格對不上。
 //
 // shared/utils 不 import 任何東西：報表傳進來是上游原樣的 Record（值是千元字串）。
 
@@ -14,7 +16,10 @@ const CURRENT_KEYS = {
   cash: ['cash_and_cash_equivalents'],
   financial: ['current_financial_assets_at_amortised_cost', 'current_financial_assets_at_fvoci', 'current_financial_assets_at_fair_value_through_profit_or_loss', 'other_current_financial_assets'],
   receivables: ['notes_receivable_net', 'notes_receivable_due_from_related_parties_net', 'accounts_receivable_net', 'accounts_receivable_duefrom_related_parties_net'],
-  inventories: ['inventories']
+  inventories: ['inventories'],
+  // 合約資產（2026-11-15，建材營造選股指南）：數據中台同日把它從其他流動資產拆出來（contractAssetsToAssets；otherCurrentAssetsToAssets
+  // 改 formulaVersion 2 扣掉它），這裡跟著拆，金額跟兩支占比同一個口徑。只算流動的，非流動合約資產跟上游一樣留在其他非流動資產
+  contractAssets: ['current_contract_assets']
 } as const
 
 const NONCURRENT_KEYS = {
@@ -34,6 +39,7 @@ export const CURRENT_ASSET_PART_LABELS: Record<CurrentAssetPart, string> = {
   financial: '流動金融資產',
   receivables: '應收票據及帳款',
   inventories: '存貨',
+  contractAssets: '合約資產',
   other: '其他流動資產'
 }
 export const NONCURRENT_ASSET_PART_LABELS: Record<NonCurrentAssetPart, string> = {

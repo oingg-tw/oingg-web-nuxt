@@ -242,7 +242,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '應付帳款付現天數', perspective: '天數', to: code => `/stock/${code}/payables-days`, hook: '跟供應商買了東西，平均過幾天才付錢' },
       { label: '營運週期', perspective: '天數', to: code => `/stock/${code}/operating-cycle`, hook: '從進貨、賣出去到收回貨款，整趟要幾天' },
       { label: '現金轉換循環', perspective: '天數', to: code => `/stock/${code}/cash-conversion-cycle`, hook: '錢被卡住幾天。營運週期減掉可以晚一點付的那幾天' },
-      // 2026-11-15（建材營造選股指南）：客戶先付的預收款，是同一個「誰先墊錢」的問題
+      // 2026-11-15（建材營造選股指南）：合約資產是公司先墊、合約負債是客戶先付，是同一個「誰先墊錢」的問題
+      { label: '合約資產占總資產比', perspective: '佔比', to: code => `/stock/${code}/contract-assets-to-assets`, hook: '工程做了、營收認了，卻還不能請款的錢，占總資產多少' },
+      { label: '合約負債占總資產比', perspective: '佔比', to: code => `/stock/${code}/contract-liabilities-to-assets`, hook: '客戶先付、還沒交貨的預收款，占總資產多少' },
       { label: '合約負債占股本比', perspective: '佔比', to: code => `/stock/${code}/contract-liabilities-to-share-capital`, hook: '客戶先付、還沒認列成營收的預收款，有幾個股本大' }
     ]
   },
