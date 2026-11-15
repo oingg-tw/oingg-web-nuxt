@@ -4,7 +4,8 @@
 //
 // 這條路由會經手個資（持股、交易、觀察清單、方案）。照 conductor〈Nuxt Nitro 全端架構下的個人資料保護〉：
 //   - 不快取：不用 defineCachedFunction；帶登入的回應一律 Cache-Control: private, no-store
-//   - 不記錄：不 log 任何標頭與 body（錯誤也只回狀態，不印請求內容）
+//   - 不記錄：不 log 任何標頭與 body（錯誤也只回狀態，不印請求內容）。例外是這裡自己擋下的請求：業務中台看不到它們，
+//     所以記一行方法、路徑樣板與遮罩過的 IP（blocked，server/utils/http-error.ts 的 blockedRecord）
 //   - 不留狀態：模組頂層沒有任何變數，每個請求自己的東西都在函式裡
 //
 // 刻意不套 server/utils/business.ts 的「最多 12 個並行」：那是為了 SSR 爬蟲一次展開很多請求設計的，套在使用者請求上會
@@ -26,25 +27,32 @@ function problem(event: H3Event, status: number, title: string, code: string | n
   return { type, title, status, detail, ...(code ? { code } : {}) }
 }
 
+// 使用者的 IP。Cloudflare Workers 上（2026-10-27）讀 cf-connecting-ip：Cloudflare 邊緣填的，使用者送來的同名標頭會被蓋掉。只在 Workers 上讀——
+// 其他地方使用者自己就能填這個標頭；本機沒有代理，用連線的 IP
+const clientIpOf = (event: H3Event) => (onWorkers ? getRequestHeader(event, 'cf-connecting-ip') : getRequestIP(event))
+
+function blocked(event: H3Event, status: number, title: string, detail: string, reason: BlockedReason) {
+  console.log(JSON.stringify(blockedRecord(event.method, event.path, status, reason, clientIpOf(event))))
+  return problem(event, status, title, null, detail)
+}
+
 export default defineEventHandler(async (event) => {
   const method = event.method.toUpperCase()
-  if (!METHODS.has(method)) return problem(event, 405, 'Method Not Allowed', null, `不接受 ${method}`)
+  if (!METHODS.has(method)) return blocked(event, 405, 'Method Not Allowed', `不接受 ${method}`, 'method_not_allowed')
 
   // 只轉到業務中台根網址下：路徑只允許這些字元，任何 .. 與 . 都拒絕（. 到了上游會被 URL 正規化吃掉，下面的封鎖就被繞過）
   const path = getRouterParam(event, 'path') ?? ''
   const segments = path.split('/').filter(Boolean)
-  if (!/^[A-Za-z0-9/_.-]+$/.test(path) || segments.some(segment => segment === '..' || segment === '.')) return problem(event, 400, 'Bad Request', null, '不接受的路徑')
+  if (!/^[A-Za-z0-9/_.-]+$/.test(path) || segments.some(segment => segment === '..' || segment === '.')) return blocked(event, 400, 'Bad Request', '不接受的路徑', 'path_invalid')
   // 業務中台只給 Nitro 的兩類（2026-11-09，資安盤點 M6）：這裡每個請求都帶 Nitro 金鑰，轉過去等於公開。openapi.json 列出全部端點
   //（含 /admin 與機器端點的標頭名稱），cold-starts/ 是冷啟動報告；網頁伺服器自己送冷啟動報告走 businessFetch，不經這裡。
   // /admin/* 也擋（同一天，使用者同意）：網頁從來不經這裡打 /admin，管理站有自己的代理；公開網站萬一有 XSS，也拿不到管理員的 token 去打
-  if (['openapi.json', 'cold-starts', 'admin'].includes(segments[0] ?? '')) return problem(event, 404, 'Not Found', null, '不接受的路徑')
+  if (['openapi.json', 'cold-starts', 'admin'].includes(segments[0] ?? '')) return blocked(event, 404, 'Not Found', '不接受的路徑', 'path_blocked')
 
   const authorization = getRequestHeader(event, 'authorization')
   const contentType = getRequestHeader(event, 'content-type')
-  // 使用者的 IP，給業務中台第二階段「依 IP 限流未登入請求」用——它只在確認請求來自 Nitro 之後才採用這個標頭。
-  // Cloudflare Workers 上（2026-10-27）讀 cf-connecting-ip：Cloudflare 邊緣填的，使用者送來的同名標頭會被蓋掉。只在 Workers 上讀——
-  // 其他地方使用者自己就能填這個標頭；本機沒有代理，用連線的 IP
-  const clientIp = onWorkers ? getRequestHeader(event, 'cf-connecting-ip') : getRequestIP(event)
+  // 使用者的 IP，給業務中台第二階段「依 IP 限流未登入請求」用——它只在確認請求來自 Nitro 之後才採用這個標頭
+  const clientIp = clientIpOf(event)
 
   const headers: Record<string, string> = {}
   if (authorization) headers.authorization = authorization
