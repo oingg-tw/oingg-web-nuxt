@@ -57,8 +57,10 @@ async function idTokenFor(audience: string): Promise<string> {
 
 // 同時叫醒數據中台（2026-10-28，使用者「web-nuxt 收到請求時，同時叫醒業務中台和數據中台」）：業務中台冷啟動時要等自己的容器開好、
 // 行程起來才去叫數據中台，兩段開容器串在一起（10/28 兩次冷啟動 6.1／7.4 秒，業務中台開容器 0.9～2.1 秒）。要打業務中台時順手在背景
-// 送 GET / 給數據中台，兩邊一起開；業務中台照樣自己叫一次，當備援。GET / 不碰資料庫、不用金鑰，只要過 IAM（web-nuxt-workers 在
-// oingg-data-rust-dev 有 run.invoker）。每個 isolate 5 分鐘最多一次（Cloud Run 閒置約 15 分鐘才縮到 0）。analysisBase 空字串＝本機與 CI：不送
+// 送 GET / 給數據中台，兩邊一起開；業務中台照樣自己叫一次，當備援。GET / 不用金鑰，只要過 IAM（web-nuxt-workers 在
+// oingg-data-rust-dev 有 run.invoker）。它不查資料，但數據中台收到後會在背景叫醒休眠中的資料庫（data-rust crates/http/src/routes.rs 的
+// root），而數據中台 DEV 連的是 PRD 庫：DEV 的流量也會叫醒 PRD 庫（2026-11-15 紫隊演練：招 3 的 400 個請求分到 24 個 isolate，
+// 數據中台收到 24 個 GET /）。每個 isolate 5 分鐘最多一次（Cloud Run 閒置約 15 分鐘才縮到 0）。analysisBase 空字串＝本機與 CI：不送
 const ANALYSIS_WAKE_INTERVAL_MS = 5 * 60_000
 let analysisWokenAt = 0
 
