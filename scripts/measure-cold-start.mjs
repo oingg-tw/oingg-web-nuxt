@@ -5,14 +5,14 @@
 //   1. 先通知管理站（oingg-admin-vue）停掉打 DEV 的輪詢（例如 /admin/health 每 30 秒一次），並請其他 session 測試期間別打 DEV——
 //      包括業務中台 Rust 版（oingg-business-rust）：它驗自己的 DEV 時會呼叫數據中台 DEV（10/30 01:06 就是它）。
 //      有人在打，後端就不會冷，量到的是熱的。
-//   2. 選一頁「從來沒被打開過」的頁面（KV 的鍵永遠不過期，開過一次就一直命中），例如沒人看過的代號的 /stock/{代號}/dividend；
-//      不要先用 curl 試，試一次就熱了。歷次用過：1104、1108、1235、1237、1238、2002、1301。
+//   2. 選一頁兩天內沒人開過的頁面（2026-11-14 起 KV 的鍵在 maxAge＋staleMaxAge 後過期，個股資料最長 24＋24 小時；之前永遠不過期），
+//      例如冷門代號的 /stock/{代號}/dividend；不要先用 curl 試，試一次就熱了。歷次用過的代號見計畫文件冷啟動各節的表。
 //   3. 跑這支：它先查兩個後端的 Cloud Run 請求紀錄，最後一個請求離現在不到 COLD_IDLE_MINUTES（預設 20，Cloud Run 閒置約 15 分鐘縮到 0）
 //      就停下來、列出是誰在打；閒置夠久才用真的瀏覽器打開那一頁（瀏覽器的冷啟動回報也會送出，管理站的冷啟動頁看得到）。
 //   4. 印出一列結果，欄位同計畫文件的表；後端那一側的拆解（開容器、連庫）看管理站的冷啟動頁或兩邊的 Cloud Logging。
 //   5. 結果記進計畫文件（日期、台北時刻、條件、入口與 rtt、n），再通知管理站恢復輪詢。
 //
-// Run: node scripts/measure-cold-start.mjs /stock/1240/dividend
+// Run: node scripts/measure-cold-start.mjs /stock/1240/dividend（Git Bash 要在前面加 MSYS_NO_PATHCONV=1，不然 /stock/… 會被改成 Windows 路徑）
 //   COLD_BASE（預設 DEV）、COLD_IDLE_MINUTES、COLD_SKIP_IDLE_CHECK=1（只在刻意量「後端熱」的對照組時用）
 // 需要本機 gcloud 已登入（讀兩邊的 Cloud Run 請求紀錄）與 playwright。
 import { execSync } from 'node:child_process'
