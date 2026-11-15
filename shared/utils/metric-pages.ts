@@ -143,8 +143,8 @@ export interface MetricPageDefinition {
   // （同一天還有 copyKey 讓兩頁讀不同文案；唯一的使用者負債組成 2026-10-12 改成金額的自訂頁之後拿掉了。）
   valueTopic?: string
   // 最新一季是 0 時，答句改說這一句、<title> 用 titleKeywords，不寫「為 0%」（2026-11-15，數據中台的建議）：資產負債表沒有單獨列示
-  // 合約負債的公司算 0（2026 年第二季約四分之一的公司，2330 就是），金額若有是併在其他負債裡，所以 0 不一定是沒有。「沒有列出」對
-  // 沒列示跟列了 0 兩種都成立，網站不用分辨
+  // 合約負債的公司算 0（2026 年第二季約四分之一的公司，2330 就是），金額若有是併在其他負債裡，所以 0 不一定是沒有。說「沒有單獨列出」，
+  // 跟數據中台三支指標的限制段同一個說法（48fa7c5 上 DEV：「0 是資產負債表上沒有單獨列示」）
   zeroText?: string
 }
 
@@ -276,11 +276,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'cash-per-share', metricCode: 'cashPerShare', timeframe: 'Q', topic: '每股現金及約當現金', titleKeywords: '每股現金及約當現金逐季變化', related: ['interest-income', 'cash-conversion-cycle', 'ocf-to-net-income'] },
   // 合約負債占股本比（2026-11-15，使用者的建材營造選股指南，數據中台 d56f541）：客戶先付、還沒認列成營收的預收款有幾個股本大，看建商與
   // 工程公司未來一兩年的營收能見度。面額不是 10 元的公司股本以每股 10 元換算，型錄的限制段寫了。跟營運周轉放一起：誰先墊錢的同一個問題
-  { slug: 'contract-liabilities-to-share-capital', metricCode: 'contractLiabilitiesToShareCapital', timeframe: 'Q', topic: '合約負債占股本比', titleKeywords: '合約負債占股本比預收款與營收能見度', zeroText: '資產負債表上沒有列出合約負債', related: ['contract-liabilities-to-assets', 'contract-assets-to-assets', 'monthly-revenue'] },
+  { slug: 'contract-liabilities-to-share-capital', metricCode: 'contractLiabilitiesToShareCapital', timeframe: 'Q', topic: '合約負債占股本比', titleKeywords: '合約負債占股本比預收款與營收能見度', zeroText: '資產負債表上沒有單獨列出合約負債', related: ['contract-liabilities-to-assets', 'contract-assets-to-assets', 'monthly-revenue'] },
   // 合約資產與合約負債占總資產比（2026-11-15，同一份指南，數據中台的 contractAssetsToAssets 與早就有的 contractLiabilitiesToAssets）：
   // 兩頁互相當 compareMetricCode，型錄的定義自己就說兩個放在一起看才分得出是業主先付錢、還是公司先墊錢。同單位、都只有單季，畫在同一條軸上
-  { slug: 'contract-assets-to-assets', metricCode: 'contractAssetsToAssets', compareMetricCode: 'contractLiabilitiesToAssets', timeframe: 'Q', topic: '合約資產占總資產比', titleKeywords: '合約資產占總資產比未請款工程款', zeroText: '資產負債表上沒有列出合約資產', related: ['contract-liabilities-to-assets', 'current-asset-composition', 'receivables-days'] },
-  { slug: 'contract-liabilities-to-assets', metricCode: 'contractLiabilitiesToAssets', compareMetricCode: 'contractAssetsToAssets', timeframe: 'Q', topic: '合約負債占總資產比', titleKeywords: '合約負債占總資產比預收款項', zeroText: '資產負債表上沒有列出合約負債', related: ['contract-assets-to-assets', 'contract-liabilities-to-share-capital', 'debt-composition'] },
+  { slug: 'contract-assets-to-assets', metricCode: 'contractAssetsToAssets', compareMetricCode: 'contractLiabilitiesToAssets', timeframe: 'Q', topic: '合約資產占總資產比', titleKeywords: '合約資產占總資產比未請款工程款', zeroText: '資產負債表上沒有單獨列出合約資產', related: ['contract-liabilities-to-assets', 'current-asset-composition', 'receivables-days'] },
+  { slug: 'contract-liabilities-to-assets', metricCode: 'contractLiabilitiesToAssets', compareMetricCode: 'contractAssetsToAssets', timeframe: 'Q', topic: '合約負債占總資產比', titleKeywords: '合約負債占總資產比預收款項', zeroText: '資產負債表上沒有單獨列出合約負債', related: ['contract-assets-to-assets', 'contract-liabilities-to-share-capital', 'debt-composition'] },
   { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['cash-cycle', 'operating-cycle', 'payables-days', 'ocf-to-net-income'] }
 ]
 
