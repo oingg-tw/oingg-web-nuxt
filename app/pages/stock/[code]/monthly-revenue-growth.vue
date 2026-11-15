@@ -10,7 +10,10 @@
 // is not a comparison — the rate against the same month a year earlier is the series a reader can actually compare month to month.
 //
 // 月均價, not the month-end close: a month's revenue is a FLOW over the whole month, so the price beside it covers the whole month
-// too（see MonthlyPrice's own comment）. Two axes because 元 and % share nothing.
+// too（see MonthlyPrice's own comment）. Two axes because 元 and % share nothing. Not daily closes either: the user asked on 2026-11-15
+// and kept 月均價（「你是對的」）. One price per bar keeps the tooltip on the month. Unadjusted daily closes drop on ex-dividend days and
+// read as crashes. Five years would go from 60 points to about 1,250 on a weak phone. A price reaction to the release（around the 10th of
+// the next month）would be a separate daily chart with release markers.
 //
 // SEPARATE FROM /stock/:code/revenue-growth, which is the metric page for revenueGrowthRate.Q — the same idea at QUARTERLY resolution,
 // computed by analysis-ts from the financial statements. This page is the monthly filing（MOPS t187ap05_L）, which arrives on the 10th
