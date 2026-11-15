@@ -188,10 +188,15 @@ const latestQuarterly = computed(() => {
   return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth }
 })
 
+// 最新一季是 0、這一頁又有 zeroText（合約資產、合約負債）：答句說「資產負債表上沒有列出…」、<title> 用固定片語，不寫「為 0%」。
+// 見 MetricPageDefinition.zeroText
+const zeroNotListed = computed(() => latestQuarterly.value?.value === 0 && !!metricPage.zeroText)
+
 // 「台積電2026年第2季EPS為 27.3元」— the one clause the lead sentence AND the <title> both open
 // with, written once so the two can't drift apart（「文案上單季優先。而且要連動網頁title」）.
 const quarterlyLead = computed(() => {
   const q = latestQuarterly.value
+  if (q && zeroNotListed.value) return `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季的${metricPage.zeroText}`
   // 「（單季）」只在答句與 meta description，<title> 有自己的一份（字數預算）。近四季那一句本來就寫「近四季」（2026-10-23，使用者：
   //「要標清楚 到底是單季還是近四季」）
   return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季（單季）${valueTopic}為 ${valueTextOf(q.value)}` : null
@@ -241,7 +246,8 @@ const titleKeywords = computed(() => {
     return cjkLength(`${stockShortName.value} ${code.value} `) + cjkLength(river) + TITLE_BRAND_COST <= TITLE_BUDGET ? river : metricPage.titleKeywords
   }
   const q = latestQuarterly.value
-  if (!q || metricPage.valueTopic) return metricPage.titleKeywords
+  // 值是 0 的那一句不放進 <title>：兩頁（合約負債占總資產比、占股本比）會變成同一個標題，主題名稱也不見了
+  if (!q || metricPage.valueTopic || zeroNotListed.value) return metricPage.titleKeywords
   const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic}為 ${valueTextOf(q.value)}`
   if (!hasTrailingFigure.value) return quarterly
   const full = `${quarterly}，近四季 ${latestValueText.value}`
