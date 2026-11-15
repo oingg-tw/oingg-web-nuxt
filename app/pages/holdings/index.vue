@@ -240,7 +240,13 @@ const metricFields = computed(() => ({
   etf: columnsOf('etf').map(column => column.field),
   preferred: columnsOf('preferred').map(column => column.field)
 }))
-const { rows: metricRows, pending: metricPending, priceDate: metricPriceDate, kindsReady } = useWatchlistStocks(metricCodes, metricFields, sources)
+const { rows: metricRows, pending: metricPending, priceDate: metricPriceDate, kindsReady, settled: metricSettled } = useWatchlistStocks(metricCodes, metricFields, sources)
+// 存這一類的欄位（同觀察清單的 saveSectionFields）：存好、新欄位的值也到了才算完，表格的讀取遮罩蓋到這時候
+async function saveMetricFields(kind: WatchlistKind, fields: string[]) {
+  const saved = await saveFields(kind, fields, '持股欄位')
+  if (saved) await metricSettled()
+  return saved
+}
 
 // 指標的分段：只有這一類有持股才有這一段，只有一段時不寫標題（同觀察清單）。讀的時候照上次各類的檔數畫骨架列（useLayoutHint）；公司目錄到之前
 // 分不出 ETF，也先畫骨架。第一次沒有分類的紀錄時，照上次的總檔數當成都是普通股
@@ -581,7 +587,7 @@ async function submit() {
                 editable
                 :column-defaults="basicColumns(section.kind).map(({ field, label }) => ({ field, label }))"
                 :skeleton="section.skeleton"
-                :save="fields => saveFields(section.kind, fields, '持股欄位')"
+                :save="fields => saveMetricFields(section.kind, fields)"
               >
                 <template #toolbar>
                   <h3 v-if="section.multi" class="holdings-kind__title">{{ section.label }}<span class="holdings-kind__count">{{ section.rows.length }} 檔</span></h3>

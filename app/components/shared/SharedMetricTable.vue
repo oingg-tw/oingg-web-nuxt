@@ -80,6 +80,9 @@ const props = withDefaults(defineProps<{
   editable?: boolean
   // 欄位設定的「重設預設欄位」
   columnDefaults?: ColumnDraft[]
+  // 欄位設定按「儲存」、表頭選單的移除與復原（saveFromSettings、removeFromMenu）：整份欄位。寫成 prop、不是事件（父層照樣寫
+  // @save-columns）：要拿到父層回的 Promise，多了欄位時讀取遮罩蓋到它結束（saveColumns）
+  onSaveColumns?: (columns: ColumnDraft[]) => unknown
   // 資料還沒到（會員頁的骨架，全站規則「結構先畫、資料區塊同大小」）：rows 是呼叫端給的空列（列數照上次），不畫 el-table——它在伺服器
   // 不畫列（欄位要 mount 才登記），自己畫一張骨架表與骨架卡片。同 HoldingsSymbolTable
   skeleton?: boolean
@@ -202,8 +205,6 @@ function onRowClick(row: ScreenerResultRow, _column: unknown, event: MouseEvent)
 const emit = defineEmits<{
   reorder: [fields: string[]]
   removeColumn: [field: string]
-  // 欄位設定彈窗或欄位面板按「儲存」、表頭選單的移除（saveFromSettings、removeFromMenu）：整份欄位
-  saveColumns: [columns: ColumnDraft[]]
   rowClick: [symbol: string]
   loadMore: []
   // Only ever emitted for symbol/metric columns — see handleSortChange below. field is null
@@ -528,11 +529,22 @@ function openColumnSettings(sheet: boolean) {
   columnSettingsOpen.value = true
 }
 
-// 彈窗按「儲存」：整份交給父層（saveColumns），表格先照新順序排——這張表保留自己的拖曳順序、不跟父層換順序
-// （見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上。整份是沒釘住的那些，釘住的照舊排在前面
-function saveColumns(columns: ColumnDraft[]) {
-  emit('saveColumns', columns)
+// 彈窗按「儲存」：整份交給父層（onSaveColumns），表格先照新順序排——這張表保留自己的拖曳順序、不跟父層換順序
+// （見 orderedColumns 的 watch），所以要在這裡換；新增的欄位先放名稱，父層的資料到了再補上。整份是沒釘住的那些，釘住的照舊排在前面。
+// 多了欄位就馬上蓋上讀取遮罩，蓋到父層存好、新欄位的值也到了（它回的 Promise）；原本普通股要等欄位組合存好、開始重查才出現，觀察清單
+// 沒有（2026-11-15，使用者：「新增欄位並按下儲存以後 要立刻 出現loader」）。只換順序、移除不用等新的值，不蓋
+const columnsSaving = ref(0)
+async function saveColumns(columns: ColumnDraft[]) {
+  const added = columns.some(draft => !orderedColumns.value.some(column => column.field === draft.field))
+  const saved = props.onSaveColumns?.(columns)
   applyLocalOrder(columns)
+  if (!added) return
+  columnsSaving.value++
+  try {
+    await saved
+  } finally {
+    columnsSaving.value--
+  }
 }
 function saveFromSettings(columns: ColumnDraft[], close: () => void) {
   saveColumns(columns)
@@ -712,7 +724,7 @@ watch(() => props.loading, (loading, wasLoading) => {
     <!-- 窄的時候是卡片，寬的時候是表格；兩份都在 DOM 裡、由 CSS container query 切換（專案規則：不在
          渲染時用寬度選標記）。 -->
     <!-- click.capture：表頭點擊在 el-table 自己排序之前攔下來，改成打開欄位選單（onTableClickCapture） -->
-    <div v-loading="loading" class="smt-table-view" @click.capture="onTableClickCapture">
+    <div v-loading="loading || columnsSaving > 0" class="smt-table-view" @click.capture="onTableClickCapture">
     <!-- 骨架表（skeleton）：伺服器與瀏覽器畫一樣的；欄名照畫，值是骨架。表頭高、名稱欄寬是上次量到的（見 rememberLayout）。
          外框是呼叫端的卡片，這裡拿掉 SharedTable 自己那一層 -->
     <SharedTable
@@ -865,7 +877,7 @@ watch(() => props.loading, (loading, wasLoading) => {
     <p class="visually-hidden" role="status">{{ menuStatus }}</p>
     </div>
 
-    <div v-loading="loading" class="smt-cards-view">
+    <div v-loading="loading || columnsSaving > 0" class="smt-cards-view">
       <!-- 骨架卡片：跟真的卡片同一套結構與欄名，值是骨架（跟真的值一樣長，見 column.sample），高度就一樣 -->
       <ul v-if="skeleton" class="smt-cards" aria-hidden="true">
         <li v-for="row in rows" :key="row.symbol" class="app-card smt-card">

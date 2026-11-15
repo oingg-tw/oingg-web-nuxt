@@ -23,6 +23,8 @@ const ROE_LABEL = `${roe.nameSuffix ? `${roe.nameSuffix} ${roe.name}` : roe.name
 
 const puts = []
 const blocked = []
+// 設了就扣住帶 roe.TTM 的 /screener/values，resolve() 才放行：看欄位設定按儲存後的讀取遮罩
+let holdRoe = null
 const mock = async (ctx) => {
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
@@ -48,6 +50,7 @@ const mock = async (ctx) => {
     // 公開的讀取 POST：ROE 2330 是 15.2（%）、0056（ETF）沒有；報價一律 100
     if (p === '/api/core/screener/values' && m === 'POST') {
       const body = JSON.parse(req.postData() ?? '{}')
+      if (holdRoe && body.columns.some(({ field }) => field === 'roe.TTM')) await holdRoe.promise
       const valueOf = (symbol, field) => (field.startsWith('roe.') ? (symbol === '2330' ? '15.2' : null) : field === 'stock.previousClose' ? '98' : '100')
       return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: valueOf(symbol, field), knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
     }
@@ -153,7 +156,19 @@ console.log('觀察清單「＋ 新增欄位」（1440）')
   const settings = page.getByRole('dialog', { name: '欄位設定' })
   check(await settings.locator('.column-settings__row', { hasText: ROE_LABEL }).count() === 1, '挑了回到清單、多一列')
   check(!puts.some(put => put.path.endsWith('column-presets')), '還沒按「儲存」就不存')
-  await settings.getByRole('button', { name: '儲存' }).click(); await page.waitForTimeout(1500)
+  // 按下儲存就蓋上讀取遮罩，新欄位的值到了才拿掉（2026-11-15，使用者：「新增欄位並按下儲存以後 要立刻 出現loader」）：值的請求先扣住
+  holdRoe = Promise.withResolvers()
+  const section = page.locator('.watchlist-section').first()
+  const mask = section.locator('.smt-table-view > .el-loading-mask')
+  await settings.getByRole('button', { name: '儲存' }).click(); await page.waitForTimeout(150)
+  check(await mask.isVisible(), '按下儲存，表格馬上蓋上讀取遮罩')
+  await page.waitForTimeout(1500)
+  check(await mask.isVisible(), '欄位組合存好了、新欄位的值還沒到：遮罩還在')
+  holdRoe.resolve(); holdRoe = null
+  await mask.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+  check(!await mask.isVisible(), '值到了，遮罩拿掉')
+  const roeCells = await section.locator('.smt-table-view .el-table__body-wrapper tr').evaluateAll(rows => rows.map(row => [...row.querySelectorAll('td')].map(cell => cell.textContent.trim()).join(' | ')))
+  check(roeCells.some(text => text.startsWith('2330') && text.endsWith('15.2')), `新欄位的值到了：2330 的 ROE 是假資料的 15.2（${roeCells.join(' ／ ')}）`)
   const saved = puts.filter(put => put.path.endsWith('column-presets')).at(-1)
   check(saved?.universe === 'common' && saved.columns.some(column => column.field === 'roe.TTM'), `存進普通股的欄位組合：roe.TTM（${saved?.columns.map(column => column.field).join('、')}）`)
   check(await page.locator('.smt-table-view .el-table__header-wrapper th', { hasText: ROE_LABEL }).count() === 1, `表頭是「${ROE_LABEL}」`)

@@ -112,7 +112,22 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<Record<Watc
     return rows
   }
 
-  async function load() {
+  // 手上這一次讀取，settled 等它：欄位設定按儲存後，表格的讀取遮罩蓋到新欄位的值到了才拿掉（2026-11-15，使用者：「新增欄位並按下儲存以後
+  // 要立刻 出現loader」）
+  let reading: Promise<void> = Promise.resolve()
+  function load() {
+    reading = fetchValues()
+    return reading
+  }
+  // 等到讀取都回來；等的時候又開始的下一次（例如又改了欄位）也等。讀不到照舊交給 quotesFailed，這裡只等
+  async function settled() {
+    for (let current = reading; ; current = reading) {
+      await current.catch(() => {})
+      if (current === reading) return
+    }
+  }
+
+  async function fetchValues() {
     // 伺服器端不抓：SSR 不會等這個請求（不是 useAsyncData），抓了也只是白打一次。分享頁的清單在 SSR 就知道，名稱先畫、數字到瀏覽器再補
     // 目錄到了才開始：要知道每檔是哪一類才知道問誰，畫面本來也在等它分段（2026-11-07：原本分不出的先全部問 ETF，ETF 讀不到時整批數字都沒了）
     if (import.meta.server || !kindsReady.value) return
@@ -205,5 +220,5 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<Record<Watc
     rows.value.map(row => row.values['stock.price']?.knowledgeDate).filter((date): date is string => !!date).sort().at(-1) ?? null
   )
 
-  return { rows, pending, quotesFailed, priceDate, kindsReady }
+  return { rows, pending, quotesFailed, priceDate, kindsReady, settled }
 }

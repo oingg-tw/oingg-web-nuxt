@@ -70,7 +70,13 @@ watch(isGuest, guest => { if (guest && !marketCapRanking.value) void loadMarketC
 const guestListLoading = computed(() => isGuest.value && !marketCapRanking.value && marketCapStatus.value !== 'error')
 const listCodes = computed(() => (isGuest.value ? (marketCapRanking.value?.rows ?? []).slice(0, GUEST_LIST_SIZE).map(row => row.symbol) : watchlistCodes.value))
 
-const { rows, pending, priceDate, kindsReady } = useWatchlistStocks(listCodes, fieldsByKind, sources)
+const { rows, pending, priceDate, kindsReady, settled } = useWatchlistStocks(listCodes, fieldsByKind, sources)
+// 存這一類的欄位：存好、新欄位的值也到了才算完，欄位設定按儲存後表格的讀取遮罩蓋到這時候（SharedMetricTable 的 saveColumns）
+async function saveSectionFields(kind: WatchlistKind, fields: string[]) {
+  const saved = await saveFields(kind, fields)
+  if (saved) await settled()
+  return saved
+}
 // 清單、報價到齊才一起畫，之前是轉圈（2026-10-20，使用者：「重新整理的時候會閃動，好像其他畫面也有」）：伺服器不知道是誰，原本先畫
 //「還沒有追蹤任何股票」，登入還原、清單讀到後換成只有名稱的表格，報價到了數字才補上——重新整理一次換三種畫面。清單是 app.vue 的
 // useWatchlistSync 讀的：synced 在開始讀時就是 true，讀完要看 sync-pending；讀不到時 synced 退回 false，轉圈留在全站彈窗底下等重試
@@ -247,7 +253,7 @@ async function submitNote() {
             :editable="member"
             :column-defaults="basicColumns(section.kind).map(({ field, label }) => ({ field, label }))"
             :skeleton="firstPaintPending"
-            :save="fields => saveFields(section.kind, fields)"
+            :save="fields => saveSectionFields(section.kind, fields)"
           >
             <template #toolbar>
               <h2 v-if="sections.length > 1" class="watchlist-section__title">{{ section.label }}<span class="watchlist-section__count">{{ section.rows.length }} 檔</span></h2>
