@@ -1,5 +1,6 @@
 // 個股近期新聞（GET /stocks/{symbol}/news）：playwright 抓的新聞，數據中台用公司簡稱比對標題挑出這一檔的，業務中台原樣轉。合約（數據中台
-// 8f4bd1a、111ee35）：近 30 天、最多 30 則、新到舊，沒有就是空陣列；欄位都必有；link 只有 http(s)；publishedAt 是詞彙表的「發布時間」（UTC、帶毫秒）
+// 8f4bd1a、111ee35；32789fd 起近 365 天）：近 365 天、最多 30 則、新到舊，沒有就是空陣列；欄位都必有；link 只有 http(s)；publishedAt 是詞彙表的
+// 「發布時間」（UTC、帶毫秒）。新聞庫從 2026-11 才開始收（PRD 11-09、DEV 11-08），不補舊文章
 export interface StockNewsArticle {
   title: string
   source: string

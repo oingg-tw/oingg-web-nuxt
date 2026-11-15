@@ -29,17 +29,19 @@ const answer = computed(() => {
   if (!searchable.value) return `${stockShortName.value}的簡稱沒辦法從新聞標題比對（例如跟常用詞、地名、人名或別家公司相同），所以這裡不列新聞。`
   const first = groups.value[0]
   const latest = first?.items[0]
-  if (!first || !latest) return `最近 30 天沒有${stockShortName.value}的新聞。`
+  // 不寫期間（2026-11-15 拉長到近一年，使用者：「新聞 拉長」）：新聞從 2026-11 才開始收，2027-11 之前寫「最近一年沒有」會讓人以為查了
+  // 一整年；期間與起始月寫在「這些新聞怎麼來的」
+  if (!first || !latest) return `目前沒有${stockShortName.value}的新聞。`
   const when = first.prefix ? `${first.prefix} ` : ` ${shortDayLabel(first.day)}`
-  return `最近 30 天列出 ${count.value} 則${stockShortName.value}的新聞，最新一則是${when}${latest.time} ${latest.source}的報導。`
+  return `列出 ${count.value} 則${stockShortName.value}最近的新聞，最新一則是${when}${latest.time} ${latest.source}的報導。`
 })
-const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）最近 30 天的新聞：標題、來源與發布時間，依日期由新到舊排列，點標題到原網站看全文。`))
+const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的近期新聞：標題、來源與發布時間，依日期由新到舊排列，點標題到原網站看全文。`))
 
 const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '近期新聞：最近 30 天的新聞標題與來源',
+  titleKeywords: '近期新聞：最新的新聞標題與來源',
   pathSuffix: '/news',
   stock,
   description,
@@ -52,12 +54,12 @@ const footer = {
   sources: ['各新聞網站：新聞標題與連結'],
   disclaimer: '以上新聞標題與連結整理自各新聞網站，內容以原網站為準，不代表本站對此個股之評等或投資建議。'
 }
-// 怎麼對到這家公司：數據中台的合約（8f4bd1a；人名 d56f541，2026-11-15 起）寫的規則，給讀者的版本
+// 怎麼對到這家公司：數據中台的合約（8f4bd1a；人名 d56f541、近 365 天 32789fd，2026-11-15 起）寫的規則，給讀者的版本
 const GUIDE = [
   '標題與連結取自各新聞網站公開的 RSS 與網站地圖，每則都標出來源；這裡不轉載內容，全文以原網站為準。',
   '標題含這家公司的簡稱才列出，不比對代號，也不看內文。同一處取最長的簡稱，例如「南亞科」不算南亞；兩個字的簡稱比對得比較嚴，少數新聞會漏掉。',
   '簡稱是常用詞、地名或人名（例如世界、全家、台南、關中），或跟別家公司同名的，不比對，這些公司這裡不會有新聞。',
-  '只列最近 30 天、最多 30 則，依發布時間由新到舊排列，時間是台灣時間；來源沒給發布時間的，用第一次抓到的時間。'
+  '只列最近一年內、最多 30 則，依發布時間由新到舊排列，時間是台灣時間；來源沒給發布時間的，用第一次抓到的時間。新聞從 2026 年 11 月開始收集，更早的沒有。'
 ]
 </script>
 
@@ -75,7 +77,7 @@ const GUIDE = [
     <StockQuestionSection v-if="data" id="stock-news" :question="`${stockShortName}（${code}）最近有哪些新聞？`" :answer="answer">
       <section v-if="searchable" class="app-card stock-news" aria-labelledby="stock-news-title">
         <div class="stock-news__head">
-          <h3 id="stock-news-title" class="stock-news__title">近 30 天的新聞・{{ count }} 則</h3>
+          <h3 id="stock-news-title" class="stock-news__title">近期新聞・{{ count }} 則</h3>
           <span v-if="count" class="stock-news__hint">點標題到原網站看全文，另開新視窗</span>
         </div>
         <div v-for="group in groups" :key="group.day">
