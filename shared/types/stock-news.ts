@@ -9,7 +9,7 @@ export interface StockNewsArticle {
 
 export interface StockNewsResponse {
   symbol: string
-  // 簡稱可比對（數據中台 111ee35）：false＝簡稱不拿來比對標題（常用詞或地名、跟別家同名、沒有簡稱），articles 一律空的，不代表最近沒有新聞
+  // 簡稱可比對（數據中台 111ee35）：false＝簡稱不拿來比對標題（常用詞、地名或人名、去掉尾巴後兩家同名、沒有簡稱；人名 d56f541 起），articles 一律空的，不代表最近沒有新聞
   isNameSearchable: boolean
   articles: StockNewsArticle[]
 }
