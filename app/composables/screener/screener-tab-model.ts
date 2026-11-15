@@ -365,6 +365,8 @@ export function withHeldCondition(categories: MetricCategory[], portfolios: { po
     // 帳戶清單還沒讀到時不能說是刪掉的
     missingOptionLabel: portfolios ? '已刪除的帳戶' : '…',
     joinedOptions: true,
+    // 搜「持股」要找得到（分類就叫我的持股）
+    searchAliases: ['我的持股'],
     description: '你記錄的持股裡，哪些帳戶有這一檔',
     fields: [{ key: fieldId.slice(cut + 1), name: '已經持有', period: 'snapshot', unit: '', sort: 0 }]
   }
@@ -383,6 +385,8 @@ export function withSectorCondition(categories: MetricCategory[], sectors: { cod
     unit: '',
     sort: Math.max(-1, ...(profile?.metrics ?? []).map(item => item.sort)) + 1,
     kind: 'categorical' as const,
+    // 使用者叫它產業（上面那句「產業不算是基本資料嗎」），站上的產業頁也叫產業：搜「產業」要找得到（2026-11-15）
+    searchAliases: ['產業別'],
     options: sectors.map(sector => ({ value: sector.code, label: sector.name, count: sector.companyCount })),
     fields: [{ key: 'code', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
   }

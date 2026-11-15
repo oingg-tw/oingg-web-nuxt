@@ -253,9 +253,10 @@ const allMetrics = computed(() => props.categories.flatMap(category => category.
 const { texts: metricTexts, load: loadMetricTexts } = useMetricTexts()
 onMounted(loadMetricTexts)
 const fieldTextOf = (metricKey: string, field: MetricField) => metricTexts.value?.[metricKey]?.fields?.[field.key]
+// 前端自己加的指標（類股、已經持有）沒有上游文字，別名寫在指標本身（2026-11-15，使用者：「用 產業 當關鍵字搜不到任何東西」）
 const englishNames = (metric: Metric) => {
   const text = metricTexts.value?.[metric.key]
-  return [text?.nameEn, ...(text?.searchAliases ?? [])].filter((name): name is string => !!name)
+  return [text?.nameEn, ...(text?.searchAliases ?? []), ...(metric.searchAliases ?? [])].filter((name): name is string => !!name)
 }
 function metricNameMatches(metric: Metric, query: string): boolean {
   const own = (target: Metric) => target.key.toLowerCase() === query || englishNames(target).some(name => nameEnMatches(name, query))

@@ -313,7 +313,8 @@ for (const [label, group, addName] of [['我的篩選', savedGroup, '新增篩�
     const psr = await found('PSR')
     expect('英文搜尋', 'PSR 用代碼找得到股價營收比', psr.includes('股價營收比') && psr.includes('股價營收比河流圖'), psr.join('、'))
     // 只在上游搜尋別名裡的叫法（searchAliases，analysis-ts 9236756d）：縮寫與中文俗稱
-    for (const [query, name] of [['GM', '毛利率'], ['CCC', '現金轉換循環'], ['配息月份', '除權息月份']]) {
+    // 產業 → 類股：前端自己加的指標，別名寫在指標本身（withSectorCondition）
+    for (const [query, name] of [['GM', '毛利率'], ['CCC', '現金轉換循環'], ['配息月份', '除權息月份'], ['產業', '類股']]) {
       const hits = await found(query)
       expect('別名搜尋', `${query} 找得到${name}`, hits.includes(name), hits.join('、'))
     }
