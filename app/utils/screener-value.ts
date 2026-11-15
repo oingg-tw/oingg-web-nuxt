@@ -44,6 +44,9 @@ export function formatScreenerValue(raw: string | number | null | undefined, uni
   if (typeof raw !== 'number') return raw
   if (field === 'dividendYield.EOD' && raw === 0) return NO_DIVIDEND_TEXT
   if (unit === '%') return minusSign(`${raw}%`)
+  // 貝他固定兩位小數（2026-11-16，使用者：「這個屬於前端顯示web 所以不是交給數據中台」）：富邦（MoneyDJ）、玩股網、Yahoo Finance 都寫
+  // 1.14、0.99 這樣。數據中台給四位、尾巴的 0 會省掉（0.084），欄位對不齊、看起來比估計得出的還精確。只改顯示，排序與篩選照原值
+  if (field?.startsWith('beta.')) return minusSign(raw.toFixed(2))
   if (Math.abs(raw) >= 1e6) return formatSignificantDigits(raw, 4)
   return groupThousands(raw)
 }
