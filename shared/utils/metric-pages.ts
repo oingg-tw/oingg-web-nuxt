@@ -53,7 +53,9 @@ export const BADGE_PAGES: BadgePageDefinition[] = [
   // 「資產裡有多少不是股東出的」。抽 60 檔：負債比率最低 1/3 的 ROE−ROA 平均 1.9pp、最高 1/3 平均 10.3pp，78% 的公司 ROE ≥ ROA。
   // 不選 debtRatio 本身：它只有單季，跟徽章釘住的 TTM 共不了軸。杜邦分析回答這個徽章只陳述的事（ROE 是五件事的乘積）。
   { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', rightMetricCode: 'equityMultiplier', topic: 'ROE', titleKeywords: 'ROE 與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
-  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
+  // 近 8 季中位數（2026-11-15，建材營造選股指南：「近八季毛利率中位數」看單季跳升是不是結案紅利，數據中台 d56f541）：型錄只有 Q，
+  // 所以只在切到單季時一起畫（compareTimeframes），近四季照舊。例：2546 2026Q2 單季 18.49%、中位數 8.73%，下一季 9.54%
+  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', compareMetricCode: 'grossMarginMedian8q', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
   // 稅後淨利率 2026-09-21（「sidebar 獲利能力加上財報三率」）：三率裡唯一有徽章的（巴菲特淨利率，Mary Buffett & Clark 2008），
   // 文案與 TTM＋Q 歷史都齊（2330 20 期、1101 10 期）；營業利益率沒有徽章，在 METRIC_PAGES
   { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
@@ -158,6 +160,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 保障倍數與股東總回饋率（含股東回饋組成）2026-10-17 跟進（使用者「dividend 這一頁的指標也預設請用年」）：analysis-ts f777ce5 補上 FY，
   // 宣告口徑——該年度宣告的股利；最新一年要到股東會決議配息後才有值（2330 的 2025 年度可知悉日 2026-05-27），沒公告是 null 不是 0。
   { slug: 'dividend-coverage-ratio', metricCode: 'dividendCoverageRatio', timeframe: 'FY', topic: '現金流量股利保障倍數', titleKeywords: '現金流量股利保障倍數與配息支撐' },
+  // 近 3 年／近 5 年（2026-11-15，使用者的建材營造選股指南：「回溯至少 3 至 5 年的累積營業現金流是否能覆蓋累積現金股利」；數據中台 d56f541）：
+  // 幾年的自由現金流加總 ÷ 同期宣告的現金股利加總。建商一年之內現金流擺盪太大，單一年度看不出配息靠什麼付。頁名是型錄的後綴＋名稱，同篩選器
+  { slug: 'dividend-coverage-ratio-3y', metricCode: 'dividendCoverageRatio3y', timeframe: 'FY', topic: '近 3 年 現金流量股利保障倍數', titleKeywords: '近 3 年累積自由現金流與現金股利', related: ['dividend-coverage-ratio', 'dividend-coverage-ratio-5y', 'cash-flow-composition'] },
+  { slug: 'dividend-coverage-ratio-5y', metricCode: 'dividendCoverageRatio5y', timeframe: 'FY', topic: '近 5 年 現金流量股利保障倍數', titleKeywords: '近 5 年累積自由現金流與現金股利', related: ['dividend-coverage-ratio', 'dividend-coverage-ratio-3y', 'cash-flow-composition'] },
   // shareholderYield 當時只有 8 期（2 年）TTM 歷史，低於本站約 10 年的門檻，使用者決定照放（跟月營收那種整個市場缺的不同）；深度沒長就重看
   // 堆疊組成（2026-10-08 使用者「股東總回饋率 能改成 stackedbar 嗎」）：只疊真的流向股東的現金。量到最新一期 10/10 檔
   // 現金股利＋買回＝總數（誤差 ≤0.01），更早的期別成分還在回填，未滿兩期成立時組成段不顯示。減資退還現金（capitalReductionYield）
@@ -264,6 +270,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // compareMetricCode：2330 每股現金 120.86 元對利息收入 1.16 元差 100 倍，共用線性軸會貼在零軸上；兩頁互為 related。
   // Q：現金是季末存量，近四季加總沒意義（同 bvps），上游也只給 Q。文案上游三段齊全，不另寫。
   { slug: 'cash-per-share', metricCode: 'cashPerShare', timeframe: 'Q', topic: '每股現金及約當現金', titleKeywords: '每股現金及約當現金逐季變化', related: ['interest-income', 'cash-conversion-cycle', 'ocf-to-net-income'] },
+  // 合約負債占股本比（2026-11-15，使用者的建材營造選股指南，數據中台 d56f541）：客戶先付、還沒認列成營收的預收款有幾個股本大，看建商與
+  // 工程公司未來一兩年的營收能見度。面額不是 10 元的公司股本以每股 10 元換算，型錄的限制段寫了。跟營運周轉放一起：誰先墊錢的同一個問題
+  { slug: 'contract-liabilities-to-share-capital', metricCode: 'contractLiabilitiesToShareCapital', timeframe: 'Q', topic: '合約負債占股本比', titleKeywords: '合約負債占股本比預收款與營收能見度', related: ['debt-composition', 'monthly-revenue', 'receivables-days'] },
   { slug: 'cash-conversion-cycle', metricCode: 'cashConversionCycle', timeframe: 'TTM', topic: '現金轉換循環', titleKeywords: '現金轉換循環與資金被綁住的天數', related: ['cash-cycle', 'operating-cycle', 'payables-days', 'ocf-to-net-income'] }
 ]
 

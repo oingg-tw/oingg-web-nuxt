@@ -120,12 +120,13 @@ if (holes.length) {
 }
 
 // 頁名（2026-10-11 生態系詞彙表）：頁面就是那支指標本身時，頁名一律等於 analysis-ts 的 `name`；只有「同一支指標、不同頁面」
-// （設了 valueTopic）可以有自己的頁名。
+// （設了 valueTopic）可以有自己的頁名。有後綴的指標（近 3 年／近 5 年 現金流量股利保障倍數）頁名是「後綴 名稱」，同篩選器的 metricDisplayName
 // ponytail: topic 仍寫在 metric-pages.ts（SSR 標題、側欄、sitemap 都同步讀它），這裡只擋漂移；要完全不存一份得把頁名改成執行期讀型錄。
-const renamed = pages.filter(page => page.ownName && page.topic && byCode.get(page.metricCode) && byCode.get(page.metricCode).name !== page.topic)
+const displayNameOf = metric => (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name)
+const renamed = pages.filter(page => page.ownName && page.topic && byCode.get(page.metricCode) && displayNameOf(byCode.get(page.metricCode)) !== page.topic)
 if (renamed.length) {
   console.log(`\n⚠ ${renamed.length} 頁的頁名與 /metrics name 不一致：`)
-  for (const page of renamed) console.log(`  ${page.slug.padEnd(34)}頁名「${page.topic}」　型錄「${byCode.get(page.metricCode).name}」`)
+  for (const page of renamed) console.log(`  ${page.slug.padEnd(34)}頁名「${page.topic}」　型錄「${displayNameOf(byCode.get(page.metricCode))}」`)
 }
 if (!drifted.length && !holes.length && !renamed.length) console.log('公式、期別與後端敘述都沒動，也沒有缺文案或頁名不一致的頁面。')
 else process.exitCode = 1
