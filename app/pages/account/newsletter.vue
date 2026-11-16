@@ -146,74 +146,77 @@ async function resend() {
   <AccountPageShell title="電子報">
     <p class="newsletter-page__lead">每週一封，整理你持有和關注的股票這一週發生的事。</p>
 
-    <AccountSection id="newsletter-weekly-title" title="每週持股週報">
-      <template #description>每週日晚上 8 點寄出。那週你持有、關注的股票都沒有可以整理的內容，就不寄。</template>
-      <div class="app-card newsletter-page__card">
-        <div class="newsletter-page__part newsletter-page__switch-row">
-          <span v-if="statusText" class="newsletter-page__status">{{ statusText }}</span>
-          <span v-else class="newsletter-page__status"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">未開啟・打開就是同意每週寄到下面的 email</span></span>
-          <!-- 沒有任何 email 不給開關：要先填一個（下面的表單就會打開週報） -->
-          <el-switch v-if="accountEmail || ownEmail" id="newsletter-weekly" aria-label="每週持股週報" :model-value="weekly?.optIn ?? false" :disabled="!weekly" @change="setOptIn" />
-        </div>
+    <div class="newsletter-page__layout">
+      <AccountSection id="newsletter-weekly-title" title="每週持股週報">
+        <template #description>每週日晚上 8 點寄出。那週你持有、關注的股票都沒有可以整理的內容，就不寄。</template>
+        <div class="app-card newsletter-page__card">
+          <div class="newsletter-page__part newsletter-page__switch-row">
+            <span v-if="statusText" class="newsletter-page__status">{{ statusText }}</span>
+            <span v-else class="newsletter-page__status"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">未開啟・打開就是同意每週寄到下面的 email</span></span>
+            <!-- 沒有任何 email 不給開關：要先填一個（下面的表單就會打開週報） -->
+            <el-switch v-if="accountEmail || ownEmail" id="newsletter-weekly" aria-label="每週持股週報" :model-value="weekly?.optIn ?? false" :disabled="!weekly" @change="setOptIn" />
+          </div>
 
-        <!-- 寄到哪：帳號的 email；或自己填的收件 email（狀態、重寄、換一個）；都沒有就填一個 -->
-        <div class="newsletter-page__part newsletter-page__text">
-          <span class="newsletter-page__name">寄到</span>
-          <template v-if="accountEmail">
-            <span v-if="settings" class="newsletter-page__email">{{ settings.email }}</span>
-            <span v-else class="newsletter-page__email"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">name@example.com</span></span>
-            <span class="newsletter-page__note">用帳號的 email。要換成別的，請改用那個帳號登入。</span>
-          </template>
-          <template v-else-if="ownEmail && !editingEmail">
-            <span class="newsletter-page__email">{{ ownEmail.address }}<span class="newsletter-page__tag">{{ ownEmail.status === 'verified' ? '已驗證' : '待驗證' }}</span></span>
-            <span class="newsletter-page__actions">
-              <el-button v-if="ownEmail.status !== 'verified'" :disabled="cooldownLeft > 0" :loading="emailBusy" @click="resend">
-                {{ cooldownLeft ? `重寄驗證信（${cooldownLeft} 秒後）` : ownEmail.status === 'entered' ? '寄驗證信' : '重寄驗證信' }}
-              </el-button>
-              <el-button @click="editEmail">改用別的 email</el-button>
-            </span>
-            <span class="newsletter-page__note">{{ ownEmail.status === 'verified'
-              ? '自己填的 email 只用來寄週報，不會變成登入方式。'
-              : '點驗證信裡的連結就開始寄。沒收到的話看看垃圾郵件匣；連結 24 小時內有效，重寄後舊的就不能用了。' }}</span>
-          </template>
-          <form v-else class="newsletter-page__form" @submit.prevent="submitEmail">
-            <span v-if="!ownEmail" class="newsletter-page__note">這個帳號還沒有 email。</span>
-            <label for="newsletter-email">{{ ownEmail ? '改成哪個 email' : '要寄到哪個 email' }}</label>
-            <el-input id="newsletter-email" v-model="emailDraft" type="email" autocomplete="email" maxlength="254" required placeholder="name@example.com" :disabled="!settings" />
-            <span class="newsletter-page__actions">
-              <el-button type="primary" native-type="submit" :loading="emailBusy" :disabled="!settings">{{ ownEmail ? '寄驗證信' : '寄驗證信並開啟週報' }}</el-button>
-              <el-button v-if="ownEmail" @click="editingEmail = false">取消</el-button>
-            </span>
-            <span class="newsletter-page__note">{{ ownEmail
-              ? '換了 email 要重新驗證，驗證完才會寄到新的 email。'
-              : '點驗證信裡的連結確認後就開始寄。按下去就是同意收週報，之後隨時可以關掉；這個 email 只用來寄週報，不會變成登入方式。' }}</span>
-            <span v-if="!ownEmail" class="newsletter-page__note">或<NuxtLink to="/account#sign-in-methods-title" class="newsletter-page__link">加上 Google 登入</NuxtLink>，週報就寄到那個 Google 帳號的 email，不用另外驗證。</span>
-          </form>
-          <p v-if="emailMessage" class="newsletter-page__message" role="alert">{{ emailMessage }}</p>
-        </div>
+          <!-- 寄到哪：帳號的 email；或自己填的收件 email（狀態、重寄、換一個）；都沒有就填一個 -->
+          <div class="newsletter-page__part newsletter-page__text">
+            <span class="newsletter-page__name">寄到</span>
+            <template v-if="accountEmail">
+              <span v-if="settings" class="newsletter-page__email">{{ settings.email }}</span>
+              <span v-else class="newsletter-page__email"><span class="app-skeleton app-skeleton--flow" aria-hidden="true">name@example.com</span></span>
+              <span class="newsletter-page__note">用帳號的 email。要換成別的，請改用那個帳號登入。</span>
+            </template>
+            <template v-else-if="ownEmail && !editingEmail">
+              <span class="newsletter-page__email">{{ ownEmail.address }}<span class="newsletter-page__tag">{{ ownEmail.status === 'verified' ? '已驗證' : '待驗證' }}</span></span>
+              <span class="newsletter-page__actions">
+                <el-button v-if="ownEmail.status !== 'verified'" :disabled="cooldownLeft > 0" :loading="emailBusy" @click="resend">
+                  {{ cooldownLeft ? `重寄驗證信（${cooldownLeft} 秒後）` : ownEmail.status === 'entered' ? '寄驗證信' : '重寄驗證信' }}
+                </el-button>
+                <el-button @click="editEmail">改用別的 email</el-button>
+              </span>
+              <span class="newsletter-page__note">{{ ownEmail.status === 'verified'
+                ? '自己填的 email 只用來寄週報，不會變成登入方式。'
+                : '點驗證信裡的連結就開始寄。沒收到的話看看垃圾郵件匣；連結 24 小時內有效，重寄後舊的就不能用了。' }}</span>
+            </template>
+            <form v-else class="newsletter-page__form" @submit.prevent="submitEmail">
+              <span v-if="!ownEmail" class="newsletter-page__note">這個帳號還沒有 email。</span>
+              <label for="newsletter-email">{{ ownEmail ? '改成哪個 email' : '要寄到哪個 email' }}</label>
+              <el-input id="newsletter-email" v-model="emailDraft" type="email" autocomplete="email" maxlength="254" required placeholder="name@example.com" :disabled="!settings" />
+              <span class="newsletter-page__actions">
+                <el-button type="primary" native-type="submit" :loading="emailBusy" :disabled="!settings">{{ ownEmail ? '寄驗證信' : '寄驗證信並開啟週報' }}</el-button>
+                <el-button v-if="ownEmail" @click="editingEmail = false">取消</el-button>
+              </span>
+              <span class="newsletter-page__note">{{ ownEmail
+                ? '換了 email 要重新驗證，驗證完才會寄到新的 email。'
+                : '點驗證信裡的連結確認後就開始寄。按下去就是同意收週報，之後隨時可以關掉；這個 email 只用來寄週報，不會變成登入方式。' }}</span>
+              <span v-if="!ownEmail" class="newsletter-page__note">或<NuxtLink to="/account#sign-in-methods-title" class="newsletter-page__link">加上 Google 登入</NuxtLink>，週報就寄到那個 Google 帳號的 email，不用另外驗證。</span>
+            </form>
+            <p v-if="emailMessage" class="newsletter-page__message" role="alert">{{ emailMessage }}</p>
+          </div>
 
-        <!-- 分隔線畫在外面這一層：fieldset 的上框線會穿過 legend -->
-        <div class="newsletter-page__part">
-          <fieldset class="newsletter-page__sections">
-            <legend class="newsletter-page__name">{{ weekly?.optIn ? '每封要有哪幾塊（至少留一塊，改了就存）' : '每封有這幾塊（打開後可以挑）' }}</legend>
+          <div class="newsletter-page__part newsletter-page__text">
+            <p class="newsletter-page__note">每週一封。專業版之後會有每天或即時，內容一樣，只是寄得比較快。</p>
+            <el-button class="newsletter-page__sample" @click="sampleOpen = true">看範例週報</el-button>
+          </div>
+        </div>
+      </AccountSection>
+
+      <AccountSection title="每封要有哪幾塊">
+        <template #description>{{ weekly?.optIn ? '至少留一塊，改了就存。' : '打開週報後可以挑。' }}</template>
+        <div class="app-card newsletter-page__card">
+          <div class="newsletter-page__part">
             <!-- 讀到之前照沒設定過的預設（四塊全選）畫，多數人讀到時不變。min：只剩一塊時那一塊不能取消（勾選框自己不能再傳 disabled，
                  Element 會拿它蓋掉群組的停用） -->
-            <el-checkbox-group :model-value="weekly?.sections ?? ALL_SECTIONS" :disabled="!weekly?.optIn" :min="1" class="newsletter-page__checks" @change="setSections">
+            <el-checkbox-group :model-value="weekly?.sections ?? ALL_SECTIONS" :disabled="!weekly?.optIn" :min="1" aria-label="每封要有哪幾塊" class="newsletter-page__checks" @change="setSections">
               <el-checkbox v-for="section in NEWSLETTER_SECTIONS" :key="section.code" :value="section.code" class="newsletter-page__check">
                 <span class="newsletter-page__check-name">{{ section.label }}</span>
                 <span class="newsletter-page__note">{{ section.hint }}</span>
               </el-checkbox>
             </el-checkbox-group>
-          </fieldset>
+          </div>
         </div>
-
-        <div class="newsletter-page__part newsletter-page__text">
-          <p class="newsletter-page__note">每週一封。專業版之後會有每天或即時，內容一樣，只是寄得比較快。</p>
-          <el-button class="newsletter-page__sample" @click="sampleOpen = true">看範例週報</el-button>
-        </div>
-      </div>
-      <p class="newsletter-page__footnote">只放你持有、加入觀察清單的股票。每封信最下面都有一鍵退訂，在這裡關掉也一樣。</p>
-    </AccountSection>
+      </AccountSection>
+    </div>
+    <p class="newsletter-page__footnote">只放你持有、加入觀察清單的股票。每封信最下面都有一鍵退訂，在這裡關掉也一樣。</p>
     <AccountNewsletterSample v-model="sampleOpen" />
   </AccountPageShell>
 </template>
@@ -223,6 +226,30 @@ async function resend() {
 .newsletter-page__footnote {
   margin: 0;
   color: var(--el-text-color-regular);
+}
+
+/* 內容區 960 以上（2026-11-16，使用者：「重心不穩 而且又留白過多」）：週報的開關與寄到哪、要哪幾塊兩張卡並排，差不多高 */
+.newsletter-page__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+@container (min-width: 960px) {
+  .newsletter-page__layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 24px;
+    align-items: start;
+  }
+
+  /* 兩段的標題列與卡片各自對齊（subgrid）：說明一段兩行、一段一行時，兩張卡片的上緣還是同一條線 */
+  .newsletter-page__layout > .account-section {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+  }
 }
 
 .newsletter-page__footnote {
@@ -314,19 +341,10 @@ async function resend() {
   color: var(--el-color-danger);
 }
 
-.newsletter-page__sections {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-/* 卡片寬（電腦版在右邊那欄）時排成兩欄；手機一欄 */
 .newsletter-page__checks {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 4px 24px;
-  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* 一個勾選框兩行：名稱一行、說明一行；整列至少 44px 高 */

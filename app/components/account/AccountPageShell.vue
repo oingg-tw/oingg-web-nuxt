@@ -28,8 +28,8 @@ watch(
 </template>
 
 <style scoped>
-/* 手機一欄 480；電腦版 960（2026-11-16，使用者：「電腦版上看起來彆扭…在電腦版要RWD」）：原本電腦版也是 480 置中，離側欄一大段、
-   卡片窄。960 讓每一段排成標題在左、內容在右（AccountSection），表格和設定不會拉得太寬 */
+/* 手機一欄 480；電腦版用滿內容區，跟持股管理一樣從側欄旁邊開始（2026-11-16，使用者：「電腦版上看起來彆扭…在電腦版要RWD」，
+   再來「重心不穩 而且又留白過多」：先試的 960 置中，離側欄一大段、標題欄底下整條空著）。各頁在內容區 960 以上排成並排的兩欄 */
 .account-shell {
   container-type: inline-size;
   width: 100%;
@@ -39,7 +39,7 @@ watch(
 
 @media (min-width: 768px) {
   .account-shell {
-    max-width: 960px;
+    max-width: none;
   }
 }
 

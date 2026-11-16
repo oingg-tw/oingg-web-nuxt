@@ -259,55 +259,59 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
 <template>
   <AccountPageShell title="帳號與登入">
     <template v-if="currentUser">
-      <div class="app-card account-page__card">
-        <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" alt="" class="account-page__avatar">
-          {{ displayLabel.slice(0, 1).toUpperCase() }}
-        </el-avatar>
-        <div class="account-page__identity">
-          <p class="account-page__name">{{ currentUser.displayName || '未設定名稱' }}</p>
-          <p class="account-page__email">{{ currentUser.email }}</p>
-        </div>
-        <el-button :icon="SwitchButton" class="account-page__signout" @click="handleSignOut">登出</el-button>
+      <div class="account-page__layout">
+        <AccountSection title="個人資料">
+          <div class="app-card account-page__card">
+            <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" alt="" class="account-page__avatar">
+              {{ displayLabel.slice(0, 1).toUpperCase() }}
+            </el-avatar>
+            <div class="account-page__identity">
+              <p class="account-page__name">{{ currentUser.displayName || '未設定名稱' }}</p>
+              <p class="account-page__email">{{ currentUser.email }}</p>
+            </div>
+            <el-button :icon="SwitchButton" class="account-page__signout" @click="handleSignOut">登出</el-button>
+          </div>
+        </AccountSection>
+
+        <AccountSection id="sign-in-methods-title" title="登入方式">
+          <ul class="app-card account-page__methods">
+            <li v-if="providers.includes('google.com')" class="account-page__method"><span>Google</span><span class="account-page__method-note">{{ currentUser.email }}</span></li>
+            <li v-if="providers.includes('password')" class="account-page__method"><span>電子郵件</span><span class="account-page__method-note">{{ currentUser.email }}</span></li>
+            <li class="account-page__method">
+              <span>LINE</span>
+              <span v-if="lineAccount" class="account-page__method-note">已綁定</span>
+              <span v-else-if="lineLinked" class="account-page__method-actions">
+                <span class="account-page__method-note">已綁定</span>
+                <el-button :loading="unlinkBusy" @click="unlinkLine">解除綁定</el-button>
+              </span>
+              <el-button v-else-if="lineStatus === 'unlinked'" :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
+              <span v-else-if="lineStatus === 'loading'" class="account-page__method-pending" aria-hidden="true" />
+            </li>
+            <!-- LINE 建立的帳號還沒有 Google：加上去之後上面就會多一列 Google -->
+            <li v-if="lineAccount && !providers.includes('google.com')" class="account-page__method">
+              <span>Google</span>
+              <a v-if="inLineBrowser" href="/account?openExternalBrowser=1" class="account-page__method-link">用外部瀏覽器開啟</a>
+              <el-button v-else :loading="googleBusy" @click="addGoogle">加上 Google 登入</el-button>
+            </li>
+          </ul>
+          <p v-if="googleMessage" class="account-page__message" role="alert">{{ googleMessage }}</p>
+          <el-button v-if="googleMessage.startsWith('為了安全')" @click="startLineLogin('/account')">重新用 LINE 登入</el-button>
+          <p v-if="lineAccount && inLineBrowser && !providers.includes('google.com')" class="account-page__note">LINE 內建瀏覽器打不開 Google 的登入視窗：用外部瀏覽器開啟這一頁、用 LINE 登入後，再按「加上 Google 登入」。</p>
+          <template v-if="passwordFor">
+            <label for="link-line-password" class="account-page__label">為了安全，請輸入密碼，再按一次「{{ passwordFor === 'link' ? '綁定 LINE' : '解除綁定' }}」</label>
+            <el-input id="link-line-password" v-model="linkPassword" type="password" show-password autocomplete="current-password" />
+          </template>
+          <p v-if="linkMessage" class="account-page__message" role="alert">{{ linkMessage }}</p>
+          <el-button v-if="linkMessage.includes('重新用 LINE 登入')" @click="startLineLogin('/account')">重新用 LINE 登入</el-button>
+          <p v-if="lineAccount && !providers.includes('google.com')" class="account-page__note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
+          <p v-else-if="!lineAccount" class="account-page__note">綁定 LINE 之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
+        </AccountSection>
+
+        <AccountSection title="刪除帳號">
+          <p class="account-page__delete-text">刪除帳號會把你在這裡的資料一起刪掉，而且無法復原。</p>
+          <el-button type="danger" plain class="account-page__delete-button" @click="openDelete">刪除帳號…</el-button>
+        </AccountSection>
       </div>
-
-      <AccountSection id="sign-in-methods-title" title="登入方式">
-        <ul class="app-card account-page__methods">
-          <li v-if="providers.includes('google.com')" class="account-page__method"><span>Google</span><span class="account-page__method-note">{{ currentUser.email }}</span></li>
-          <li v-if="providers.includes('password')" class="account-page__method"><span>電子郵件</span><span class="account-page__method-note">{{ currentUser.email }}</span></li>
-          <li class="account-page__method">
-            <span>LINE</span>
-            <span v-if="lineAccount" class="account-page__method-note">已綁定</span>
-            <span v-else-if="lineLinked" class="account-page__method-actions">
-              <span class="account-page__method-note">已綁定</span>
-              <el-button :loading="unlinkBusy" @click="unlinkLine">解除綁定</el-button>
-            </span>
-            <el-button v-else-if="lineStatus === 'unlinked'" :loading="linkBusy" @click="linkLine">綁定 LINE</el-button>
-            <span v-else-if="lineStatus === 'loading'" class="account-page__method-pending" aria-hidden="true" />
-          </li>
-          <!-- LINE 建立的帳號還沒有 Google：加上去之後上面就會多一列 Google -->
-          <li v-if="lineAccount && !providers.includes('google.com')" class="account-page__method">
-            <span>Google</span>
-            <a v-if="inLineBrowser" href="/account?openExternalBrowser=1" class="account-page__method-link">用外部瀏覽器開啟</a>
-            <el-button v-else :loading="googleBusy" @click="addGoogle">加上 Google 登入</el-button>
-          </li>
-        </ul>
-        <p v-if="googleMessage" class="account-page__message" role="alert">{{ googleMessage }}</p>
-        <el-button v-if="googleMessage.startsWith('為了安全')" @click="startLineLogin('/account')">重新用 LINE 登入</el-button>
-        <p v-if="lineAccount && inLineBrowser && !providers.includes('google.com')" class="account-page__note">LINE 內建瀏覽器打不開 Google 的登入視窗：用外部瀏覽器開啟這一頁、用 LINE 登入後，再按「加上 Google 登入」。</p>
-        <template v-if="passwordFor">
-          <label for="link-line-password" class="account-page__label">為了安全，請輸入密碼，再按一次「{{ passwordFor === 'link' ? '綁定 LINE' : '解除綁定' }}」</label>
-          <el-input id="link-line-password" v-model="linkPassword" type="password" show-password autocomplete="current-password" />
-        </template>
-        <p v-if="linkMessage" class="account-page__message" role="alert">{{ linkMessage }}</p>
-        <el-button v-if="linkMessage.includes('重新用 LINE 登入')" @click="startLineLogin('/account')">重新用 LINE 登入</el-button>
-        <p v-if="lineAccount && !providers.includes('google.com')" class="account-page__note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
-        <p v-else-if="!lineAccount" class="account-page__note">綁定 LINE 之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
-      </AccountSection>
-
-      <AccountSection title="刪除帳號">
-        <p class="account-page__delete-text">刪除帳號會把你在這裡的資料一起刪掉，而且無法復原。</p>
-        <el-button type="danger" plain class="account-page__delete-button" @click="openDelete">刪除帳號…</el-button>
-      </AccountSection>
 
       <el-dialog v-model="deleteOpen" title="永久刪除帳號" width="min(480px, 92vw)">
         <p class="account-page__delete-text">以下資料會一起刪除，無法復原：</p>
@@ -376,6 +380,26 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
   color: var(--el-text-color-secondary);
 }
 
+/* 內容區 960 以上（2026-11-16，使用者：「重心不穩 而且又留白過多」）：個人資料在左一欄，登入方式與刪除帳號疊在右邊兩欄寬，
+   左右差不多高。兩欄都要放得下：個人資料卡至少 300、登入方式那張至少 600（email 與綁定按鈕同一列） */
+.account-page__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@container (min-width: 960px) {
+  .account-page__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    align-items: start;
+  }
+
+  .account-page__layout > :first-child {
+    grid-row: span 2;
+  }
+}
+
 .account-page__identity {
   display: flex;
   flex-direction: column;
@@ -389,7 +413,8 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
   max-width: 240px;
 }
 
-/* 電腦版（2026-11-16）：大頭貼、名稱與 email、登出排成一列，不再是手機的直排置中。容器是 AccountPageShell，720 同 AccountSection */
+/* 一欄很寬時（平板直拿、內容區 720～959）：大頭貼、名稱與 email、登出排成一列，不是一張寬卡片中間一小塊。容器是這一段的內容欄：
+   手機與電腦版左欄都窄，照手機的直排 */
 @container (min-width: 720px) {
   .account-page__card {
     flex-direction: row;
