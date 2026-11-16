@@ -9,14 +9,14 @@ import type { LineIntent } from '~/utils/line-login'
 // 綁定（2026-10-20，使用者：「之前用 gmail 登入，現在用 Line 登入卻沒看到任何交易紀錄…該如何綁定？」，與業務中台共同設計）：
 //   - intent login：照舊換 custom token 登入。綁定過的 LINE 會進到綁定的帳號（業務中台照對應簽 token）。不做 email 自動對應
 //     （使用者聽完風險後決定）。newAccount（這次才建立 LINE 專屬帳號）提示一次——那正是使用者卡住的情況
-//   - intent link：個人資料頁按「綁定 LINE」來的。**不重新登入**（換使用者會讓已載入的觀察清單等留在舊帳號），用目前的 token 打
+//   - intent link：帳號頁按「綁定 LINE」來的。**不重新登入**（換使用者會讓已載入的觀察清單等留在舊帳號），用目前的 token 打
 //     POST /auth/line/link，業務中台把這個 LINE 記到目前的帳號，之後用 LINE 登入就是這個帳號
 // revoked（2026-11-09，業務中台 48a1c34 的 401 line_link_revoked）：帳號綁定 LINE 之後撤銷過登入（改密碼、登出所有裝置），LINE 登入
-// 不發 token。用原本的方式登入、到個人資料重新綁定就恢復——所以這一種不給「重新用 LINE 登入」，再試也一樣
+// 不發 token。用原本的方式登入、到帳號頁重新綁定就恢復——所以這一種不給「重新用 LINE 登入」，再試也一樣
 type Failure = 'cancelled' | 'expired' | 'unavailable' | 'signedOut' | 'alreadyLinked' | 'accountLinked' | 'lineAccount' | 'hasData' | 'reauth' | 'revoked'
 const FAILURES: Record<Failure, { title: string; detail: string }> = {
   cancelled: { title: '已取消 LINE 登入', detail: '沒有登入，也沒有存取你的 LINE 資料。' },
-  revoked: { title: '這次沒辦法用 LINE 登入', detail: '這個帳號綁定 LINE 之後改過密碼或登出了所有裝置，為了安全，LINE 登入先停用。請改用原本的方式（Google 或電子郵件）登入，再到「個人資料」重新綁定 LINE。' },
+  revoked: { title: '這次沒辦法用 LINE 登入', detail: '這個帳號綁定 LINE 之後改過密碼或登出了所有裝置，為了安全，LINE 登入先停用。請改用原本的方式（Google 或電子郵件）登入，再到「帳號」重新綁定 LINE。' },
   expired: { title: '這次登入已經失效', detail: '登入連結只能用一次，請重新登入。' },
   unavailable: { title: '暫時無法完成登入', detail: '請稍後再試；一直失敗的話，可以先改用其他方式登入。' },
   signedOut: { title: '沒有綁定 LINE', detail: '要先登入原本的帳號，才能把 LINE 綁上去。' },
@@ -24,7 +24,7 @@ const FAILURES: Record<Failure, { title: string; detail: string }> = {
   accountLinked: { title: '沒有綁定 LINE', detail: '你的帳號已經綁了另一個 LINE，一個帳號只能綁一個 LINE。' },
   lineAccount: { title: '沒有綁定 LINE', detail: '現在登入的是 LINE 帳號，請先改用 Google 或電子郵件登入原本的帳號，再綁定 LINE。' },
   hasData: { title: '沒有綁定 LINE', detail: '這個 LINE 帳號已經有自己的持股或觀察清單，兩個帳號的資料沒辦法合併。' },
-  reauth: { title: '沒有綁定 LINE', detail: '為了安全，請在個人資料頁再按一次「綁定 LINE」，先驗證身分。' }
+  reauth: { title: '沒有綁定 LINE', detail: '為了安全，請在帳號頁再按一次「綁定 LINE」，先驗證身分。' }
 }
 
 const route = useRoute()
@@ -69,7 +69,7 @@ async function signIn(code: string, nonce: string) {
   await navigateTo(returnTo.value, { replace: true })
   if (result.newAccount) {
     // 對真正的新使用者先說歡迎；之前用過 Google／email 的人（使用者這次卡住的情況）接著告訴他怎麼回到原本的帳號
-    showClosableMessage('已用 LINE 建立帳號。想換電腦也能登入，可以到「個人資料」加上 Google 登入。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再綁定 LINE。', 'info', 10000)
+    showClosableMessage('已用 LINE 建立帳號。想換電腦也能登入，可以到「帳號」加上 Google 登入。之前用 Google 或電子郵件登入過的話，請改用那個方式登入，再綁定 LINE。', 'info', 10000)
   }
 }
 
@@ -126,10 +126,10 @@ onMounted(async () => {
     <div v-if="failure && failureText" class="app-card line-login-page__panel">
       <h1 class="line-login-page__title">{{ failureText.title }}</h1>
       <p class="line-login-page__detail" role="alert">{{ failureText.detail }}</p>
-      <!-- 綁定那條：重試或回個人資料（重新驗證、換帳號都在那裡做），不出現「改用其他方式登入」 -->
+      <!-- 綁定那條：重試或回帳號頁（重新驗證、換帳號都在那裡做），不出現「改用其他方式登入」 -->
       <div v-if="linking" class="line-login-page__actions">
         <el-button v-if="failure === 'cancelled' || failure === 'expired' || failure === 'unavailable'" type="primary" size="large" @click="startLineLogin(returnTo, 'link')">重新綁定 LINE</el-button>
-        <el-button size="large" @click="navigateTo(returnTo, { replace: true })">回到個人資料</el-button>
+        <el-button size="large" @click="navigateTo(returnTo, { replace: true })">回到帳號</el-button>
       </div>
       <template v-else>
         <div class="line-login-page__actions">

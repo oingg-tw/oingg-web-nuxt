@@ -36,12 +36,12 @@ export default defineNuxtConfig({
   // handler server/api/__sitemap__/stocks.get.ts, chunked). The stock list lives in 業務中台, so it
   // can't be enumerated at build time the way the blog's own markdown files can.
   sitemap: {
-    // Per-visitor pages (settings, holdings, watchlist, profile, calendar, the internal design
+    // Per-visitor pages (settings, holdings, watchlist, account, calendar, the internal design
     // page) carry `robots: noindex` in their own useSeoMeta and must not be advertised here either
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
     // /industries/sensitivity：2026-11-04 先隱藏、導到 /industries/cycle（見那一頁），導走的網址不放進網站地圖
     // /industries 與 /industries/overview：2026-11-09 產業索引先隱藏，/industries 畫殖利率分析（標準網址是 /industries/dividend），overview 導回 /industries
-    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity', '/industries', '/industries/overview'],
+    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/account', '/account/**', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity', '/industries', '/industries/overview'],
     sitemaps: {
       pages: {
         includeAppSources: true

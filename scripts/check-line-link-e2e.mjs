@@ -83,10 +83,10 @@ async function signInWithLine(page, sub) {
 }
 async function bindLine(page, sub) {
   line.sub = sub
-  await page.goto(`${base}/profile`, { waitUntil: 'networkidle', timeout: 180000 }); await page.waitForTimeout(1500)
+  await page.goto(`${base}/account`, { waitUntil: 'networkidle', timeout: 180000 }); await page.waitForTimeout(1500)
   await page.getByRole('button', { name: '綁定 LINE' }).click()
   await page.waitForURL(/\/auth\/line/, { timeout: 30000 })
-  await page.waitForFunction(() => location.pathname === '/profile' || !!document.querySelector('[role="alert"]'), null, { timeout: 30000 })
+  await page.waitForFunction(() => location.pathname === '/account' || !!document.querySelector('[role="alert"]'), null, { timeout: 30000 })
   await page.waitForTimeout(800)
 }
 const signOut = async page => { await page.evaluate(() => window.useNuxtApp().$firebaseAuth.signOut()); await page.waitForTimeout(800) }
@@ -106,10 +106,10 @@ try {
   const created = await api(pageA, '/watchlists', { method: 'POST', body: JSON.stringify({ name: 'E2E 綁定測試' }) })
   check(created.status === 201, `A 建一份觀察清單（${created.status}）`)
   await bindLine(pageA, SUB)
-  check(pageA.url().endsWith('/profile') && await pageA.locator('.el-message', { hasText: '已綁定 LINE' }).count() > 0, '綁定成功：回到個人資料、提示已綁定')
+  check(pageA.url().endsWith('/account') && await pageA.locator('.el-message', { hasText: '已綁定 LINE' }).count() > 0, '綁定成功：回到個人資料、提示已綁定')
   const me = await api(pageA, '/users/me')
   check(me.body?.user?.lineLinked === true, `GET /users/me 的 lineLinked 是 true（${me.body?.user?.lineLinked}）`)
-  await pageA.goto(`${base}/profile`, { waitUntil: 'networkidle' }); await pageA.waitForTimeout(1500)
+  await pageA.goto(`${base}/account`, { waitUntil: 'networkidle' }); await pageA.waitForTimeout(1500)
   const methods = await pageA.locator('section', { has: pageA.getByRole('heading', { name: '登入方式' }) }).innerText()
   check(methods.includes('LINE') && methods.includes('已綁定'), '個人資料「登入方式」LINE 寫已綁定')
 
@@ -137,12 +137,12 @@ try {
   check(await pageL.locator('.el-message', { hasText: '已用 LINE 建立帳號' }).count() > 0, '新帳號提示（歡迎＋可以加上 Google）')
   const lineList = await api(pageL, '/watchlists', { method: 'POST', body: JSON.stringify({ name: 'E2E LINE 資料' }) })
   check(lineList.status === 201, `LINE 帳號建一份觀察清單（${lineList.status}）`)
-  await pageL.goto(`${base}/profile`, { waitUntil: 'networkidle' }); await pageL.waitForTimeout(1500)
+  await pageL.goto(`${base}/account`, { waitUntil: 'networkidle' }); await pageL.waitForTimeout(1500)
   check(await pageL.getByRole('button', { name: '加上 Google 登入' }).isVisible(), '個人資料有「加上 Google 登入」')
   await pageL.context().close()
   const pageLine = await newPage({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/14.0.0' })
   await signInWithLine(pageLine, SUB2)
-  await pageLine.goto(`${base}/profile`, { waitUntil: 'networkidle' }); await pageLine.waitForTimeout(1500)
+  await pageLine.goto(`${base}/account`, { waitUntil: 'networkidle' }); await pageLine.waitForTimeout(1500)
   check(await pageLine.getByRole('link', { name: '用外部瀏覽器開啟' }).isVisible() && await pageLine.getByRole('button', { name: '加上 Google 登入' }).count() === 0, 'LINE 內建瀏覽器：改成「用外部瀏覽器開啟」')
   await pageLine.context().close()
 

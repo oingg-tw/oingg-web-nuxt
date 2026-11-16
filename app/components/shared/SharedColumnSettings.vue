@@ -179,7 +179,7 @@ function save() {
         <el-button v-if="defaults" :disabled="sameAsDefaults" @click="resetDefaults">重設預設欄位</el-button>
       </div>
       <p v-if="notice" class="column-settings__notice">
-        {{ notice.text }}<NuxtLink v-if="notice.plan" to="/profile#plan" class="column-settings__plan">看方案<span aria-hidden="true"> →</span></NuxtLink>
+        {{ notice.text }}<NuxtLink v-if="notice.plan" to="/account/plan" class="column-settings__plan">看方案<span aria-hidden="true"> →</span></NuxtLink>
       </p>
     </div>
     <ScreenerIndicatorPickerBody v-if="step === 'pick'" :categories="categories" :active="open && step === 'pick'" :hide-period="false" @select="pick" />

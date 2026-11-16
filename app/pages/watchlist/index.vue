@@ -234,7 +234,7 @@ async function submitNote() {
     </el-autocomplete>
 
     <p v-if="watchlistFull" class="watchlist-page__quota" role="status">
-      目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
+      目前方案最多 {{ watchlistLimit }} 檔，已經滿了。可以移除不需要的，或之後升級專業版。<NuxtLink to="/account/plan">看方案</NuxtLink>
     </p>
 
     <!-- 讀的時候表頭、卡片的欄名照畫，列是骨架、列數照上次（2026-10-20）；上次是空的就直接是空狀態 -->

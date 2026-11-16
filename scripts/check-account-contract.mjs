@@ -42,7 +42,7 @@ for (const scenario of ['ok', 'reauth']) {
     'DELETE /api/core/auth/line/link': (route) => { calls.push('DELETE'); return scenario === 'ok' ? route.fulfill({ json: { lineLinked: false } }) : route.fulfill(problem(401, 'reauth_required')) }
   })
   const page = await ctx.newPage()
-  await page.goto(`${base}/profile`, { waitUntil: 'networkidle', timeout: 180000 })
+  await page.goto(`${base}/account`, { waitUntil: 'networkidle', timeout: 180000 })
   const unlink = page.getByRole('button', { name: '解除綁定' })
   await unlink.waitFor({ timeout: 30000 })
   await unlink.click()
@@ -55,7 +55,7 @@ for (const scenario of ['ok', 'reauth']) {
     check(calls.length === 1 && await page.getByRole('button', { name: '綁定 LINE' }).count() === 1, 'ok：送一次 DELETE，那一列換回「綁定 LINE」')
     check((await page.locator('.el-message').first().innerText()).includes('已解除綁定 LINE'), 'ok：提示已解除綁定')
   } else {
-    check((await page.locator('.profile-page__delete-message').innerText()).includes('請先驗證身分，再按一次「解除綁定」'), 'reauth：寫出要先驗證身分')
+    check((await page.locator('.account-page__message').innerText()).includes('請先驗證身分，再按一次「解除綁定」'), 'reauth：寫出要先驗證身分')
     check((await page.locator('label[for="link-line-password"]').innerText()).includes('再按一次「解除綁定」'), 'reauth：出現密碼欄，標籤寫「解除綁定」')
   }
   await ctx.close()
@@ -70,7 +70,7 @@ console.log('LINE 登入：綁定後撤銷過登入')
   await page.goto(`${base}/auth/line?code=c-1&state=s-1`, { waitUntil: 'networkidle', timeout: 180000 })
   await page.locator('.line-login-page__title').waitFor({ timeout: 20000 })
   check((await page.locator('.line-login-page__title').innerText()).trim() === '這次沒辦法用 LINE 登入', '標題寫沒辦法用 LINE 登入')
-  check((await page.locator('.line-login-page__detail').innerText()).includes('到「個人資料」重新綁定 LINE'), '說明寫改用原本的方式登入、再重新綁定')
+  check((await page.locator('.line-login-page__detail').innerText()).includes('到「帳號」重新綁定 LINE'), '說明寫改用原本的方式登入、再重新綁定')
   check(await page.getByRole('button', { name: '重新用 LINE 登入' }).count() === 0 && await page.getByRole('button', { name: '改用其他方式登入' }).count() === 1, '不給「重新用 LINE 登入」，只給「改用其他方式登入」')
   await ctx.close()
 }

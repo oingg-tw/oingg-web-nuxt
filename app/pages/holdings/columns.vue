@@ -477,7 +477,7 @@ watch([authResolved, holdingsScope], ([resolved, uid]) => {
           </div>
         </div>
         <p v-if="atQuota && !editingId" class="columns-toolbar__help" role="status">
-          你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/profile#plan">看方案</NuxtLink>
+          你的方案最多 {{ columnQuota }} 欄（預設的欄位也算在內）。可以刪掉不需要的欄位再新增，或之後升級專業版。<NuxtLink to="/account/plan">看方案</NuxtLink>
         </p>
         <p v-if="!editingId" class="columns-toolbar__help">「新增指標」從指標目錄挑（例如 ROE），「新增公式」用欄位字母自己算。點任一欄的表頭可以改名、改公式或刪除；要排序就點那一欄的任一格，再按「由小到大」或「由大到小」。</p>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 額度用完的彈窗（2026-10-24，使用者：「這個直接改成彈窗，這樣有比較多的篇幅說服用戶買單」；原本是右下角一行提示）。全站一個，
 // showQuotaReached（quota-notice.ts）打開。說服只用真的差別：兩個方案能存多少（SharedPlanCompare，數字來自 業務中台），卡住的那一列
-// 標出來。不寫價格（還沒定）、不倒數；專業版還沒開放購買，所以主按鈕是「看專業版方案」（/profile#plan），不是「立即升級」。
+// 標出來。不寫價格（還沒定）、不倒數；專業版還沒開放購買，所以主按鈕是「看專業版方案」（/account/plan，2026-11-16 前是 /profile#plan），不是「立即升級」。
 // 觸發的地方都不在別的彈窗裡（篩選的新增對話框、指標挑選器都先關掉自己才送出），不會疊兩層；本來就在彈窗裡的額度說明照舊寫在那個
 // 彈窗裡（SharedColumnSettings）
 const notice = useQuotaNotice()
@@ -20,7 +20,7 @@ const open = computed({
 
 function seePlans() {
   open.value = false
-  void navigateTo('/profile#plan')
+  void navigateTo('/account/plan')
 }
 </script>
 

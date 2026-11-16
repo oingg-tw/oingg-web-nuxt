@@ -18,5 +18,5 @@ export const ALL_ROUTES = [
   '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', ...INDUSTRY_FACETS.map(facet => `/industry/24-semiconductor${facet.suffix}`),
   '/rank', '/rank/dividend-yield', '/learn', '/learn/dupont', '/learn/dividend-source/2330', '/blog', '/blog/low-pe-ratio-trap-cyclical-stocks',
   // /holdings/columns 2026-11-01 先隱藏（導回 /holdings），恢復時加回來；/industries/sensitivity 2026-11-04 同（導到 /industries/cycle）
-  '/calendar', '/calendar/months', '/watchlist', '/watchlist/lists', '/holdings', '/holdings/dividends', '/holdings/accounts', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/changelog', '/profile'
+  '/calendar', '/calendar/months', '/watchlist', '/watchlist/lists', '/holdings', '/holdings/dividends', '/holdings/accounts', '/guru-indicators', '/sitemap', '/appearance', '/accessibility', '/changelog', '/account', '/account/plan'
 ]

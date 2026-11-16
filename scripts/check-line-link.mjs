@@ -68,14 +68,14 @@ console.log('個人資料「登入方式」')
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx)
-  const page = await open(ctx, '/profile')
+  const page = await open(ctx, '/account')
   const methods = section(page)
   check(await methods.isVisible() && (await methods.innerText()).includes('電子郵件'), '有「登入方式」，列出電子郵件')
   const button = methods.getByRole('button', { name: '綁定 LINE' })
   check(await button.isVisible(), 'lineLinked false：LINE 那一列是「綁定 LINE」')
   await page.mouse.move(0, 0); await page.waitForTimeout(400)
-  const violations = (await new AxeBuilder({ page }).include('.profile-page').analyze()).violations.map(v => `${v.id}(${v.nodes.length})`).join(',') || '0'
-  check(violations === '0', `個人資料頁 axe 0（${violations}）`)
+  const violations = (await new AxeBuilder({ page }).include('.account-shell').analyze()).violations.map(v => `${v.id}(${v.nodes.length})`).join(',') || '0'
+  check(violations === '0', `帳號頁 axe 0（${violations}）`)
   if (dir) await methods.screenshot({ path: `${dir}/sign-in-methods.png` })
   // 剛登入（5 分鐘內）不用重新驗證，直接跳 LINE
   const uid = await uidOf(page)
@@ -85,11 +85,11 @@ console.log('個人資料「登入方式」')
   check(authorize.searchParams.get('scope') === 'openid profile' && authorize.searchParams.get('redirect_uri') === `${base}/auth/line`, `導向 LINE：scope「${authorize.searchParams.get('scope')}」、redirect_uri 不變`)
   // 回到回呼頁（LINE 會帶 code 與同一個 state 回來）
   await page.goto(`${base}/auth/line?code=fake-code&state=${authorize.searchParams.get('state')}`, { waitUntil: 'networkidle', timeout: 180000 })
-  await page.waitForURL('**/profile', { timeout: 30000 }); await page.waitForTimeout(800)
+  await page.waitForURL('**/account', { timeout: 30000 }); await page.waitForTimeout(800)
   const link = calls.find(call => call.startsWith('LINK'))
   check(!!link && link.includes('bearer') && link.includes('"code":"fake-code"') && link.includes(`"redirectUri":"${base}/auth/line"`) && link.includes('"nonce"'), `綁定：帶 Bearer 打 /auth/line/link（${link?.slice(0, 60)}…）`)
   check(!calls.includes('LOGIN') && await uidOf(page) === uid, '沒有重新登入（沒打 /auth/line、uid 不變）')
-  check(await page.locator('.el-message', { hasText: '已綁定 LINE' }).count() > 0, '回到個人資料，提示「已綁定 LINE」')
+  check(await page.locator('.el-message', { hasText: '已綁定 LINE' }).count() > 0, '回到帳號頁，提示「已綁定 LINE」')
   await ctx.close()
 }
 
@@ -98,7 +98,7 @@ console.log('已綁定／舊版業務中台')
 for (const [lineLinked, expected] of [[true, '已綁定'], ['absent', null]]) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx, { lineLinked })
-  const page = await open(ctx, '/profile')
+  const page = await open(ctx, '/account')
   const text = await section(page).innerText()
   if (expected) check(text.includes('LINE') && text.includes(expected) && await section(page).getByRole('button', { name: '綁定 LINE' }).count() === 0, 'lineLinked true：寫「已綁定」、沒有按鈕')
   else check(!text.includes('已綁定') && await section(page).getByRole('button', { name: '綁定 LINE' }).count() === 0, '舊版 業務中台（沒有 lineLinked）：LINE 那一列沒有按鈕、也不寫已綁定')
@@ -117,10 +117,10 @@ for (const [response, expected] of [
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState })
   await mock(ctx, { linkResponse: response })
   const page = await open(ctx, '/calendar')
-  await page.evaluate(() => sessionStorage.setItem('line-login', JSON.stringify({ state: 's1', nonce: 'n'.repeat(36), returnTo: '/profile', intent: 'link' })))
+  await page.evaluate(() => sessionStorage.setItem('line-login', JSON.stringify({ state: 's1', nonce: 'n'.repeat(36), returnTo: '/account', intent: 'link' })))
   await page.goto(`${base}/auth/line?code=fake&state=s1`, { waitUntil: 'networkidle', timeout: 180000 }); await page.waitForTimeout(1500)
   const alert = await page.getByRole('alert').innerText().catch(() => '')
-  check((await page.locator('h1').innerText()).includes('沒有綁定 LINE') && alert.includes(expected) && await page.getByRole('button', { name: '回到個人資料' }).isVisible(), `${response.json.code}：「${alert}」，可以回到個人資料`)
+  check((await page.locator('h1').innerText()).includes('沒有綁定 LINE') && alert.includes(expected) && await page.getByRole('button', { name: '回到帳號' }).isVisible(), `${response.json.code}：「${alert}」，可以回到個人資料`)
   if (dir && response.json.code === 'line_account_has_data') await page.screenshot({ path: `${dir}/link-failure.png` })
   await ctx.close()
 }

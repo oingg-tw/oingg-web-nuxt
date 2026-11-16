@@ -29,9 +29,9 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
 
 <template>
   <template v-if="layout === 'bar'">
-    <NuxtLink v-if="currentUser && !resolving" to="/profile" class="app-bar-item user-menu-button user-menu-button__trigger">
+    <NuxtLink v-if="currentUser && !resolving" to="/account" class="app-bar-item user-menu-button user-menu-button__trigger">
       <el-avatar :size="24" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">{{ initial }}</el-avatar>
-      帳號<span class="visually-hidden">：個人資料設定</span>
+      帳號<span class="visually-hidden">：帳號與登入、方案與用量</span>
     </NuxtLink>
     <span v-else-if="resolving && authHint" class="app-bar-item user-menu-button user-menu-button--pending" aria-hidden="true">
       <span class="user-menu-button__pending-avatar" />帳號
@@ -42,11 +42,11 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
   </template>
 
   <template v-else>
-    <NuxtLink v-if="currentUser && !resolving" to="/profile" class="user-menu-button__row user-menu-button__trigger">
+    <NuxtLink v-if="currentUser && !resolving" to="/account" class="user-menu-button__row user-menu-button__trigger">
       <el-avatar :size="40" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">{{ initial }}</el-avatar>
       <span class="user-menu-button__text">
         <span class="user-menu-button__name">{{ displayLabel }}</span>
-        <span class="user-menu-button__hint">個人資料與設定</span>
+        <span class="user-menu-button__hint">帳號與設定</span>
       </span>
       <el-icon aria-hidden="true" class="user-menu-button__arrow"><ArrowRight /></el-icon>
     </NuxtLink>

@@ -93,7 +93,7 @@ export interface SiteMapGroup {
 
 const HOME_LINK: SiteMapLink = { label: '首頁', to: '/', description: '搜尋股票，從這裡進到各個功能' }
 const APPEARANCE_LINK: SiteMapLink = { label: '外觀設定', to: '/appearance', description: '字型大小、深淺色、版面寬度、主題色與漲跌顏色' }
-const PROFILE_LINK: SiteMapLink = { label: '個人資料設定', to: '/profile', description: '帳號與登入方式', requiresLogin: true }
+const PROFILE_LINK: SiteMapLink = { label: '帳號', to: '/account', description: '登入方式、方案與用量', requiresLogin: true }
 const ACCESSIBILITY_LINK: SiteMapLink = { label: '無障礙聲明', to: '/accessibility', description: '本站的無障礙規範、檢測方式與回饋管道' }
 const CHANGELOG_LINK: SiteMapLink = { label: '更新紀錄', to: '/changelog', description: '本站最近改了什麼，以及進行中的維護公告' }
 

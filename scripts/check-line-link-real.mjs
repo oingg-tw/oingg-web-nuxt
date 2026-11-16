@@ -67,7 +67,7 @@ try {
   const before = await counts()
   console.log(`  已登入 ${email.replace(/^(.)[^@]*/, '$1***')}；${before}`)
 
-  await ready('/profile')
+  await ready('/account')
   const section = page.locator('section', { has: page.getByRole('heading', { name: '登入方式' }) })
   check(await section.count() === 1, '個人資料有「登入方式」（DEV 已經是新版）')
   if (!(await section.innerText()).includes('已綁定')) {
@@ -77,11 +77,11 @@ try {
     // 先等回到我們的網站，再等「回到個人資料」或回呼頁的失敗面板。不能看 role=alert：成功提示（ElMessage）也是 alert，
     // 第一次實跑（2026-10-20）就把「已綁定 LINE」當成失敗
     await page.waitForURL(url => url.origin === new URL(base).origin, { timeout: WAIT_FOR_PERSON })
-    await page.waitForFunction(() => location.pathname === '/profile' || !!document.querySelector('.line-login-page__panel'), null, { timeout: 60000 })
+    await page.waitForFunction(() => location.pathname === '/account' || !!document.querySelector('.line-login-page__panel'), null, { timeout: 60000 })
     await page.waitForTimeout(800)
     const failure = await page.locator('.line-login-page__panel').innerText().catch(() => '')
     if (failure) console.log(`  綁定沒有成功：${failure.replace(/\s+/g, ' ')}`)
-    check(page.url().endsWith('/profile') && !failure && await page.locator('.el-message', { hasText: '已綁定 LINE' }).count() > 0, '綁定完成、回到個人資料並提示已綁定')
+    check(page.url().endsWith('/account') && !failure && await page.locator('.el-message', { hasText: '已綁定 LINE' }).count() > 0, '綁定完成、回到個人資料並提示已綁定')
   } else {
     console.log('  已經綁定過，跳過綁定、直接驗證 LINE 登入')
   }
