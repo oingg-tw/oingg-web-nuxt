@@ -78,9 +78,10 @@ const query = ref('')
 // 比對鍵見 utils/search-text.ts（「周轉」也找得到「週轉」，2026-10-23）
 const normalizedQuery = computed(() => searchKey(query.value))
 
-// 比對六個欄位：label、hook、視角、母項名、母項說明句、slug。
+// 比對六個欄位：label、hook、視角、母項名、母項說明句、英文字（matchesStockNavKeyword：網址代號拆開的字與頁面標題的英文縮寫）。
 //
-// slug 在裡面是為了讓「roe」「bvps」這種英文縮寫打得到——中文名叫「股東權益報酬率」，但讀者會打 ROE。
+// 英文字在裡面是為了讓「roe」「bvps」這種縮寫打得到——中文名叫「股東權益報酬率」，但讀者會打 ROE；本益比的網址是 pe-ratio，
+// PER 只寫在標題裡（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）。
 // 母項說明句在裡面是實測補的：「稀釋」這兩個字只出現在盈餘與淨值兩組的說明句裡，不在任何 label 或
 // hook，而搜尋那兩個字的人要找的正是那兩組的成長率頁。
 const matches = computed(() => {
@@ -97,7 +98,7 @@ const matches = computed(() => {
       const hit = searchKey(link.label).includes(q)
         || searchKey(link.hook ?? '').includes(q)
         || searchKey(link.perspective ?? '').includes(q)
-        || slugOf(link).includes(q)
+        || matchesStockNavKeyword(link, q)
       if (hit) direct.push({ link, group: section.label })
       else if (groupHit) byGroup.push({ link, group: section.label })
     }

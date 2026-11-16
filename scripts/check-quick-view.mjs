@@ -84,6 +84,12 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     expect(code, `搜「營收」只剩名稱有營收的（${all} → ${revenue.length} 個）`, revenue.length > 0 && revenue.length < all && revenue.every(text => text.includes('營收')))
     await search.fill('roe')
     expect(code, '搜小寫 roe 找得到 ROE', (await chips.allTextContents()).some(text => text.trim() === 'ROE'))
+    // 英文縮寫只寫在頁面標題裡（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）；網址代號比字的開頭，per 不對到 operating
+    await search.fill('PER')
+    const per = (await chips.allTextContents()).map(text => text.trim())
+    expect(code, `搜 PER 找得到本益比、不列營業費用組成（${per.join('、')}）`, per.includes('本益比') && !per.includes('營業費用組成'))
+    await search.fill('pbr')
+    expect(code, '搜 pbr 找得到股價淨值比', (await chips.allTextContents()).some(text => text.trim() === '股價淨值比'))
     await search.fill('找不到的字')
     expect(code, '沒有符合的：寫「沒有符合的指標」', (await chips.count()) === 0 && await dialog.getByText('沒有符合的指標').isVisible())
     await page.keyboard.press('Escape')

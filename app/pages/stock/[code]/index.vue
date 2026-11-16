@@ -226,7 +226,7 @@ const shownPickerGroups = computed(() => {
   const query = searchKey(pickerQuery.value)
   if (!query) return pickerGroups
   return pickerGroups
-    .map(group => ({ ...group, children: group.children.filter(link => searchKey(link.label).includes(query)) }))
+    .map(group => ({ ...group, children: group.children.filter(link => searchKey(link.label).includes(query) || matchesStockNavKeyword(link, query)) }))
     .filter(group => group.children.length)
 })
 watch(pickerOpen, (open) => {

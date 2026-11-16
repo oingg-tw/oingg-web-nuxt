@@ -305,6 +305,17 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
 
 // slug → 指標目錄裡的那個節點，給釘選用（useStockPinnedMetrics.ts）。
 //
+// 搜尋指標時比對的英文縮寫（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）：一個字的網址代號（roe、eps、bvps 本身就是
+// 縮寫），加上那一頁 <title> 長尾片語裡的英文縮寫（titleKeywords 的 PER、PBR、ROE…；本益比的網址是 pe-ratio，打 PER 對不到）。
+// 多個字的代號是描述（revenue-per-share）不比：打 per 會對到一串每股的頁。比字的開頭。指標總覽與速覽「加入指標」的搜尋共用；
+// query 是 searchKey 過的
+export function matchesStockNavKeyword(node: StockNavNode, query: string): boolean {
+  const slug = node.to?.('_').split('/').pop() ?? ''
+  const page = findMetricPage(slug) ?? findBadgePage(slug)
+  const words = [...(slug.includes('-') ? [] : [slug]), ...(page?.titleKeywords.match(/[A-Za-z][A-Za-z0-9]*/g) ?? [])]
+  return words.some(word => word.toLowerCase().startsWith(query))
+}
+
 // slug 從節點自己的 `to` 推出來而不是在資料裡再寫一次：`to` 已經是那一頁位址的唯一來源，多存一份 slug
 // 就是多一個會跟它對不上的地方。用一個不可能出現在真實路徑裡的代號當參數，取最後一段。
 export const METRIC_INDEX_BY_SLUG: ReadonlyMap<string, StockNavNode> = (() => {
