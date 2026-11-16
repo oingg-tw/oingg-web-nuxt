@@ -34,10 +34,10 @@ const BOX = ['large', 'mid', 'small'].flatMap(row => ['Value', 'Core', 'Growth']
 const box = (values, coverage) => Object.fromEntries(BOX.map((key, index) => [key, trait(values[index], coverage)]))
 const TRAITS = {
   asOf: '2026-10-16',
-  portfolio: { peRatio: trait(14.2, 0.6), pbRatio: trait(1.8, 0.6), dividendYield: trait(5.1, 0.6), roe: trait(12.3, 0.6), revenueGrowth: trait(4, 0.6), beta: trait(0.7), revenueYoyVolatility: trait(null, 0), top3HoldingsPct: trait(60, 1), largeCapPct: trait(100, 0.6), ...box([0, 100, 0, 0, 0, 0, 0, 0, 0], 0.6) },
+  portfolio: { exchangePeRatio: trait(14.2, 0.6), exchangePbRatio: trait(1.8, 0.6), dividendYield: trait(5.1, 0.6), roe: trait(12.3, 0.6), revenueGrowth: trait(4, 0.6), beta: trait(0.7), revenueYoyVolatility: trait(null, 0), top3HoldingsPct: trait(60, 1), largeCapPct: trait(100, 0.6), ...box([0, 100, 0, 0, 0, 0, 0, 0, 0], 0.6) },
   benchmark: null
 }
-const TRAITS_WITH_MARKET = { ...TRAITS, benchmark: { peRatio: trait(21.5), pbRatio: trait(2.6), dividendYield: trait(3), roe: trait(11.8), revenueGrowth: trait(9.2), beta: trait(1), revenueYoyVolatility: trait(null, 0), top3HoldingsPct: trait(44.97), largeCapPct: trait(70.04), ...box([10.96, 50.2, 9.28, 5.91, 7.57, 6.43, 3.3, 3.43, 2.93], 0.9945) } }
+const TRAITS_WITH_MARKET = { ...TRAITS, benchmark: { exchangePeRatio: trait(21.5), exchangePbRatio: trait(2.6), dividendYield: trait(3), roe: trait(11.8), revenueGrowth: trait(9.2), beta: trait(1), revenueYoyVolatility: trait(null, 0), top3HoldingsPct: trait(44.97), largeCapPct: trait(70.04), ...box([10.96, 50.2, 9.28, 5.91, 7.57, 6.43, 3.3, 3.43, 2.93], 0.9945) } }
 const HOLDINGS_PAYLOAD = {
   ratios: { kind: 'holdings', displayName: null, asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }, { key: 'returnPct', label: '報酬率' }, { key: 'dayChange', label: '今日漲跌' }], holdings: [{ symbol: '0056', weight: 0.4, returnPct: -5 }, { symbol: '2330', weight: 0.6, returnPct: 25 }], traits: TRAITS },
   market: { kind: 'holdings', displayName: '小明', asOf: '2026-10-16', columns: [{ key: 'traits', label: '持股特色' }, { key: 'weight', label: '占比' }], holdings: [{ symbol: '0056', weight: 0.4 }, { symbol: '2330', weight: 0.6 }], traits: TRAITS_WITH_MARKET },
@@ -55,7 +55,7 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
     if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, createdAt: '2026-10-01T00:00:00Z' }, ...createdLists] } })
-    if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items: [...items, ...createdItems] } })
+    if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { entries: [...items, ...createdItems] } })
     // 整批建立（業務中台 670db40）：清單與項目一起建；同一條分享已經存過、那組還在，回那一組（200、created false）
     if (p === '/api/core/watchlists' && m === 'POST') {
       const body = JSON.parse(req.postData()); calls.push(`POST /watchlists ${body.name} ${(body.symbols ?? []).join(',')} ${body.sourceShareToken ?? ''}`.trim())

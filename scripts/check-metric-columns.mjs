@@ -41,7 +41,7 @@ const mock = async (ctx) => {
     }
     if (p.startsWith('/api/core/screener/column-presets/') && m === 'PATCH') return route.fulfill({ json: { columnPreset: { id: 'set-1', name: '觀察清單欄位', isDefault: true, columns: puts.at(-1)?.columns ?? [] } } })
     if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, sourceShareToken: null, createdAt: '2026-10-01T00:00:00Z' }] } })
-    if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items: ['2330', '0056'].map(symbol => ({ id: `i-${symbol}`, watchlistId: 'w-1', symbol, note: null, createdAt: 'x', updatedAt: 'y' })) } })
+    if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { entries: ['2330', '0056'].map(symbol => ({ id: `i-${symbol}`, watchlistId: 'w-1', symbol, note: null, createdAt: 'x', updatedAt: 'y' })) } })
     if (p === '/api/core/users/me/holding-columns' && m === 'PUT') {
       const body = JSON.parse(req.postData() ?? '{}')
       puts.push({ path: p, columns: body.columns })

@@ -55,7 +55,7 @@ const mock = (ctx, state) => ctx.route('**/*', async (route) => {
   if (p === '/api/core/billing/plans' && m === 'GET') return route.fulfill({ json: { plans: [] } })
   if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: [] } })
   if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, sourceShareToken: null, createdAt: '2026-10-01T00:00:00Z' }] } })
-  if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { items: state.items.map(symbol => ({ id: `i-${symbol}`, watchlistId: 'w-1', symbol, note: null, createdAt: 'x', updatedAt: 'y' })) } })
+  if (p === '/api/core/watchlist' && m === 'GET') return route.fulfill({ json: { entries: state.items.map(symbol => ({ id: `i-${symbol}`, watchlistId: 'w-1', symbol, note: null, createdAt: 'x', updatedAt: 'y' })) } })
   if (p === '/api/core/users/me/watchlist-columns') {
     state.oldApi++
     return route.abort()

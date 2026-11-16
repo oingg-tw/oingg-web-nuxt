@@ -58,7 +58,7 @@ const STUBS = {
   '/api/core/holdings/traits': TRAITS,
   '/api/core/holdings/risk': RISK,
   '/api/core/watchlists': { watchlists: [{ id: 'w-a', name: '存股名單', sourceShareToken: null }, { id: 'w-b', name: '成長股', sourceShareToken: null }] },
-  '/api/core/watchlist': { items: SYMBOLS.map((symbol, index) => ({ id: `i${index}`, watchlistId: 'w-a', symbol, note: null })) }
+  '/api/core/watchlist': { entries: SYMBOLS.map((symbol, index) => ({ id: `i${index}`, watchlistId: 'w-a', symbol, note: null })) }
 }
 const blocked = []
 const stub = context => context.route('**/*', async (route) => {

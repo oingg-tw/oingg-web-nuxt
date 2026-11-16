@@ -28,7 +28,7 @@ const stub = context => context.route('**/*', (route) => {
   const path = new URL(request.url()).pathname
   const method = request.method()
   if (method === 'GET' && STUBS[path]) return route.fulfill({ json: STUBS[path] })
-  if (method === 'GET' && path === '/api/core/watchlist') return route.fulfill({ json: { items: serverItems } })
+  if (method === 'GET' && path === '/api/core/watchlist') return route.fulfill({ json: { entries: serverItems } })
   if (method === 'DELETE' && /^\/api\/core\/(portfolios|watchlists)\/[\w-]+$/.test(path)) {
     deletes.push(path)
     writes.push(`DELETE ${path}`)

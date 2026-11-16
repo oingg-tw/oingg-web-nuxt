@@ -50,8 +50,9 @@ export function useUserWatchlist() {
   async function fetchWatchlist(): Promise<UserWatchlistItem[] | undefined> {
     if (!currentUser.value) return undefined
     try {
-      const response = await authedFetch<{ items: UserWatchlistItem[] }>('/watchlist')
-      return response.items ?? []
+      // entries：2026-11-16 詞彙檢核前叫 items。回應裡沒有這份清單（例如又改了名）算沒問到，不當成空清單：當成空的會把清單清掉
+      const response = await authedFetch<{ entries?: UserWatchlistItem[] }>('/watchlist')
+      return Array.isArray(response.entries) ? response.entries : undefined
     } catch (error) {
       devWarn('user-watchlist', 'GET /watchlist failed', error)
       return undefined
