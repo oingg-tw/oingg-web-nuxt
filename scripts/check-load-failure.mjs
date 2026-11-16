@@ -3,7 +3,7 @@
 // Cookie 說明只有正式建置才出現（useAnalyticsConsent 的 asks）：提示有沒有讓開它，要把 LOAD_FAILURE_URL 指到正式建置才驗得到。
 // 只能攔瀏覽器發出的請求，所以每個情境挑的都是瀏覽器端的讀取：個股子頁「客戶端換頁」時的 /api/stock/…、
 // ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /securities；連不上伺服器的橫幅是假造 /api/system-health。
-// 時間點跟著 LOAD_FAILURE_GRACE_MS（8 秒）與第一次退避（5 秒）走，改了那兩個要一起改這裡。
+// 時間點跟著 LOAD_FAILURE_GRACE_MS（8 秒）與第一次退避（5 秒，隨機多等最多一半：5～7.5 秒）走，改了那兩個要一起改這裡。
 import { chromium } from 'playwright'
 
 const baseUrl = process.env.LOAD_FAILURE_URL ?? 'http://localhost:3000'
@@ -126,6 +126,53 @@ await scenario('先關閉：同一批不再彈出，新的主要資料失敗才�
   await page.route('**/api/stock/2330/margins', fail502)
   await clientNavigate(page, '/stock/2330/margins')
   await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 8_000 })
+})
+
+// 重連指南（2026-11-16）：背景分頁不排重試，回到前景立刻試一次。document.hidden 用覆寫的：無頭瀏覽器的分頁一直是前景
+const setHidden = (page, hidden) => page.evaluate((isHidden) => {
+  if (isHidden) {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true })
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+  } else {
+    delete document.hidden
+    delete document.visibilityState
+  }
+  document.dispatchEvent(new Event('visibilitychange'))
+}, hidden)
+
+await scenario('背景分頁：不自動重試，回到前景立刻重試', async ({ page, dialog }) => {
+  await openStock(page)
+  let hits = 0
+  await page.route('**/api/stock/2330/dupont', (route) => {
+    hits += 1
+    return fail502(route)
+  })
+  await clientNavigate(page, '/stock/2330/dupont')
+  await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 8_000 })
+  await setHidden(page, true)
+  const hitsHidden = hits
+  // 比第一次退避的上限（7.5 秒）長
+  await wait(9_000)
+  expect(hits === hitsHidden, `背景分頁照樣重試（${hits - hitsHidden} 次）`)
+  await setHidden(page, false)
+  await wait(1_500)
+  expect(hits > hitsHidden, '回到前景沒有立刻重試')
+  expect(/秒後|正在重新連線/.test(await dialog.locator('.load-failure__status').innerText()), '回到前景後沒有接著倒數')
+})
+
+// navigator.onLine 不可靠：瀏覽器說沒網路、其實連得上時，原本只等 online 事件，永遠不會自己好
+await scenario('瀏覽器說沒網路但其實連得上：照樣自動重試，恢復後自己關', async ({ page, dialog }) => {
+  await openStock(page)
+  await page.evaluate(() => Object.defineProperty(Navigator.prototype, 'onLine', { configurable: true, get: () => false }))
+  await page.route('**/api/stock/2330/dupont', fail502)
+  await clientNavigate(page, '/stock/2330/dupont')
+  // 斷線不等寬限期
+  await dialog.waitFor({ state: 'visible', timeout: 8_000 })
+  expect(/沒有網路/.test(await dialog.locator('.load-failure__message').innerText()), '沒有說是網路的問題')
+  // 等寬限期的兩次背景重試（最晚第 4 秒）都過了，才讓它恢復：要驗的是之後的排程重試
+  await wait(4_200)
+  await page.unroute('**/api/stock/2330/dupont')
+  await dialog.waitFor({ state: 'hidden', timeout: 25_000 })
 })
 
 // 連不上伺服器的橫幅（AppSystemHealthBanner，2026-10-21）：第一次健康檢查在 onNuxtReady 之後，橫幅永遠比元件晚出現——原本在

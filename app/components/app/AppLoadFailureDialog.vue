@@ -39,7 +39,6 @@ const noticeVisible = computed(() => !dialogVisible.value && shown.value.length 
 // 描述哪一個原因：網路斷線最優先（那時其他錯誤多半也是它造成的）
 const PRIORITY: LoadFailureKind[] = ['offline', 'server', 'busy', 'unavailable', 'timeout', 'client']
 const primary = computed(() => [...blocking.value].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind))[0] ?? null)
-const autoRetry = computed(() => matured.value.some(entry => entry.kind !== 'offline'))
 
 const MESSAGES: Record<LoadFailureKind, string> = {
   offline: '你的裝置目前沒有網路連線。連上之後會自動繼續，不用重新整理。',
@@ -52,6 +51,11 @@ const MESSAGES: Record<LoadFailureKind, string> = {
 
 // 寬限期之後的重試間隔：5、10、20、40 秒，之後都 60 秒（上游 502 期間一個分頁 4 分鐘打了約 150 次）。
 // 業務中台給的 Retry-After 是下限。關掉彈窗或提示後照樣在背景跑。
+// 2026-11-16 照使用者的重連指南（oingg-conductor-ts docs/1_raw 的〈網頁前端重連機制…〉）補三件：
+//   - 每次隨機多等最多一半：同一刻失敗的分頁（上游重啟、全站額度滿了而 Retry-After 一樣）不會在同一秒一起回來；只往上加，Retry-After 仍是下限
+//   - 分頁在背景不排重試，回到前景（含從返回快取還原）立刻試一次；網路回來也是
+//   - 「沒有網路」也照排程慢慢試：navigator.onLine 不可靠（連著區網但上不了網時是 true，反過來也有），只靠 online 事件可能永遠等不到。
+//     真的斷線時瀏覽器不會送出請求，試了也不花流量
 const BACKOFF_SECONDS = [5, 10, 20, 40, 60]
 const GIVE_EXIT_AFTER_MS = 5 * 60_000
 const attempt = ref(0)
@@ -62,9 +66,9 @@ let timer: ReturnType<typeof setTimeout> | undefined
 function schedule() {
   clearTimeout(timer)
   nextRetryAt.value = null
-  if (!autoRetry.value) return
+  if (document.hidden) return
   const hinted = Math.max(0, ...matured.value.map(entry => entry.retryAfter ?? 0))
-  const seconds = Math.max(hinted, BACKOFF_SECONDS[Math.min(attempt.value, BACKOFF_SECONDS.length - 1)]!)
+  const seconds = Math.max(hinted, BACKOFF_SECONDS[Math.min(attempt.value, BACKOFF_SECONDS.length - 1)]!) * (1 + Math.random() / 2)
   nextRetryAt.value = Date.now() + seconds * 1000
   timer = setTimeout(retryNow, seconds * 1000)
 }
@@ -81,8 +85,14 @@ async function retryNow() {
   if (matured.value.length) schedule()
 }
 
-function onOnline() {
-  if (hasFailures.value) retryNow()
+// 網路回來、分頁回到前景：不等倒數，立刻重試；分頁進了背景就停掉倒數
+function wake() {
+  if (!document.hidden) {
+    if (hasFailures.value) retryNow()
+    return
+  }
+  clearTimeout(timer)
+  nextRetryAt.value = null
 }
 
 const anyMatured = computed(() => matured.value.length > 0)
@@ -95,19 +105,18 @@ watch(anyMatured, (any) => {
   nextRetryAt.value = null
 }, { immediate: true })
 
-// 期間才出現可自動重試的失敗（原本只有斷線、沒有倒數）也要開始倒數
-watch(autoRetry, (canRetry) => {
-  if (canRetry && anyMatured.value && nextRetryAt.value === null && !retrying.value) schedule()
-})
-
 watch(() => failures.value.map(entry => entry.key), (keys) => {
   if (!keys.length) attempt.value = 0
   if ([...dismissed.value].some(key => !keys.includes(key))) dismissed.value = new Set([...dismissed.value].filter(key => keys.includes(key)))
 })
 
-onMounted(() => window.addEventListener('online', onOnline))
+onMounted(() => {
+  window.addEventListener('online', wake)
+  document.addEventListener('visibilitychange', wake)
+})
 onBeforeUnmount(() => {
-  window.removeEventListener('online', onOnline)
+  window.removeEventListener('online', wake)
+  document.removeEventListener('visibilitychange', wake)
   clearTimeout(timer)
   clearInterval(ticker)
 })

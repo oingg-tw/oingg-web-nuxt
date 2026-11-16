@@ -23,7 +23,8 @@ export interface LoadFailureEntry extends ClassifiedFailure {
 }
 
 export const LOAD_FAILURE_GRACE_MS = 8_000
-// 寬限期內的背景重試時間點（從第一次失敗起算）
+// 寬限期內的背景重試時間點（從第一次失敗起算）。各自隨機提早最多一半（2026-11-16，使用者的重連指南：退避要加抖動）：
+// 上游重啟時同一刻失敗的分頁不會在同一秒一起打回去；只提早不延後，寬限期內照樣試得完兩次
 const GRACE_RETRIES_MS = [1_500, 4_000]
 
 const retries = new Map<string, () => Promise<unknown>>()
@@ -84,7 +85,7 @@ function reportLoadFailure(key: string, error: unknown, retry: () => Promise<unk
   const since = existing?.since ?? Date.now()
   failures.value = [...failures.value.filter(entry => entry.key !== key), { key, scope: mergedScope, since, ...classified }]
   startedAt.value ??= Date.now()
-  if (!existing) graceTimers.set(key, GRACE_RETRIES_MS.map(delay => setTimeout(() => runRetry(key), delay)))
+  if (!existing) graceTimers.set(key, GRACE_RETRIES_MS.map(delay => setTimeout(() => runRetry(key), delay * (0.5 + Math.random() / 2))))
 }
 
 function clearLoadFailure(key: string, owner: number) {
