@@ -244,7 +244,7 @@ async function commit() {
 
         <section v-if="unknownLots.length" aria-labelledby="import-unknown-title">
           <h3 id="import-unknown-title" class="import__title">取得成本不明的股票</h3>
-          <p class="import__text">下面這幾筆賣出的股票，在明細裡沒有買進，券商也沒有記成本，例如很久以前買的（券商紀錄已過期）或從其他券商轉入。除權配股會自動計算，不在這裡。知道成本可以填；不填就標成「成本不明」：庫存照算，已實現損益不計入。</p>
+          <p class="import__text">下面這幾筆賣出的股票，在明細裡沒有買進，券商也沒有記成本，例如很久以前買的（券商紀錄已過期）或從其他券商轉入。除權配股會自動計算，不在這裡。知道成本可以填；不填就標成「成本不明」：持股照算，已實現損益不計入。</p>
           <p class="import__hint">如果是匯出期間以前持有的股票配股配來的，請先用「記一筆交易」補上除權前原本持有的股數，配股就會自動算出來。</p>
           <div class="import__unknowns">
             <label v-for="lot in unknownLots" :key="lot.symbol" class="app-card import__unknown">

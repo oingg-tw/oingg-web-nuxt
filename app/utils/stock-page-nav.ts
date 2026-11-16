@@ -7,7 +7,7 @@ import { Grid, Odometer } from '@element-plus/icons-vue'
 // **沒有「每股成長率」**（2026-09-27）：它跟成長率的差就是股數稀釋，拆成兩格會逼讀者靠記憶比對——實測 20 檔 79 期有 21.5% 的期別
 // 差 > 1pp，7780 差到 117.5pp；兩條線畫在同一頁（metric-pages.ts 的 compareMetricCode）。
 export type MetricPerspective =
-  | '組成' | '每股' | '成長率' | '佔比'
+  | '組成' | '每股' | '成長率' | '占比'
   | '倍數' | '天數' | '報酬率' | '相對股價' | '原始報表'
 
 export interface StockNavNode {
@@ -25,7 +25,7 @@ export interface StockNavNode {
   // 每股成長率 等等，這樣每個指標就可以收斂到類似結構」）。只有 STOCK_METRIC_INDEX 的 leaf 會設。
   //
   // 分類規則一句話：**比率歸到分子的那個科目，視角是「用什麼當分母／做了什麼變換」**。所以每股研發
-  // 費用（每股）與研發費用率（佔比）第一次進到同一個母項——這兩支原本分屬「損益表拆解」與「成長
+  // 費用（每股）與研發費用率（占比）第一次進到同一個母項——這兩支原本分屬「損益表拆解」與「成長
   // 動能」，是舊分類最明顯的破口。
   perspective?: MetricPerspective
   // 排在「自選指標」那一段**後面**（2026-09-28「全部指標放到 我釘的指標 下面」）。用旗標而不是靠
@@ -111,7 +111,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     label: '股利',
     answer: '公司把賺到的錢分多少出來，那些錢相對股價、相對盈餘、相對現金流各是多少，以及增資、買回讓股數怎麼變。',
     children: [
-      { label: '盈餘發放率', perspective: '佔比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
+      { label: '盈餘發放率', perspective: '占比', to: code => `/stock/${code}/dividend-payout-ratio`, hook: '這一年賺的錢，發了幾成出去' },
       { label: '現金流量股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio`, hook: '賺到的現金夠不夠支撐這次配息' },
       { label: '近 3 年 現金流量股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio-3y`, hook: '3 年的自由現金流加起來，付不付得起這 3 年發的現金股利' },
       { label: '近 5 年 現金流量股利保障倍數', perspective: '倍數', to: code => `/stock/${code}/dividend-coverage-ratio-5y`, hook: '拉長到 5 年，景氣好的年和差的年一起算' },
@@ -151,7 +151,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // （「月營收從 sidebar 固定的部分移除」），所以這裡是它唯一的入口——想看的人自己釘，不再有
       // 固定區與我釘的指標各出現一次的重複。
       //
-      // 沒有 perspective：它是月頻的營收金額，不是每股／成長率／佔比任何一種。欄位是選填的，而視角
+      // 沒有 perspective：它是月頻的營收金額，不是每股／成長率／占比任何一種。欄位是選填的，而視角
       // 2026-09-28 起也不顯示在畫面上，所以留空不會造成版面缺口。
       { label: '月營收', to: code => `/stock/${code}/monthly-revenue`, hook: '每月 10 日前公告（有保險業務的公司 15 日），是一家公司當期營運最早出現的數字' },
       // 月營收年增率（2026-10-23 從月營收拆出來，使用者：「monthly-revenue 現在比較像是 月營收年增率 而不是月營收 希望可以拆分為兩個頁面」）
@@ -163,15 +163,15 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // 跟做出產品本身無關」——正確但沒有指出那一頁比下面三列多了什麼，於是讀者會一列一列點進去看三個
       // 數字，而它們在母項那一頁是同一張圖。不用「組成」這個詞（2026-09-27 已從這一頁的視角標籤移除）。
       { label: '每股營業費用', perspective: '每股', to: code => `/stock/${code}/operating-expense`, hook: '賣東西和管理公司花的錢，每一股分到多少' },
-      { label: '營業費用組成', perspective: '組成', to: code => `/stock/${code}/operating-expense-composition`, hook: '營業費用拆開來，推銷、管理、研發各佔多少' },
+      { label: '營業費用組成', perspective: '組成', to: code => `/stock/${code}/operating-expense-composition`, hook: '營業費用拆開來，推銷、管理、研發各占多少' },
       { label: '每股推銷費用', perspective: '每股', to: code => `/stock/${code}/selling-expense`, hook: '廣告、通路、業務團隊的錢' },
       { label: '每股管理費用', perspective: '每股', to: code => `/stock/${code}/administrative-expense`, hook: '總部、人事、法務這些後勤的錢' },
       { label: '每股研發費用', perspective: '每股', to: code => `/stock/${code}/rd-expense`, hook: '投入新產品的錢。想知道公司為以後準備了多少，看這個' },
       { label: '每股營業利益', perspective: '每股', to: code => `/stock/${code}/operating-income`, hook: '本業做完一輪之後真正賺到的' },
       { label: '單季營收成長年增率', perspective: '成長率', to: code => `/stock/${code}/revenue-growth`, hook: '這一季的營收，比去年同一季多了幾 %' },
-      { label: '毛利率', perspective: '佔比', to: code => `/stock/${code}/gross-margin`, hook: '同樣賣一百元，扣掉成本後留下幾元' },
-      { label: '營業利益率', perspective: '佔比', to: code => `/stock/${code}/operating-margin`, hook: '本業每一百元營業額，最後留下幾元' },
-      { label: '研發費用率', perspective: '佔比', to: code => `/stock/${code}/rd-intensity`, hook: '研發佔營業額的比率。要跨公司比較投入程度，用比率' }
+      { label: '毛利率', perspective: '占比', to: code => `/stock/${code}/gross-margin`, hook: '同樣賣一百元，扣掉成本後留下幾元' },
+      { label: '營業利益率', perspective: '占比', to: code => `/stock/${code}/operating-margin`, hook: '本業每一百元營業額，最後留下幾元' },
+      { label: '研發費用率', perspective: '占比', to: code => `/stock/${code}/rd-intensity`, hook: '研發占營業額的比率。要跨公司比較投入程度，用比率' }
     ]
   },
   // 業外損益。六支全是「每股」，所以 metrics.vue 不會替它渲染視角標題列（單一視角時省略）。
@@ -183,7 +183,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這一組。',
     children: [
       { label: '每股業外損益', perspective: '每股', to: code => `/stock/${code}/non-operating-income`, hook: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這個' },
-      { label: '業外損益占稅前淨利比', perspective: '佔比', to: code => `/stock/${code}/non-operating-income-ratio`, hook: '這一季的稅前獲利裡，有多少比例不是本業賺的' },
+      { label: '業外損益占稅前淨利比', perspective: '占比', to: code => `/stock/${code}/non-operating-income-ratio`, hook: '這一季的稅前獲利裡，有多少比例不是本業賺的' },
       { label: '每股利息收入', perspective: '每股', to: code => `/stock/${code}/interest-income`, hook: '帳上現金存著、借出去，收到的利息' },
       { label: '每股財務成本', perspective: '每股', to: code => `/stock/${code}/finance-cost`, hook: '借錢要付的利息。想知道負債壓力多大，從這裡看' },
       { label: '每股其他收入', perspective: '每股', to: code => `/stock/${code}/other-income`, hook: '零星的其他進帳' },
@@ -204,10 +204,10 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '每股稅前淨利', perspective: '每股', to: code => `/stock/${code}/pretax-income`, hook: '繳稅之前的獲利' },
       { label: '每股所得稅費用', perspective: '每股', to: code => `/stock/${code}/income-tax-expense`, hook: '這一年繳了多少稅。有時候是負的，那是所得稅利益' },
       { label: '淨利成長年增率', perspective: '成長率', to: code => `/stock/${code}/net-income-growth`, hook: '營收成長不一定等於獲利成長，這一項看的是後者' },
-      { label: '稅後淨利率', perspective: '佔比', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
+      { label: '稅後淨利率', perspective: '占比', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
     ]
   },
-  // 現金流：組成以外全是佔比，分母各不相同，寫在 label 與 hook 裡。資本支出佔營收比的分子是現金流量表科目，掛在這裡（METRIC_PAGES 記錄
+  // 現金流：組成以外全是占比，分母各不相同，寫在 label 與 hook 裡。資本支出佔營收比的分子是現金流量表科目，掛在這裡（METRIC_PAGES 記錄
   // 的唯一分類例外）。「組成」頁 2026-09-27 擋過：當時 investing 在 40 檔裡 30 檔 null、114Q4 單季推導有 bug。2026-10-17 重驗（使用者
   // 要「現金流量的組成 就知道支出與收入占比」）：40 檔 × 8 季，有現金流量表的 248 份三個小計都是原生欄位、相加等於現金增減，才開這一頁
   // ——仍然不用恆等式推第三段（見 shared/utils/cash-flow-composition.ts）。
@@ -216,12 +216,12 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '帳上的獲利有多少變成真的現金。利潤是算出來的，現金是收到的，下面每一項都在量這兩者差多遠。',
     children: [
       { label: '現金流量的組成', perspective: '組成', to: code => `/stock/${code}/cash-flow-composition`, hook: '現金從哪裡來、花到哪裡去：營業、借錢、買設備、發股利各占多少' },
-      { label: '營業現金流對淨利比', perspective: '佔比', to: code => `/stock/${code}/ocf-to-net-income`, hook: '帳面賺一元，實際收到幾元現金' },
-      { label: '自由現金流轉換率', perspective: '佔比', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
-      { label: '營業現金流利潤率', perspective: '佔比', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
-      { label: '自由現金流利潤率', perspective: '佔比', to: code => `/stock/${code}/fcf-margin`, hook: '每一百元營業額，扣掉買設備的錢還剩幾元現金' },
-      { label: '應計項目比率', perspective: '佔比', to: code => `/stock/${code}/accruals-ratio`, hook: '獲利裡有多少還只是帳上的數字，錢沒真的收到' },
-      { label: '資本支出佔營收比', perspective: '佔比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
+      { label: '營業現金流對淨利比', perspective: '占比', to: code => `/stock/${code}/ocf-to-net-income`, hook: '帳面賺一元，實際收到幾元現金' },
+      { label: '自由現金流轉換率', perspective: '占比', to: code => `/stock/${code}/fcf-conversion-rate`, hook: '扣掉買設備的錢之後，還剩多少可以自由運用' },
+      { label: '營業現金流利潤率', perspective: '占比', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
+      { label: '自由現金流利潤率', perspective: '占比', to: code => `/stock/${code}/fcf-margin`, hook: '每一百元營業額，扣掉買設備的錢還剩幾元現金' },
+      { label: '應計項目比率', perspective: '占比', to: code => `/stock/${code}/accruals-ratio`, hook: '獲利裡有多少還只是帳上的數字，錢沒真的收到' },
+      { label: '資本支出佔營收比', perspective: '占比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
     ]
   },
   // 營運資金。六支是一條恆等鏈，可以自己驗算（2330 TTM 實測閉合到分）：
@@ -237,16 +237,16 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     children: [
       { label: '現金循環的組成', perspective: '組成', to: code => `/stock/${code}/cash-cycle`, hook: '三個天數怎麼加減出營運週期和現金轉換循環' },
       { label: '每股現金及約當現金', perspective: '每股', to: code => `/stock/${code}/cash-per-share`, hook: '季末那一天，每一股背後公司手上有多少現金' },
-      { label: '存貨占營收比', perspective: '佔比', to: code => `/stock/${code}/inventory-to-revenue`, hook: '倉庫裡的貨，大約等於一年營收的幾成' },
+      { label: '存貨占營收比', perspective: '占比', to: code => `/stock/${code}/inventory-to-revenue`, hook: '倉庫裡的貨，大約等於一年營收的幾成' },
       { label: '存貨週轉天數', perspective: '天數', to: code => `/stock/${code}/inventory-days`, hook: '貨平均要在倉庫放幾天才賣出去' },
       { label: '應收帳款收現天數', perspective: '天數', to: code => `/stock/${code}/receivables-days`, hook: '東西賣出去之後，平均等幾天才收到錢' },
       { label: '應付帳款付現天數', perspective: '天數', to: code => `/stock/${code}/payables-days`, hook: '跟供應商買了東西，平均過幾天才付錢' },
       { label: '營運週期', perspective: '天數', to: code => `/stock/${code}/operating-cycle`, hook: '從進貨、賣出去到收回貨款，整趟要幾天' },
       { label: '現金轉換循環', perspective: '天數', to: code => `/stock/${code}/cash-conversion-cycle`, hook: '錢被卡住幾天。營運週期減掉可以晚一點付的那幾天' },
       // 2026-11-15（建材營造選股指南）：合約資產是公司先墊、合約負債是客戶先付，是同一個「誰先墊錢」的問題
-      { label: '合約資產占總資產比', perspective: '佔比', to: code => `/stock/${code}/contract-assets-to-assets`, hook: '工程做了、營收認了，卻還不能請款的錢，占總資產多少' },
-      { label: '合約負債占總資產比', perspective: '佔比', to: code => `/stock/${code}/contract-liabilities-to-assets`, hook: '客戶先付、還沒交貨的預收款，占總資產多少' },
-      { label: '合約負債占股本比', perspective: '佔比', to: code => `/stock/${code}/contract-liabilities-to-share-capital`, hook: '客戶先付、還沒認列成營收的預收款，有幾個股本大' }
+      { label: '合約資產占總資產比', perspective: '占比', to: code => `/stock/${code}/contract-assets-to-assets`, hook: '工程做了、營收認了，卻還不能請款的錢，占總資產多少' },
+      { label: '合約負債占總資產比', perspective: '占比', to: code => `/stock/${code}/contract-liabilities-to-assets`, hook: '客戶先付、還沒交貨的預收款，占總資產多少' },
+      { label: '合約負債占股本比', perspective: '占比', to: code => `/stock/${code}/contract-liabilities-to-share-capital`, hook: '客戶先付、還沒認列成營收的預收款，有幾個股本大' }
     ]
   },
   // 淨值。這一組剛好就是 2026-09-27 那句話舉的例子（「以淨值為母項，底下再區分出 組成 成長率 每股
@@ -273,7 +273,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     answer: '還得出錢嗎，跟借得多不多，是兩件事。流動比率和速動比率答前面那個，負債比率和利息保障倍數答後面那個。',
     children: [
       { label: '安全韌性的組成', perspective: '組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
-      { label: '負債比率', perspective: '佔比', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
+      { label: '負債比率', perspective: '占比', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
       { label: '流動資產組成', perspective: '組成', to: code => `/stock/${code}/current-asset-composition`, hook: '一年內能變現的資產，是現金、應收帳款還是存貨' },
       { label: '非流動資產組成', perspective: '組成', to: code => `/stock/${code}/non-current-asset-composition`, hook: '長期資產是廠房設備、轉投資還是無形資產' },
       // 沒有 perspective：它是資產負債表上一科的金額（同月營收的理由），占總資產比寫在表格與答句裡

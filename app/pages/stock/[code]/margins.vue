@@ -343,7 +343,7 @@ const { breadcrumbs } = useStockPageSeo({
           <thead>
             <tr>
               <th scope="col">項目</th>
-              <th scope="col">佔營收比率</th>
+              <th scope="col">占營收比率</th>
             </tr>
           </thead>
           <tbody>

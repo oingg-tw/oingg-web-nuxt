@@ -170,7 +170,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'roe', category: 'profit', field: 'roe.TTM', direction: 'desc', label: 'ROE', metricCode: 'roe' },
   // 以下七份（五年加權平均 ROE、52 週股價漲幅／跌幅、ETF 淨申購、定期定額金額、今年以來報酬率、折溢價率）是 2026-11-03 排行首頁
   // 改版時加的（使用者：「新增的 7 份品項 都做」），資料都是業務中台已經有的欄位
-  { slug: 'roe-5y', category: 'profit', field: 'roeWeighted5y.FY', direction: 'desc', label: '五年加權平均ROE', short: '五年平均 ROE', metricCode: 'roeWeighted5y' },
+  { slug: 'roe-5y', category: 'profit', field: 'roeWeighted5y.FY', direction: 'desc', label: '五年加權平均 ROE', short: '五年平均 ROE', metricCode: 'roeWeighted5y' },
   // /rank/eps 撤掉（2026-10-01 使用者：「eps 由高到低前 50 檔沒有意義，EPS 成長排行才有意義」）：EPS 高低幾乎只反映股本大小與
   // 面額。換成成長率之後成了下面的 eps-growth／eps-turnaround 兩頁。
   // /rank/consecutive-dividend-years 撤掉（2026-09-22）：欄位目前排不出東西——>=5 有 890 家、>=6 只有 1 家，889 家並列 5（2330 是 7），

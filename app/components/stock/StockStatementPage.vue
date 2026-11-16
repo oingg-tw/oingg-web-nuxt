@@ -62,7 +62,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       v-else-if="pending"
       :id="sectionId"
       :question="statementQuestions[statement]"
-      :answer-skeleton="`營業收入 0.000兆元（年增 00.00%）、本期淨利 0,000億元（年增 00.00%）、基本每股盈餘 00.00 元（年增 00.00%）。`"
+      :answer-skeleton="`營業收入 0.000兆元（年增 00.00%）、稅後淨利 0,000億元（年增 00.00%）、基本每股盈餘 00.00 元（年增 00.00%）。`"
     >
       <div class="app-skeleton app-skeleton--chart" aria-hidden="true" />
     </StockQuestionSection>

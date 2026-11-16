@@ -69,7 +69,7 @@ export function profileCardFacts(detail: CompanyProfileDetail, today: string): F
     { label: '董事長', value: dash(officersOf(detail, 'chairman')) },
     { label: '總經理', value: dash(officersOf(detail, 'general_manager')) },
     { label: '實收資本額', value: money(detail.paidInCapitalNtd) },
-    { label: '簽證會計師', value: dash(detail.auditingFirm) },
+    { label: '簽證會計師事務所', value: dash(detail.auditingFirm) },
     { label: '公司網站', value: dash(detail.website), href: websiteHref(detail.websiteUrl) }
   ]
 }
@@ -98,7 +98,7 @@ export function profilePageFacts(detail: CompanyProfileDetail, today: string): R
       { label: '已發行股數', value: shares(detail.issuedShares) },
       { label: '特別股', value: shares(detail.numberOfPreferenceShares) },
       { label: '私募股數', value: shares(detail.privatePlacementShares) },
-      { label: '財報類型', value: dash(detail.declaredDataTypeName) },
+      { label: '財報口徑', value: dash(detail.declaredDataTypeName) },
       { label: '會計師事務所', value: dash(detail.auditingFirm) },
       { label: '簽證會計師', value: dash([detail.auditor1, detail.auditor2].filter(Boolean).join('、')) }
     ],

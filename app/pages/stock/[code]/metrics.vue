@@ -12,7 +12,7 @@ import type { StockNavNode } from '~/utils/stock-page-nav'
 // 橫向捲動——壞的不是版面溢出，是長度。132px 的成因有二：
 //   1. `@media (max-width: 600px)` 把 table/tr/td 全改成 display: block，三格垂直堆疊
 //   2. **`.pin-cell` 在那個 media query 裡一條覆寫都沒有**，還留著 width: 1% / nowrap / 靠右，
-//      於是 88×48 的按鈕獨佔一整行
+//      於是 88×48 的按鈕獨占一整行
 //
 // 這一版：11 個母項預設收合，列改成兩欄 grid（名稱與說明各一行，釘選鈕 48×48 跨兩列擺右邊）。
 //
@@ -130,7 +130,7 @@ const { breadcrumbs } = useStockPageSeo({
   stock,
   description: computed(() =>
     clampDescription(
-      `${stockShortName.value}（${code.value}）可以查的 ${totalLinks.value} 項財報指標，按 ${sections.value.length} 個財報科目分組：淨值、盈餘、營收、現金流、股利、負債等。每一組再按視角排列，組成、每股、成長率、佔比放在一起，手機上可以逐組展開。`
+      `${stockShortName.value}（${code.value}）可以查的 ${totalLinks.value} 項財報指標，按 ${sections.value.length} 個財報科目分組：淨值、盈餘、營收、現金流、股利、負債等。每一組再按視角排列，組成、每股、成長率、占比放在一起，手機上可以逐組展開。`
     )
   ),
   sectorCode: computed(() => profile.value?.sectorCode ?? null)
@@ -247,9 +247,9 @@ const { breadcrumbs } = useStockPageSeo({
                 <th scope="col">釘選到側邊欄</th>
               </tr>
             </thead>
-            <!-- 視角（組成／每股／佔比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
+            <!-- 視角（組成／每股／占比…）**不顯示**（2026-09-28「組成 占比 甚麼字眼從 metrics
                  移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
-                 只是不佔畫面。 -->
+                 只是不占畫面。 -->
             <tbody>
               <tr v-for="link in section.links" :key="link.label">
                 <th scope="row">

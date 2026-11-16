@@ -201,7 +201,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 堆疊組成（2026-10-09，使用者「負債比率可以拆成流動負債、非流動負債、負債總計就好」）：analysis-ts 1e7c7d0f 新增兩支，分母同為期末
   // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
-  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債佔總資產', related: ['debt-composition'] },
+  { slug: 'debt-ratio', metricCode: 'debtRatio', timeframe: 'Q', topic: '負債比率', titleKeywords: '負債比率總負債占總資產', related: ['debt-composition'] },
   // 有息負債權益比：上線前撤回、同一小時加回（analysis-ts 8f7b4ddd）——formulaLatex 乘了 100 而 unit 寫 倍，把 13.44% 印成
   // 「13.4 倍」（對照 debtRatio 30.94%、equityRatio 69.06% 抓到）；存值一直是百分比，只有單位標錯。slug 與 topic 跟著改名後的指標：
   // 分子只有有息負債，`debt-to-equity` 會承諾傳統的總負債÷權益；舊 slug 沒發布過，沒有網址要保留。
@@ -219,7 +219,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', compareMetricCode: 'epsGrowthRate', timeframe: 'TTM', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
   { slug: 'equity-growth', metricCode: 'equityGrowthRate', compareMetricCode: 'bvpsGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化', related: ['equity-source', 'capex-to-revenue', 'net-income-growth', 'dividend-payout-ratio'] },
   { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'TTM', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
-  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'TTM', topic: '研發費用率', titleKeywords: '研發費用率佔營收比重' },
+  { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'TTM', topic: '研發費用率', titleKeywords: '研發費用率占營收比重' },
   // 獲利品質 2026-09-21（跟獲利能力分開：一個是賺多少、一個是賺的有沒有現金撐）：沒徽章的三支，深度齊、有溯源。排除 beneish 三支、
   // piotroskiFScore（有自己的頁）、abnormalCapexRatio（模型偏差不是申報比率）。fcfMargin 當時只有 1 期，2026-10-23 回填到 2020Q3／Q4
   // 起（抽 7 家 23～24 季）才開頁（使用者：「要」）；它＝營業現金流利潤率 − 資本支出佔營收比（同日抽 10 家 231 季都在 0.01 內），
@@ -238,7 +238,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 預期信用減損 22.5% 為負、權益法 35.4%、其他利益損失 24.4% 為負，部分-整體的長條畫不出負塊。覆蓋率刻意不寫（回填中會變）。
   // 砍掉兩支：每股少數股東損益 49.5% 的公司值為 0、每股預期信用減損 30.2% 為 0——noindex 擋「沒有值」擋不了「值是 0」。
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
-  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本佔營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
+  { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本占營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
   { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', partsNote: '預期信用減損是正數時是損失，負數時是迴轉利益（例如收回先前提列的呆帳），會讓營業費用變少。', topic: '每股營業費用', titleKeywords: '每股營業費用與推銷管理研發', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['operating-expense-composition', 'selling-expense', 'administrative-expense', 'rd-expense'] },
   { slug: 'selling-expense', metricCode: 'sellingExpensePerShare', timeframe: 'TTM', topic: '每股推銷費用', titleKeywords: '每股推銷費用逐季數據', related: ['operating-expense', 'administrative-expense'] },
@@ -247,7 +247,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'TTM', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
   { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
   { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['non-operating-income-ratio', 'interest-income', 'finance-cost'] },
-  // 業外損益占稅前淨利比（2026-09-30 直接問「沒有呈現業外損益佔稅前淨利比？」）：上一支是金額，這一支才回答「獲利多依賴非本業」。
+  // 業外損益占稅前淨利比（2026-09-30 直接問「沒有呈現業外損益占稅前淨利比？」）：上一支是金額，這一支才回答「獲利多依賴非本業」。
   // 分母用稅前淨利不用營業利益是量出來的（抽 68 檔單季：業外÷營業利益最大 2787%、業外÷稅前淨利最大 97%，天然有界）。
   // 上游原本只有 Q，之後補 TTM（一次性項目要連續看好幾季，近四季正好平滑）；三段文案上游都齊（analysis-ts 22c20761），不另寫。
   { slug: 'non-operating-income-ratio', metricCode: 'nonOperatingIncomeRatio', timeframe: 'TTM', topic: '業外損益占稅前淨利比', titleKeywords: '業外損益占稅前淨利比與本業依賴', related: ['non-operating-income', 'operating-income', 'pretax-income'] },

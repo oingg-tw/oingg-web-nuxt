@@ -220,7 +220,7 @@ const { breadcrumbs } = useStockPageSeo({
           <thead>
             <tr>
               <th scope="col">項目</th>
-              <th scope="col">佔流動負債比率</th>
+              <th scope="col">占流動負債比率</th>
             </tr>
           </thead>
           <tbody>
@@ -255,7 +255,7 @@ const { breadcrumbs } = useStockPageSeo({
         <thead>
           <tr>
             <th scope="col">來源</th>
-            <th scope="col">佔總資產比率</th>
+            <th scope="col">占總資產比率</th>
           </tr>
         </thead>
         <tbody>

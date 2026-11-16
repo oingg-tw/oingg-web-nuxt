@@ -93,7 +93,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
   }
 
   // One question per statement. 答句三個數字（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」：原本四個科目各帶去年同期的金額，一段兩百多字，
-  // 每一格都在下面的表裡）：「營業收入 1.27兆元（年增 36.05%）、本期淨利 7,068億元（年增 77.81%）、基本每股盈餘 27.25 元（年增 77.41%）。」
+  // 每一格都在下面的表裡）：「營業收入 1.27兆元（年增 36.05%）、稅後淨利 7,068億元（年增 77.81%）、基本每股盈餘 27.25 元（年增 77.41%）。」
   function line(statementType: StatementType, key: string, label: string, unit: '千元' | '元' = '千元'): string | null {
     const { current, prior } = statementOf(statementType)
     const now = current?.found ? current.statement?.[key] : null
@@ -112,7 +112,8 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
   const statementQuestions = computed<Record<StatementType, string>>(() => {
     const name = shortName.value
     const period = latest.value
-    const cumulative = period ? `${period.year} 年第 ${period.season} 季累計` : '最新一季'
+    // 累計到第四季就是全年（詞彙表 2026-11-16：寫「全年累計」，不寫「第 4 季累計」；確定是年報文件才寫「年報」）
+    const cumulative = period ? (period.season === 4 ? `${period.year} 年全年累計` : `${period.year} 年第 ${period.season} 季累計`) : '最新一季'
     const asOf = period ? `${period.year}年${quarterEnd(period.season)}` : '最新一季'
     return {
       incomeStatement: `${name} ${cumulative}的損益表：營收與淨利多少？`,
@@ -125,7 +126,7 @@ export async function useStockStatements(code: Ref<string>, shortName: Ref<strin
     const period = latest.value
     if (!period) return { incomeStatement: null, balanceSheet: null, cashFlowStatement: null }
     return {
-      incomeStatement: joinClauses([line('incomeStatement', 'revenue', '營業收入'), line('incomeStatement', 'profit_loss', '本期淨利'), line('incomeStatement', 'basic_earnings_loss_per_share', '基本每股盈餘', '元')]),
+      incomeStatement: joinClauses([line('incomeStatement', 'revenue', '營業收入'), line('incomeStatement', 'profit_loss', '稅後淨利'), line('incomeStatement', 'basic_earnings_loss_per_share', '基本每股盈餘', '元')]),
       balanceSheet: joinClauses([line('balanceSheet', 'assets', '資產總計'), line('balanceSheet', 'liabilities', '負債總計'), line('balanceSheet', 'equity', '權益總計')]),
       cashFlowStatement: joinClauses([flowLine('cash_flows_from_used_in_operating_activities', '營業活動'), flowLine('net_cash_flows_from_used_in_investing_activities', '投資活動'), flowLine('cash_flows_from_used_in_financing_activities', '籌資活動')])
     }

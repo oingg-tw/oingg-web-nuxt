@@ -116,7 +116,7 @@ const { breadcrumbs } = useStockPageSeo({
           <tr>
             <th scope="col">年度</th>
             <th scope="col">期初</th>
-            <th scope="col">本期淨利</th>
+            <th scope="col">普通股淨利</th>
             <th scope="col">現金股利</th>
             <th scope="col">其他綜合損益</th>
             <th scope="col">增資</th>
@@ -144,7 +144,7 @@ const { breadcrumbs } = useStockPageSeo({
       v-else-if="breakdownPending"
       id="stock-book-value-breakdown"
       :question="flowQuestion"
-      :answer-skeleton="`${stockShortName}2025 年每股淨值增加 0.00 元，最大的兩項是本期淨利 0.00 元與現金股利 −0.00 元。`"
+      :answer-skeleton="`${stockShortName}2025 年每股淨值增加 0.00 元，最大的兩項是普通股淨利 0.00 元與現金股利 −0.00 元。`"
     >
       <SharedChartCard><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>

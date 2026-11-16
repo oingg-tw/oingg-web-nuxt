@@ -52,7 +52,7 @@ export function industryDistribution(data: IndustryPageData) {
 export const HOLDER_DIVIDEND_NOTE = '持股股利 5 年成長率是 5 年前買進、一直抱著的人，每年領到的現金股利的年化成長率，配股、分割、減資造成的股數變化都算進去，跟股價無關。分母一直是當年的買進價，所以它也是這個人用買進價算的殖利率，每年成長多少；5 年前有配息、現在不配息的公司是 −100%。股價漲得比股利快時，殖利率會變低，股利卻可能還在成長。'
 
 // 手機四張表最右欄的欄名：要看得出是成長率（2026-11-06，使用者：原本的「股利 5 年」看不出來）；不留空格，同「近5年」
-export const HOLDER_DIVIDEND_LABEL = '股利5年成長'
+export const HOLDER_DIVIDEND_LABEL = '持股股利5年成長'
 
 // 殖利率與持股股利 5 年成長率都有值的公司（5 年前沒有配息紀錄的算不出成長率）
 export const industryScatterRows = (data: IndustryPageData) =>

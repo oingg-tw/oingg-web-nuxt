@@ -7,7 +7,7 @@ import type { StatementType } from '#shared/types/financial-statement'
 // 與「少收科目會嚴重影響判讀」——用同一套規則一起處理（mops 逐家核對過：前端用到的欄位沒有一家因為換一種標籤申報而空白）：
 //   - 排法照 MOPS 報表：同一個合計底下的科目依 GL 代碼排，明細在前、合計在後
 //   - 這家公司兩期都沒有數字（null 或 0）的科目不列
-//   - 預設精簡（使用者選的門檻）：資產負債表佔總資產、損益表佔營收 ≥2%，現金流量表佔營業／投資／籌資淨流量最大者 ≥5%。
+//   - 預設精簡（使用者選的門檻）：資產負債表占總資產、損益表占營收 ≥2%，現金流量表占營業／投資／籌資淨流量最大者 ≥5%。
 //     最上層的合計（資產總計、本期淨利、每股盈餘…）與各段合計（流動資產合計、營業活動之淨現金流入…）一律列；門檻依這家公司的
 //     金額算，所以大的科目不會被漏掉
 //   - 一個合計底下沒列出來的，併成一行「其他」＝合計 − Σ(加減方向 × 已列的子科目)，每一段都加得起來。展開全部科目時，
@@ -46,7 +46,7 @@ export const STATEMENT_DEFINITIONS: { key: StatementType; label: string }[] = [
   { key: 'cashFlowStatement', label: '現金流量表' }
 ]
 
-// 預設精簡的門檻（使用者 2026-10-19 選「資產負債、損益 ≥2%，現金流量 ≥5%」）：明細的金額（兩期取大）佔這張表的基準多少才單獨列
+// 預設精簡的門檻（使用者 2026-10-19 選「資產負債、損益 ≥2%，現金流量 ≥5%」）：明細的金額（兩期取大）占這張表的基準多少才單獨列
 const CONCISE_RULES: Record<StatementType, { share: number; base: string[] }> = {
   balanceSheet: { share: 0.02, base: ['assets'] },
   incomeStatement: { share: 0.02, base: ['revenue'] },

@@ -4,7 +4,7 @@ import type { BookValueBreakdownEntry } from '#shared/types/stock-equity-composi
 // 那張存量圖分不出來的東西。增資與股數變動是兩件事（前者真的有錢進來，後者只是分母變了），業務中台特別強調過，不合併。
 export function bookValueFlowLayers(entries: BookValueBreakdownEntry[]): { name: string; values: number[] }[] {
   return [
-    { name: '本期淨利', values: entries.map(entry => entry.netIncome) },
+    { name: '普通股淨利', values: entries.map(entry => entry.netIncome) },
     { name: '現金股利', values: entries.map(entry => entry.cashDividends) },
     { name: '其他綜合損益', values: entries.map(entry => entry.otherComprehensiveIncome) },
     { name: '增資', values: entries.map(entry => entry.capitalIssued) },
