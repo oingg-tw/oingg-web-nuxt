@@ -11,6 +11,7 @@ import type { StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { StockSeriesResponse } from '#shared/types/stock-series'
 import type { ShareholdingDistribution } from '#shared/types/screener-detail'
+import type { StockNewsResponse } from '#shared/types/stock-news'
 import type { RiverCellsByTimeframe, RiverLatest, RiverMissing } from '#shared/types/stock-metric-page'
 import type { RiverKind } from '#shared/utils/metric-pages'
 import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
@@ -245,7 +246,8 @@ const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric' | 'pr
   'margins': 'margins',
   'solvency': 'solvency',
   'cash-cycle': 'series?page=cash-cycle',
-  'holders': 'holders'
+  'holders': 'holders',
+  'news': 'news'
 }
 const pinnedKinds = computed(() => new Set(pinnedSlugs.value.map(slug => quickViewChartOf(slug)?.kind)))
 const pageData = new Map<string, Ref<unknown>>()
@@ -281,6 +283,7 @@ const marginsData = usePageData<StockMarginsPageResponse>('margins')
 const solvencyData = usePageData<StockSolvencyPageResponse>('solvency')
 const cashCycleSeries = usePageData<StockSeriesResponse>('cash-cycle')
 const holdersData = usePageData<ShareholdingDistribution>('holders')
+const newsData = usePageData<StockNewsResponse>('news')
 // 金融業的資產負債表不分流動與非流動，那兩塊沒有可畫的期別：落到下面的空卡，不要整格消失
 const hasBalanceRows = (part: BalanceCompositionKind) => !!balanceComposition.value?.periods.some(period => pickBalanceComposition(part, period))
 const cashCycleEntry = computed(() => latestCashCycleEntry(cashCycleSeries.value?.groups?.TTM_CYCLE_20?.entries ?? []))
@@ -449,6 +452,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <p v-else-if="profileStatus === 'success'" class="stock-quick-view-page__chart-empty">目前沒有這家公司的基本資料。</p>
           <div v-else-if="profileStatus !== 'error'" class="stock-quick-view-page__facts-placeholder app-skeleton" aria-hidden="true" />
         </SharedChartCard>
+        <StockNewsCard v-else-if="item.spec.kind === 'news'" :news="newsData" :loading="pageLoading('news')" :short-name="stockShortName" :today="taipeiToday">
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" value="" @remove="removeRow(item.slug, item.label)" /></template>
+        </StockNewsCard>
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>

@@ -293,7 +293,7 @@ export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' | 'intangible' }
-  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
@@ -308,6 +308,8 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   profile: { topic: '基本資料', chart: { kind: 'profile' } },
   // 持有人結構（2026-11-12）：集保股權分散的堆疊柱，跟那一頁同一張圖
   holders: { topic: '持有人結構', chart: { kind: 'holders' } },
+  // 近期新聞（2026-11-16，使用者選「先不放預設，只做成可以釘」）：不是圖，是最新 5 則標題的卡片（StockNewsCard），跟基本資料一樣能釘
+  news: { topic: '近期新聞', chart: { kind: 'news' } },
   dividend: { topic: '配股配息', chart: { kind: 'dividend' } },
   margins: { topic: '財報三率', chart: { kind: 'margins' } },
   solvency: { topic: '安全韌性的組成', chart: { kind: 'solvency' } },

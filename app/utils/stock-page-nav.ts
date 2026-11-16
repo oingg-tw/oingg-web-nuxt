@@ -86,8 +86,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '基本資料', to: code => `/stock/${code}/profile`, hook: '屬於哪個產業類股、上市多久、董事長是誰、股本（實收資本額）多大' },
       // 持有人結構（2026-11-12，使用者選的盤點第 1 項）：集保股權分散，跟 ETF 的持有人結構同一份資料
       { label: '持有人結構', to: code => `/stock/${code}/holders`, hook: '持有幾張的人各有多少，合起來占多少股份' },
-      // 近期新聞（2026-11-12）：不是圖，不能釘，只從這裡進得去
-      { label: '近期新聞', to: code => `/stock/${code}/news`, hook: '最近 30 天的新聞標題，點了到原網站看全文' }
+      // 近期新聞（2026-11-12）：2026-11-16 起能釘成指標速覽的卡片（StockNewsCard），不在預設裡。說明不寫期間：11-15 拉長到一年，
+      // 新聞從 2026-11 才開始收，同新聞頁的答句
+      { label: '近期新聞', to: code => `/stock/${code}/news`, hook: '最近的新聞標題與來源，點了到原網站看全文' }
     ]
   },
   // 分子是**股價**不是財報科目，所以自成一組（它們共用型錄的 EOD-only 資料牆，見 METRIC_PAGES 為何指向 peRatio／pbRatio）。

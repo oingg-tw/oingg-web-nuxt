@@ -5,6 +5,7 @@ import { chromium } from 'playwright'
 //   - 2330：每一張卡都要畫出圖（SVG 裡有形狀，或現金循環時間軸的色段），不能落到只有標題的空卡
 //   - 2891（金控）：每一支都要有卡——三率、流動資產這些拆不開的是空狀態卡，不是整格消失
 //   - 彈窗裡沒有純表格頁（填權填息、三大報表）
+//   - 近期新聞（2026-11-16 起能釘，不在預設）：2330 列出新聞，卡片不比旁邊的圖表卡高
 // 用法：先開伺服器（正式建置：PORT=3100 node --env-file=.env .output/server/index.mjs），
 //   QUICK_VIEW_CHECK_URL=http://localhost:3100 node scripts/check-quick-view.mjs
 const baseUrl = process.env.QUICK_VIEW_CHECK_URL ?? 'http://localhost:3000'
@@ -12,7 +13,7 @@ const baseUrl = process.env.QUICK_VIEW_CHECK_URL ?? 'http://localhost:3000'
 // 每種 kind 一支，列名同指標目錄（STOCK_METRIC_INDEX）。一次最多釘 12 支，所以分兩批
 const BATCHES = [
   ['本益比', '每股盈餘', 'ROE', '股東回饋組成', '營業費用組成', '殖利率', '月營收', '杜邦分析', '淨值從哪來', '財報三率', '安全韌性的組成', '現金循環的組成'],
-  ['淨值組成', '流動資產組成', '非流動資產組成', '負債組成', '現金流量的組成']
+  ['淨值組成', '流動資產組成', '非流動資產組成', '負債組成', '現金流量的組成', '近期新聞']
 ]
 const TABLE_ONLY = ['填權填息', '三大財務報表', '資產負債表', '損益表', '現金流量表']
 
@@ -42,7 +43,8 @@ const cardOf = (page, label) => page.locator('.stock-quick-view-page__grid > *')
 // 圖進到畫面附近才畫（SharedChart，2026-10-23）：先捲到卡片，跟讀者看到的方式一樣
 async function hasChart(card) {
   await card.scrollIntoViewIfNeeded().catch(() => {})
-  return (await card.locator('[role="img"] svg path').count()) >= 3 || (await card.locator('.cctl__seg').count()) > 0
+  // 近期新聞（2026-11-16 起能釘）不是圖：有新聞列表就算畫出來了
+  return (await card.locator('[role="img"] svg path').count()) >= 3 || (await card.locator('.cctl__seg').count()) > 0 || (await card.locator('.news-card__item').count()) > 0
 }
 
 async function waitFor(check, timeout = 45000) {
@@ -121,6 +123,16 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
       const card = cardOf(page, label)
       const ok = await waitFor(async () => (await card.count()) === 1 && (!needChart || await hasChart(card)))
       expect(code, `${label} ${needChart ? '有圖' : '有卡片'}`, ok)
+    }
+    // 新聞卡跟圖表卡的骨架一樣高（StockNewsCard）：桌機兩欄時不把同一列撐高。量法同基本資料卡，先取消拉伸
+    if (labels.includes('近期新聞')) {
+      const [news, chart] = await Promise.all(['近期新聞', labels[0]].map(label => cardOf(page, label).evaluate((card) => {
+        card.style.alignSelf = 'start'
+        const height = Math.round(card.getBoundingClientRect().height)
+        card.style.alignSelf = ''
+        return height
+      })))
+      expect(code, '新聞卡不比旁邊的圖表卡高', news <= chart, `${news} / ${chart}`)
     }
   }
   expect(code, '沒有頁面錯誤', pageErrors.length === 0, pageErrors.join(' | '))
