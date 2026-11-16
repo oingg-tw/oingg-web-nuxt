@@ -1,7 +1,14 @@
 // shared/utils/newsletter.ts：token 的形狀、下一封預計的時間（下一個台北週日 20:00）。
 // Run: node scripts/check-newsletter.mjs
 import assert from 'node:assert/strict'
-import { NEWSLETTER_SECTIONS, isNewsletterToken, nextNewsletterIssue } from '../shared/utils/newsletter.ts'
+import { NEWSLETTER_SECTIONS, isNewsletterToken, newsletterAddress, nextNewsletterIssue } from '../shared/utils/newsletter.ts'
+
+const own = status => ({ address: 'line@example.com', status, verifiedAt: status === 'verified' ? '2026-11-16T12:00:00.000Z' : null })
+assert.equal(newsletterAddress({ email: 'acct@example.com', newsletterEmail: own('verified'), editions: [] }), 'acct@example.com', '帳號有 email 就用帳號的')
+assert.equal(newsletterAddress({ email: null, newsletterEmail: own('verified'), editions: [] }), 'line@example.com', '沒有帳號 email 才用驗證過的')
+assert.equal(newsletterAddress({ email: null, newsletterEmail: own('pending_verification'), editions: [] }), null, '還沒驗證不寄')
+assert.equal(newsletterAddress({ email: null, newsletterEmail: own('entered'), editions: [] }), null)
+assert.equal(newsletterAddress({ email: null, newsletterEmail: null, editions: [] }), null)
 
 assert.ok(isNewsletterToken('aB3_-x'.repeat(10) + 'abcd'), '64 字、英數與 - _')
 assert.ok(!isNewsletterToken('a'.repeat(65)), '超過 64 字')

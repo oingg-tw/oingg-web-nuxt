@@ -19,11 +19,30 @@ export interface NewsletterEdition {
   optedOutAt: string | null
 }
 
+// 沒有帳號 email 的人（LINE 建立的）自己填的收件 email：填了是 entered，寄出驗證信是 pending_verification，點了連結是 verified
+export interface NewsletterEmail {
+  address: string
+  status: 'entered' | 'pending_verification' | 'verified'
+  verifiedAt: string | null
+}
+
 // 沒設定過的版別也列出來（optIn false、四塊全選）；email 是帳號的，LINE 建立的帳號是 null
 export interface NewsletterSettings {
   email: string | null
+  newsletterEmail: NewsletterEmail | null
   editions: NewsletterEdition[]
 }
+
+// 驗證連結確認後的回應（不用登入）：寄到的地址遮罩過，editions 讓結果頁知道週報開了沒
+export interface NewsletterVerifyResult {
+  status: 'verified'
+  maskedAddress: string
+  editions: { edition: string; optIn: boolean }[]
+}
+
+// 週報寄到哪（業務中台的規則）：帳號有 email 就是帳號的，之前填過收件 email 也一樣；沒有才用自己填、驗證過的。都沒有是 null，週報開著也不會寄
+export const newsletterAddress = (settings: NewsletterSettings): string | null =>
+  settings.email ?? (settings.newsletterEmail?.status === 'verified' ? settings.newsletterEmail.address : null)
 
 // 不用登入的查詢、退訂、繼續收都回這個。信件標頭那把 token 只能退訂，退訂時 maskedEmail 是 null
 export interface NewsletterTokenState {

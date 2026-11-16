@@ -1,6 +1,8 @@
 // 電子報的網頁這一端（2026-11-16，業務中台的合約）：
 //   - /account/newsletter：開關（PUT optIn、開啟的提示寫下一封預計）、分塊（改了就存、一次送一個、至少留一塊）、失敗時提示並回到上游的樣子、
-//     範例週報、沒有 email 的帳號
+//     範例週報
+//   - 沒有帳號 email：自己填收件 email（依序存 email、打開週報、寄驗證信）、格式不對、寄不出去、重寄等 60 秒、一天寄滿、換 email（開關不動）
+//   - /newsletter/verify：按了「確認 email」才送出；週報開著、關著兩種說法；404 連結失效、409 別的帳號在用、沒有 token
 //   - /newsletter/unsubscribe：內文 #t= 查詢後才退訂、繼續收；不認得的 token、沒有 token 是連結失效；標頭 ?t= 不查、退訂後沒有「繼續收」；
 //     token 不出現在任何請求網址
 //   - POST /newsletter/unsubscribe（RFC 8058）：形狀不對的 token 回 400，不送上游
@@ -53,21 +55,21 @@ for (const scenario of ['body', 'unknown', 'header', 'none', 'already-off']) {
   const path = { body: `#t=${token}`, unknown: `#t=${token}`, header: `?t=${token}`, none: '', 'already-off': `#t=${token}` }[scenario]
   await ready(page, `/newsletter/unsubscribe${path}`)
   const title = () => page.locator('h1').innerText()
-  await page.waitForFunction(() => !document.querySelector('.newsletter-unsubscribe .app-skeleton'), null, { timeout: 15000 })
+  await page.waitForFunction(() => !document.querySelector('.newsletter-result .app-skeleton'), null, { timeout: 15000 })
   if (scenario === 'body') {
-    check(await title() === '不再收每週持股週報？' && (await page.locator('.newsletter-unsubscribe__lead').innerText()).includes('到 n***@example.com'), 'body：先查，確認頁寫遮罩過的 email')
+    check(await title() === '不再收每週持股週報？' && (await page.locator('.newsletter-result__lead').innerText()).includes('到 n***@example.com'), 'body：先查，確認頁寫遮罩過的 email')
     check(calls.length === 1 && calls[0][1].token === token, 'body：查詢的 token 在 body')
     await page.getByRole('button', { name: '不再收週報' }).click()
     await page.getByRole('heading', { name: '已停止寄週報' }).waitFor({ timeout: 10000 })
     check(calls[1]?.[0] === 'opt-out' && calls[1][1].token === token, 'body：按了才退訂')
     await page.getByRole('button', { name: '繼續收週報' }).click()
     await page.getByRole('heading', { name: '週報會照常寄給你' }).waitFor({ timeout: 10000 })
-    check(calls[2]?.[0] === 'opt-in' && /下一封預計 \d+\/\d+（日）晚上 8 點寄到 n\*\*\*@example\.com/.test(await page.locator('.newsletter-unsubscribe__lead').innerText()), 'body：繼續收，寫下一封預計與 email')
+    check(calls[2]?.[0] === 'opt-in' && /下一封預計 \d+\/\d+（日）晚上 8 點寄到 n\*\*\*@example\.com/.test(await page.locator('.newsletter-result__lead').innerText()), 'body：繼續收，寫下一封預計與 email')
   } else if (scenario === 'unknown' || scenario === 'none') {
     check(await title() === '這個連結已經不能用', `${scenario}：連結失效`)
     check(calls.filter(call => call[0] !== 'lookup').length === 0, `${scenario}：沒有退訂`)
   } else if (scenario === 'header') {
-    check(calls.length === 0 && await title() === '不再收每週持股週報？' && (await page.locator('.newsletter-unsubscribe__lead').innerText()).includes('給你'), 'header：不查，直接給按鈕，不寫 email')
+    check(calls.length === 0 && await title() === '不再收每週持股週報？' && (await page.locator('.newsletter-result__lead').innerText()).includes('給你'), 'header：不查，直接給按鈕，不寫 email')
     await page.getByRole('button', { name: '不再收週報' }).click()
     await page.getByRole('heading', { name: '已停止寄週報' }).waitFor({ timeout: 10000 })
     check(calls[0]?.[0] === 'opt-out' && calls[0][1].token === token, 'header：同一把 token 退訂')
@@ -161,14 +163,117 @@ for (const width of [1440, 375]) {
   await ctx.close()
 }
 
+console.log('帳號：沒有帳號 email，自己填收件 email')
 {
   const ctx = await browser.newContext({ viewport: { width: 375, height: 900 }, storageState })
-  await routeWith(ctx, { 'GET /api/core/newsletter': route => route.fulfill({ json: { email: null, editions: [edition(false)] } }) })
+  let state = { email: null, newsletterEmail: null, editions: [edition(false)] }
+  const calls = []
+  let failPut = false
+  let failSend = null
+  await routeWith(ctx, {
+    'GET /api/core/newsletter': route => route.fulfill({ json: state }),
+    'PUT /api/core/newsletter/email': (route) => {
+      const body = route.request().postDataJSON()
+      calls.push(['email', body])
+      if (failPut) { failPut = false; return route.fulfill(problem(400)) }
+      state = { ...state, newsletterEmail: { address: body.address, status: 'entered', verifiedAt: null } }
+      return route.fulfill({ json: state.newsletterEmail })
+    },
+    'PUT /api/core/newsletter/weekly': (route) => {
+      const body = route.request().postDataJSON()
+      calls.push(['weekly', body])
+      state = { ...state, editions: [{ ...state.editions[0], ...body }] }
+      return route.fulfill({ json: state.editions[0] })
+    },
+    'POST /api/core/newsletter/email/verification': (route) => {
+      calls.push(['send'])
+      const failure = failSend
+      failSend = null
+      if (failure === 'unconfigured') return route.fulfill(problem(503, 'mail_not_configured'))
+      if (failure === 'daily') return route.fulfill(problem(429, 'newsletter_verification_daily_limit'))
+      state = { ...state, newsletterEmail: { ...state.newsletterEmail, status: 'pending_verification' } }
+      return route.fulfill({ json: state.newsletterEmail })
+    }
+  })
   const page = await ctx.newPage()
   await ready(page, '/account/newsletter')
-  await page.getByText('這個帳號是用 LINE 建立的').waitFor({ timeout: 30000 })
-  check(await page.locator('#newsletter-weekly').count() === 0, '沒有 email：不給開關')
-  check(await page.locator('a[href="/account#sign-in-methods-title"]').count() === 1, '沒有 email：連到帳號與登入加上 Google')
+  await page.waitForFunction(() => document.querySelector('#newsletter-email') && !document.querySelector('#newsletter-email').disabled, null, { timeout: 30000 })
+  check(await page.locator('#newsletter-weekly').count() === 0 && (await page.locator('.newsletter-page__status').innerText()).includes('先填一個收信的 email'), '沒有任何 email：不給開關，先填一個')
+  check(await page.locator('a[href="/account#sign-in-methods-title"]').count() === 1, '…也可以加上 Google 登入')
+
+  failPut = true
+  await page.locator('#newsletter-email').fill('bad@localhost')
+  await page.getByRole('button', { name: '寄驗證信並開啟週報' }).click()
+  await page.locator('.newsletter-page__message', { hasText: 'email 的格式不對' }).waitFor({ timeout: 10000 })
+  check(calls.length === 1 && calls[0][0] === 'email', '格式不對：沒打開週報、沒寄信')
+
+  calls.length = 0
+  failSend = 'unconfigured'
+  await page.locator('#newsletter-email').fill('line@example.com')
+  await page.getByRole('button', { name: '寄驗證信並開啟週報' }).click()
+  await page.locator('.newsletter-page__message', { hasText: '現在還沒辦法寄驗證信' }).waitFor({ timeout: 10000 })
+  check(JSON.stringify(calls) === JSON.stringify([['email', { address: 'line@example.com' }], ['weekly', { optIn: true }], ['send']]), '依序：存 email、打開週報、寄驗證信')
+  check(await page.getByRole('button', { name: '寄驗證信', exact: true }).count() === 1 && (await page.locator('.newsletter-page__tag').innerText()) === '待驗證', '沒寄出：地址留著，按鈕是「寄驗證信」')
+
+  calls.length = 0
+  await page.getByRole('button', { name: '寄驗證信', exact: true }).click()
+  const cooling = page.getByRole('button', { name: /重寄驗證信（\d+ 秒後）/ })
+  await cooling.waitFor({ timeout: 10000 })
+  check(calls.length === 1 && await cooling.isDisabled(), '寄出後重寄要等 60 秒')
+  check((await page.locator('.newsletter-page__status').innerText()).includes('email 驗證完才開始寄') && await page.locator('#newsletter-weekly').getAttribute('aria-checked') === 'true', '週報開著、等驗證')
+
+  calls.length = 0
+  await page.getByRole('button', { name: '改用別的 email' }).click()
+  check(await page.locator('#newsletter-email').inputValue() === 'line@example.com', '改用別的 email：帶入目前的地址')
+  await page.locator('#newsletter-email').fill('new@example.com')
+  await page.getByRole('button', { name: '寄驗證信', exact: true }).click()
+  await page.waitForTimeout(1500)
+  check(JSON.stringify(calls) === JSON.stringify([['email', { address: 'new@example.com' }], ['send']]), '換 email：存新地址、寄驗證信，開關不動')
+
+  // 重新整理後沒有倒數；一天寄滿 5 封
+  await ready(page, '/account/newsletter')
+  await page.getByRole('button', { name: '重寄驗證信', exact: true }).waitFor({ timeout: 30000 })
+  failSend = 'daily'
+  await page.getByRole('button', { name: '重寄驗證信', exact: true }).click()
+  await page.locator('.newsletter-page__message', { hasText: '24 小時內最多寄 5 封' }).waitFor({ timeout: 10000 })
+  check(true, '一天寄滿：說明明天再試')
+  await ctx.close()
+}
+
+console.log('驗證 email（不用登入）')
+for (const scenario of ['on', 'off', 'expired', 'taken', 'none']) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  await ctx.addCookies([{ name: 'analytics-consent', value: 'denied', url: base }])
+  const calls = []
+  const urls = []
+  ctx.on('request', request => urls.push(request.url()))
+  await routeWith(ctx, {
+    'POST /api/core/newsletter/email/verify': (route) => {
+      calls.push(route.request().postDataJSON())
+      if (scenario === 'expired') return route.fulfill(problem(404))
+      if (scenario === 'taken') return route.fulfill(problem(409, 'newsletter_email_taken'))
+      return route.fulfill({ json: { status: 'verified', maskedAddress: 'l***@example.com', editions: [{ edition: 'weekly', optIn: scenario === 'on' }] } })
+    }
+  })
+  const page = await ctx.newPage()
+  const token = 'VerifyToken_0123456789'
+  await ready(page, `/newsletter/verify${scenario === 'none' ? '' : `#t=${token}`}`)
+  await page.waitForTimeout(500)
+  const title = () => page.locator('h1').innerText()
+  if (scenario === 'none') {
+    check(await title() === '這個驗證連結已經不能用', 'none：連結失效')
+  } else {
+    check(await title() === '確認你的 email' && calls.length === 0, `${scenario}：先停在確認頁，按了才送出`)
+    await page.getByRole('button', { name: '確認 email' }).click()
+    await page.waitForFunction(() => document.querySelector('h1')?.textContent !== '確認你的 email', null, { timeout: 10000 })
+    check(calls[0]?.token === token, `${scenario}：token 在 body`)
+    const lead = await page.locator('.newsletter-result__lead').innerText()
+    if (scenario === 'on') check(await title() === 'email 已驗證' && /寄到 l\*\*\*@example\.com，第一封預計 \d+\/\d+（日）晚上 8 點/.test(lead), 'on：寫寄到哪、第一封預計')
+    if (scenario === 'off') check(await title() === 'email 已驗證' && lead.includes('週報現在是關著的'), 'off：週報關著，換一句')
+    if (scenario === 'expired') check(await title() === '這個驗證連結已經不能用', 'expired：404 是連結失效')
+    if (scenario === 'taken') check(await title() === '這個 email 已經用在別的帳號', 'taken：409 是別的帳號在用')
+  }
+  check(!urls.some(url => url.includes(token)), `${scenario}：token 不在任何請求網址`)
   await ctx.close()
 }
 
