@@ -7,7 +7,7 @@ import type { ScreenerUrlFilter, ScreenerUrlState } from '~/utils/screener-url'
 // ?f=…&c=…&sort=…（replace，不留一長串上一頁）。打開網址的那一側各自處理（普通股在頁面、ETF／特別股在 useUniverseScreener），
 // 這裡是兩邊共用的轉換與「畫面 → 網址」。格式在 app/utils/screener-url.ts
 
-// 畫面上的條件 → 網址的條件：沒選欄位、數字沒有上下限、類別沒勾的都不算（同 filtersOf）。類股（sector.code）也在裡面
+// 畫面上的條件 → 網址的條件：沒選欄位、數字沒有上下限、類別沒勾的都不算（同 filtersOf）。類股（sector.name，2026-11-16 前是 sector.code）也在裡面
 export function urlFiltersOf(slots: TabFilterSlot[], fieldOut: (fieldId: string) => string = fieldId => fieldId): ScreenerUrlFilter[] {
   return slots.flatMap((slot): ScreenerUrlFilter[] => {
     if (!slot.fieldId) return []

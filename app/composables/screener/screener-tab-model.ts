@@ -303,7 +303,9 @@ export function findRoeField(categories: MetricCategory[]) {
 // ── 類股範圍 ───────────────────────────────────────────────────────────────────
 // 證交所類股是一個類別型條件（2026-10-15）：values 是類股代碼、exclude 是「排除這些類股」。跟指標條件是兩套分類系統，
 // 所以它不是上游型錄的指標，由前端加進「基本資料」（withSectorCondition），送出時從條件裡拿出來、轉成 業務中台 的 sectorCodes／excludeSectorCodes。
-export const SECTOR_FIELD_ID = 'sector.code'
+// 2026-11-16 起叫 sector.name（詞彙檢核 X17 第 1 步：值一直是類股名稱；業務中台之後把 sector.code 改成真的類股代碼）。存檔、網址裡的舊 id
+// 由 replacedField 換過來。當條件時 values 照舊是類股代碼、送出時轉成 sectorCodes，這個 id 不會送到業務中台
+export const SECTOR_FIELD_ID = 'sector.name'
 
 export function sectorSlot(id: number, codes: string[], exclude: boolean): TabFilterSlot {
   return { id, fieldId: SECTOR_FIELD_ID, fieldLabel: '類股', min: null, max: null, exclude, values: codes }
@@ -388,7 +390,7 @@ export function withSectorCondition(categories: MetricCategory[], sectors: { cod
     // 使用者叫它產業（上面那句「產業不算是基本資料嗎」），站上的產業頁也叫產業：搜「產業」要找得到（2026-11-15）
     searchAliases: ['產業別'],
     options: sectors.map(sector => ({ value: sector.code, label: sector.name, count: sector.companyCount })),
-    fields: [{ key: 'code', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
+    fields: [{ key: 'name', name: '類股', period: 'snapshot', unit: '', sort: 0 }]
   }
   if (!profile) return [...categories, { key: 'sector', name: '類股', sort: Number.MAX_SAFE_INTEGER, metrics: [metric] }]
   return categories.map(category => (category === profile ? { ...category, metrics: [...category.metrics, metric] } : category))

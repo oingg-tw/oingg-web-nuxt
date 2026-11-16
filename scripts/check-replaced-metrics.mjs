@@ -1,7 +1,7 @@
 // 被藏起來的指標 → 留下來的那一支（app/utils/replaced-metrics.ts）要對得上型錄：兩邊都還在、單位一樣（條件的數字照搬才有意義）。
 // 上游改名（例如等著要改名的那 9 支）時這支會先紅。Run: 本機 dev（:3000）開著，node scripts/check-replaced-metrics.mjs
 import assert from 'node:assert/strict'
-import { PICKER_UNLISTED_METRICS, REPLACED_METRICS, replacedFields } from '../app/utils/replaced-metrics.ts'
+import { PICKER_UNLISTED_METRICS, REPLACED_METRICS, replacedField, replacedFields } from '../app/utils/replaced-metrics.ts'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
 const catalog = await (await fetch(`${base}/api/hub/filter-schema`)).json()
@@ -28,4 +28,7 @@ const { templates: screenerTemplates } = await (await fetch(`${base}/api/core/sc
 for (const { name, filters } of screenerTemplates) assert.ok(!filters.some(filter => unlisted(filter.field)), `官方篩選範本「${name}」用到藏起來的指標：${filters.map(filter => filter.field).filter(unlisted).join('、')}`)
 // 換完去掉重複、留前面那一個位置；不在表上的照舊
 assert.deepEqual(replacedFields(['stock.price', 'pegRatio.TTM', 'roe.TTM', 'livePegRatio.EOD', 'peRatioRiverBand.1Y_1D']), ['stock.price', 'livePegRatio.EOD', 'roe.TTM', 'peRatioRiverBand.1Y_1D'])
+// 改名的欄位 id 整個換（類股 sector.code → sector.name，2026-11-16）：存檔與舊連結裡的類股欄位照樣畫得出來
+assert.equal(replacedField('sector.code'), 'sector.name')
+assert.deepEqual(replacedFields(['sector.code', 'sector.name']), ['sector.name'])
 console.log('PASS: replaced metrics')

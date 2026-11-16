@@ -47,7 +47,10 @@ export const PICKER_UNLISTED_METRICS = [
   'threeMarginsRising', 'piotroskiFScore', 'altmanZScore', 'altmanZDoublePrimeScore', 'ohlsonOScore', 'zmijewskiScore', 'beneishMScore', 'chowderNumber', 'sue', 'sus'
 ]
 
-export const replacedField = (fieldId: string): string => REPLACED_METRICS[fieldId.split('.')[0] ?? ''] ?? fieldId
+// 改名的欄位 id，整個 id 對（上面那張表是用指標對）：類股欄位 2026-11-16 從 sector.code 改叫 sector.name（詞彙檢核 X17 第 1 步，業務中台兩個都收，
+// 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的
+export const RENAMED_FIELD_IDS: Record<string, string> = { 'sector.code': 'sector.name' }
+export const replacedField = (fieldId: string): string => RENAMED_FIELD_IDS[fieldId] ?? REPLACED_METRICS[fieldId.split('.')[0] ?? ''] ?? fieldId
 
 // 欄位清單換完去掉重複：舊的跟留下來的那支都在時，只留前面那一個位置
 export const replacedFields = (fields: string[]): string[] => [...new Set(fields.map(replacedField))]
