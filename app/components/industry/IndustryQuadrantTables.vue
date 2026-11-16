@@ -65,6 +65,11 @@ defineProps<{ groups: QuadrantTable[]; columns: readonly string[]; collapsed?: b
   white-space: normal;
 }
 
+/* 欄名裡寫了換行（\n）就在那裡折成兩行（CASH_YIELD_LABEL），其餘照舊不折 */
+.industry-quadrant-tables :deep(.industry-quadrant-table thead th) {
+  white-space: pre;
+}
+
 .industry-quadrant-tables :deep(.industry-quadrant-table :is(th, td):not(:first-child)) {
   width: 1%;
   padding-left: 8px;

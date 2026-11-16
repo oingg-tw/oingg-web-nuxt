@@ -47,7 +47,7 @@ const [{ data: filterSchema }, { data: solvencyData, error: solvencyError, statu
 // 讀失敗 vs 真的沒資料（2026-10-11，照 StockMetricDetailPage）：載入完成後請求出錯（4xx 由 readOrNull 變成 null，不算）或 series 是 null
 //（伺服器 settle 失敗）＝讀不到，交給全站讀取失敗彈窗；畫面留空，不說「目前沒有資料」
 const readFailed = computed(() => solvencyDataStatus.value !== 'pending' && (!!solvencyError.value || solvencyData.value?.series === null))
-const answerSkeleton = computed(() => (solvencyPending.value ? `2026 Q2（單季）流動比率 000.00%、速動比率 000.00%、現金比率 000.00%、資料時間 2026-08-11。` : null))
+const answerSkeleton = computed(() => (solvencyPending.value ? `2026 Q2（單季）流動比率 000.00%、速動比率 000.00%、現金比率 000.00%、財報公告日 2026-08-11。` : null))
 watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value ?? readFailed.value, refreshSolvencyData)
 
 // Periods with none of the three liquidity ratios filed are dropped at the source — a financial
@@ -121,7 +121,7 @@ const valueAnswer = computed(() => {
     `${latestPeriodText.value}（單季）流動比率 ${fixedRateText(currentRatio.value)}`,
     `速動比率 ${fixedRateText(quickRatio.value)}`,
     `現金比率 ${fixedRateText(cashRatio.value)}`,
-    latest.value.values.currentRatio?.knowledgeDate ? `資料時間 ${latest.value.values.currentRatio.knowledgeDate}` : null
+    latest.value.values.currentRatio?.knowledgeDate ? `財報公告日 ${latest.value.values.currentRatio.knowledgeDate}` : null
   ])
 })
 
@@ -193,7 +193,7 @@ const { breadcrumbs } = useStockPageSeo({
             <th scope="col">速動比率（%）</th>
             <th scope="col">現金比率（%）</th>
             <th scope="col">負債比率（%）</th>
-            <th scope="col">資料時間</th>
+            <th scope="col">財報公告日</th>
           </tr>
         </thead>
         <tbody>

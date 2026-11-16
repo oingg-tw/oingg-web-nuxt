@@ -256,7 +256,7 @@ const titleKeywords = computed(() => {
 })
 
 // 讀取中的答句骨架：跟真的答句差不多長（單季、近四季、資料時間），字是透明的，只用來佔同樣的行數
-const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic}為 00.00、近四季${valueTopic}為 00.00、資料時間 2026-08-11。` : null))
+const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic}為 00.00、近四季${valueTopic}為 00.00、財報公告日 2026-08-11。` : null))
 
 const valueAnswer = computed(() => {
   if (riverLead.value) return joinClauses([riverLead.value])
@@ -271,7 +271,7 @@ const valueAnswer = computed(() => {
       quarterlyLead.value,
       q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 4)}%` : null,
       hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null,
-      latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
+      latest.value.point?.knowledgeDate ? `財報公告日 ${latest.value.point.knowledgeDate}` : null
     ])
   }
   // No「目前」in front of the figure. It was there until 2026-09-21 and was accurate enough while
@@ -285,7 +285,7 @@ const valueAnswer = computed(() => {
     `${stockShortName.value}的${valueTopic}為 ${latestValueText.value}`,
     `期別 ${timeframeLabel.value}`,
     `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`,
-    latest.value.point?.knowledgeDate ? `資料時間 ${latest.value.point.knowledgeDate}` : null
+    latest.value.point?.knowledgeDate ? `財報公告日 ${latest.value.point.knowledgeDate}` : null
   ])
 })
 

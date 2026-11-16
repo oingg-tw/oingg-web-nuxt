@@ -227,7 +227,7 @@ function valuationClause(summary: StockSummary | null, percentiles: StockDigestP
   if (valuation.pbRatio !== null) parts.push(`淨值比 ${valuation.pbRatio.toFixed(2)} 倍${pb ? `（${pb.windowLabel}第${pb.percentile}百分位）` : ''}`)
   if (valuation.dividendYield !== null) {
     const dated = valuation.dividendYieldDate === valuation.tradeDate ? '' : `（${valuation.dividendYieldDate}）`
-    parts.push(`${valuation.dividendYield === 0 ? ZERO_YIELD_TEXT : `殖利率 ${valuation.dividendYield.toFixed(2)}%`}${dated}`)
+    parts.push(`${valuation.dividendYield === 0 ? ZERO_YIELD_TEXT : `現金殖利率 ${valuation.dividendYield.toFixed(2)}%`}${dated}`)
   }
   if (!parts.length) return null
   return `${parts.join('、')}（${valuation.tradeDate}）`
@@ -238,7 +238,7 @@ function yieldClause(summary: StockSummary | null): string | null {
   if (!valuation || valuation.dividendYield === null) return null
   // 0 不寫成「殖利率 0.00%」，也不寫「不配息」（見 dividend-event.ts 的 ZERO_YIELD_TEXT）
   if (valuation.dividendYield === 0) return `${ZERO_YIELD_TEXT}（${valuation.dividendYieldDate}）`
-  return `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.dividendYieldDate}）`
+  return `現金殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.dividendYieldDate}）`
 }
 
 function exDividendClause(notice: ExDividendNotice | null): string | null {
@@ -317,7 +317,7 @@ export function buildStockPageDigest(input: StockDigestInput): StockPageDigest |
 
 export function buildDigestFreshnessText(digest: StockPageDigest): string | null {
   const parts: string[] = []
-  if (digest.latestPeriod) parts.push(`最新財報資料：${digest.latestPeriod.label}${digest.latestKnowledgeDate ? `（揭露日 ${digest.latestKnowledgeDate}）` : ''}`)
+  if (digest.latestPeriod) parts.push(`最新財報資料：${digest.latestPeriod.label}${digest.latestKnowledgeDate ? `（財報公告日 ${digest.latestKnowledgeDate}）` : ''}`)
   if (digest.valuationTradeDate) parts.push(`每日估值：${digest.valuationTradeDate}`)
   return parts.length ? parts.join('｜') : null
 }

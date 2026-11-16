@@ -25,7 +25,7 @@ const otherSectors = computed(() => sectors.value.filter(sector => sector.code !
 const { order } = useIndustryFacetOrder()
 const labelOf = (key: string) => INDUSTRY_FACETS.find(facet => facet.key === key)!.label
 
-const description = computed(() => clampDescription(`${sectorName}（證交所類股 ${code}）上市櫃公司 ${companyCount.value} 家：月營收與景氣同時指標、獲利能力三率、本益比與殖利率分布、殖利率與股利成長的圖，以及每家公司的股價與指標名單。`))
+const description = computed(() => clampDescription(`${sectorName}（證交所類股 ${code}）上市櫃公司 ${companyCount.value} 家：月營收與景氣同時指標、獲利能力三率、本益比與現金殖利率分布、殖利率與股利成長的圖，以及每家公司的股價與指標名單。`))
 </script>
 
 <template>

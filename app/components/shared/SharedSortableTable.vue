@@ -90,7 +90,8 @@ const sortedRows = computed(() => {
 </template>
 
 <style scoped>
-/* 表頭的字就是按鈕：樣子跟其他表頭一樣，只多排序圖示（SharedSortIcon） */
+/* 表頭的字就是按鈕：樣子跟其他表頭一樣，只多排序圖示（SharedSortIcon）。欄名裡寫了換行（\n）就在那裡折成兩行，其餘不折
+  （REITs 總覽的「近 12 個月／分配率」，2026-11-16：欄名照詞彙表變長，一行放不進 1440 寬） */
 .sortable-table__button {
   display: inline-flex;
   align-items: center;
@@ -100,7 +101,8 @@ const sortedRows = computed(() => {
   background: none;
   color: inherit;
   font: inherit;
-  white-space: nowrap;
+  text-align: inherit;
+  white-space: pre;
   cursor: pointer;
 }
 

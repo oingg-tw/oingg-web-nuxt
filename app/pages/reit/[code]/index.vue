@@ -20,7 +20,7 @@ const facts = computed<FactItem[]>(() => {
     { label: '每單位淨值', value: reitYuan(item.nav), note: item.navDate ?? undefined },
     { label: '折溢價', value: reitSignedPct(item.premiumDiscountPct), note: '淨值日當天的收盤價對淨值' },
     { label: '近 12 個月分配', value: reitYuan(item.trailing12MonthDistributionPerUnit, 4), note: item.trailing12MonthDistributionCount === null ? undefined : `${item.trailing12MonthDistributionCount} 次` },
-    { label: '分配率', value: reitPct(item.trailing12MonthDistributionYieldPct), note: '近 12 個月分配 ÷ 收盤價' }
+    { label: '近 12 個月\n分配率', value: reitPct(item.trailing12MonthDistributionYieldPct), note: '近 12 個月分配 ÷ 收盤價' }
   ]
 })
 const CHART_FACETS = ['nav', 'distributions'] as const

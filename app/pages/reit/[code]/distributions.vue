@@ -12,7 +12,7 @@ const answer = computed(() => {
   if (!events.value.length) return `目前沒有${shortName.value}（${code.value}）的收益分配紀錄。`
   const parts = [`${shortName.value}（${code.value}）共有 ${events.value.length} 次收益分配紀錄`]
   if (item.trailing12MonthDistributionPerUnit !== null) {
-    parts.push(`近 12 個月${item.trailing12MonthDistributionCount === null ? '' : `分配 ${item.trailing12MonthDistributionCount} 次、`}每單位合計 ${reitYuan(item.trailing12MonthDistributionPerUnit, 4)}${item.trailing12MonthDistributionYieldPct === null ? '' : `，分配率 ${reitPct(item.trailing12MonthDistributionYieldPct)}`}`)
+    parts.push(`近 12 個月${item.trailing12MonthDistributionCount === null ? '' : `分配 ${item.trailing12MonthDistributionCount} 次、`}每單位合計 ${reitYuan(item.trailing12MonthDistributionPerUnit, 4)}${item.trailing12MonthDistributionYieldPct === null ? '' : `，近 12 個月分配率 ${reitPct(item.trailing12MonthDistributionYieldPct)}`}`)
   }
   return `${parts.join('；')}。`
 })
@@ -27,7 +27,7 @@ const answer = computed(() => {
           <tr>
             <th scope="col">除息日</th>
             <th scope="col" class="seo-table__num">每單位分配</th>
-            <th scope="col" class="seo-table__num">分配率</th>
+            <th scope="col" class="seo-table__num">單次分配率</th>
             <th scope="col">發放日</th>
           </tr>
         </thead>
@@ -40,7 +40,7 @@ const answer = computed(() => {
           </tr>
         </tbody>
       </SharedTable>
-      <p class="hub-answer">分配率 ＝ 每單位分配 ÷ 除息前一個交易日的收盤價。收益分配不固定，除息當天價格會扣掉同樣的金額。</p>
+      <p class="hub-answer">單次分配率 ＝ 每單位分配 ÷ 除息前一個交易日的收盤價。收益分配不固定，除息當天價格會扣掉同樣的金額。</p>
     </StockQuestionSection>
   </ReitPage>
 </template>

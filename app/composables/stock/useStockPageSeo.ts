@@ -92,7 +92,7 @@ function fallbackDescription(shortName: string, code: string, topic: string, sum
   if (price) clauses.push(`${price.tradeDate} 收盤 ${price.close.toFixed(2)} 元`)
   if (valuation?.peRatio != null) clauses.push(`本益比 ${valuation.peRatio.toFixed(2)} 倍`)
   if (valuation?.pbRatio != null) clauses.push(`淨值比 ${valuation.pbRatio.toFixed(2)} 倍`)
-  if (valuation?.dividendYield != null) clauses.push(`殖利率 ${valuation.dividendYield.toFixed(2)}%`)
+  if (valuation?.dividendYield != null) clauses.push(`現金殖利率 ${valuation.dividendYield.toFixed(2)}%`)
   if (!clauses.length) return `${lead}：安盈選股整理的公開財報數據。`
   return `${lead}：${clauses.join('，')}。資料來源：台灣證券交易所、公開資訊觀測站。`
 }

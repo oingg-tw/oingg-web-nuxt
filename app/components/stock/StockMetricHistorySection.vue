@@ -55,14 +55,14 @@ const rows = computed(() => {
         <tr>
           <th scope="col">期別</th>
           <th scope="col">{{ topic }}{{ unit ? `（${unit}）` : '' }}</th>
-          <th scope="col">資料時間</th>
+          <th scope="col">財報公告日</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="{ key, entry, period } in rows" :key="key">
           <th scope="row">{{ period }}</th>
           <td :title="entry.point ? nullReasonTitle(entry.point) : undefined">{{ metricCellText(entry.point, unit) }}</td>
-          <!-- 算不出數值的列不寫資料時間（2026-10-17「沒上市 那為什麼會有資料時間?」）：那個日期是分母的財報公布日，不是這個數字的 -->
+          <!-- 算不出數值的列不寫財報公告日（2026-10-17「沒上市 那為什麼會有資料時間?」）：那個日期是分母的財報公布日，不是這個數字的 -->
           <td>{{ entry.point?.value != null ? entry.point.knowledgeDate ?? '－' : '－' }}</td>
         </tr>
       </tbody>

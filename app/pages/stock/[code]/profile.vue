@@ -80,7 +80,7 @@ const { breadcrumbs } = useStockPageSeo({
 
 const footer = computed(() => ({
   sources: ['公開資訊觀測站、櫃買中心：公司基本資料'],
-  freshness: detail.value?.generatedDate ? `資料日期 ${detail.value.generatedDate}` : null
+  freshness: detail.value?.generatedDate ? `出表日 ${detail.value.generatedDate}` : null
 }))
 </script>
 

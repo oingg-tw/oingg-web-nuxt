@@ -44,7 +44,7 @@ const { pinnedSlugs, isPinned, isFull, toggle, move } = useStockPinnedMetrics()
 const { data: profileDetail, status: profileStatus } = useCompanyProfileDetail(code, () => pinnedSlugs.value.includes('profile'))
 const taipeiToday = useState('taipei-today', () => holdingsTaipeiDate())
 const profileFacts = computed(() => (profileDetail.value ? profileCardFacts(profileDetail.value, taipeiToday.value) : []))
-const profileDateText = computed(() => (profileDetail.value?.generatedDate ? `資料日期 ${profileDetail.value.generatedDate}` : '整頁內容'))
+const profileDateText = computed(() => (profileDetail.value?.generatedDate ? `出表日 ${profileDetail.value.generatedDate}` : '整頁內容'))
 
 // 釘選的是「頁面」（slug），不是指標欄位。對應成 /screener/values 的欄位：
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
@@ -534,7 +534,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <tr>
             <th scope="col">指標</th>
             <th scope="col" class="seo-table__num">最新數值</th>
-            <th scope="col">期別（資料時間）</th>
+            <th scope="col">期別</th>
             <th scope="col">調整</th>
           </tr>
         </thead>

@@ -26,7 +26,7 @@ definePageMeta({ alias: '/industries' })
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股類股殖利率分析：34 個證交所類股的股利地圖',
-  description: '證交所 34 個類股的殖利率中位數與持股股利 5 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
+  description: '證交所 34 個類股的現金殖利率中位數與持股股利 5 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/dividend` }] })
 
@@ -69,7 +69,7 @@ const plotted = computed(() =>
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
 
 const excludedText = computed(() => {
-  const names = excluded.value.map(row => `${row.sectorName}（殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）`)
+  const names = excluded.value.map(row => `${row.sectorName}（現金殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）`)
   return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。` : ''
 })
 
@@ -81,7 +81,7 @@ const quadrants = computed(() =>
     [...plotted.value].sort((a, b) => a.sectorCode.localeCompare(b.sectorCode)),
     row => [row.holdingDividendGrowthRate5y.median as number, row.liveCashDividendYield.median as number],
     [0, yieldSplit.value],
-    ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
+    ['現金殖利率較高、股利沒有減少', '現金殖利率較高、股利減少', '現金殖利率較低、股利沒有減少', '現金殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 個類股）`,
     rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode) && industryFacetPath(row.sectorCode, 'dividend'), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.holdingDividendGrowthRate5y.median)] }))
@@ -89,7 +89,7 @@ const quadrants = computed(() =>
 // 答句只講結果（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）：定義、算法與沒有列入的類股都在頁尾的注意事項。不提「圖」：手機上那個位置是四張表
 const latestAnswer = computed(() =>
   plotted.value.length
-    ? `列入的 ${plotted.value.length} 個類股以殖利率中位數 ${yieldText(yieldSplit.value)} 分高低，殖利率較高、股利沒有減少的有 ${quadrants.value[0]!.rows.length} 個。`
+    ? `列入的 ${plotted.value.length} 個類股以現金殖利率中位數 ${yieldText(yieldSplit.value)} 分高低，現金殖利率較高、股利沒有減少的有 ${quadrants.value[0]!.rows.length} 個。`
     : null)
 
 // 標籤只在寬畫面顯示。實測（2026-09-30，30 個點、圖高 640px）：1440px 有 8 組標籤互相重疊、
@@ -117,7 +117,7 @@ const chartOption = computed(() => {
         const row = param.data?.row
         if (!row) return ''
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.sectorName}</div>`
-          + `<div>殖利率中位數 ${yieldText(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
+          + `<div>現金殖利率中位數 ${yieldText(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
           + `<div>持股股利 5 年成長率中位數 ${growthText(row.holdingDividendGrowthRate5y.median)}（${row.holdingDividendGrowthRate5y.count} 家）</div>`
           + `<div style="color:${CHART_TOOLTIP_INK.secondary}">類股共 ${row.companyCount} 家</div></div>`
       }
@@ -131,7 +131,7 @@ const chartOption = computed(() => {
     },
     yAxis: {
       type: 'value',
-      name: '殖利率中位數 %',
+      name: '現金殖利率中位數 %',
       // 靠左對齊：預設的 nameLocation 'end' 把軸名放在頂端置中，實測它會飄在圖的正上方、看起來
       // 不像屬於 Y 軸。
       nameTextStyle: { align: 'left' },
@@ -210,9 +210,9 @@ const payoutLegend = computed(() => [{
       <h2 id="industries-overview-heading" class="stock-page-section__title">各個類股的殖利率與股利成長長什麼樣？</h2>
       <p v-if="latestAnswer" class="hub-answer">{{ latestAnswer }}</p>
       <el-card v-if="plotted.length" shadow="never" class="industries-page__card app-wide-only">
-        <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股殖利率中位數與持股股利 5 年成長率中位數的散佈圖" />
+        <SharedChart class="app-chart industries-page__chart" :option="chartOption" autoresize aria-label="各類股現金殖利率中位數與持股股利 5 年成長率中位數的散佈圖" />
       </el-card>
-      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', '殖利率', HOLDER_DIVIDEND_LABEL]" />
+      <IndustryQuadrantTables v-if="plotted.length" class="app-narrow-only" :groups="quadrants" :columns="['類股', CASH_YIELD_LABEL, HOLDER_DIVIDEND_LABEL]" />
     </section>
 
     <section v-if="payoutRows.length" class="stock-page-section" aria-labelledby="industries-payout-heading">
@@ -261,16 +261,16 @@ const payoutLegend = computed(() => [{
       <h2 id="industries-notes-heading" class="stock-page-section__title">看這些數字要注意什麼？</h2>
       <ul class="industries-page__notes">
         <!-- 給讀者看的注意事項，不寫資料處理的細節（2026-10-21，使用者：「這邊是給用戶看的 不需要 程式實作層面的說明」） -->
-        <li>殖利率是一年份的現金股利除以 {{ summary?.liveCashDividendYieldTradeDate ?? '' }} 收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
+        <li>現金殖利率是一年份的現金股利除以 {{ summary?.liveCashDividendYieldTradeDate ?? '' }} 收盤價，不含股票股利：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計入，超過 14 天沒有成交的公司不算進去。中位數是 0，代表這個類股有一半以上的公司{{ ZERO_YIELD_TEXT }}。</li>
         <li>{{ HOLDER_DIVIDEND_NOTE }}</li>
         <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>兩個數字都用中位數，少數公司的極端數字不會把整個類股拉偏。</li>
-        <li>殖利率以列入類股的中位數 {{ yieldText(yieldSplit) }} 分高低，持股股利 5 年成長率以 0 分有沒有減少。</li>
+        <li>現金殖利率以列入類股的中位數 {{ yieldText(yieldSplit) }} 分高低，持股股利 5 年成長率以 0 分有沒有減少。</li>
         <!-- 2026-11-08 查過殖利率分析的做法後加的兩條：配息政策因產業而異（Michel 1979 起；台灣的公司也向同業看齊），殖利率要跟同業比；
              景氣循環股不適合用一年份的殖利率看（存股著作與研究都這樣提醒） -->
         <li>各產業的配息習慣本來就不同，類股之間殖利率的高低，多半反映的是這個差異。要看一家公司配得多不多，要跟同類股的公司比：每個類股都有自己的殖利率頁，把同類股的公司畫在一起。</li>
         <li>景氣循環類股的股利跟著景氣起落：景氣好的那一年配得多，之後算出來的一年份殖利率會比平常年份高。各類股的營收跟著景氣怎麼走，在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</li>
-        <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股殖利率有值的公司數。</li>
+        <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股現金殖利率有值的公司數。</li>
         <li v-if="excludedText">{{ excludedText }}</li>
         <template v-if="payoutRows.length">
           <li>盈餘發放率是 {{ payoutYear }} 年度的盈餘配出的現金股利，除以那一年的每股盈餘。虧損的公司沒有數值、不算進去；有賺錢、過了隔年 6 月底還沒有分派公告的公司算 0%。每年 9 月換到下一個年度。</li>

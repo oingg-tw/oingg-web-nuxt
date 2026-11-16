@@ -163,7 +163,7 @@ export type RankCategory = (typeof RANK_CATEGORIES)[number]['key']
 
 export const RANK_PAGES: RankPageDefinition[] = [
   // 殖利率讀自算的近 12 個月現金股利殖利率（2026-10-24，使用者選「全站改自算」，理由見 app/utils/replaced-metrics.ts）
-  { slug: 'dividend-yield', category: 'valuation', field: 'liveCashDividendYield.EOD', direction: 'desc', label: '殖利率', metricCode: 'liveCashDividendYield' },
+  { slug: 'dividend-yield', category: 'valuation', field: 'liveCashDividendYield.EOD', direction: 'desc', label: '現金殖利率', metricCode: 'liveCashDividendYield' },
   { slug: 'pe-ratio-low', category: 'valuation', field: 'exchangePeRatio.EOD', direction: 'asc', label: '本益比', metricCode: 'exchangePeRatio' },
   // 股價淨值比讀即時版（2026-11-01，使用者核准，理由見 app/utils/replaced-metrics.ts）：即時版沒有 ≤ 0 的值，由小排到大不會先排到淨值為負的
   { slug: 'pb-ratio-low', category: 'valuation', field: 'livePbRatio.EOD', direction: 'asc', label: '股價淨值比', metricCode: 'livePbRatio' },
@@ -258,6 +258,13 @@ export function rankValueText(definition: RankPageDefinition, value: number | nu
   const scaled = definition.valueScale ? Math.round(value / definition.valueScale) : value
   const text = Number.isInteger(scaled) ? String(Math.abs(scaled)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : Math.abs(scaled).toFixed(2)
   return scaled < 0 ? `−${text}` : text
+}
+
+// 排行上的日期叫什麼（2026-11-16 使用者定）：財報類（單季、近四季、年度）寫財報公告日，每日的寫交易日（ETF 只有折溢價率帶逐列日期，
+// 也是交易日）；基金月報的排行只有月份
+export function rankDateLabel(definition: RankPageDefinition): string {
+  if (definition.monthlyReport) return '月份'
+  return /\.(Q|TTM|FY)$/.test(definition.field) ? '財報公告日' : '交易日'
 }
 
 export function findRankPage(slug: string): RankPageDefinition | null {

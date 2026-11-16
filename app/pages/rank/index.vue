@@ -56,8 +56,8 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
               <p class="rank-card__caption">
                 <strong>{{ item.page.label }}<template v-if="item.unit">（{{ item.unit }}）</template></strong>
                 <span>{{ orderWord(item.page) }}</span>
-                <span v-if="sharedDate">資料日期 {{ sharedDate }}</span>
-                <span v-else-if="hasRowDates">各家資料日期不同</span>
+                <span v-if="sharedDate">{{ rankDateLabel(item.page) }} {{ sharedDate }}</span>
+                <span v-else-if="hasRowDates">各家{{ rankDateLabel(item.page) }}不同</span>
                 <span v-else-if="item.period">{{ item.period }}</span>
               </p>
             </template>
@@ -71,7 +71,7 @@ const picked = reactive<Record<string, string>>(Object.fromEntries(RANK_CATEGORI
     </div>
     <section class="stock-page-section" aria-labelledby="rank-index-howto-heading">
       <h2 id="rank-index-howto-heading" class="stock-page-section__title">排行怎麼讀？</h2>
-      <p class="hub-answer">名次只是數值排序後的位置：同一數值並列時依代號排序，交易所每日公布的欄位以資料日期當天為準，財報欄位以最近一期申報為準，ETF 的規模、受益人數、淨申購、定期定額與報酬率以投信投顧公會基金月報的最新月份為準，折溢價率以最近一個交易日為準。排行不比較產業或基金類型的差異，也不代表任何評等。</p>
+      <p class="hub-answer">名次只是數值排序後的位置：同一數值並列時依代號排序，交易所每日公布的欄位以交易日當天為準，財報欄位以最近一期申報為準，ETF 的規模、受益人數、淨申購、定期定額與報酬率以投信投顧公會基金月報的最新月份為準，折溢價率以最近一個交易日為準。排行不比較產業或基金類型的差異，也不代表任何評等。</p>
       <p class="hub-disclaimer">本頁面提供之客觀排行與指標統計僅供研究參考，非屬投顧法之推薦買賣建議，使用者應獨立審慎評估風險。</p>
     </section>
   </div>

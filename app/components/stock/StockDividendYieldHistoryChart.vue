@@ -17,7 +17,7 @@ const CASH_CODE = 'cashDividend'
 const cashText = (value: number | null): string => (value === null ? '這個月沒有除息' : `${formatSignificantDigits(value, 4)} 元`)
 // 單位不寫進名稱：兩個軸自己標了 % 與 元（同月營收圖，375 寬時圖例會折到軸名上）
 const SERIES: LineSeriesSpec[] = [
-  { code: YIELD_CODE, name: '殖利率', lineType: 'solid', symbol: 'circle', format: fixedRateText },
+  { code: YIELD_CODE, name: '現金殖利率', lineType: 'solid', symbol: 'circle', format: fixedRateText },
   { code: CASH_CODE, name: '現金股利', type: 'bar', lineType: 'solid', symbol: 'rect', axis: 'right', format: cashText }
 ]
 

@@ -56,8 +56,10 @@ defineProps<{
   border-bottom: 1px solid var(--app-divider);
 }
 
+/* 名稱裡寫了換行（\n）就在那裡折：「近 12 個月分配率」比 7em 寬，自己折會折成「近 12 個月分配／率」（REITs 速覽，2026-11-16） */
 .fact-list__label {
   flex: 0 0 7em;
+  white-space: pre-line;
   color: var(--el-text-color-secondary);
 }
 

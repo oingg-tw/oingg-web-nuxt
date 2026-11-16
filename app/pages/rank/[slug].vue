@@ -70,6 +70,7 @@ onMounted(() => {
 const valueText = (value: number | null) => rankValueText(definition, value)
 // 上游的 ETF 篩選結果不帶逐列日期（資料月份寫在標題與答句），沒有日期就不畫那一欄
 const hasRowDates = computed(() => rows.value.some(row => row.knowledgeDate))
+const dateLabel = rankDateLabel(definition)
 
 // Facts a reader should hold next to this particular field — descriptive, never evaluative.
 const FIELD_NOTES: Record<string, string> = {
@@ -79,7 +80,7 @@ const FIELD_NOTES: Record<string, string> = {
   'pb-ratio-low': '股價淨值比以最近一期每股淨值計算；淨值中含大量無形資產或金融資產的公司，帳面淨值與收盤價的關係與製造業不同。',
   roe: '近四季 ROE 以最近四季稅後淨利除以股東權益；股本較小或負債較高的公司，同樣的獲利會得到較高的數值。',
   eps: '近四季 EPS 為最近四季每股盈餘合計，未經一次性損益調整；面額 10 元以外的公司可比性不同。',
-  'market-cap': '市值為收盤價乘以發行股數，隨每日股價變動；以資料日期當天為準。',
+  'market-cap': '市值為收盤價乘以發行股數，隨每日股價變動；以交易日當天為準。',
   'revenue-growth': '單季營收年增率與去年同季比較，季節性明顯或有併購、處分事業的公司，單季數字與長期趨勢可能不同。'
 }
 
@@ -87,7 +88,7 @@ const topThreeOf = (list: RankingRow[]) => list.slice(0, 3).map(row => `第 ${ro
 
 const { breadcrumbs } = useHubPageSeo({
   title: () => `台股${subject}排行：${orderWord}前 ${allRows.value.length} 檔`,
-  description: () => clampDescription(`${asOf.value ? `${asOf.value} ` : ''}台股${subject}${orderWord}前 ${allRows.value.length} 檔：${topThreeOf(allRows.value)}。名次為數值排序位置，附資料日期與指標說明。`),
+  description: () => clampDescription(`${asOf.value ? `${asOf.value} ` : ''}台股${subject}${orderWord}前 ${allRows.value.length} 檔：${topThreeOf(allRows.value)}。名次為數值排序位置，附${asOf.value ? `${dateLabel}與` : ''}指標說明。`),
   path: rankPath(slug),
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -124,8 +125,8 @@ const { breadcrumbs } = useHubPageSeo({
           <template #head="{ sharedDate }">
             <p class="rank-list__head">
               <span class="rank-list__head-title">{{ label }}<template v-if="unit">（{{ unit }}）</template>{{ orderWord }}</span>
-              <span v-if="sharedDate">資料日期 {{ sharedDate }}</span>
-              <span v-else-if="hasRowDates">各家資料日期不同</span>
+              <span v-if="sharedDate">{{ dateLabel }} {{ sharedDate }}</span>
+              <span v-else-if="hasRowDates">各家{{ dateLabel }}不同</span>
             </p>
           </template>
         </RankList>
@@ -142,7 +143,7 @@ const { breadcrumbs } = useHubPageSeo({
         </el-radio-group>
       </div>
       <p class="hub-answer">
-{{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；資料日期 {{ asOf }}</template>。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
+{{ universeText }}依數值{{ orderWord }}排序，取前 {{ shownCount }} 檔<template v-if="asOf">；{{ dateLabel }} {{ asOf }}</template>。<template v-if="populationNote">{{ populationNote }}</template><template v-if="floorNote">{{ floorNote }}</template>
       </p>
       <SharedTable v-if="rows.length" class="rank-page__table" :label="`${tableSubject.trim()}排行`" :caption="`台股${tableSubject}${orderWord}前 ${shownCount} 檔`">
         <thead>
@@ -151,7 +152,7 @@ const { breadcrumbs } = useHubPageSeo({
             <th scope="col">代號</th>
             <th scope="col">名稱</th>
             <th scope="col" class="seo-table__num"><span v-if="data?.valueYear" class="rank-page__year">{{ data.valueYear }} 年</span>{{ label }}<template v-if="unit">（{{ unit }}）</template></th>
-            <th v-if="hasRowDates" scope="col">資料日期</th>
+            <th v-if="hasRowDates" scope="col">{{ dateLabel }}</th>
           </tr>
         </thead>
         <tbody>
@@ -190,7 +191,7 @@ const { breadcrumbs } = useHubPageSeo({
         <p class="hub-answer">名次只反映數值排序，不含任何評等；同一數值並列時依代號排序；股票型、債券型、槓桿型／反向型 ETF 的{{ label }}水準本來就不同，要比較同一類時用排行表的「基金類型」篩選（投信投顧公會的分類）。</p>
       </template>
       <template v-else>
-        <p class="hub-answer">名次只反映資料日期當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
+        <p class="hub-answer">名次只反映{{ dateLabel }}當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
         <p v-if="FIELD_NOTES[slug]" class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
         <p v-if="definition.growthBaseFloor" class="hub-answer">排除基期數值過小的公司，是因為基期接近零時，年增率會被放大成不具意義的數字。</p>
         <p v-if="definition.screener?.populationNote" class="hub-answer">{{ definition.screener.populationNote }}</p>

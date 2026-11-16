@@ -41,7 +41,7 @@ export function industryDistribution(data: IndustryPageData) {
   return [
     { label: '本益比', unit: '倍', stat: stats.peRatio },
     { label: '股價淨值比', unit: '倍', stat: stats.pbRatio },
-    { label: '殖利率', unit: '%', stat: stats.dividendYield },
+    { label: '現金殖利率', unit: '%', stat: stats.dividendYield },
     { label: 'ROE（近四季）', unit: '%', stat: stats.roe }
   ].filter(item => item.stat.median !== null && item.stat.count >= 5)
 }
@@ -53,6 +53,8 @@ export const HOLDER_DIVIDEND_NOTE = '持股股利 5 年成長率是 5 年前買�
 
 // 手機四張表最右欄的欄名：要看得出是成長率（2026-11-06，使用者：原本的「股利 5 年」看不出來）；不留空格，同「近5年」
 export const HOLDER_DIVIDEND_LABEL = '持股股利5年成長'
+// 中間欄：折成兩行（2026-11-16 照詞彙表改叫現金殖利率，一行的話三欄在 320 寬放不下）
+export const CASH_YIELD_LABEL = '現金\n殖利率'
 
 // 殖利率與持股股利 5 年成長率都有值的公司（5 年前沒有配息紀錄的算不出成長率）
 export const industryScatterRows = (data: IndustryPageData) =>

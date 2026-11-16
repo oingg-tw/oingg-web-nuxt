@@ -88,7 +88,7 @@ const quadrants = computed(() =>
     [...scatterRows.value].sort((a, b) => a.symbol.localeCompare(b.symbol)),
     row => [row.holdingDividendGrowthRate5y as number, row.dividendYield as number],
     [0, yieldSplit.value],
-    ['殖利率較高、股利沒有減少', '殖利率較高、股利減少', '殖利率較低、股利沒有減少', '殖利率較低、股利減少']
+    ['現金殖利率較高、股利沒有減少', '現金殖利率較高、股利減少', '現金殖利率較低、股利沒有減少', '現金殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 家）`,
     rows: group.rows.map(row => ({ key: row.symbol, name: row.name, code: row.symbol, to: securityPath(row.symbol), cells: [industryPct(row.dividendYield), industryGrowthPct(row.holdingDividendGrowthRate5y)] }))
@@ -104,13 +104,13 @@ const scatterOption = computed(() => ({
       if (!row) return ''
       return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.symbol} ${row.name}</div>`
         // 自算的現金殖利率：0 不寫「不配息」（2026-10-24，理由見 dividend-event.ts 的 ZERO_YIELD_TEXT）
-        + `<div>殖利率 ${industryPct(row.dividendYield)}</div>`
+        + `<div>現金殖利率 ${industryPct(row.dividendYield)}</div>`
         + `<div>持股股利 5 年成長率 ${industryGrowthPct(row.holdingDividendGrowthRate5y)}</div></div>`
     }
   },
   // 成長率最低就是 −100%（現在不配息），自動刻度會畫到不可能的 −120%
   xAxis: { type: 'value', name: '持股股利 5 年成長率 %', nameLocation: 'middle', nameGap: 28, ...(scatterAtFloor.value && { min: -100, max: ({ max }: { max: number }) => Math.ceil(max / 20) * 20, interval: 20 }), axisLabel: { formatter: (value: number) => `${value}%` } },
-  yAxis: { type: 'value', name: '殖利率 %', nameTextStyle: { align: 'left' }, axisLabel: { formatter: (value: number) => `${value}%` } },
+  yAxis: { type: 'value', name: '現金殖利率 %', nameTextStyle: { align: 'left' }, axisLabel: { formatter: (value: number) => `${value}%` } },
   series: [
     {
       type: 'scatter',
@@ -140,19 +140,19 @@ const scatterOption = computed(() => ({
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <SharedChart class="industry-facet-chart__distribution" :option="distributionOption" autoresize :aria-label="`${sectorName}本益比、股價淨值比、殖利率與 ROE 的分布箱型圖`" />
+    <SharedChart class="industry-facet-chart__distribution" :option="distributionOption" autoresize :aria-label="`${sectorName}本益比、股價淨值比、現金殖利率與 ROE 的分布箱型圖`" />
   </SharedChartCard>
   <template v-else-if="facet === 'dividend' && scatterRows.length > 1">
     <SharedChartCard class="app-wide-only">
       <template v-if="$slots.header" #header>
         <slot name="header" />
       </template>
-      <SharedChart class="app-chart" :option="scatterOption" autoresize :aria-label="`${sectorName}各公司殖利率與持股股利 5 年成長率的散佈圖`" />
+      <SharedChart class="app-chart" :option="scatterOption" autoresize :aria-label="`${sectorName}各公司現金殖利率與持股股利 5 年成長率的散佈圖`" />
     </SharedChartCard>
     <div class="industry-facet-chart__quadrants app-narrow-only">
       <slot name="header" />
-      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', '殖利率', HOLDER_DIVIDEND_LABEL]" collapsed />
-      <p class="hub-answer">以這 {{ scatterRows.length }} 家殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，持股股利 5 年成長率以 0 分有沒有減少，分成四組。</p>
+      <IndustryQuadrantTables :groups="quadrants" :columns="['公司', CASH_YIELD_LABEL, HOLDER_DIVIDEND_LABEL]" collapsed />
+      <p class="hub-answer">以這 {{ scatterRows.length }} 家現金殖利率的中位數 {{ yieldSplit.toFixed(2) }}% 分高低，持股股利 5 年成長率以 0 分有沒有減少，分成四組。</p>
     </div>
   </template>
 </template>

@@ -59,7 +59,7 @@ const todayYieldText = computed(() => {
   const valuation = summary.value?.valuation
   if (valuation?.dividendYield === 0) return `${ZERO_YIELD_TEXT}（${valuation.dividendYieldDate}）。`
   return valuation?.dividendYield !== null && valuation?.dividendYield !== undefined
-    ? `殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.dividendYieldDate}）。`
+    ? `現金殖利率 ${valuation.dividendYield.toFixed(2)}%（${valuation.dividendYieldDate}）。`
     : null
 })
 // ① 先跟自己比：這檔自己每月月底的殖利率落在哪個區間。只陳述數字，不說高低代表什麼（不是買賣建議）
@@ -69,8 +69,8 @@ const ownRangeText = computed(() => {
   const sorted = [...values].sort((a, b) => a - b)
   const median = sorted[Math.floor(sorted.length / 2)]!
   const from = yieldEntries.value[0]!.tradeDate.slice(0, 7)
-  if (sorted.at(-1) === 0) return `${from} 以來每個月月底的殖利率都是 0（${ZERO_YIELD_TEXT}）。`
-  return `${from} 以來每月月底的殖利率介於 ${sorted[0]!.toFixed(2)}% 到 ${sorted.at(-1)!.toFixed(2)}%，中位數 ${median.toFixed(2)}%。`
+  if (sorted.at(-1) === 0) return `${from} 以來每個月月底的現金殖利率都是 0（${ZERO_YIELD_TEXT}）。`
+  return `${from} 以來每月月底的現金殖利率介於 ${sorted[0]!.toFixed(2)}% 到 ${sorted.at(-1)!.toFixed(2)}%，中位數 ${median.toFixed(2)}%。`
 })
 const overviewAnswer = computed(() => joinSentences([todayYieldText.value, ownRangeText.value]))
 
@@ -120,9 +120,9 @@ const exDividendAnswer = computed(() => {
     <!-- 讀取中整句用骨架：答句的後半句要等殖利率歷史，先出前半句再長出後半句會把下面推動 -->
     <StockQuestionSection
       id="stock-dividend-yield"
-      :question="`${stockShortName}（${code}）殖利率是多少？`"
+      :question="`${stockShortName}（${code}）現金殖利率是多少？`"
       :answer="yieldPending ? null : overviewAnswer"
-      :answer-skeleton="yieldPending ? '殖利率 0.00%（2026-10-22）。2021-10 以來每月月底的殖利率介於 0.00% 到 0.00%，中位數 0.00%。' : null"
+      :answer-skeleton="yieldPending ? '現金殖利率 0.00%（2026-10-22）。2021-10 以來每月月底的現金殖利率介於 0.00% 到 0.00%，中位數 0.00%。' : null"
     >
       <StockDividendYieldHistoryChart v-if="yieldEntries.length" :entries="yieldEntries" :cash-dividends="yieldHistory?.cashDividends ?? []" />
       <SharedChartCard v-else-if="yieldPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
@@ -139,7 +139,7 @@ const exDividendAnswer = computed(() => {
 
     <!-- 頁尾前的定義區（2026-10-14 指標頁一致性盤點，「關係頁補定義區」）：這一頁的主線是殖利率 -->
     <template #guide>
-      <StockMetricGuide id-prefix="stock-dividend" topic="殖利率" :definition="dividendDefinition ? [dividendDefinition] : []" />
+      <StockMetricGuide id-prefix="stock-dividend" topic="現金殖利率" :definition="dividendDefinition ? [dividendDefinition] : []" />
     </template>
   </StockPageShell>
 </template>

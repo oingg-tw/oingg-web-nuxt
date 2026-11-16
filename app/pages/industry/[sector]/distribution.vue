@@ -10,7 +10,7 @@ const answer = computed(() => {
   if (!stats) return null
   const parts = [
     stats.peRatio.median !== null && `本益比中位數 ${stats.peRatio.median.toFixed(2)} 倍`,
-    stats.dividendYield.median !== null && `殖利率中位數 ${stats.dividendYield.median.toFixed(2)}%`,
+    stats.dividendYield.median !== null && `現金殖利率中位數 ${stats.dividendYield.median.toFixed(2)}%`,
     stats.roe.median !== null && `近四季 ROE 中位數 ${minusSign(stats.roe.median.toFixed(2))}%`
   ].filter(Boolean)
   return parts.length ? `${sectorName}有指標資料的 ${rows.value.length} 家公司：${parts.join('、')}。` : null
@@ -19,7 +19,7 @@ const answer = computed(() => {
 
 <template>
   <IndustryPage :code="code" :sector-name="sectorName" facet="distribution" :description="answer" :noindex="noindex">
-    <StockQuestionSection id="industry-distribution" :question="`${sectorName}的本益比與殖利率分布如何？`" :answer="answer">
+    <StockQuestionSection id="industry-distribution" :question="`${sectorName}的本益比與現金殖利率分布如何？`" :answer="answer">
       <IndustryFacetChart v-if="data" :data="data" :sector-name="sectorName" facet="distribution" />
       <SharedTable v-if="distribution.length" :label="`${sectorName}各指標的分布`" :caption="`${sectorName}上市櫃公司的指標分布（10／25／50／75／90 百分位）`">
         <thead>
@@ -47,7 +47,7 @@ const answer = computed(() => {
       </SharedTable>
       <p v-else class="hub-answer">有值的公司少於 5 家，不畫分布。</p>
       <!-- 殖利率的口徑（2026-10-24 改讀自算、沒配息算 0%，見 server/utils/hub-data.ts 的 sectorStats） -->
-      <p v-if="distribution.some(item => item.label === '殖利率')" class="hub-answer">殖利率是一年份的現金股利除以最新收盤價：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計，超過 14 天沒有成交的公司不算進去（最後一筆殖利率不是現況）。</p>
+      <p v-if="distribution.some(item => item.label === '現金殖利率')" class="hub-answer">現金殖利率是一年份的現金股利除以最新收盤價：{{ ANNUAL_CASH_DIVIDEND_BASIS }}。近 12 個月沒有配息紀錄的公司以 0% 計，超過 14 天沒有成交的公司不算進去（最後一筆現金殖利率不是現況）。</p>
     </StockQuestionSection>
   </IndustryPage>
 </template>

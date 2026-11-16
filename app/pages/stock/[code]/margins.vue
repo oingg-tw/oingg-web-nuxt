@@ -57,7 +57,7 @@ const basis = ref<'TTM' | 'Q'>('Q')
 const basisLabel = computed(() => TIMEFRAME_LABELS[basis.value])
 const activeSeries = computed(() => (basis.value === 'Q' ? marginsData.value?.series : marginsData.value?.ttmSeries))
 const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || activeSeries.value === null))
-const answerSkeleton = computed(() => (marginsPending.value ? `2026 Q2（${basisLabel.value}）毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、資料時間 2026-08-11。` : null))
+const answerSkeleton = computed(() => (marginsPending.value ? `2026 Q2（${basisLabel.value}）毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、財報公告日 2026-08-11。` : null))
 watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
 
 // 業務中台 returns oldest-first; this page reads newest-first everywhere（the table, the "latest"
@@ -168,7 +168,7 @@ const valueAnswer = computed(() => {
     `${latestPeriodText.value}（${basisLabel.value}）毛利率 ${fixedRateText(grossMargin.value)}`,
     `營業利益率 ${fixedRateText(operatingMargin.value)}`,
     `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
-    latest.value.values.grossMargin?.knowledgeDate ? `資料時間 ${latest.value.values.grossMargin.knowledgeDate}` : null
+    latest.value.values.grossMargin?.knowledgeDate ? `財報公告日 ${latest.value.values.grossMargin.knowledgeDate}` : null
   ])
 })
 
@@ -240,7 +240,7 @@ const risingAnswer = computed(() => {
   return joinClauses([
     `${stockShortName.value}最新一季的三率三升分數為 ${score}`,
     `判定 ${verdict}`,
-    entry.knowledgeDate ? `資料時間 ${entry.knowledgeDate}` : null
+    entry.knowledgeDate ? `財報公告日 ${entry.knowledgeDate}` : null
   ])
 })
 
@@ -304,7 +304,7 @@ const { breadcrumbs } = useStockPageSeo({
             <th scope="col">毛利率（%）</th>
             <th scope="col">營業利益率（%）</th>
             <th scope="col">稅後淨利率（%）</th>
-            <th scope="col">資料時間</th>
+            <th scope="col">財報公告日</th>
           </tr>
         </thead>
         <tbody>

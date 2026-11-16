@@ -143,6 +143,8 @@ const passedText = computed(() => {
 // 數字後面寫期別（2026-10-23，使用者：「要標清楚 到底是單季還是近四季」）；每日收盤算的寫「目前的」就夠了
 const basisLabel = computed(() => (entry.value ? TIMEFRAME_LABELS[entry.value.timeframe as keyof typeof TIMEFRAME_LABELS] ?? entry.value.timeframe : ''))
 const basisSuffix = computed(() => (entry.value && entry.value.timeframe !== 'EOD' ? `（${basisLabel.value}）` : ''))
+// 可知悉日的名稱（2026-11-16 使用者定）：每日收盤算的寫交易日，財報類寫財報公告日
+const dateLabel = computed(() => (entry.value?.timeframe === 'EOD' ? '交易日' : '財報公告日'))
 
 // 河流圖頁（股價營收比）的答句先寫圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」，同 StockMetricDetailPage 的 riverLead）。
 // 徽章是用財報公告日那天的數字判定的，所以那個數字留著、寫明是判定用的，不然「本期未符合」對不上前面的數字
@@ -154,7 +156,7 @@ const riverLead = computed(() => {
 })
 
 // 讀取中的答句骨架（同 StockMetricDetailPage）：值、資料時間、徽章門檻那一句差不多長
-const answerSkeleton = computed(() => (badgePending.value ? `${stockShortName.value}的${badgePage.topic}（近四季）為 00.00、資料時間 2026-08-11、徽章門檻「≥ 00%」本期符合。` : null))
+const answerSkeleton = computed(() => (badgePending.value ? `${stockShortName.value}的${badgePage.topic}（近四季）為 00.00、財報公告日 2026-08-11、徽章門檻「≥ 00%」本期符合。` : null))
 
 const valueAnswer = computed(() => {
   if (!entry.value) return null
@@ -176,7 +178,7 @@ const valueAnswer = computed(() => {
   return joinClauses([
     `${lead}${badgePage.topic}${basisSuffix.value}為 ${valueText.value}`,
     rank != null && totalCount != null ? `全市場第 ${rank} 名（共 ${totalCount} 檔）` : null,
-    entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
+    entry.value.knowledgeDate ? `${dateLabel.value} ${entry.value.knowledgeDate}` : null,
     badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
   ])
 })
@@ -209,7 +211,7 @@ const description = computed(() => {
   if (riverLead.value) return clampDescription(joinSentences([valueAnswer.value, badgeDefinition.value?.summary]) ?? '')
   const lead = joinClauses([
     `${stockShortName.value}（${code.value}）${badgePage.topic}${basisSuffix.value}：${valueText.value}`,
-    entry.value.knowledgeDate ? `資料時間 ${entry.value.knowledgeDate}` : null,
+    entry.value.knowledgeDate ? `${dateLabel.value} ${entry.value.knowledgeDate}` : null,
     badgeDefinition.value ? `徽章門檻「${badgeDefinition.value.threshold.description}」本期${passedText.value}` : null
   ])
   return clampDescription(joinSentences([lead, badgeDefinition.value?.summary]) ?? '')
