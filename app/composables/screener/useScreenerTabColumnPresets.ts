@@ -97,6 +97,7 @@ export function useScreenerTabColumnPresets(ctx: {
       tab.total = cached.total
       tab.sortField = cached.sortField
       tab.sortOrder = cached.sortOrder
+      tab.resultsSort = cached.resultsSort
       tab.searched = true
       tab.loading = false
       tab.loadingMore = false
@@ -108,10 +109,8 @@ export function useScreenerTabColumnPresets(ctx: {
     // and this switch doesn't know whether the old one still applies. Resetting is the safe
     // default (see ScreenerColumnView's own comment); symbol sort would survive a carry-over
     // fine, but there's no way to tell the two cases apart here without knowing the new
-    // column-preset's field list in advance.
-    tab.sortField = null
-    tab.sortOrder = null
-
+    // column-preset's field list in advance. 查到了才清（下面）：失敗時留著的是舊欄位、舊排序的列，排序先清掉的話，往下捲會把
+    // 照代號排的下一頁接在後面（2026-11-16）
     tab.loading = true
     try {
       // Always starts back at page 1 for a not-yet-cached view — under infinite scroll
@@ -127,8 +126,9 @@ export function useScreenerTabColumnPresets(ctx: {
         return
       }
       tab.columnPresetId = columnPresetId
+      tab.sortField = null
+      tab.sortOrder = null
       ctx.applyRunResult(tab, result, (columnPresetId ? columnFieldsOf(columnPresetId) : null) ?? [])
-      tab.searched = true
       ctx.cacheColumnView(tab)
     } catch (error) {
       if (import.meta.dev) console.error('[screener] failed to switch column view', error)

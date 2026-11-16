@@ -164,6 +164,7 @@ export function useScreenerTabCrud(ctx: {
       total: tab.total,
       sortField: tab.sortField,
       sortOrder: tab.sortOrder,
+      resultsSort: tab.resultsSort,
       searched: tab.searched
     })
     const index = ctx.tabs.value.findIndex(item => item.id === tab.id)

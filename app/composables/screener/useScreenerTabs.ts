@@ -118,6 +118,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // 同一組的 PATCH 一個接一個：膠囊的 × 馬上查，連按兩個時兩次查詢同時在跑，先送的那一份不能晚寫進去，重新整理才不會回到舊條件
   const filterSaves = new Map<string, Promise<void>>()
   const filterKeyOf =(tab: ScreenerTab) => JSON.stringify({ filters: filtersOfTab(tab), ...scopeFor(tab) })
+  const sortKeyOf = (tab: ScreenerTab) => JSON.stringify([tab.sortField, tab.sortOrder])
 
   function presetToTab(preset: ScreenerPreset): ScreenerTab {
     const slots = buildSlots(preset.filters ?? [])
@@ -227,6 +228,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     tab.pageSize = result.pageSize
     tab.totalPages = result.totalPages
     tab.total = result.count
+    // 逾時清掉之後晚到的結果也算查過（見 handleSearch 的 catch），檔數才寫得出來
+    tab.searched = true
+    if (!append) tab.resultsSort = sortKeyOf(tab)
   }
 
   // 查詢失敗：結果與檔數一起清掉，也不算查過——只清結果的話「符合上述條件 N 檔」還是上一次的、表格卻是空的；檔數歸零又會說「沒有符合」。
@@ -252,7 +256,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       totalPages: tab.totalPages,
       total: tab.total,
       sortField: tab.sortField,
-      sortOrder: tab.sortOrder
+      sortOrder: tab.sortOrder,
+      resultsSort: tab.resultsSort
     }
   }
 
@@ -448,7 +453,8 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
           if (isStale()) return
           // 存下來的排序那一欄已不在這組欄位裡（同一組欄位在別的篩選拿掉了那一欄）：業務中台只收代號或這次的欄位，回 400。不帶排序
           // 再跑一次，成功就清掉排序（排序的 watcher 存回帳號），整組照樣打得開
-          if (!result && sort && businessErrorStatus(lastError.value) === 400) {
+          // 只限第一頁：載入下一頁改成不帶排序，接上的是照代號排的那一頁，跟前面的列重複
+          if (!result && sort && !append && businessErrorStatus(lastError.value) === 400) {
             result = await run(tab.id, tab.columnPresetId ?? undefined, pagination)
             if (isStale()) return
             if (result) {
@@ -489,6 +495,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
       // quietly reset with no explanation.
       if (import.meta.dev) console.error('[screener] search failed', error)
       if (isStale()) return
+      // 跟 run 回 null 一樣清掉（2026-11-16，換排序後同一檔出現兩次）：排序或條件已經換成新的，留著舊的列與頁數，往下捲就把新排序的
+      // 第 N+1 頁接在舊的列後面（scripts/check-screener-load-more.mjs）
+      if (!append) clearRunResult(tab)
       if (append || !reportSearchFailure(tab, page, error)) showErrorMessage('搜尋失敗，請稍後再試')
     } finally {
       // 舊的那次不收：新的還在跑
@@ -504,6 +513,9 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   async function loadMoreResults(tab: ScreenerTab) {
     if (tab.loading || tab.loadingMore) return
     if (tab.page >= tab.totalPages) return
+    // 畫面上的列不是照現在的排序查到的（排序已經改了、那次查詢還沒換掉列：逾時、移除排序中的那一欄還在存欄位）：
+    // 不往後接，從第一頁重查。接上的話是新排序的第 N+1 頁，跟前面的列重複（2026-11-16，兩個技嘉、兩個大山）
+    if (tab.resultsSort !== sortKeyOf(tab)) return handleSearch(tab)
     await handleSearch(tab, tab.page + 1, true)
   }
 

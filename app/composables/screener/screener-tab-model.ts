@@ -191,6 +191,8 @@ interface ScreenerColumnView {
   // uncached view (see switchColumnPreset).
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
+  // 這些列是照哪個排序查到的（同 ScreenerTab.resultsSort）
+  resultsSort?: string
 }
 
 // Server-side pagination (業務中台 /screener and /screener/presets/{id}/run both take
@@ -228,6 +230,8 @@ export interface ScreenerTab extends WorkspaceTab {
   // 在 SharedMetricTable 裡做頁內的用戶端排序。
   sortField: string | null
   sortOrder: 'asc' | 'desc' | null
+  // 畫面上這些列是照哪個排序查到的：下一頁只接在同一個排序的列後面（loadMoreResults，2026-11-16）
+  resultsSort?: string
   loading: boolean
   // Separate from `loading` on purpose — `loading` drives ScreenerResultBody.vue's
   // v-loading full-table overlay for a real search/reset; this drives only the small
