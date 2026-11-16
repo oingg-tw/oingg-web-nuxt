@@ -13,7 +13,7 @@ import { ALL_ROUTES } from './site-routes.mjs'
 const baseUrl = process.env.LEAD_TEXT_URL ?? 'http://localhost:3000'
 const LEAD_MAX = 80
 const GAP_MAX = 160
-const EXEMPT = /^\/($|\?|learn|blog|sitemap|profile)/
+const EXEMPT = /^\/($|\?|learn|blog|sitemap|account)/
 // 答句長短看資料的頁面：財務業沒有組成，排行有基期門檻與自己的母體
 const EXTRA_ROUTES = ['/stock/2881', '/stock/2881/balance-sheet', '/rank/revenue-growth', '/rank/eps-growth', '/rank/eps-turnaround', '/rank/etf-aum']
 const filter = (process.env.LEAD_TEXT_ROUTES ?? '').split(',').map(entry => entry.trim()).filter(Boolean)
