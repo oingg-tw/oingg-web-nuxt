@@ -75,7 +75,8 @@ export const cachedShareholdingDistribution = defineCachedFunction(
 // 28 檔一次讀完；個別頁與 sitemap 共用
 export const cachedPreferredStocks = defineCachedFunction(
   async () => (await businessFetch<{ entries: PreferredStockEntry[] }>('/stocks/preferred-stocks')).entries,
-  { name: 'preferred-stocks', getKey: () => 'all', ...swrCache(HOUR, TTL_STATIC) }
+  // -v2（2026-11-16）：收盤價改叫 close／tradeDate（X2），舊名的那份存著的列沒有新名
+  { name: 'preferred-stocks-v2', getKey: () => 'all', ...swrCache(HOUR, TTL_STATIC) }
 )
 
 // 只要最後兩個有成交的交易日（摘要卡的股價與漲跌）；拿 5 天是為了跳過收盤價 0 的無成交日（isRealClose）

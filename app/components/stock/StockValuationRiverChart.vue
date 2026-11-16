@@ -79,7 +79,8 @@ interface ValuationRiverResponse {
   bandMultiples: number[] | null
   // bandMultiples 是 null 的原因（數據中台 59cb36c，2026-11-12）：missing_input、zero_or_negative_denominator、insufficient_history
   nullReason?: string | null
-  current: { tradeDate: string; price: number | null; base: number | null; ratio: number | null; nullReason?: string | null } | null
+  // close：2026-11-16 詞彙檢核 X2 前叫 price
+  current: { tradeDate: string; close: number | null; base: number | null; ratio: number | null; nullReason?: string | null } | null
   prices: { tradeDate: string; close: number }[]
   bases: { effectiveFrom: string; base: number | null }[]
   // 河道基準的名稱（例如「近四季平均每股淨值」），analysis-ts 1cf7b237 起有
@@ -136,8 +137,8 @@ const baseLabel = computed(() => river.value?.baseLabel ?? (spec.value.baseLabel
 const latest = computed<RiverLatest | null | undefined>(() => {
   if (riverStatus.value !== 'success') return riverStatus.value === 'error' ? null : undefined
   const current = river.value?.current
-  if (!current || current.ratio === null || current.price === null || current.base === null) return null
-  return { tradeDate: current.tradeDate, price: current.price, base: current.base, ratio: current.ratio, baseLabel: baseLabel.value }
+  if (!current || current.ratio === null || current.close === null || current.base === null) return null
+  return { tradeDate: current.tradeDate, price: current.close, base: current.base, ratio: current.ratio, baseLabel: baseLabel.value }
 })
 watch(latest, value => emit('latest', value), { immediate: true })
 

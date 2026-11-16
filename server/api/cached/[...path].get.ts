@@ -80,10 +80,12 @@ function keyOf(path: string, query: QueryRecord): string {
 }
 
 // One cached function per TTL class — defineCachedFunction's maxAge is fixed per function.
+// -v2（2026-11-16，詞彙檢核第二批換讀）：報價的 price.dayClose、valuation 分開的本益比與淨值比、tradingHalt 的日期，特別股清單的 close／tradeDate，
+// 公司資料的 numberOfOrdinaryShares。存著的是上游原樣，換名之前存的那份沒有新名，最多會留 25 小時（hourly）與 48 小時（daily）
 const cachedMinute = defineCachedFunction(upstream, { name: 'cached-get-minute', getKey: keyOf, ...swrCache(TTL_SECONDS.minute, 4 * 60) })
-const cachedQuote = defineCachedFunction(upstream, { name: 'cached-get-quote', getKey: keyOf, ...swrCache(TTL_SECONDS.quote, HOUR) })
-const cachedHourly = defineCachedFunction(upstream, { name: 'cached-get-hourly', getKey: keyOf, ...swrCache(TTL_SECONDS.hourly, 24 * HOUR) })
-const cachedDaily = defineCachedFunction(upstream, { name: 'cached-get-daily', getKey: keyOf, ...swrCache(TTL_SECONDS.daily, 24 * HOUR) })
+const cachedQuote = defineCachedFunction(upstream, { name: 'cached-get-quote-v2', getKey: keyOf, ...swrCache(TTL_SECONDS.quote, HOUR) })
+const cachedHourly = defineCachedFunction(upstream, { name: 'cached-get-hourly-v2', getKey: keyOf, ...swrCache(TTL_SECONDS.hourly, 24 * HOUR) })
+const cachedDaily = defineCachedFunction(upstream, { name: 'cached-get-daily-v2', getKey: keyOf, ...swrCache(TTL_SECONDS.daily, 24 * HOUR) })
 
 const BY_TTL = { minute: cachedMinute, quote: cachedQuote, hourly: cachedHourly, daily: cachedDaily }
 

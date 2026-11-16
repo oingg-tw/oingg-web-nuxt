@@ -34,7 +34,7 @@ const ROUTES = {
 const INTERIM = ['還沒有記錄任何持股', '還沒有追蹤任何股票', '產業分類載入中', '目前沒有報價']
 
 const trait = value => ({ value, coverage: 1 })
-const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait(14.2), dividendYield: trait(5.1), roe: trait(12.3), beta: trait(0.7), top3HoldingsPct: trait(60) }, benchmark: null }
+const TRAITS = { asOf: '2026-10-16', portfolio: { exchangePeRatio: trait(14.2), dividendYield: trait(5.1), roe: trait(12.3), beta: trait(0.7), top3HoldingsPct: trait(60) }, benchmark: null }
 const SYMBOLS = ['2330', '2317', '2412', '2884', '1216', '0056']
 // 收盤價在持股列上（業務中台 136e5d6，web 97680de6 起不再另外問 /screener/values）：沒有的話持股分析寫「目前沒有報價」
 const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: 50, totalCost: 50000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98 }))

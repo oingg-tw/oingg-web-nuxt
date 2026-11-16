@@ -133,7 +133,7 @@ const eventName = (event: DividendCalendarEvent) => [event.symbol, event.company
 function amountText(event: DividendCalendarEvent): string | null {
   const amount = event.distributionPerUnit ?? event.cashDividend
   if (amount === null) return null
-  return event.securityType?.toUpperCase() === 'ETF' ? `每單位配息 ${amount} 元` : `現金股利 ${amount} 元`
+  return event.type?.toUpperCase() === 'ETF' ? `每單位配息 ${amount} 元` : `現金股利 ${amount} 元`
 }
 
 // The 預告/已實現 distinction lives here as TEXT rather than as a fourth colour on the grid chips.

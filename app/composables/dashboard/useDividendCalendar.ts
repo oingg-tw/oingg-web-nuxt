@@ -24,8 +24,8 @@ export interface DividendCalendarEvent {
   // 舊的判斷方式（companyName === null）已經失效：2026-09-10 業務中台 說 ETF 沒有名稱是對的，
   // 現在 396/396 都有，那個條件永遠是 false。
   // PREFERRED（特別股）2026-10-21 起（analysis-ts 8b4c5f69、業務中台 00329e4）；預告列裡不在 GET /securities 的是 null
-  // 數據中台要換成小寫（詞彙檢核 X8）：比對時一律轉大寫，換值前後都認
-  securityType: string | null
+  // 2026-11-16 起叫 type（原 securityType，詞彙檢核 X8）、值改小寫；業務中台 PRD 在數據中台 11/20 換值前是大寫，所以比對時一律轉大寫
+  type: string | null
   status: 'announced' | 'realized'
   // 只代表現金；配股的發放日另外一欄（業務中台 1070910，2026-10-20 起才有，只有個股的 realized 列可能有值）
   paymentDate: string | null

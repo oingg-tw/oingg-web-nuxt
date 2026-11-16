@@ -4,7 +4,7 @@
 // highlight：額度彈窗把卡住的那一列標出來
 defineProps<{ highlight?: QuotaResource }>()
 
-interface PlanQuotas { tier: 'FREE' | 'PRO'; quotas: Partial<Record<QuotaResource, number | null>> }
+interface PlanQuotas { tier: 'FREE' | 'PRO'; quotas: QuotaCounts<number | null> }
 const TIERS = ['FREE', 'PRO'] as const
 // 個人資料頁與彈窗共用一份、讀到就不再讀。undefined ＝ 讀取中；null ＝ 讀不到（下次掛上再試）
 const plans = useState<PlanQuotas[] | null | undefined>('billing-plans', () => undefined)
@@ -13,7 +13,7 @@ onMounted(async () => {
   plans.value = await apiFetch<{ plans: PlanQuotas[] }>('/billing/plans').then(response => response.plans).catch(() => null)
 })
 const limitOf = (tier: PlanQuotas['tier'], row: (typeof QUOTA_ROWS)[number]) =>
-  quotaLimitText(plans.value?.find(plan => plan.tier === tier)?.quotas[row.resource], row.unit)
+  quotaLimitText(plans.value?.find(plan => plan.tier === tier)?.quotas[QUOTA_COUNT_KEY[row.resource]], row.unit)
 </script>
 
 <template>

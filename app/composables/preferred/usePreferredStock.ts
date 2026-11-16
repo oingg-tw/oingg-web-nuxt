@@ -14,8 +14,8 @@ export async function usePreferredStock() {
 
   const entry = computed(() => data.value?.stock ?? null)
   const quote = computed(() => data.value?.quote ?? null)
-  const price = computed(() => quote.value?.price ?? entry.value?.latestClosePrice ?? null)
-  const priceDate = computed(() => quote.value?.tradeDate ?? entry.value?.latestPriceDate ?? null)
+  const price = computed(() => quote.value?.price ?? entry.value?.close ?? null)
+  const priceDate = computed(() => quote.value?.tradeDate ?? entry.value?.tradeDate ?? null)
   const stock = computed<Stock | null>(() => (entry.value
     ? { code: entry.value.symbol, name: entry.value.companyName, price: price.value, change: quote.value?.change ?? null, changePercent: quote.value?.changePercent ?? null }
     : null))

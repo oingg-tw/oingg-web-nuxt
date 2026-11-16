@@ -21,7 +21,7 @@ export const WATCHLIST_FIXED_COLUMNS: ScreenerResultTableColumn[] = [
 ]
 const isFixed = (field: string) => WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)
 // 組合裡的收盤價跟固定欄重複，不畫第二次
-const PRICE_FIELDS: Record<WatchlistKind, string> = { common: 'stock.price', etf: 'close.snapshot', preferred: 'latestClosePrice.snapshot' }
+const PRICE_FIELDS: Record<WatchlistKind, string> = { common: 'stock.price', etf: 'close.snapshot', preferred: 'close.snapshot' }
 
 // 內建的基本欄位沒有 id（同篩選），選單上用這個代表。普通股的是 2026-09 以來的那兩欄
 const BASIC_SET_ID = 'basic'

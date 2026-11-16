@@ -35,7 +35,7 @@ export interface ExDividendNotice {
   stockDividendDistributionDate?: string | null
   // ETF 的每單位配息。金額一律讀 `distributionPerUnit ?? cashDividend`，**不要兩個相加**：未除息的 ETF 列可能兩個都有
   // （證交所預告的 cashDividend，analysis-ts 在 sitca 還沒有金額時拿它填 distributionPerUnit；DEV 量到 5 筆兩者相等，
-  // 業務中台 2026-10-06）。securityType 已由 analysis-ts 從證券本身判定（fde1e48c），可以信，但這裡用不到它。
+  // 業務中台 2026-10-06）。證券類別 type（原 securityType）由數據中台從證券本身判定（fde1e48c），可以信，但這裡用不到它。
   distributionPerUnit?: number | null
 }
 

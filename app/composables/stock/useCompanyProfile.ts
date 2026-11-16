@@ -104,7 +104,8 @@ export interface CompanyProfileDetail {
   // role 是開放列舉，沒見過的值略過
   officers: CompanyOfficer[]
   paidInCapitalNtd: number | null
-  issuedShares: number | null
+  // 普通股股數（2026-11-16 詞彙檢核 X4 前叫 issuedShares，值一直只有普通股；已發行股數另有其量，含特別股與庫藏股）
+  numberOfOrdinaryShares: number | null
   numberOfPreferenceShares: number | null
   privatePlacementShares: number | null
   declaredDataTypeName: string | null
@@ -145,7 +146,7 @@ function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfi
     foreignRegistrationCountryName: text(raw.foreignRegistrationCountryName),
     officers,
     paidInCapitalNtd: count(raw.paidInCapitalNtd),
-    issuedShares: count(raw.issuedShares),
+    numberOfOrdinaryShares: count(raw.numberOfOrdinaryShares),
     numberOfPreferenceShares: count(raw.numberOfPreferenceShares),
     privatePlacementShares: count(raw.privatePlacementShares),
     declaredDataTypeName: text(raw.declaredDataTypeName),

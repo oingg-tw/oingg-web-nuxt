@@ -736,7 +736,7 @@ export const getSectorDividendSummary = defineCachedFunction(
 interface ExDividendCalendarEntry {
   symbol: string
   companyName: string | null
-  securityType: string | null
+  type: string | null
   status: 'announced' | 'realized'
   exDate: string
   exType: ExDividendRow['exType']
@@ -749,6 +749,8 @@ interface ExDividendCalendarEntry {
 
 // 上游的分類（analysis-ts 8b4c5f69）：特別股是 PREFERRED（含已收回的）；預告列裡不在 GET /securities 的（01007T 受益證券、020036 ETN）是 null
 const EX_DIVIDEND_KINDS: Record<string, ExDividendKind> = { COMMON: 'common', PREFERRED: 'preferred', ETF: 'etf' }
+// 大小寫都認（詞彙檢核 X8）：數據中台 DEV 2026-11-16 起是小寫，PRD 11/20 才換。除權息月覽與首頁的家數共用（家數原本只認大寫，DEV 換成小寫後三種都會數成 0）
+const kindOf = (type: string | null | undefined): ExDividendKind | null => EX_DIVIDEND_KINDS[(type ?? '').toUpperCase()] ?? null
 
 // 一個月的全市場除權息（業務中台轉發 analysis-ts GET /stocks/ex-dividend-calendar；realized 是公開資訊觀測站的分派公告，announced 是證交所、
 // 櫃買中心的預告）。依除權息日、代號排序
@@ -762,8 +764,8 @@ export const getExDividendMonth = defineCachedFunction(
         exDate: entry.exDate,
         symbol: entry.symbol,
         name: entry.companyName ?? entry.symbol,
-        // 證券類別大小寫都認：數據中台要換成小寫、改叫 type（詞彙檢核 X8）
-        kind: EX_DIVIDEND_KINDS[(entry.securityType ?? '').toUpperCase()] ?? null,
+        // 2026-11-16 起叫 type（原 securityType）
+        kind: kindOf(entry.type),
         exType: entry.exType,
         cash: entry.distributionPerUnit ?? entry.cashDividend,
         stockPerShare: entry.stockDividendRatio,
@@ -777,7 +779,7 @@ export const getExDividendMonth = defineCachedFunction(
 )
 
 // 每個月有幾檔除權息（業務中台 00329e4 轉發 analysis-ts GET /stocks/ex-dividend-calendar/monthly-counts，跟行事曆同一批列、同一個分類；
-// 兩端都含，最多 24 個月）。unclassified ＝ securityType 是 null
+// 兩端都含，最多 24 個月）。unclassified ＝ type 是 null
 const getExDividendMonthlyCounts = defineCachedFunction(
   async (from: string, to: string) =>
     (await businessFetch<{ months: { yearMonth: string; common: number; preferred: number; etf: number; unclassified: number }[] }>('/stocks/ex-dividend-calendar/monthly-counts', { query: { from, to } })).months,
@@ -809,12 +811,13 @@ export const getSecurityCounts = defineCachedFunction(
       total = response.count
       if (!response.entries.length) break
       for (const entry of response.entries) {
-        const kind = EX_DIVIDEND_KINDS[entry.type]
+        const kind = kindOf(entry.type)
         if (kind) counts[kind]++
       }
       offset += response.entries.length
     }
     return counts
   },
-  { name: 'hub-security-counts', ...swrCache(TTL_DAILY, TTL_STATIC) }
+  // -v2（2026-11-16）：推上去之前，舊程式可能已經把小寫的類別數成 0 存進快取
+  { name: 'hub-security-counts-v2', ...swrCache(TTL_DAILY, TTL_STATIC) }
 )

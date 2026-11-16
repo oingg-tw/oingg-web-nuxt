@@ -100,8 +100,8 @@ export interface OpeningPosition {
 export interface ImportResult {
   // null ＝ 什麼都沒寫（dryRun，或整批都是匯過的重複列）——判斷「有沒有東西可以撤銷」只看這個
   importId: string | null
-  inserted: number
-  duplicates: number
+  insertedCount: number
+  duplicateCount: number
   openingPositions: { symbol: string; status: 'created' | 'skipped' }[]
   holdings: Holding[]
 }
@@ -264,17 +264,17 @@ export interface RiskReport {
   marketValue: number | null
   portfolio: { annualizedVolatility: number | null; beta: number | null; correlation: number | null; maxDrawdown: RiskDrawdown | null; valueAtRisk95Amount: number | null; expectedShortfall95Amount: number | null } & RiskDistribution
   benchmark: { annualizedVolatility: number | null; maxDrawdown: RiskDrawdown | null } & RiskDistribution
-  // 只看現在的市值權重，所以除非沒有持股都有值。effectiveHoldings ＝ 1 ÷ HHI
-  concentration: { hhi: number; effectiveHoldings: number; topThreeWeight: number } | null
+  // 只看現在的市值權重，所以除非沒有持股都有值。effectiveHoldingCount（2026-11-16 前叫 effectiveHoldings）＝ 1 ÷ HHI
+  concentration: { hhi: number; effectiveHoldingCount: number; topThreeWeight: number } | null
   // Σ wᵢσᵢ ÷ σₚ（≥ 1）；樣本少於 120 個交易日是 null
   diversificationRatio: number | null
   // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與。riskContribution 是佔組合變異數的
   // 比例（加總約 1）；樣本少於 120 天、或這一檔沒參與時是 null
   holdings: { symbol: string; weight: number | null; priceHistoryAvailability: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: number | null }[]
-  // 2026-10-07（業務中台 9d691cd）。上游失敗時整個是 null。effectiveSectors ＝ 1 ÷ 產業 HHI
-  sectors: { effectiveSectors: number; groups: { sectorCode: string | null; sectorName: string | null; weight: number; symbols: string[] }[] } | null
-  // 組合本益比／股價淨值比是調和平均；*Coverage ＝ 有這個數字的持股佔市值的比例（虧損公司與 ETF 沒有本益比）
-  fundamentals: { dividendIncome: number | null; dividendYield: number | null; dividendCoverage: number | null; peRatio: number | null; peCoverage: number | null; pbRatio: number | null; pbCoverage: number | null } | null
+  // 2026-10-07（業務中台 9d691cd）。上游失敗時整個是 null。effectiveSectorCount（2026-11-16 前叫 effectiveSectors）＝ 1 ÷ 產業 HHI
+  sectors: { effectiveSectorCount: number; groups: { sectorCode: string | null; sectorName: string | null; weight: number; symbols: string[] }[] } | null
+  // 組合本益比／股價淨值比是調和平均；*Coverage ＝ 有這個數字的持股佔市值的比例（虧損公司與 ETF 沒有本益比）。portfolioCashDividendYield 是 %（2026-11-16 起取代 0～1 的 dividendYield）。網站目前沒讀 concentration、sectors、fundamentals
+  fundamentals: { dividendIncome: number | null; portfolioCashDividendYield: number | null; dividendCoverage: number | null; peRatio: number | null; peCoverage: number | null; pbRatio: number | null; pbCoverage: number | null } | null
 }
 
 

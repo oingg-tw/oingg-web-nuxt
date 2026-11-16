@@ -36,12 +36,12 @@
   },
   "concentration": {
     "hhi": 0.329716,
-    "effectiveHoldings": 3.032914,
+    "effectiveHoldingCount": 3.032914,
     "topThreeWeight": 0.790924
   },
   "diversificationRatio": 1.255148,
   "sectors": {
-    "effectiveSectors": 2.038675,
+    "effectiveSectorCount": 2.038675,
     "groups": [
       {
         "sectorCode": "24",
@@ -81,7 +81,7 @@
   },
   "fundamentals": {
     "dividendIncome": 120560,
-    "dividendYield": 0.014127,
+    "portfolioCashDividendYield": 1.4127,
     "dividendCoverage": 0.864465,
     "peRatio": 25.89309,
     "peCoverage": 0.864465,

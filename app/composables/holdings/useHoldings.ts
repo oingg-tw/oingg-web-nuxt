@@ -251,7 +251,7 @@ export function useHoldings() {
       })
       if (!dryRun) {
         await Promise.all([reloadAfterWrite(), reloadLoadedTransactions()])
-        if (result.importId) announceImport(result.importId, result.inserted)
+        if (result.importId) announceImport(result.importId, result.insertedCount)
       }
       return { kind: 'ok', result }
     } catch (error) {
@@ -266,8 +266,8 @@ export function useHoldings() {
   function announceImport(importId: string, inserted: number) {
     undoToast(`已匯入 ${groupThousands(inserted)} 筆交易`, async () => {
       try {
-        const response = await request<{ deleted: number }>(`/transactions/import/${importId}`, { method: 'DELETE' })
-        ElMessage.success(`已撤銷這次匯入（${groupThousands(response.deleted)} 筆）`)
+        const response = await request<{ deletedCount: number }>(`/transactions/import/${importId}`, { method: 'DELETE' })
+        ElMessage.success(`已撤銷這次匯入（${groupThousands(response.deletedCount)} 筆）`)
       } catch (error) {
         showErrorMessage(businessErrorCode(error) === LEDGER_SHORTFALL
           ? '無法撤銷：撤銷會讓之後手動記的賣出超過持有股數，所以一筆都沒有刪除。請先刪掉那幾筆手動交易。'

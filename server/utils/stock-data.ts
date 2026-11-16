@@ -77,14 +77,15 @@ export const cachedMetricsHistory = defineCachedFunction(
 // 那份到了會蓋過這一份（StockMetricDetailPage 的 riverLive），所以盤後這 15 分鐘的落差只在伺服器畫的那一瞬間
 export const cachedRiverLatest = defineCachedFunction(
   async (symbol: string, kind: RiverKind, timeframe: RiverTimeframe): Promise<RiverLatest | RiverMissing> => {
-    const response = await businessFetch<{ baseLabel: string, nullReason?: string | null, current: { tradeDate: string, price: number | null, base: number | null, ratio: number | null, nullReason?: string | null } | null }>(
+    const response = await businessFetch<{ baseLabel: string, nullReason?: string | null, current: { tradeDate: string, close: number | null, base: number | null, ratio: number | null, nullReason?: string | null } | null }>(
       `/stocks/${symbol}/valuation-river`,
       { query: { ratio: kind, lookbackYears: 1, timeframe } }
     )
     const current = response.current
     // 底數 ≤ 0（近四季虧損）那天沒有比值：沒有這一點，答句退回原本的寫法；原因（數據中台 59cb36c）給指標速覽的表格寫「無法計算」。current 整個是 null 時看頂層
-    if (!current || current.ratio === null || current.price === null || current.base === null) return { nullReason: current?.nullReason ?? response.nullReason ?? null }
-    return { tradeDate: current.tradeDate, price: current.price, base: current.base, ratio: current.ratio, baseLabel: response.baseLabel }
+    // current.close：2026-11-16 詞彙檢核 X2 前叫 price
+    if (!current || current.ratio === null || current.close === null || current.base === null) return { nullReason: current?.nullReason ?? response.nullReason ?? null }
+    return { tradeDate: current.tradeDate, price: current.close, base: current.base, ratio: current.ratio, baseLabel: response.baseLabel }
   },
   // -v2：2026-11-12 沒有比值時從 null 改成帶原因的 { nullReason }
   { name: 'stock-river-latest-v2', getKey: (symbol, kind, timeframe) => `${symbol}:${kind}:${timeframe}`, ...swrCache(15 * 60, HOUR) }

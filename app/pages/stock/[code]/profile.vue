@@ -42,7 +42,7 @@ const officersAnswer = computed(() => {
 const capitalAnswer = computed(() => {
   const item = detail.value
   if (!item || item.paidInCapitalNtd === null) return null
-  const issued = item.issuedShares ? `、已發行 ${formatSignificantDigits(item.issuedShares, 4)}股` : ''
+  const issued = item.numberOfOrdinaryShares ? `、普通股 ${formatSignificantDigits(item.numberOfOrdinaryShares, 4)}股` : ''
   const auditor = item.auditingFirm ? `；${item.declaredDataTypeName ?? '財報'}由${item.auditingFirm}簽證` : ''
   return `實收資本額 ${formatMoney(item.paidInCapitalNtd)}${issued}${auditor}。`
 })

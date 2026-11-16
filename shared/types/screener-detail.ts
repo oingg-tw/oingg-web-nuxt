@@ -126,8 +126,9 @@ export interface PreferredStockEntry {
   dividendRate: number | null
   nominalDividendRatePct: number | null
   currentYieldPct: number | null
-  latestClosePrice: number | null
-  latestPriceDate: string | null
+  // 最近有成交的收盤與那天（2026-11-16 詞彙檢核 X2 前叫 latestClosePrice／latestPriceDate）
+  close: number | null
+  tradeDate: string | null
   cumulativeDividend: boolean | null
   participatingExcessDividend: boolean | null
   liquidationPreference: boolean | null

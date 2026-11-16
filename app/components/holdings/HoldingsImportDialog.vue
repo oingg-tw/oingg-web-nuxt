@@ -28,10 +28,10 @@ const accountId = defineModel<string | null>('accountId', { default: null })
 const IMPORT_MAX_ROWS = 2000
 
 // 下拉選單列全市場的證券商（GET /brokers，60 家，公開資料），但只有有解析器的才能選：業務中台 的匯入 source
-// 有白名單，選了別家送出會被 400 擋下。名單讀不到時退回只列支援的那幾家。
+// 有白名單，選了別家送出會被 400 擋下。名單讀不到時退回只列支援的那幾家。名稱是 brokerName（2026-11-16 詞彙檢核 X7 前叫 shortName）
 interface BrokerOption { code: string; label: string; format: BrokerFormat | null }
 const { data: brokerList } = useAsyncData('broker-list', () =>
-  apiFetch<{ brokers: { brokerCode: string; shortName: string }[] }>('/brokers')
+  apiFetch<{ brokers: { brokerCode: string; brokerName: string }[] }>('/brokers')
     .then(response => response.brokers)
     .catch((error) => {
       devWarn('holdings', 'GET /brokers unavailable', error)
@@ -42,7 +42,7 @@ const brokerOptions = computed<BrokerOption[]>(() => {
   if (!brokerList.value?.length) return BROKER_FORMATS.map(format => ({ code: format.brokerCode, label: format.label, format }))
   // 有解析器的排最前面，其餘照代號
   return brokerList.value
-    .map(item => ({ code: item.brokerCode, label: item.shortName, format: supported(item.brokerCode) }))
+    .map(item => ({ code: item.brokerCode, label: item.brokerName, format: supported(item.brokerCode) }))
     .sort((a, b) => Number(!a.format) - Number(!b.format) || a.code.localeCompare(b.code))
 })
 const brokerCode = ref<string>(BROKER_FORMATS[0].brokerCode)
@@ -89,12 +89,12 @@ const footerHint = computed(() => {
   if (error.value) return '無法繼續：請看上方的說明'
   if (!parsed.value) return '請先選擇 CSV 檔案'
   if (!preview.value) return '取得成本改過了，按「重新試算」更新預覽'
-  if (preview.value.inserted === 0) return '這份檔案的交易都已經匯入過了'
+  if (preview.value.insertedCount === 0) return '這份檔案的交易都已經匯入過了'
   return ''
 })
 // 試算完成時念出結果（2026-10-07 a11y 盤點：原本 footerHint 一變成空字串就什麼都不念，螢幕閱讀器使用者不知道
 // 試算好了）。footerHint 有字時照念它。
-const statusText = computed(() => footerHint.value || (preview.value ? `試算完成：會新增 ${groupThousands(preview.value.inserted)} 筆` : ''))
+const statusText = computed(() => footerHint.value || (preview.value ? `試算完成：會新增 ${groupThousands(preview.value.insertedCount)} 筆` : ''))
 
 // 兩張預覽表改用 HoldingsMetricTable（手機上 el-table 把「平均成本」「每股成本」推到對話框外）
 const previewRows = computed(() => (preview.value?.holdings ?? []).map(row => ({
@@ -236,7 +236,7 @@ async function commit() {
         <dl class="import__facts">
           <div><dt>檔案</dt><dd>{{ fileName }}</dd></div>
           <div><dt>成交筆數</dt><dd>{{ groupThousands(trades.length) }} 筆（{{ dateRange }}）</dd></div>
-          <div v-if="preview"><dt>會新增</dt><dd>{{ groupThousands(preview.inserted) }} 筆<template v-if="preview.duplicates">，{{ groupThousands(preview.duplicates) }} 筆匯過了會略過</template></dd></div>
+          <div v-if="preview"><dt>會新增</dt><dd>{{ groupThousands(preview.insertedCount) }} 筆<template v-if="preview.duplicateCount">，{{ groupThousands(preview.duplicateCount) }} 筆匯過了會略過</template></dd></div>
         </dl>
         <ul v-if="skippedReasons.length" class="import__notes">
           <li v-for="[reason, count] in skippedReasons" :key="reason">{{ count }} 列不匯入：{{ reason }}</li>
@@ -287,8 +287,8 @@ async function commit() {
         <p class="visually-hidden" role="status">{{ statusText }}</p>
         <el-button size="large" @click="visible = false">取消</el-button>
         <el-button v-if="parsed && !preview && !error" type="primary" size="large" :disabled="busy" @click="dryRun()">重新試算</el-button>
-        <el-button v-else type="primary" size="large" :disabled="!preview || busy || preview.inserted === 0" @click="commit">
-          {{ preview ? `確認匯入 ${groupThousands(preview.inserted)} 筆` : '確認匯入' }}
+        <el-button v-else type="primary" size="large" :disabled="!preview || busy || preview.insertedCount === 0" @click="commit">
+          {{ preview ? `確認匯入 ${groupThousands(preview.insertedCount)} 筆` : '確認匯入' }}
         </el-button>
       </div>
     </template>

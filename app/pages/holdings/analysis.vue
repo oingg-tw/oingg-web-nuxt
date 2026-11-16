@@ -54,7 +54,7 @@ const answer = computed(() => {
   return `${rows.value.length} 檔持股分布在 ${sectors.value.length} 個產業，占比最大的是${top.label}（${percent(top.value / totalValue.value)}）。`
 })
 
-// 有效產業數：依市值，相當於平均分散在幾個產業＝1 ÷ Σ產業占比²（跟業務中台 risk.sectors.effectiveSectors 同一個定義）。
+// 有效產業數：依市值，相當於平均分散在幾個產業＝1 ÷ Σ產業占比²（跟業務中台 risk.sectors.effectiveSectorCount 同一個定義）。
 // 用上面表格同一份占比在這裡算（2026-10-20）：原本等風險端點（回推一年股價，慢），答句晚一兩秒才多長出這半句（使用者：「重新整理的
 // 時候會閃動」）；在這裡算也保證跟表格的產業分法一致
 const effectiveSectorsText = computed(() => {

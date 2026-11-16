@@ -20,6 +20,17 @@ export const QUOTA_ROWS: readonly { resource: QuotaResource; label: string; unit
   { resource: 'columnPresets', label: '欄位組合（普通股、特別股、ETF 合計）', unit: '個' }
 ]
 
+// 業務中台 quotas 與 usage 的鍵（2026-11-16 詞彙檢核：數量用 Count 結尾）。額度 403 不帶這個名字，網站自己知道擋的是哪一種，所以只在讀這兩個物件時換
+export const QUOTA_COUNT_KEY = {
+  watchlistItems: 'watchlistItemCount',
+  watchlists: 'watchlistCount',
+  portfolios: 'portfolioCount',
+  customHoldingColumns: 'customHoldingColumnCount',
+  screenerPresets: 'screenerPresetCount',
+  columnPresets: 'columnPresetCount'
+} as const satisfies Record<QuotaResource, string>
+export type QuotaCounts<T> = Partial<Record<(typeof QUOTA_COUNT_KEY)[QuotaResource], T>>
+
 // undefined ＝ 不知道（沒問到）；null ＝ 不限
 export const quotaLimitText = (value: number | null | undefined, unit: string) =>
   value === undefined ? '－' : value === null ? '不限' : `${value} ${unit}`
@@ -32,9 +43,9 @@ export interface Entitlement {
   currentPeriodEndsAt: string | null
   trialEndsAt: string | null
   renewalMode: 'AUTOMATIC' | 'MANUAL' | null
-  quotas: Partial<Record<QuotaResource, number | null>>
+  quotas: QuotaCounts<number | null>
   // 目前用量，跟額度檢查同一個算法（業務中台 79b4d81）
-  usage?: Partial<Record<QuotaResource, number>>
+  usage?: QuotaCounts<number>
 }
 
 export function useEntitlement() {
@@ -69,7 +80,7 @@ export function useEntitlement() {
   })
   // undefined ＝ 不知道（沒問到）；null ＝ 不限；數字 ＝ 上限
   const quotaOf = (resource: QuotaResource): number | null | undefined =>
-    entitlement.value ? entitlement.value.quotas[resource] ?? null : undefined
+    entitlement.value ? entitlement.value.quotas[QUOTA_COUNT_KEY[resource]] ?? null : undefined
 
   return { entitlement, entitlementFailure, refresh, isTrial, trialDaysLeft, quotaOf }
 }

@@ -95,7 +95,7 @@ export function profilePageFacts(detail: CompanyProfileDetail, today: string): R
     ],
     capital: [
       { label: '實收資本額', value: money(detail.paidInCapitalNtd) },
-      { label: '已發行股數', value: shares(detail.issuedShares) },
+      { label: '普通股股數', value: shares(detail.numberOfOrdinaryShares) },
       { label: '特別股', value: shares(detail.numberOfPreferenceShares) },
       { label: '私募股數', value: shares(detail.privatePlacementShares) },
       { label: '財報口徑', value: dash(detail.declaredDataTypeName) },

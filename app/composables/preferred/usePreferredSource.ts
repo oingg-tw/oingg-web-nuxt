@@ -18,7 +18,7 @@ interface PreferredStockEntry {
   symbol: string
   // 特別股簡稱（例「富邦特」）
   companyName: string
-  latestPriceDate: string | null
+  tradeDate: string | null
   [field: string]: PreferredValue
 }
 
@@ -37,7 +37,7 @@ const CATEGORIES = [
     { field: 'cashDividendSkipped', name: '曾經停發', kind: 'categorical', options: yesNo('曾經停發', '每年都有配') }
   ]),
   snapshotCategory('price', '價格', 1, [
-    { field: 'latestClosePrice', name: '收盤價', unit: '元' },
+    { field: 'close', name: '收盤價', unit: '元' },
     { field: 'issuePrice', name: '發行價', unit: '元' },
     { field: 'premiumRatePct', name: '溢價率', unit: '%' }
   ]),
@@ -75,10 +75,10 @@ const FILTER_TEMPLATES: UniverseTemplate[] = [
   { id: 'redeemable', name: '公司可收回', category: '條款', description: '發行公司可以依條款收回', status: 'AVAILABLE', pendingReason: null, filters: [{ field: 'redeemable', min: null, max: null, exclude: false, values: ['true'] }] }
 ]
 
-const DEFAULT_COLUMNS = ['latestClosePrice', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct', 'cumulativeDividend', 'premiumRatePct'].map(snapshotFieldId)
+const DEFAULT_COLUMNS = ['close', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct', 'cumulativeDividend', 'premiumRatePct'].map(snapshotFieldId)
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
-  { key: 'valuation', name: '估值與報酬', description: '發行價、收盤價、票面利率、殖利率、最差殖利率', fieldKeys: ['issuePrice', 'latestClosePrice', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct'].map(snapshotFieldId) },
+  { key: 'valuation', name: '估值與報酬', description: '發行價、收盤價、票面利率、殖利率、最差殖利率', fieldKeys: ['issuePrice', 'close', 'nominalDividendRatePct', 'currentYieldPct', 'ytwPct'].map(snapshotFieldId) },
   { key: 'rights', name: '股東權利', description: '股息累積性、參與權、清算優先權、表決權、可轉換', fieldKeys: ['cumulativeDividend', 'participatingExcessDividend', 'liquidationPreference', 'votingRights', 'convertible'].map(snapshotFieldId) },
   { key: 'call-risk', name: '收回資訊', description: '發行日、公司可收回、溢價率', fieldKeys: ['issueDate', 'redeemable', 'premiumRatePct'].map(snapshotFieldId) }
 ]
@@ -196,7 +196,7 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
   }
 
   // 每一檔的股價、殖利率都是同一個交易日的快照，取最新的那天就夠
-  const dataDate = computed(() => (entries.value ?? []).reduce<string | null>((latest, entry) => (entry.latestPriceDate && (!latest || entry.latestPriceDate > latest) ? entry.latestPriceDate : latest), null))
+  const dataDate = computed(() => (entries.value ?? []).reduce<string | null>((latest, entry) => (entry.tradeDate && (!latest || entry.tradeDate > latest) ? entry.tradeDate : latest), null))
 
   return {
     universe: 'preferred',
@@ -205,9 +205,9 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     // 表頭不需要等任何資料（欄名寫在 METRICS；2026-10-16 拿掉表頭說明之前要等欄位公式），所以一進來就能建表頭
     ready: computed(() => true),
     defaultColumns: DEFAULT_COLUMNS,
-    // 2026-11-16 以前存的條件、欄位組合與書籤寫 marketType，值是中文；讀進來換成 market 與 sii／otc。shortcut: 帳號裡的存檔不改寫，
-    // 下次儲存才換；網址永遠可能是舊的，這兩行留著（同 ETF 的 assetClass）
-    renamedFields: { marketType: 'market' },
+    // 2026-11-16 以前存的條件、欄位組合與書籤寫 marketType，值是中文；讀進來換成 market 與 sii／otc。收盤價同一天從 latestClosePrice
+    // 改叫 close（詞彙檢核 X2）。shortcut: 帳號裡的存檔不改寫，下次儲存才換；網址永遠可能是舊的，這幾行留著（同 ETF 的 assetClass）
+    renamedFields: { marketType: 'market', latestClosePrice: 'close' },
     renamedValues: { market: { 上市: 'sii', 上櫃: 'otc' } },
     filterTemplates: FILTER_TEMPLATES,
     columnTemplates: COLUMN_TEMPLATES,

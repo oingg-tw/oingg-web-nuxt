@@ -6,7 +6,7 @@ Regenerated 2026-10-07 by 業務中台 (commit 9d691cd), now including the 9 ext
 
 2026-11-03: every numeric string became a JSON number, as 業務中台 c940774 sends them (yearly period 2026, not "2026"); symbol and sectorCode are codes and stay strings.
 
-2026-11-16: the glossary renames of 業務中台 00083: trading.costRatio (0 to 1) became costPct (percent, the value times 100); risk holdings[].coverage became priceHistoryAvailability (same full／partial／none).
+2026-11-16: the glossary renames of 業務中台 00083: trading.costRatio (0 to 1) became costPct (percent, the value times 100); risk holdings[].coverage became priceHistoryAvailability (same full／partial／none); concentration.effectiveHoldings and sectors.effectiveSectors became effectiveHoldingCount and effectiveSectorCount; fundamentals.dividendYield (0 to 1) became portfolioCashDividendYield (percent).
 
 Synthetic ledger:
 - 2024-06-03 BUY 2330 ×2000, 2317 ×5000, 0056 ×20000, 2882 ×10000

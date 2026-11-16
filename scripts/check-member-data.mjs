@@ -13,7 +13,7 @@ const fixture = name => JSON.parse(readFileSync(new URL(`./fixtures/holdings/${n
 
 const performance = fixture('a-normal-1y.performance')
 const trait = value => ({ value, coverage: 1.000000 })
-const TRAITS = { asOf: '2026-10-16', portfolio: { peRatio: trait(14.2), dividendYield: trait(5.1) }, benchmark: { peRatio: trait(17.84), dividendYield: trait(2.9) } }
+const TRAITS = { asOf: '2026-10-16', portfolio: { exchangePeRatio: trait(14.2), dividendYield: trait(5.1) }, benchmark: { exchangePeRatio: trait(17.84), dividendYield: trait(2.9) } }
 const SHARE_TOKEN = 'check-member-data-0001'
 const holdingsShare = key => ({ kind: 'holdings', displayName: '檢查用分享', columns: [{ key, label: '報酬率' }], asOf: '2026-10-29', holdings: [{ symbol: '2330', returnPct: 12.3456 }], traits: TRAITS })
 const STUBS = {

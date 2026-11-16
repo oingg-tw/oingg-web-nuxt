@@ -21,7 +21,8 @@ type StyleBoxColumn = typeof STYLE_BOX_COLUMNS[number]['key']
 export type StyleBoxKey = `${StyleBoxRow}${StyleBoxColumn}Pct`
 export const styleBoxKey = (row: StyleBoxRow, column: StyleBoxColumn): StyleBoxKey => `${row}${column}Pct`
 
-export type TraitKey = 'peRatio' | 'pbRatio' | 'dividendYield' | 'roe' | 'revenueGrowth' | 'beta' | 'revenueYoyVolatility' | 'top3HoldingsPct' | 'largeCapPct' | StyleBoxKey
+// 本益比、股價淨值比叫 exchangePeRatio／exchangePbRatio（2026-11-16 詞彙檢核 X10：是交易所值的加權，原本叫 peRatio／pbRatio）
+export type TraitKey = 'exchangePeRatio' | 'exchangePbRatio' | 'dividendYield' | 'roe' | 'revenueGrowth' | 'beta' | 'revenueYoyVolatility' | 'top3HoldingsPct' | 'largeCapPct' | StyleBoxKey
 // beta 6 位、其餘 2 位小數；dividendYield、roe、revenueGrowth、revenueYoyVolatility 與 *Pct 的單位是 %（30.8 ＝ 30.8%）。
 // coverage ＝ 參與計算的持股占的權重（0～1）。全是 ETF 時 top3HoldingsPct 是真的 0，不是沒有資料
 export interface TraitValue { value: number | null; coverage: number | null }
@@ -31,8 +32,8 @@ export interface HoldingsTraitsResult { asOf: string | null; portfolio: Traits; 
 
 // 名稱不帶算法（「整體」「加權」寫在意思裡，手機上名稱才不換行）；「近一年」「ETF 除外」改變了意思，留在名稱上
 export const TRAIT_ROWS: { key: TraitKey; name: string; unit: 'ratio' | 'pct'; meaning: string }[] = [
-  { key: 'peRatio', name: '本益比', unit: 'ratio', meaning: '各檔本益比依市值的調和平均，等於把整組持股當成一家公司；虧損公司不算入' },
-  { key: 'pbRatio', name: '股價淨值比', unit: 'ratio', meaning: '各檔股價淨值比依市值的調和平均' },
+  { key: 'exchangePeRatio', name: '本益比', unit: 'ratio', meaning: '各檔本益比依市值的調和平均，等於把整組持股當成一家公司；虧損公司不算入' },
+  { key: 'exchangePbRatio', name: '股價淨值比', unit: 'ratio', meaning: '各檔股價淨值比依市值的調和平均' },
   { key: 'dividendYield', name: '殖利率', unit: 'pct', meaning: '交易所公布的殖利率，依市值加權平均' },
   { key: 'roe', name: 'ROE', unit: 'pct', meaning: '近四季 ROE，依市值加權平均' },
   { key: 'revenueGrowth', name: '營收成長率', unit: 'pct', meaning: '近四季營收年增率，依市值加權平均' },
@@ -49,9 +50,9 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   { keys: ['beta'], label: '低 Beta', rule: 'Beta ≤ 0.8', needsMarket: false, test: own => own <= 0.8 },
   { keys: ['beta'], label: '高 Beta', rule: 'Beta ≥ 1.2', needsMarket: false, test: own => own >= 1.2 },
   { keys: ['dividendYield'], label: '高殖利率', rule: '殖利率 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
-  { keys: ['peRatio'], label: '低本益比', rule: '本益比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
-  { keys: ['peRatio'], label: '高本益比', rule: '本益比 ≥ 大盤的 1.3 倍', needsMarket: true, test: (own, market) => own >= market * 1.3 },
-  { keys: ['pbRatio'], label: '低股價淨值比', rule: '股價淨值比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
+  { keys: ['exchangePeRatio'], label: '低本益比', rule: '本益比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
+  { keys: ['exchangePeRatio'], label: '高本益比', rule: '本益比 ≥ 大盤的 1.3 倍', needsMarket: true, test: (own, market) => own >= market * 1.3 },
+  { keys: ['exchangePbRatio'], label: '低股價淨值比', rule: '股價淨值比 ≤ 大盤的 0.7 倍', needsMarket: true, test: (own, market) => own <= market * 0.7 },
   { keys: ['roe'], label: '高 ROE', rule: 'ROE ≥ 大盤＋5 個百分點', needsMarket: true, test: (own, market) => own >= market + 5 },
   { keys: ['revenueGrowth'], label: '高成長', rule: '營收成長率 ≥ 大盤＋10 個百分點', needsMarket: true, test: (own, market) => own >= market + 10 },
   // 景氣循環型 2026-11-05 先隱藏（使用者：「先註解隱藏，因為我懷疑現在的頁面有問題」）：這條只看營收波動，高速成長的公司一樣踩得到，數據中台的驗證名單 34 家

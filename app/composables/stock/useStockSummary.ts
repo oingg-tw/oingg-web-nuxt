@@ -34,9 +34,10 @@ export interface StockSummary {
 
 interface RawStockQuote {
   symbol: string
-  price: { tradeDate: string; close: number | null } | null
-  // liveCashDividendYield／…TradeDate：analysis-ts 4532d48e 的 quote 加、業務中台照轉
-  valuation: { tradeDate: string; peRatio: number | null; pbRatio: number | null; liveCashDividendYield?: number | null; liveCashDividendYieldTradeDate?: string | null } | null
+  // 最新交易日那天的收盤（那天沒成交是 null）。2026-11-16 詞彙檢核 X1 前叫 close／tradeDate；之後 close 會改指「最近有成交的」，所以讀 dayClose
+  price: { dayCloseTradeDate: string; dayClose: number | null } | null
+  // liveCashDividendYield／…TradeDate：analysis-ts 4532d48e 的 quote 加、業務中台照轉。本益比、淨值比自算與交易所分開給（X9，原本合在 peRatio／pbRatio）
+  valuation: { tradeDate: string; livePeRatio: number | null; exchangePeRatio: number | null; livePbRatio: number | null; exchangePbRatio: number | null; liveCashDividendYield?: number | null; liveCashDividendYieldTradeDate?: string | null } | null
   tradingHalt?: TradingHalt | null
   delisting?: Delisting | null
 }
@@ -58,15 +59,16 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
 
       try {
         const raw = await apiFetch<RawStockQuote>(`/stocks/${current}`, { baseURL: BUSINESS_CACHED_BASE })
-        const close = raw.price?.close ?? null
+        const close = raw.price?.dayClose ?? null
         return {
           symbol: raw.symbol,
-          price: raw.price && close !== null ? { tradeDate: raw.price.tradeDate, close } : null,
+          price: raw.price && close !== null ? { tradeDate: raw.price.dayCloseTradeDate, close } : null,
           valuation: raw.valuation
             ? {
                 tradeDate: raw.valuation.tradeDate,
-                peRatio: raw.valuation.peRatio,
-                pbRatio: raw.valuation.pbRatio,
+                // 自算的有值用自算，沒有用交易所的：跟業務中台原本合成的 peRatio／pbRatio 同一個規則
+                peRatio: raw.valuation.livePeRatio ?? raw.valuation.exchangePeRatio,
+                pbRatio: raw.valuation.livePbRatio ?? raw.valuation.exchangePbRatio,
                 // 自算的現金殖利率（2026-10-25，同篩選、排行與配股配息頁的圖）。交易所的 dividendYield 不讀：股票股利按面額算進去，
                 // 3040 會寫 11.78%、圖上卻是 0。上游還沒帶這一欄時是 null，殖利率那半句就不出現，不拿交易所值補
                 dividendYield: raw.valuation.liveCashDividendYield ?? null,

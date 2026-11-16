@@ -54,8 +54,8 @@ const planName = computed(() => {
           <tbody>
             <tr v-for="row in QUOTA_ROWS" :key="row.resource">
               <th scope="row">{{ row.label }}</th>
-              <td v-if="usage">{{ usage[row.resource] ?? 0 }} {{ row.unit }}</td>
-              <td>{{ quotaLimitText(entitlement ? entitlement.quotas[row.resource] ?? null : undefined, row.unit) }}</td>
+              <td v-if="usage">{{ usage[QUOTA_COUNT_KEY[row.resource]] ?? 0 }} {{ row.unit }}</td>
+              <td>{{ quotaLimitText(entitlement ? entitlement.quotas[QUOTA_COUNT_KEY[row.resource]] ?? null : undefined, row.unit) }}</td>
             </tr>
           </tbody>
         </SharedTable>

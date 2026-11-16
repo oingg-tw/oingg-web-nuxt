@@ -14,7 +14,7 @@ const STUBS = {
   '/api/core/portfolios': { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }, { id: 'p-b', name: '國泰', brokerCode: null, position: 1, createdAt: '2026-10-02T00:00:00Z' }] },
   '/api/core/holdings': { holdings: [] },
   '/api/core/watchlists': { watchlists: [{ id: 'w-a', name: '存股名單', sourceShareToken: null }, { id: 'w-b', name: '成長股', sourceShareToken: null }] },
-  '/api/core/billing/entitlement': { tier: 'FREE', source: 'none', status: null, currentPeriodEndsAt: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, watchlists: 3, portfolios: 3, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 3 }, usage: {} }
+  '/api/core/billing/entitlement': { tier: 'FREE', source: 'none', status: null, currentPeriodEndsAt: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItemCount: 10, watchlistCount: 3, portfolioCount: 3, customHoldingColumnCount: 10, screenerPresetCount: 3, columnPresetCount: 3 }, usage: {} }
 }
 const ITEM_LIMIT = 10
 const TEN = ['2330', '2317', '2454', '2412', '1301', '1303', '2882', '2881', '2886', '2891']
