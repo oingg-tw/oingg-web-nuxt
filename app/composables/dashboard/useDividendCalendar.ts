@@ -116,7 +116,7 @@ export function useDividendCalendar(months: () => string[]) {
     try {
       const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: key } })
       // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
-      cache.value[key] = result.entries.map(withExType)
+      cache.value[key] = result.entries.flatMap(withExType)
     } catch (error) {
       devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?yearMonth=${key} unavailable`, error)
       if (classifyApiError(error).kind === 'client') cache.value[key] = null

@@ -65,7 +65,7 @@ export const dividendEventAmount = (event: DividendEvent) => (event.amount !== n
 function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent | null {
   return notices
     // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
-    .map(withExType)
+    .flatMap(withExType)
     .flatMap((notice): DividendEvent[] => {
       const amount = notice.distributionPerUnit ?? notice.cashDividend
       // 還沒除息看除息日；已除息看還沒到的發放日，現金與配股各自一筆（權息可能不同天）

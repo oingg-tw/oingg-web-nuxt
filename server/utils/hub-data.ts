@@ -757,7 +757,7 @@ export const getExDividendMonth = defineCachedFunction(
     const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: month } })
     // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
     return response.entries
-      .map(withExType)
+      .flatMap(withExType)
       .map(entry => ({
         exDate: entry.exDate,
         symbol: entry.symbol,

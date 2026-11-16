@@ -5,12 +5,24 @@ type ExType = '息' | '權' | '權息'
 interface ExDateFields { exDividendDate?: string | null; exRightsDate?: string | null }
 
 // 除權息：業務中台給除息日 exDividendDate、除權日 exRightsDate（息只有除息日、權只有除權日、權息兩個都有）；站內的行事曆、提醒、表格
-// 用一個日期 exDate＋exType。權息的兩個日期是同一天，取除息日
-export function withExType<T extends object>(raw: T): T {
+// 用一個日期 exDate＋exType，呼叫端用 flatMap。權息的兩個日期同一天是一筆「權息」；不同天拆成兩筆（2026-11-16 詞彙檢核：原本取除息日、
+// 除權日被吃掉）：除息日那筆是「息」、沒有配股的欄位，除權日那筆是「權」、沒有現金的欄位，各頁照 exType 寫的字才不會把配股寫在除息日
+const CASH_FIELDS = ['cashDividend', 'distributionPerUnit', 'cashPerShare', 'cashAmount', 'paymentDate']
+const STOCK_FIELDS = ['stockDividendRatio', 'stockRatio', 'stockShares', 'fractionalShares', 'stockDividendDistributionDate', 'subscriptionRatio',
+  'subscriptionPricePerShare', 'sharesOffered', 'sharesEmpOwner', 'sharesholderOwner', 'stockHoldingRatio']
+const without = <T extends object>(raw: T, fields: string[]): T => ({ ...raw, ...Object.fromEntries(fields.filter(field => field in raw).map(field => [field, null])) })
+
+export function withExType<T extends object>(raw: T): T[] {
   const row = raw as ExDateFields
-  if (!row.exDividendDate && !row.exRightsDate) return raw
+  if (!row.exDividendDate && !row.exRightsDate) return [raw]
+  if (row.exDividendDate && row.exRightsDate && row.exDividendDate !== row.exRightsDate) {
+    return [
+      { ...without(raw, STOCK_FIELDS), exDate: row.exDividendDate, exType: '息' as ExType },
+      { ...without(raw, CASH_FIELDS), exDate: row.exRightsDate, exType: '權' as ExType }
+    ]
+  }
   const exType: ExType = row.exDividendDate && row.exRightsDate ? '權息' : row.exRightsDate ? '權' : '息'
-  return { ...raw, exDate: row.exDividendDate ?? row.exRightsDate, exType }
+  return [{ ...raw, exDate: row.exDividendDate ?? row.exRightsDate, exType }]
 }
 
 type LooseRecord = Record<string, unknown>

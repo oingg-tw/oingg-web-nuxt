@@ -90,7 +90,7 @@ export function useHoldingsReports() {
   // ---- 配息日程（GET /holdings/dividends，業務中台 97bd1e2） ----
   // 用上游的預設期間（往前 12 個月、往後 3 個月）。股數是從交易紀錄回推的。
   // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
-  const fetchDividends = () => scopedReport<HoldingDividendsResult>('dividends').then(result => result && { ...result, dividends: result.dividends.map(withExType) })
+  const fetchDividends = () => scopedReport<HoldingDividendsResult>('dividends').then(result => result && { ...result, dividends: result.dividends.flatMap(withExType) })
 
   // ---- 持股特色（GET /holdings/traits，業務中台 bd8a4e9，2026-10-19） ----
   // 組合依市值占比加權（本益比、股價淨值比調和平均），Beta 是近一年回推、跟 /holdings/risk 同一支；benchmark 是全市場同一套算法，

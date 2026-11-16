@@ -4,11 +4,18 @@ import { metricsCatalogFromBusiness, withExType } from '../shared/utils/business
 import { businessErrorDetail, describeBusinessError } from '../app/utils/bff-error.ts'
 
 // 除權息：息／權／權息各一筆；兩個日期都沒有就原樣
-assert.deepEqual(withExType({ symbol: '2330', exDividendDate: '2026-09-16' }), { symbol: '2330', exDividendDate: '2026-09-16', exDate: '2026-09-16', exType: '息' })
-assert.deepEqual(withExType({ symbol: '6505', exRightsDate: '2026-08-01' }), { symbol: '6505', exRightsDate: '2026-08-01', exDate: '2026-08-01', exType: '權' })
-assert.equal(withExType({ exDividendDate: '2026-07-10', exRightsDate: '2026-07-10' }).exType, '權息')
+assert.deepEqual(withExType({ symbol: '2330', exDividendDate: '2026-09-16' }), [{ symbol: '2330', exDividendDate: '2026-09-16', exDate: '2026-09-16', exType: '息' }])
+assert.deepEqual(withExType({ symbol: '6505', exRightsDate: '2026-08-01' }), [{ symbol: '6505', exRightsDate: '2026-08-01', exDate: '2026-08-01', exType: '權' }])
+assert.equal(withExType({ exDividendDate: '2026-07-10', exRightsDate: '2026-07-10' })[0].exType, '權息')
 const bare = { symbol: '2330' }
-assert.equal(withExType(bare), bare)
+assert.deepEqual(withExType(bare), [bare])
+// 權息兩個日期不同天：拆成兩筆，除息那筆沒有配股、除權那筆沒有現金（2026-11-16，原本除權日被吃掉）
+const split = withExType({ symbol: '1234', exDividendDate: '2026-07-10', exRightsDate: '2026-08-05', cashDividend: 1.5, paymentDate: '2026-08-01', stockDividendRatio: 0.05, stockDividendDistributionDate: '2026-09-01' })
+assert.deepEqual(split.map(row => [row.exDate, row.exType, row.cashDividend, row.paymentDate, row.stockDividendRatio, row.stockDividendDistributionDate]), [
+  ['2026-07-10', '息', 1.5, '2026-08-01', null, null],
+  ['2026-08-05', '權', null, null, 0.05, '2026-09-01']
+])
+assert.equal('stockShares' in split[0], false, '沒有的欄位不加')
 
 // 型錄：業務中台的名字換成篩選器用的那組
 const catalog = { categories: [{ categoryKey: 'profitability', categoryDisplayName: '獲利能力', sort: 1, metrics: [{ metricCode: 'roe', name: 'ROE', unit: '%', fields: [{ timeframe: 'TTM', unit: '%' }] }] }] }
