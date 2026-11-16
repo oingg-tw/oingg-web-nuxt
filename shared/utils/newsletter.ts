@@ -36,7 +36,7 @@ export interface NewsletterSettings {
 // 驗證連結確認後的回應（不用登入）：寄到的地址遮罩過，editions 讓結果頁知道週報開了沒
 export interface NewsletterVerifyResult {
   status: 'verified'
-  maskedAddress: string
+  maskedDeliveryAddress: string
   editions: { edition: string; optIn: boolean }[]
 }
 
@@ -44,11 +44,11 @@ export interface NewsletterVerifyResult {
 export const newsletterAddress = (settings: NewsletterSettings): string | null =>
   settings.email ?? (settings.newsletterEmail?.status === 'verified' ? settings.newsletterEmail.address : null)
 
-// 不用登入的查詢、退訂、繼續收都回這個。信件標頭那把 token 只能退訂，退訂時 maskedEmail 是 null
+// 不用登入的查詢、退訂、繼續收都回這個。信件標頭那把 token 只能退訂，退訂時 maskedDeliveryAddress 是 null。鍵名是 2026-11-16 詞彙檢核的新名（業務中台 00083）：回應的 maskedDeliveryAddress（原本 maskedEmail、maskedAddress），body 的 optOutToken、verificationToken（原本都叫 token）
 export interface NewsletterTokenState {
   edition: string
   optIn: boolean
-  maskedEmail: string | null
+  maskedDeliveryAddress: string | null
 }
 
 // token 的形狀（跟業務中台對過：最多 64 字、英數與 - _）。網址是信裡帶來的，形狀不對的不送上游

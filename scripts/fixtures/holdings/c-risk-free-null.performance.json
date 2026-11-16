@@ -14,7 +14,7 @@
     "taxes": 3090,
     "averageMarketValue": 7292010,
     "turnover": 0.14125,
-    "costRatio": 0.000906
+    "costPct": 0.0906
   },
   "benchmarkComparison": {
     "sampleDays": 242,

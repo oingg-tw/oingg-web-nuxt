@@ -41,7 +41,7 @@ const storageState = await login.storageState({ indexedDB: true }); await login.
 
 const withUnseen = (count, seenCalls) => ({
   'GET /api/core/users/me': route => route.fulfill({ json: { user: { id: 'row-1', email: 'a@example.com', lineLinked: false, unseenInboxCount: count } } }),
-  'GET /api/cached/release-notes': route => route.fulfill({ json: { items: NOTES } }),
+  'GET /api/cached/release-notes': route => route.fulfill({ json: { entries: NOTES } }),
   'POST /api/core/users/me/inbox/seen': (route) => { seenCalls.push(1); count = 0; return route.fulfill({ json: { inboxSeenAt: new Date().toISOString(), unseenInboxCount: 0 } }) }
 })
 

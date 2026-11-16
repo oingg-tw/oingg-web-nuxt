@@ -153,7 +153,8 @@ const tradingRows = computed(() => {
     { name: '手續費', value: text(trading?.fees, 'money'), meaning: '買進與賣出的券商手續費' },
     { name: '證交稅', value: text(trading?.taxes, 'money'), meaning: '賣出時的證券交易稅' },
     { name: '週轉率', value: text(trading?.turnover, 'pct', noExposure, 2), meaning: '買進與賣出較小的那一個 ÷ 平均市值，整段期間、不年化' },
-    { name: '成本率', value: text(trading?.costRatio, 'pct', noExposure, 2), meaning: '（手續費＋證交稅）÷ 平均市值，整段期間、不年化' }
+    // costPct 已經是 %（2026-11-16 起取代 0～1 的 costRatio），'pct' 會再乘 100，所以先換回比例
+    { name: '成本率', value: text(trading && trading.costPct !== null ? trading.costPct / 100 : null, 'pct', noExposure, 2), meaning: '（手續費＋證交稅）÷ 平均市值，整段期間、不年化' }
   ]
 })
 </script>

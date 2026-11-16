@@ -4,11 +4,11 @@
 // 伺服器就篩好，沒有 JS 也能用，canonical 不帶查詢字串。10-29 只做這一頁、不加小紅點與橫幅；2026-11-16 起重大變更另外是站內信（帳號區）、維護與緊急狀況是全站橫幅（AppNoticeBanner），都由一則更新的 channel 決定，這一頁標出站內信
 const route = useRoute()
 const requestUrl = useRequestURL()
-const { data, error } = await useFetch<{ items: ReleaseNote[] }>('/api/cached/release-notes', { key: 'release-notes' })
+const { data, error } = await useFetch<{ entries: ReleaseNote[] }>('/api/cached/release-notes', { key: 'release-notes' })
 if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '更新紀錄暫時無法取得', fatal: true })
 
 const kind = computed(() => releaseKindOf(route.query.kind))
-const notes = computed(() => splitReleaseNotes(data.value?.items ?? [], kind.value))
+const notes = computed(() => splitReleaseNotes(data.value?.entries ?? [], kind.value))
 const filters = [
   { label: '全部', kind: null },
   ...(Object.entries(RELEASE_KIND_LABELS) as [ReleaseKind, string][]).map(([key, label]) => ({ label, kind: key }))

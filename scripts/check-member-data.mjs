@@ -1,7 +1,8 @@
 // 會員頁讀業務中台的資料（2026-10-30，使用者：「你不先驗完嗎」——拿掉 Go／TS 並存後，會員頁要用業務中台現在的格式驗過才推）。
 // 登入測試帳號，把會員端點換成業務中台現在格式的假資料，逐頁確認那個數字真的畫出來（不是空白或「－」）：持股績效（逐月的 yearMonth、
 // 走勢的 tradeDate）、績效統計的無風險利率（sourceYearMonth）、持股特色的大盤（benchmark）、配息（除息日 exDividendDate）、
-// 持股分享頁的報酬率（returnPct 百分比）。持股績效用 scripts/fixtures/holdings 的合成資料。check-reload-flash 驗閃動，這支驗內容。
+// 持股分享頁的報酬率（returnPct 百分比）、已實現損益的成本率（costPct 已經是 %，2026-11-16 起取代 0～1 的 costRatio）、風險頁的
+// 期間中才有股價（priceHistoryAvailability）。持股績效與風險用 scripts/fixtures/holdings 的合成資料。check-reload-flash 驗閃動，這支驗內容。
 // 寫入一律擋下。Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-member-data.mjs（BASE= 換伺服器）
 import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
@@ -20,9 +21,10 @@ const STUBS = {
   '/api/core/holdings': { holdings: ['2330', '2317', '0056'].map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: 50, totalCost: 50000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98 })) },
   '/api/core/holdings/performance': performance,
   '/api/core/holdings/traits': TRAITS,
+  '/api/core/holdings/risk': fixture('d-partial-and-none-coverage.risk'),
   '/api/core/holdings/dividends': {
     from: '2025-10-30', to: '2027-01-30', asOf: '2026-10-30',
-    dividends: [{ symbol: '2330', exDividendDate: '2026-09-16', exRightsDate: null, paymentDate: '2026-10-09', status: 'paid', cashPerShare: 5, stockRatio: null, sharesHeld: 1000, sharesHeldIsEstimate: false, cashAmount: 5000, stockShares: null, fractionalShares: null }]
+    dividends: [{ symbol: '2330', exDividendDate: '2026-09-16', exRightsDate: null, paymentDate: '2026-10-09', payoutStatus: 'paid', cashDividend: 5, stockDividendRatio: null, sharesHeld: 1000, sharesHeldIsEstimate: false, cashAmount: 5000, stockShares: null, fractionalShares: null }]
   },
   [`/api/core/public/shares/${SHARE_TOKEN}`]: holdingsShare('returnPct'),
   // 擁有者的分享設定（全部帳戶與那一個帳戶各一條，不管頁面選哪個都對得到）：打開分享視窗時，存著的報酬率要是勾著的
@@ -78,7 +80,10 @@ const PAGES = [
   ['/holdings/performance', '逐月報酬的月份（yearMonth）、走勢起點（tradeDate）', [{ cell: monthly.yearMonth }, firstPoint.tradeDate]],
   ['/holdings/statistics', '無風險利率的月份（sourceYearMonth）', [`無風險利率：五大銀行一年期定存 ${rate.ratePct.toFixed(2)}%（${rate.sourceYearMonth}）`]],
   ['/holdings/analysis', '持股特色的大盤（benchmark）', ['17.84', '2.9%']],
-  ['/holdings/dividends', '配息的除息日（exDividendDate → exDate＋exType，頁面寫成斜線）', ['2026/09/16 除息']]
+  ['/holdings/dividends', '配息的除息日（exDividendDate → exDate＋exType，頁面寫成斜線）', ['2026/09/16 除息']],
+  // 換錯單位會寫成 9.06%
+  ['/holdings/realized', `成本率（costPct ${performance.trading.costPct} 已經是 %）`, [{ cell: '0.09%' }]],
+  ['/holdings/risk', '期間中才有股價（priceHistoryAvailability 的 partial、none）', ['00988A 2025-11-05 起', '9999 無股價']]
 ]
 for (const [route, label, texts] of PAGES) {
   console.log(route)

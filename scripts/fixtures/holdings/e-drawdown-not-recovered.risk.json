@@ -137,35 +137,35 @@
     {
       "symbol": "2330",
       "weight": 0.53321,
-      "coverage": "full",
+      "priceHistoryAvailability": "full",
       "firstPriceDate": null,
       "riskContribution": 0.605304
     },
     {
       "symbol": "2454",
       "weight": 0.152228,
-      "coverage": "full",
+      "priceHistoryAvailability": "full",
       "firstPriceDate": null,
       "riskContribution": 0.164245
     },
     {
       "symbol": "0056",
       "weight": 0.119843,
-      "coverage": "full",
+      "priceHistoryAvailability": "full",
       "firstPriceDate": null,
       "riskContribution": 0.068359
     },
     {
       "symbol": "2882",
       "weight": 0.115512,
-      "coverage": "full",
+      "priceHistoryAvailability": "full",
       "firstPriceDate": null,
       "riskContribution": 0.073529
     },
     {
       "symbol": "2317",
       "weight": 0.079208,
-      "coverage": "full",
+      "priceHistoryAvailability": "full",
       "firstPriceDate": null,
       "riskContribution": 0.088563
     }

@@ -49,8 +49,8 @@ export function drawdownDates(drawdown: { peakDate: string | null; troughDate: s
 }
 
 // 風險頁的那一行：「東聯互動 7738 2025-10-16 起、仁大 7767 無股價」——期間中才有股價（partial）或整段沒有股價（none）的持股
-export function partialCoverageText(items: { label: string; coverage: string; firstPriceDate: string | null }[]): string {
-  return items.map(item => `${item.label} ${item.coverage === 'none' ? '無股價' : `${item.firstPriceDate} 起`}`).join('、')
+export function partialCoverageText(items: { label: string; priceHistoryAvailability: string; firstPriceDate: string | null }[]): string {
+  return items.map(item => `${item.label} ${item.priceHistoryAvailability === 'none' ? '無股價' : `${item.firstPriceDate} 起`}`).join('、')
 }
 
 // 「涵蓋 88% 市值」：有這個數字的持股佔市值的比例；接近 100% 時不寫（沒有要交代的）

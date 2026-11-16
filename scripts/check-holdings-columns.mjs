@@ -42,7 +42,7 @@ const tx = symbol => ({ id: `t-${symbol}`, portfolioId: 'p-a', symbol, action: '
 const mock = (ctx, state) => ctx.route('**/*', async (route) => {
   const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
   const body = () => JSON.parse(req.postData() ?? '{}')
-  if (p === '/api/core/billing/entitlement' && m === 'GET') return route.fulfill({ json: { tier: 'FREE', source: 'none', status: null, currentPeriodEnd: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 5 }, usage: {} } })
+  if (p === '/api/core/billing/entitlement' && m === 'GET') return route.fulfill({ json: { tier: 'FREE', source: 'none', status: null, currentPeriodEndsAt: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 5 }, usage: {} } })
   if (p === '/api/core/billing/plans' && m === 'GET') return route.fulfill({ json: { plans: [] } })
   if (p === '/api/core/portfolios' && m === 'GET') return route.fulfill({ json: { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
   if (p === '/api/core/holdings' && m === 'GET') {

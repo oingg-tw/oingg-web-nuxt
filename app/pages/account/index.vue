@@ -241,7 +241,7 @@ async function deleteAccount() {
       needsReauth.value = true
       deleteMessage.value = '為了安全，請再驗證一次身分後再按刪除。'
     } else if (code === 'subscription_active') {
-      const end = (error as { data?: { currentPeriodEnd?: string } }).data?.currentPeriodEnd
+      const end = (error as { data?: { currentPeriodEndsAt?: string } }).data?.currentPeriodEndsAt
       deleteMessage.value = `付費期間${end ? `到 ${dateText(end)} ` : ''}還沒結束，到期之後才能刪除帳號。`
     } else if (code === 'write_in_progress') {
       deleteMessage.value = '有其他資料正在儲存，請稍等幾秒再按一次。'

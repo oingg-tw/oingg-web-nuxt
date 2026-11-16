@@ -51,7 +51,7 @@ const newState = (items = MIXED) => ({
 const mock = (ctx, state) => ctx.route('**/*', async (route) => {
   const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
   const body = () => JSON.parse(req.postData() ?? '{}')
-  if (p === '/api/core/billing/entitlement' && m === 'GET') return route.fulfill({ json: { tier: 'FREE', source: 'none', status: null, currentPeriodEnd: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 3 }, usage: {} } })
+  if (p === '/api/core/billing/entitlement' && m === 'GET') return route.fulfill({ json: { tier: 'FREE', source: 'none', status: null, currentPeriodEndsAt: null, trialEndsAt: null, renewalMode: null, quotas: { watchlistItems: 10, customHoldingColumns: 10, screenerPresets: 3, columnPresets: 3 }, usage: {} } })
   if (p === '/api/core/billing/plans' && m === 'GET') return route.fulfill({ json: { plans: [] } })
   if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: [] } })
   if (p === '/api/core/watchlists' && m === 'GET') return route.fulfill({ json: { watchlists: [{ id: 'w-1', name: '存股名單', position: 0, sourceShareToken: null, createdAt: '2026-10-01T00:00:00Z' }] } })

@@ -37,9 +37,9 @@ watch([authResolved, holdingsScope, ledgerVersion], ([resolved, uid]) => {
 
 const companyByCode = useCompanyLookup(() => result.value?.dividends.map(event => event.symbol) ?? [])
 
-const STATUS_TEXT: Record<HoldingDividendEvent['status'], string> = { paid: '已發放', awaiting_payment: '待發放', announced: '已公告', ex_rights_done: '已除權' }
+const STATUS_TEXT: Record<HoldingDividendEvent['payoutStatus'], string> = { paid: '已發放', awaiting_payment: '待發放', announced: '已公告', ex_rights_done: '已除權' }
 // 已經發生的：該發的都發了，或只配股、已除權而且沒有配股發放日（10/20 以前的配股，見 holdings-model.ts）
-const settled = (event: HoldingDividendEvent) => event.status === 'paid' || event.status === 'ex_rights_done'
+const settled = (event: HoldingDividendEvent) => event.payoutStatus === 'paid' || event.payoutStatus === 'ex_rights_done'
 const slashDate = (date: string) => date.replaceAll('-', '/')
 function payTextOf(event: HoldingDividendEvent): string {
   const stock = event.stockDividendDistributionDate
@@ -69,8 +69,8 @@ const events = computed(() => {
       payText: payTextOf(event),
       // 每股：現金（元，最多四位小數——上游浮點數帶雜訊，2330 是 7.00000137）＋配股（每股配幾股）
       perShareText: [
-        event.cashPerShare !== null ? `${Number(event.cashPerShare.toFixed(4))} 元` : event.exType === '權' ? null : '金額待公告',
-        event.stockRatio !== null ? `配股 ${Number(event.stockRatio.toFixed(6))} 股` : null
+        event.cashDividend !== null ? `${Number(event.cashDividend.toFixed(4))} 元` : event.exType === '權' ? null : '金額待公告',
+        event.stockDividendRatio !== null ? `配股 ${Number(event.stockDividendRatio.toFixed(6))} 股` : null
       ].filter(Boolean).join('、'),
       sharesText: `${groupThousands(event.sharesHeld)} 股${event.sharesHeldIsEstimate ? '（目前持股）' : ''}`,
       amountText: [
@@ -91,7 +91,7 @@ watch(events, (list) => {
 const answer = computed(() => {
   if (!result.value) return null
   const upcoming = events.value.filter(event => !settled(event))
-  const paid = events.value.filter(event => event.status === 'paid')
+  const paid = events.value.filter(event => event.payoutStatus === 'paid')
   const next = upcoming[0]
   const nextText = next
     ? `接下來 ${upcoming.length} 筆，最近的是 ${next.exText.slice(5)}的${next.name}${next.cashAmount !== null ? `，應收 ${money(next.cashAmount)}` : ''}`
@@ -101,7 +101,7 @@ const answer = computed(() => {
   const paidShares = paid.reduce((sum, event) => sum + (event.stockShares ?? 0), 0)
   const paidText = paid.length ? `過去一年發放 ${paid.length} 筆，現金合計應收 ${money(paidTotal)}${paidShares ? `、配股 ${groupThousands(paidShares)} 股` : ''}` : '過去一年沒有發放的配息'
   // 只配股、已除權的：股數另外說（沒有現金，入帳日上游沒有）
-  const exRights = events.value.filter(event => event.status === 'ex_rights_done')
+  const exRights = events.value.filter(event => event.payoutStatus === 'ex_rights_done')
   const exRightsShares = exRights.reduce((sum, event) => sum + (event.stockShares ?? 0), 0)
   const exRightsText = exRights.length ? `；另有 ${exRights.length} 筆已除權配股，共 ${groupThousands(exRightsShares)} 股` : ''
   return `${nextText}；${paidText}${exRightsText}。`
@@ -165,7 +165,7 @@ watch(answer, (text) => {
                 <td>{{ event.perShareText }}</td>
                 <td class="seo-table__num">{{ event.sharesText }}</td>
                 <td class="seo-table__num">{{ event.amountText }}</td>
-                <td>{{ STATUS_TEXT[event.status] }}</td>
+                <td>{{ STATUS_TEXT[event.payoutStatus] }}</td>
               </tr>
             </tbody>
           </SharedTable>

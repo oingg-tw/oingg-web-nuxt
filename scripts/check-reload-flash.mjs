@@ -47,7 +47,7 @@ const RISK = {
   benchmark: { annualizedVolatility: 0.172, maxDrawdown: drawdown, downsideDeviation: 0.121, ulcerIndex: 0.055, valueAtRisk95: -0.0218, expectedShortfall95: -0.0297 },
   concentration: null,
   diversificationRatio: 1.31,
-  holdings: SYMBOLS.map((symbol, index) => ({ symbol, weight: [0.4, 0.2, 0.15, 0.1, 0.1, 0.05][index], coverage: 'full', firstPriceDate: null, riskContribution: [0.48, 0.19, 0.1, 0.09, 0.08, 0.06][index] })),
+  holdings: SYMBOLS.map((symbol, index) => ({ symbol, weight: [0.4, 0.2, 0.15, 0.1, 0.1, 0.05][index], priceHistoryAvailability: 'full', firstPriceDate: null, riskContribution: [0.48, 0.19, 0.1, 0.09, 0.08, 0.06][index] })),
   sectors: null,
   fundamentals: null
 }

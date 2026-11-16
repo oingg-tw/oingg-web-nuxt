@@ -14,17 +14,17 @@ const fromHeader = route.query.t
 const headerToken = isNewsletterToken(fromHeader)
 const step = ref<Step>(headerToken ? 'confirm' : 'loading')
 const token = ref(headerToken ? fromHeader : '')
-const maskedEmail = ref<string | null>(null)
+const maskedAddress = ref<string | null>(null)
 const lookupError = ref<unknown>(null)
 const busy = ref(false)
 const message = ref('')
-const recipient = computed(() => (maskedEmail.value ? `到 ${maskedEmail.value}` : '給你'))
+const recipient = computed(() => (maskedAddress.value ? `到 ${maskedAddress.value}` : '給你'))
 
 async function lookup() {
   lookupError.value = null
   try {
-    const state = await apiFetch<NewsletterTokenState>('/newsletter/token/lookup', { method: 'POST', body: { token: token.value } })
-    maskedEmail.value = state.maskedEmail
+    const state = await apiFetch<NewsletterTokenState>('/newsletter/token/lookup', { method: 'POST', body: { optOutToken: token.value } })
+    maskedAddress.value = state.maskedDeliveryAddress
     step.value = state.optIn ? 'confirm' : 'stopped'
   } catch (error) {
     // 4xx（不認得的 token）是連結失效；連不上、5xx 交給全站的讀取失敗彈窗重試
@@ -49,8 +49,8 @@ async function send(action: 'opt-out' | 'opt-in') {
   message.value = ''
   busy.value = true
   try {
-    const state = await apiFetch<NewsletterTokenState>(`/newsletter/${action}`, { method: 'POST', body: { token: token.value } })
-    maskedEmail.value = state.maskedEmail ?? maskedEmail.value
+    const state = await apiFetch<NewsletterTokenState>(`/newsletter/${action}`, { method: 'POST', body: { optOutToken: token.value } })
+    maskedAddress.value = state.maskedDeliveryAddress ?? maskedAddress.value
     step.value = action === 'opt-out' ? 'stopped' : 'resumed'
   } catch (error) {
     const status = businessErrorStatus(error)

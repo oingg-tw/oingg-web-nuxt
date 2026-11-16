@@ -10,9 +10,9 @@ const currentUser = useCurrentUser()
 const authedFetch = useAuthedFetch()
 const unseen = useInboxUnseen()
 // 在瀏覽器讀（內容只畫給登入的人）；跟全站橫幅同一支 /api/cached
-const { data, error, refresh } = useFetch<{ items: ReleaseNote[] }>('/api/cached/release-notes', { key: 'release-notes-inbox', server: false })
+const { data, error, refresh } = useFetch<{ entries: ReleaseNote[] }>('/api/cached/release-notes', { key: 'release-notes-inbox', server: false })
 watchLoadFailure('inbox-notes', () => error.value, refresh)
-const notes = computed(() => inboxNotes(data.value?.items ?? [], Date.now()))
+const notes = computed(() => inboxNotes(data.value?.entries ?? [], Date.now()))
 const kindLabel = (kind: string) => RELEASE_KIND_LABELS[kind as ReleaseKind] ?? ''
 
 // 打開時有幾則未讀：標「未讀」用這個數字，之後歸零不影響這一次

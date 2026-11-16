@@ -14,7 +14,7 @@
     "taxes": 0,
     "averageMarketValue": 9120213,
     "turnover": 0,
-    "costRatio": 0
+    "costPct": 0
   },
   "benchmarkComparison": {
     "sampleDays": 40,

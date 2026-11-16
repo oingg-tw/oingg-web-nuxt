@@ -35,8 +35,8 @@ const planName = computed(() => {
                 <p v-if="isTrial && trialDaysLeft !== null" class="plan-page__note">
                   試用還剩 {{ trialDaysLeft }} 天，{{ dateText(entitlement?.trialEndsAt) }} 轉為免費版，資料都會保留。
                 </p>
-                <p v-else-if="entitlement?.source === 'subscription' && entitlement.currentPeriodEnd" class="plan-page__note">
-                  有效至 {{ dateText(entitlement.currentPeriodEnd) }}
+                <p v-else-if="entitlement?.source === 'subscription' && entitlement.currentPeriodEndsAt" class="plan-page__note">
+                  有效至 {{ dateText(entitlement.currentPeriodEndsAt) }}
                 </p>
                 <p v-else-if="entitlement?.tier === 'FREE'" class="plan-page__note">不用付費、沒有期限；超過額度的部分可以看、可以刪，只是不能新增。</p>
               </template>

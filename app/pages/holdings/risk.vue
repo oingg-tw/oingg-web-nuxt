@@ -11,7 +11,7 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 // 業務中台 要求照實呈現的四件事，這頁都做到：
 //   1. 沒有報酬率與夏普比率（持股是事後選的，回推的報酬會偏高；真實報酬看交易績效）。
 //   2. 一併顯示用了幾個交易日（波動度約 60 天、波動占比與相關係數約 120 天以上才有參考價值）。
-//   3. 期間中才有股價的持股（coverage partial）照實列出。
+//   3. 期間中才有股價的持股（priceHistoryAvailability partial）照實列出。
 //   4. 只陳述數字與定義，不加「風險偏高」這類評語或等級（投信投顧法）。
 //
 // Personal page: out of the index and the sitemap (/holdings/**).
@@ -98,7 +98,7 @@ const holdingLabel = (symbol: string) => {
   return entry ? `${entry.name} ${symbol}` : symbol
 }
 
-// 依權重由大到小；沒參與回推的（coverage none，權重是 null）不列
+// 依權重由大到小；沒參與回推的（priceHistoryAvailability none，權重是 null）不列
 const contributionHoldings = computed(() => (report.value?.holdings ?? [])
   .filter(holding => holding.weight !== null)
   .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0)))
@@ -110,7 +110,7 @@ const contributionRows = computed(() => {
   return contributionHoldings.value.map(holding => ({
     name: holdingLabel(holding.symbol),
     value: holdingsMetricText(holding.weight, 'pct'),
-    market: holdingsMetricText(holding.riskContribution, 'pct', holding.coverage === 'partial' ? '期間中才有股價' : missing)
+    market: holdingsMetricText(holding.riskContribution, 'pct', holding.priceHistoryAvailability === 'partial' ? '期間中才有股價' : missing)
   }))
 })
 
@@ -189,10 +189,10 @@ const { sample: partialSample, remember: rememberPartial } = useLineHint('holdin
 const namesReady = useCompanyNamesReady()
 
 const partialHoldings = computed(() => (report.value?.holdings ?? [])
-  .filter(holding => holding.coverage !== 'full')
+  .filter(holding => holding.priceHistoryAvailability !== 'full')
   .map((holding) => {
     const entry = companyByCode.value.get(holding.symbol)
-    return { label: entry ? `${entry.name} ${holding.symbol}` : holding.symbol, coverage: holding.coverage, firstPriceDate: holding.firstPriceDate }
+    return { label: entry ? `${entry.name} ${holding.symbol}` : holding.symbol, priceHistoryAvailability: holding.priceHistoryAvailability, firstPriceDate: holding.firstPriceDate }
   }))
 
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入

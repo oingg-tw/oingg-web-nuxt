@@ -29,7 +29,7 @@ export interface Entitlement {
   // subscription：付費中；trial：註冊後 14 天的專業版反向試用；allowlist：開發用；none：免費版
   source: 'subscription' | 'trial' | 'allowlist' | 'none'
   status: string | null
-  currentPeriodEnd: string | null
+  currentPeriodEndsAt: string | null
   trialEndsAt: string | null
   renewalMode: 'AUTOMATIC' | 'MANUAL' | null
   quotas: Partial<Record<QuotaResource, number | null>>

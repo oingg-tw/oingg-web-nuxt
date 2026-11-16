@@ -39,15 +39,15 @@ for (const scenario of ['body', 'unknown', 'header', 'none', 'already-off']) {
     'POST /api/core/newsletter/token/lookup': (route) => {
       calls.push(['lookup', route.request().postDataJSON()])
       if (scenario === 'unknown') return route.fulfill(problem(404))
-      return route.fulfill({ json: { edition: 'weekly', optIn: scenario !== 'already-off', maskedEmail: 'n***@example.com' } })
+      return route.fulfill({ json: { edition: 'weekly', optIn: scenario !== 'already-off', maskedDeliveryAddress: 'n***@example.com' } })
     },
     'POST /api/core/newsletter/opt-out': (route) => {
       calls.push(['opt-out', route.request().postDataJSON()])
-      return route.fulfill({ json: { edition: 'weekly', optIn: false, maskedEmail: scenario === 'header' ? null : 'n***@example.com' } })
+      return route.fulfill({ json: { edition: 'weekly', optIn: false, maskedDeliveryAddress: scenario === 'header' ? null : 'n***@example.com' } })
     },
     'POST /api/core/newsletter/opt-in': (route) => {
       calls.push(['opt-in', route.request().postDataJSON()])
-      return route.fulfill({ json: { edition: 'weekly', optIn: true, maskedEmail: 'n***@example.com' } })
+      return route.fulfill({ json: { edition: 'weekly', optIn: true, maskedDeliveryAddress: 'n***@example.com' } })
     }
   })
   const page = await ctx.newPage()
@@ -58,10 +58,10 @@ for (const scenario of ['body', 'unknown', 'header', 'none', 'already-off']) {
   await page.waitForFunction(() => !document.querySelector('.newsletter-result .app-skeleton'), null, { timeout: 15000 })
   if (scenario === 'body') {
     check(await title() === '不再收每週持股週報？' && (await page.locator('.newsletter-result__lead').innerText()).includes('到 n***@example.com'), 'body：先查，確認頁寫遮罩過的 email')
-    check(calls.length === 1 && calls[0][1].token === token, 'body：查詢的 token 在 body')
+    check(calls.length === 1 && calls[0][1].optOutToken === token, 'body：查詢的 token 在 body')
     await page.getByRole('button', { name: '不再收週報' }).click()
     await page.getByRole('heading', { name: '已停止寄週報' }).waitFor({ timeout: 10000 })
-    check(calls[1]?.[0] === 'opt-out' && calls[1][1].token === token, 'body：按了才退訂')
+    check(calls[1]?.[0] === 'opt-out' && calls[1][1].optOutToken === token, 'body：按了才退訂')
     await page.getByRole('button', { name: '繼續收週報' }).click()
     await page.getByRole('heading', { name: '週報會照常寄給你' }).waitFor({ timeout: 10000 })
     check(calls[2]?.[0] === 'opt-in' && /下一封預計 \d+\/\d+（日）晚上 8 點寄到 n\*\*\*@example\.com/.test(await page.locator('.newsletter-result__lead').innerText()), 'body：繼續收，寫下一封預計與 email')
@@ -72,7 +72,7 @@ for (const scenario of ['body', 'unknown', 'header', 'none', 'already-off']) {
     check(calls.length === 0 && await title() === '不再收每週持股週報？' && (await page.locator('.newsletter-result__lead').innerText()).includes('給你'), 'header：不查，直接給按鈕，不寫 email')
     await page.getByRole('button', { name: '不再收週報' }).click()
     await page.getByRole('heading', { name: '已停止寄週報' }).waitFor({ timeout: 10000 })
-    check(calls[0]?.[0] === 'opt-out' && calls[0][1].token === token, 'header：同一把 token 退訂')
+    check(calls[0]?.[0] === 'opt-out' && calls[0][1].optOutToken === token, 'header：同一把 token 退訂')
     check(await page.getByRole('button', { name: '繼續收週報' }).count() === 0, 'header：退訂後沒有「繼續收」（那把 token 不能繼續收）')
   } else {
     check(await title() === '已停止寄週報' && await page.getByRole('button', { name: '繼續收週報' }).count() === 1, 'already-off：已經停了就直接給「繼續收」')
@@ -252,7 +252,7 @@ for (const scenario of ['on', 'off', 'expired', 'taken', 'none']) {
       calls.push(route.request().postDataJSON())
       if (scenario === 'expired') return route.fulfill(problem(404))
       if (scenario === 'taken') return route.fulfill(problem(409, 'newsletter_email_taken'))
-      return route.fulfill({ json: { status: 'verified', maskedAddress: 'l***@example.com', editions: [{ edition: 'weekly', optIn: scenario === 'on' }] } })
+      return route.fulfill({ json: { status: 'verified', maskedDeliveryAddress: 'l***@example.com', editions: [{ edition: 'weekly', optIn: scenario === 'on' }] } })
     }
   })
   const page = await ctx.newPage()
@@ -266,7 +266,7 @@ for (const scenario of ['on', 'off', 'expired', 'taken', 'none']) {
     check(await title() === '確認你的 email' && calls.length === 0, `${scenario}：先停在確認頁，按了才送出`)
     await page.getByRole('button', { name: '確認 email' }).click()
     await page.waitForFunction(() => document.querySelector('h1')?.textContent !== '確認你的 email', null, { timeout: 10000 })
-    check(calls[0]?.token === token, `${scenario}：token 在 body`)
+    check(calls[0]?.verificationToken === token, `${scenario}：token 在 body`)
     const lead = await page.locator('.newsletter-result__lead').innerText()
     if (scenario === 'on') check(await title() === 'email 已驗證' && /寄到 l\*\*\*@example\.com，第一封預計 \d+\/\d+（日）晚上 8 點/.test(lead), 'on：寫寄到哪、第一封預計')
     if (scenario === 'off') check(await title() === 'email 已驗證' && lead.includes('週報現在是關著的'), 'off：週報關著，換一句')

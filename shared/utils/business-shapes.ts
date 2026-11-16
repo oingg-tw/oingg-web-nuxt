@@ -7,8 +7,8 @@ interface ExDateFields { exDividendDate?: string | null; exRightsDate?: string |
 // 除權息：業務中台給除息日 exDividendDate、除權日 exRightsDate（息只有除息日、權只有除權日、權息兩個都有）；站內的行事曆、提醒、表格
 // 用一個日期 exDate＋exType，呼叫端用 flatMap。權息的兩個日期同一天是一筆「權息」；不同天拆成兩筆（2026-11-16 詞彙檢核：原本取除息日、
 // 除權日被吃掉）：除息日那筆是「息」、沒有配股的欄位，除權日那筆是「權」、沒有現金的欄位，各頁照 exType 寫的字才不會把配股寫在除息日
-const CASH_FIELDS = ['cashDividend', 'distributionPerUnit', 'cashPerShare', 'cashAmount', 'paymentDate']
-const STOCK_FIELDS = ['stockDividendRatio', 'stockRatio', 'stockShares', 'fractionalShares', 'stockDividendDistributionDate', 'subscriptionRatio',
+const CASH_FIELDS = ['cashDividend', 'distributionPerUnit', 'cashAmount', 'paymentDate']
+const STOCK_FIELDS = ['stockDividendRatio', 'stockShares', 'fractionalShares', 'stockDividendDistributionDate', 'subscriptionRatio',
   'subscriptionPricePerShare', 'sharesOffered', 'sharesEmpOwner', 'sharesholderOwner', 'stockHoldingRatio']
 const without = <T extends object>(raw: T, fields: string[]): T => ({ ...raw, ...Object.fromEntries(fields.filter(field => field in raw).map(field => [field, null])) })
 

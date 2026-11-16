@@ -5,9 +5,9 @@
 // 讀不到更新紀錄就不掛，不擋頁面。不寄 email（使用者：「不佔用戶email這種私人空間」）
 import { Close, InfoFilled } from '@element-plus/icons-vue'
 
-const { data } = await useFetch<{ items: ReleaseNote[] }>('/api/cached/release-notes', { key: 'release-notes' })
+const { data } = await useFetch<{ entries: ReleaseNote[] }>('/api/cached/release-notes', { key: 'release-notes' })
 const dismissed = useCookie<string[]>('notice-banner-dismissed', { default: () => [], maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' })
-const banner = computed(() => activeBanner(data.value?.items ?? [], Date.now(), dismissed.value))
+const banner = computed(() => activeBanner(data.value?.entries ?? [], Date.now(), dismissed.value))
 
 function dismiss() {
   if (banner.value) dismissed.value = [...dismissed.value, banner.value.id].slice(-20)

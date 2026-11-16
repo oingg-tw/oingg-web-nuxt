@@ -23,7 +23,7 @@ async function verify() {
   message.value = ''
   busy.value = true
   try {
-    result.value = await apiFetch<NewsletterVerifyResult>('/newsletter/email/verify', { method: 'POST', body: { token: token.value } })
+    result.value = await apiFetch<NewsletterVerifyResult>('/newsletter/email/verify', { method: 'POST', body: { verificationToken: token.value } })
     step.value = 'verified'
   } catch (error) {
     const status = businessErrorStatus(error)
@@ -49,8 +49,8 @@ async function verify() {
   </NewsletterResult>
 
   <NewsletterResult v-else-if="step === 'verified'" title="email 已驗證">
-    <p v-if="weeklyOn" class="newsletter-result__lead" role="status">持股週報會寄到 {{ result?.maskedAddress }}，第一封預計 {{ nextNewsletterIssue(Date.now()) }}；那週沒有內容就不寄。</p>
-    <p v-else class="newsletter-result__lead" role="status">週報現在是關著的；登入後在帳號設定打開，就會寄到 {{ result?.maskedAddress }}。</p>
+    <p v-if="weeklyOn" class="newsletter-result__lead" role="status">持股週報會寄到 {{ result?.maskedDeliveryAddress }}，第一封預計 {{ nextNewsletterIssue(Date.now()) }}；那週沒有內容就不寄。</p>
+    <p v-else class="newsletter-result__lead" role="status">週報現在是關著的；登入後在帳號設定打開，就會寄到 {{ result?.maskedDeliveryAddress }}。</p>
     <template #actions="{ toSettings }">
       <NuxtLink to="/" class="el-button el-button--primary newsletter-result__primary">到安盈選股首頁</NuxtLink>
       <button type="button" class="newsletter-result__link" @click="toSettings">管理電子報設定</button>

@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
     return '連結不完整'
   }
   try {
-    await businessFetch('/newsletter/opt-out', { method: 'POST', body: { token } })
+    await businessFetch('/newsletter/opt-out', { method: 'POST', body: { optOutToken: token } })
     return '已停止寄送每週持股週報'
   } catch (error) {
     const status = (error as { statusCode?: number }).statusCode

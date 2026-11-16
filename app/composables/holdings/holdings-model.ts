@@ -149,11 +149,11 @@ export interface HoldingDividendEvent {
   stockDividendDistributionDate?: string | null
   // paid：該發的都發了（權息要現金與配股都發了）；awaiting_payment：已除息、還有沒發的（或發放日未公布）；announced：除息日還沒到；
   // ex_rights_done（業務中台 39b2f06）：只配股、已除權、而且沒有配股發放日（10/20 以前的配股）——不說已入帳也不說未公布。
-  // 有配股發放日的照日期判斷成 paid／awaiting_payment
-  status: 'paid' | 'awaiting_payment' | 'announced' | 'ex_rights_done'
-  // 金額還沒公布是 null；ETF 是每單位配息（不跟 cashDividend 相加）
-  cashPerShare: number | null
-  stockRatio: number | null
+  // 有配股發放日的照日期判斷成 paid／awaiting_payment。三個欄名是 2026-11-16 詞彙檢核的新名（業務中台 00083，原本 status、cashPerShare、stockRatio）
+  payoutStatus: 'paid' | 'awaiting_payment' | 'announced' | 'ex_rights_done'
+  // 每股現金股利，金額還沒公布是 null；ETF 是每單位配息
+  cashDividend: number | null
+  stockDividendRatio: number | null
   sharesHeld: number
   sharesHeldIsEstimate: boolean
   cashAmount: number | null
@@ -191,8 +191,8 @@ export interface PerformanceResult {
   mwr: number | null
   // 期間不滿 365 天時兩個都是 null
   annualized: { twr: number | null; mwr: number | null }
-  // 金額是元的整數；turnover、costRatio 是整段期間的值、不年化，沒有曝險時是 null
-  trading: { buyAmount: number; sellAmount: number; fees: number; taxes: number; averageMarketValue: number | null; turnover: number | null; costRatio: number | null }
+  // 金額是元的整數；turnover（0～1）、costPct（%，2026-11-16 起取代 0～1 的 costRatio）是整段期間的值、不年化，沒有曝險時是 null
+  trading: { buyAmount: number; sellAmount: number; fees: number; taxes: number; averageMarketValue: number | null; turnover: number | null; costPct: number | null }
   // sampleDays 少於 120 時三個值都是 null
   benchmarkComparison: { sampleDays: number; upCapture: number | null; downCapture: number | null; omega: number | null }
   // 全部年化；sampleDays 少於 120、或 riskFree 是 null 時全部是 null；calmar 期間不滿一年也是 null
@@ -270,7 +270,7 @@ export interface RiskReport {
   diversificationRatio: number | null
   // partial ＝ 期間中才有股價（例如中途上市），firstPriceDate 之前沒有參與。riskContribution 是佔組合變異數的
   // 比例（加總約 1）；樣本少於 120 天、或這一檔沒參與時是 null
-  holdings: { symbol: string; weight: number | null; coverage: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: number | null }[]
+  holdings: { symbol: string; weight: number | null; priceHistoryAvailability: 'full' | 'partial' | 'none'; firstPriceDate: string | null; riskContribution: number | null }[]
   // 2026-10-07（業務中台 9d691cd）。上游失敗時整個是 null。effectiveSectors ＝ 1 ÷ 產業 HHI
   sectors: { effectiveSectors: number; groups: { sectorCode: string | null; sectorName: string | null; weight: number; symbols: string[] }[] } | null
   // 組合本益比／股價淨值比是調和平均；*Coverage ＝ 有這個數字的持股佔市值的比例（虧損公司與 ETF 沒有本益比）
