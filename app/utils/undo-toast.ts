@@ -79,7 +79,9 @@ export function undoToast(text: string, onUndo: () => void, onClose: () => unkno
           onUndo()
           instance.close()
         }
-      }, ['復原', h('span', { class: 'app-toast__countdown', 'aria-hidden': 'true' }, String(seconds.value))])
+        // 「復原」與秒數包在同一段裡（2026-11-16，使用者：「提示的倒數 是不是沒有垂直置中 好像偏了點」）：兩個各自是 flex 項目時各自置中，
+        // 中文字型與數字（Arial）的行框高度不同，置中後基線差 1px，數字看起來偏上；同一段裡照一般文字共用基線，整段再置中
+      }, [h('span', null, ['復原', h('span', { class: 'app-toast__countdown', 'aria-hidden': 'true' }, String(seconds.value))])])
     ]),
     onClose: () => {
       clearTimeout(timer)

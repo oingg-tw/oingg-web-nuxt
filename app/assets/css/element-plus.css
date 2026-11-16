@@ -410,6 +410,7 @@ html .el-message .el-message__content {
 
 /* 「復原」旁邊剩幾秒（undo-toast.ts）：固定兩位寬，10 變 9 時按鈕不縮 */
 .app-toast__countdown {
+  display: inline-block;
   min-width: 2ch;
   margin-left: 6px;
   color: var(--app-toast-muted);
