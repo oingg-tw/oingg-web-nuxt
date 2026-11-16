@@ -263,13 +263,14 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
         <el-avatar :size="72" :src="currentUser.photoURL ?? undefined" alt="" class="account-page__avatar">
           {{ displayLabel.slice(0, 1).toUpperCase() }}
         </el-avatar>
-        <p class="account-page__name">{{ currentUser.displayName || '未設定名稱' }}</p>
-        <p class="account-page__email">{{ currentUser.email }}</p>
+        <div class="account-page__identity">
+          <p class="account-page__name">{{ currentUser.displayName || '未設定名稱' }}</p>
+          <p class="account-page__email">{{ currentUser.email }}</p>
+        </div>
         <el-button :icon="SwitchButton" class="account-page__signout" @click="handleSignOut">登出</el-button>
       </div>
 
-      <section class="account-page__section" aria-labelledby="sign-in-methods-title">
-        <h2 id="sign-in-methods-title" class="account-page__section-title">登入方式</h2>
+      <AccountSection id="sign-in-methods-title" title="登入方式">
         <ul class="app-card account-page__methods">
           <li v-if="providers.includes('google.com')" class="account-page__method"><span>Google</span><span class="account-page__method-note">{{ currentUser.email }}</span></li>
           <li v-if="providers.includes('password')" class="account-page__method"><span>電子郵件</span><span class="account-page__method-note">{{ currentUser.email }}</span></li>
@@ -301,13 +302,12 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
         <el-button v-if="linkMessage.includes('重新用 LINE 登入')" @click="startLineLogin('/account')">重新用 LINE 登入</el-button>
         <p v-if="lineAccount && !providers.includes('google.com')" class="account-page__note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
         <p v-else-if="!lineAccount" class="account-page__note">綁定 LINE 之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
-      </section>
+      </AccountSection>
 
-      <section class="account-page__section" aria-labelledby="delete-account-title">
-        <h2 id="delete-account-title" class="account-page__section-title">刪除帳號</h2>
+      <AccountSection title="刪除帳號">
         <p class="account-page__delete-text">刪除帳號會把你在這裡的資料一起刪掉，而且無法復原。</p>
         <el-button type="danger" plain class="account-page__delete-button" @click="openDelete">刪除帳號…</el-button>
-      </section>
+      </AccountSection>
 
       <el-dialog v-model="deleteOpen" title="永久刪除帳號" width="min(480px, 92vw)">
         <p class="account-page__delete-text">以下資料會一起刪除，無法復原：</p>
@@ -376,19 +376,45 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
   color: var(--el-text-color-secondary);
 }
 
+.account-page__identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .account-page__signout {
   width: 100%;
   max-width: 240px;
 }
 
-.account-page__section {
-  margin-top: 24px;
-}
+/* 電腦版（2026-11-16）：大頭貼、名稱與 email、登出排成一列，不再是手機的直排置中。容器是 AccountPageShell，720 同 AccountSection */
+@container (min-width: 720px) {
+  .account-page__card {
+    flex-direction: row;
+    gap: 16px;
+    padding: 16px 24px;
+  }
 
-.account-page__section-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0 0 12px;
+  .account-page__avatar {
+    flex: none;
+    margin-bottom: 0;
+  }
+
+  .account-page__identity {
+    flex: 1;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .account-page__email {
+    margin-bottom: 0;
+  }
+
+  .account-page__signout {
+    width: auto;
+  }
 }
 
 .account-page__delete-text {

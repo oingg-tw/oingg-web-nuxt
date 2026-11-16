@@ -28,11 +28,19 @@ watch(
 </template>
 
 <style scoped>
+/* 手機一欄 480；電腦版 960（2026-11-16，使用者：「電腦版上看起來彆扭…在電腦版要RWD」）：原本電腦版也是 480 置中，離側欄一大段、
+   卡片窄。960 讓每一段排成標題在左、內容在右（AccountSection），表格和設定不會拉得太寬 */
 .account-shell {
   container-type: inline-size;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .account-shell {
+    max-width: 960px;
+  }
 }
 
 .account-shell__title {
