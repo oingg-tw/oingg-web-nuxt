@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 電子報（2026-11-16：使用者在業務中台那邊決定先做每週持股週報；設計 https://claude.ai/artifact/YK4pXxDNTwggGgbB4DvoEN）。預設關閉，打開開關
-// 就是同意收信（業務中台 GET /newsletter、PUT /newsletter/weekly）；改了就存，不另外按儲存。信裡的退訂連結打開的是 /newsletter/unsubscribe。
+// 就是同意收信（業務中台 GET /newsletter、PUT /newsletter/weekly）；改了就存，不另外按儲存。信裡的退訂連結打開的是 /newsletter/opt-out。
 // 沒有帳號 email 的人（LINE 建立的）自己填一個收件 email（PUT /newsletter/email），驗證信（POST /newsletter/email/verification）裡的連結
 // 打開 /newsletter/verify，確認了才開始寄。設定頁：不給搜尋引擎收錄，也不進 sitemap
 useSeoMeta({ title: '電子報', robots: 'noindex, nofollow' })

@@ -2,7 +2,7 @@
 // 信裡「不再收週報」打開的頁（2026-11-16，業務中台的合約；設計 https://claude.ai/artifact/YK4pXxDNTwggGgbB4DvoEN 的 5～8）。不用登入。兩種網址：
 //   - 內文的連結 #t=<token>：# 後面不會送到伺服器，網站與業務中台的紀錄都沒有它。讀到後查遮罩過的 email 與狀態（POST /newsletter/token/lookup），
 //     按「不再收週報」才退訂（POST /newsletter/opt-out）：打開就退訂的話，信箱的安全掃描先點一次就把人退掉了。退訂後可以「繼續收週報」
-//   - 信件標頭 List-Unsubscribe 的 ?t=<token>：Gmail、Yahoo 用 POST 打（server/routes/newsletter/unsubscribe.post.ts），有些信箱用 GET 打開，
+//   - 信件標頭 List-Unsubscribe 的 ?t=<token>：Gmail、Yahoo 用 POST 打（server/routes/newsletter/opt-out.post.ts），有些信箱用 GET 打開，
 //     就是這一頁。那把 token 只能退訂（查詢、繼續收都回 404），所以不查、直接給「不再收週報」，退訂後也沒有「繼續收」
 // 版面是 NewsletterResult；標頭（不快取、不收錄、Referer 只送網域）在 nuxt.config 的 routeRules
 useSeoMeta({ title: '不再收週報', robots: 'noindex, nofollow' })

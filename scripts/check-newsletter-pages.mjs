@@ -3,9 +3,9 @@
 //     範例週報
 //   - 沒有帳號 email：自己填收件 email（依序存 email、打開週報、寄驗證信）、格式不對、寄不出去、重寄等 60 秒、一天寄滿、換 email（開關不動）
 //   - /newsletter/verify：按了「確認 email」才送出；週報開著、關著兩種說法；404 連結失效、409 別的帳號在用、沒有 token
-//   - /newsletter/unsubscribe：內文 #t= 查詢後才退訂、繼續收；不認得的 token、沒有 token 是連結失效；標頭 ?t= 不查、退訂後沒有「繼續收」；
+//   - /newsletter/opt-out：內文 #t= 查詢後才退訂、繼續收；不認得的 token、沒有 token 是連結失效；標頭 ?t= 不查、退訂後沒有「繼續收」；
 //     token 不出現在任何請求網址
-//   - POST /newsletter/unsubscribe（RFC 8058）：形狀不對的 token 回 400，不送上游
+//   - POST /newsletter/opt-out（RFC 8058）：形狀不對的 token 回 400，不送上游
 // 業務中台全部模擬，其他寫入一律擋下（測試帳號不會被寫入）。
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-newsletter-pages.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD）
@@ -53,7 +53,7 @@ for (const scenario of ['body', 'unknown', 'header', 'none', 'already-off']) {
   const page = await ctx.newPage()
   const token = scenario === 'header' ? 'HeaderToken_0123456789' : 'BodyToken-0123456789ab'
   const path = { body: `#t=${token}`, unknown: `#t=${token}`, header: `?t=${token}`, none: '', 'already-off': `#t=${token}` }[scenario]
-  await ready(page, `/newsletter/unsubscribe${path}`)
+  await ready(page, `/newsletter/opt-out${path}`)
   const title = () => page.locator('h1').innerText()
   await page.waitForFunction(() => !document.querySelector('.newsletter-result .app-skeleton'), null, { timeout: 15000 })
   if (scenario === 'body') {
@@ -83,9 +83,9 @@ for (const scenario of ['body', 'unknown', 'header', 'none', 'already-off']) {
 
 console.log('一鍵退訂（RFC 8058）')
 {
-  const response = await fetch(`${base}/newsletter/unsubscribe?t=a.b`, { method: 'POST', body: 'List-Unsubscribe=One-Click', headers: { 'content-type': 'application/x-www-form-urlencoded' } })
+  const response = await fetch(`${base}/newsletter/opt-out?t=a.b`, { method: 'POST', body: 'List-Unsubscribe=One-Click', headers: { 'content-type': 'application/x-www-form-urlencoded' } })
   check(response.status === 400 && response.headers.get('cache-control') === 'private, no-store', '形狀不對的 token 回 400、不快取')
-  const page = await fetch(`${base}/newsletter/unsubscribe?t=abc`)
+  const page = await fetch(`${base}/newsletter/opt-out?t=abc`)
   check(page.status === 200 && page.headers.get('x-robots-tag') === 'noindex, nofollow' && page.headers.get('referrer-policy') === 'strict-origin', 'GET 是頁面：不收錄、Referer 只送網域')
 }
 

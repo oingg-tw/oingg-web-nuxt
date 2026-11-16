@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 電子報不用登入的頁（退訂 /newsletter/unsubscribe、驗證 email /newsletter/verify，2026-11-16）共用的版面：標題、說明、放按鈕的卡片、註記、
+// 電子報不用登入的頁（退訂 /newsletter/opt-out、驗證 email /newsletter/verify，2026-11-16）共用的版面：標題、說明、放按鈕的卡片、註記、
 // 錯誤訊息。插槽拿到 toSettings（「到帳號設定」）：帳號頁會把訪客送回首頁，所以沒登入的先開登入，在這一頁登入好了再過去
 defineProps<{ title: string; message?: string }>()
 
