@@ -99,14 +99,10 @@ export interface CompanyProfileDetail {
   taxId: string | null
   // 外國企業（KY）才有
   foreignRegistrationCountryName: string | null
-  // 數據中台的一人一列（2026-11-08 跟業務中台對過的形狀：法人名稱、職稱、代理分開，一欄多人拆開）。null＝上游還沒有這個鍵（過渡期
-  // 業務中台會回 null），讀下面的字串欄（原文照登）；[] 才是真的沒有負責人。role 是開放列舉，沒見過的值略過
-  officers: CompanyOfficer[] | null
-  chairman: string | null
-  generalManager: string | null
-  spokesperson: string | null
-  spokespersonTitle: string | null
-  deputySpokesperson: string | null
+  // 數據中台的一人一列（2026-11-08 跟業務中台對過的形狀：法人名稱、職稱、代理分開，一欄多人拆開）。業務中台 11-11 起必填（缺了回 502），
+  // 舊的字串欄（chairman、generalManager…）2026-11-16 起不讀（詞彙檢核 X5，讀者先拿掉，上游再停）。[] 是真的沒有負責人；
+  // role 是開放列舉，沒見過的值略過
+  officers: CompanyOfficer[]
   paidInCapitalNtd: number | null
   issuedShares: number | null
   numberOfPreferenceShares: number | null
@@ -135,11 +131,9 @@ const text = (value: unknown) => (typeof value === 'string' && value.trim() ? va
 const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null)
 
 function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfileDetail {
-  const officers = Array.isArray(raw.officers)
-    ? (raw.officers as Record<string, unknown>[]).flatMap(item => (item && OFFICER_ROLES.has(item.role as string) && (text(item.name) || text(item.corporationName))
-      ? [{ role: item.role as CompanyOfficer['role'], name: text(item.name), title: text(item.title), isActing: item.isActing === true, corporationName: text(item.corporationName) }]
-      : []))
-    : null
+  const officers = (Array.isArray(raw.officers) ? raw.officers as Record<string, unknown>[] : []).flatMap(item => (item && OFFICER_ROLES.has(item.role as string) && (text(item.name) || text(item.corporationName))
+    ? [{ role: item.role as CompanyOfficer['role'], name: text(item.name), title: text(item.title), isActing: item.isActing === true, corporationName: text(item.corporationName) }]
+    : []))
   return {
     companyFullName: text(raw.companyFullName),
     englishShortName: text(raw.englishShortName),
@@ -150,11 +144,6 @@ function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfi
     taxId: text(raw.taxId),
     foreignRegistrationCountryName: text(raw.foreignRegistrationCountryName),
     officers,
-    chairman: text(raw.chairman),
-    generalManager: text(raw.generalManager),
-    spokesperson: text(raw.spokesperson),
-    spokespersonTitle: text(raw.spokespersonTitle),
-    deputySpokesperson: text(raw.deputySpokesperson),
     paidInCapitalNtd: count(raw.paidInCapitalNtd),
     issuedShares: count(raw.issuedShares),
     numberOfPreferenceShares: count(raw.numberOfPreferenceShares),

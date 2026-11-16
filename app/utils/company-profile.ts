@@ -33,16 +33,10 @@ export function officerText(officer: CompanyOfficer): string {
   return notes.length ? `${officer.name}（${notes.join('，')}）` : officer.name
 }
 
-// 某個角色：有 officers 讀 officers（同角色多人用頓號接，[] 是真的沒有），沒有就讀舊的字串欄
-export function officersOf(detail: CompanyProfileDetail, role: CompanyOfficer['role']): string | null {
-  if (detail.officers) {
-    const people = detail.officers.filter(officer => officer.role === role).map(officerText)
-    return people.length ? people.join('、') : null
-  }
-  if (role === 'chairman') return detail.chairman
-  if (role === 'general_manager') return detail.generalManager
-  if (role === 'spokesperson') return detail.spokesperson && (detail.spokespersonTitle ? `${detail.spokesperson}（${detail.spokespersonTitle}）` : detail.spokesperson)
-  return detail.deputySpokesperson
+// 某個角色的負責人：同角色多人用頓號接，沒有是 null（2026-11-16 起不讀舊的字串欄，見 useCompanyProfile 的 officers）
+export function officersOf(detail: Pick<CompanyProfileDetail, 'officers'>, role: CompanyOfficer['role']): string | null {
+  const people = detail.officers.filter(officer => officer.role === role).map(officerText)
+  return people.length ? people.join('、') : null
 }
 
 const dash = (value: string | null | undefined) => value || '－'

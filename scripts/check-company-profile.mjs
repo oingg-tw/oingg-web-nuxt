@@ -20,15 +20,11 @@ assert.equal(officerText(person('general_manager', '王小明', { isActing: true
 assert.equal(officerText(person('chairman', '蔡明興', { corporationName: '富邦金融控股股份有限公司' })), '蔡明興（富邦金融控股股份有限公司代表人）')
 assert.equal(officerText(person('chairman', null, { corporationName: '某某投資股份有限公司' })), '某某投資股份有限公司')
 
-// officers 是 null（上游還沒有）照舊讀字串欄；有 officers 讀 officers，同角色多人用頓號接，[] 是真的沒有
-const legacy = { officers: null, chairman: '魏哲家', generalManager: '總裁: 魏哲家', spokesperson: '黃仁昭', spokespersonTitle: '資深副總經理暨財務長', deputySpokesperson: '高孟華' }
-assert.equal(officersOf(legacy, 'general_manager'), '總裁: 魏哲家')
-assert.equal(officersOf(legacy, 'spokesperson'), '黃仁昭（資深副總經理暨財務長）')
-assert.equal(officersOf(legacy, 'deputy_spokesperson'), '高孟華')
-const split = { ...legacy, officers: [person('general_manager', '游步東'), person('general_manager', '謝兵')] }
+// 同角色多人用頓號接；那個角色沒有人、或 officers 是 [] 是 null（2026-11-16 起不讀舊的字串欄）
+const split = { officers: [person('general_manager', '游步東'), person('general_manager', '謝兵')] }
 assert.equal(officersOf(split, 'general_manager'), '游步東、謝兵')
 assert.equal(officersOf(split, 'chairman'), null)
-assert.equal(officersOf({ ...legacy, officers: [] }, 'chairman'), null)
+assert.equal(officersOf({ officers: [] }, 'chairman'), null)
 
 // 公司網站：只有 http(s):// 開頭的完整網址才是連結；數據中台現在給的 tsmc.com 不補 https://（交給數據中台），javascript: 擋掉
 assert.equal(websiteHref('https://www.tsmc.com'), 'https://www.tsmc.com')
