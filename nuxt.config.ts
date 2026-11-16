@@ -41,7 +41,7 @@ export default defineNuxtConfig({
     // — a noindex URL inside a sitemap is a contradiction Search Console reports (2026-09-19).
     // /industries/sensitivity：2026-11-04 先隱藏、導到 /industries/cycle（見那一頁），導走的網址不放進網站地圖
     // /industries 與 /industries/overview：2026-11-09 產業索引先隱藏，/industries 畫殖利率分析（標準網址是 /industries/dividend），overview 導回 /industries
-    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/account', '/account/**', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity', '/industries', '/industries/overview'],
+    exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/account', '/account/**', '/newsletter/**', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity', '/industries', '/industries/overview'],
     sitemaps: {
       pages: {
         includeAppSources: true
@@ -147,7 +147,9 @@ export default defineNuxtConfig({
     // strict-origin 而不是 no-referrer（2026-10-22）：Firebase 的 Browser key 加了網站限制，沒有 Referer 的登入請求會被擋——在分享頁登入、
     //「加到我的觀察清單」都會失敗，而且單頁應用整段沿用第一頁的政策，從分享連結進站的人之後每一頁都會被擋。strict-origin 只送網域、不送路徑，
     // token 照樣不外洩
-    '/share/**': { headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'strict-origin' } }
+    '/share/**': { headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'strict-origin' } },
+    // 電子報的退訂頁（2026-11-16）：信件標頭那把 token 在網址的 ?t= 裡，同分享連結：不快取、不收錄、Referer 只送網域
+    '/newsletter/**': { headers: { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'strict-origin' } }
   },
   app: {
     head: {
