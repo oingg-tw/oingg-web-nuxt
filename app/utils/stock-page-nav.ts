@@ -207,7 +207,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '稅後淨利率', perspective: '占比', to: code => `/stock/${code}/net-profit-margin`, hook: '營業額最後有幾成變成獲利' }
     ]
   },
-  // 現金流：組成以外全是占比，分母各不相同，寫在 label 與 hook 裡。資本支出佔營收比的分子是現金流量表科目，掛在這裡（METRIC_PAGES 記錄
+  // 現金流：組成以外全是占比，分母各不相同，寫在 label 與 hook 裡。資本支出占營收比的分子是現金流量表科目，掛在這裡（METRIC_PAGES 記錄
   // 的唯一分類例外）。「組成」頁 2026-09-27 擋過：當時 investing 在 40 檔裡 30 檔 null、114Q4 單季推導有 bug。2026-10-17 重驗（使用者
   // 要「現金流量的組成 就知道支出與收入占比」）：40 檔 × 8 季，有現金流量表的 248 份三個小計都是原生欄位、相加等於現金增減，才開這一頁
   // ——仍然不用恆等式推第三段（見 shared/utils/cash-flow-composition.ts）。
@@ -221,7 +221,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '營業現金流利潤率', perspective: '占比', to: code => `/stock/${code}/ocf-margin`, hook: '每一百元營業額，變成本業現金的有幾元' },
       { label: '自由現金流利潤率', perspective: '占比', to: code => `/stock/${code}/fcf-margin`, hook: '每一百元營業額，扣掉買設備的錢還剩幾元現金' },
       { label: '應計項目比率', perspective: '占比', to: code => `/stock/${code}/accruals-ratio`, hook: '獲利裡有多少還只是帳上的數字，錢沒真的收到' },
-      { label: '資本支出佔營收比', perspective: '占比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
+      { label: '資本支出占營收比', perspective: '占比', to: code => `/stock/${code}/capex-to-revenue`, hook: '把多少錢拿去買設備蓋廠房。那些錢就不會變成股利' }
     ]
   },
   // 營運資金。六支是一條恆等鏈，可以自己驗算（2330 TTM 實測閉合到分）：

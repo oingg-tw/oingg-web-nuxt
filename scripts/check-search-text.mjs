@@ -15,6 +15,7 @@ assert.equal(searchKey('Book Value'), 'book value')
 assert.equal(searchKey('  ROE '), 'roe')
 assert.equal(searchKey('周轉率'), '週轉率')
 assert.equal(searchKey('臺積電'), searchKey('台積電'))
+assert.equal(searchKey('資本支出佔營收比'), searchKey('資本支出占營收比'))
 assert.equal(searchKey('２３３０'), '2330')
 
 const STOCKS = [

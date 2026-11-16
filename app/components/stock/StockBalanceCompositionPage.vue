@@ -118,7 +118,7 @@ const SIBLINGS = [
 const CASH_FLOW_LINKS = [
   { slug: 'ocf-to-net-income', topic: '營業現金流對淨利比' },
   { slug: 'fcf-conversion-rate', topic: '自由現金流轉換率' },
-  { slug: 'capex-to-revenue', topic: '資本支出佔營收比' }
+  { slug: 'capex-to-revenue', topic: '資本支出占營收比' }
 ]
 const footerLinks = computed(() => props.kind === 'cashFlow' ? [
   { to: metricPath(page.metricCode), label: `${page.learnLabel}（新手專區）` },

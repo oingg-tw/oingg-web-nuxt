@@ -124,7 +124,7 @@ export const LEARN_GROUPS: LearnGroup[] = [
     slug: 'dividends',
     label: '配給股東多少',
     question: '配給股東多少？',
-    answer: '每年配多少、配的錢佔獲利多少、配得穩不穩，以及除息之後股價回不回得來。',
+    answer: '每年配多少、配的錢占獲利多少、配得穩不穩，以及除息之後股價回不回得來。',
     categories: ['dividend'],
     core: [{ metric: 'cashDividendYield' }, { metric: 'dividendPayoutRatio' }, { metric: 'consecutiveDividendYears' }, { metric: 'dividendCoverageRatio' }, { topic: 'dividend-fill' }]
   },

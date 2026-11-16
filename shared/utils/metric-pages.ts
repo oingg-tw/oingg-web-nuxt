@@ -218,11 +218,11 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'revenue-growth', metricCode: 'revenueGrowthRate', timeframe: 'TTM', topic: '營收成長年增率', titleKeywords: '營收成長年增率與逐季變化', related: ['monthly-revenue', 'net-income-growth', 'margins'] },
   { slug: 'net-income-growth', metricCode: 'netIncomeGrowthRate', compareMetricCode: 'epsGrowthRate', timeframe: 'TTM', topic: '淨利成長年增率', titleKeywords: '淨利成長年增率逐季變化', related: ['eps', 'revenue-growth', 'margins'] },
   { slug: 'equity-growth', metricCode: 'equityGrowthRate', compareMetricCode: 'bvpsGrowthRate', timeframe: 'Q', topic: '淨值成長年增率', titleKeywords: '淨值成長年增率逐季變化', related: ['equity-source', 'capex-to-revenue', 'net-income-growth', 'dividend-payout-ratio'] },
-  { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'TTM', topic: '資本支出佔營收比', titleKeywords: '資本支出佔營收比投資強度' },
+  { slug: 'capex-to-revenue', metricCode: 'capexToRevenue', timeframe: 'TTM', topic: '資本支出占營收比', titleKeywords: '資本支出占營收比投資強度' },
   { slug: 'rd-intensity', metricCode: 'rdIntensity', timeframe: 'TTM', topic: '研發費用率', titleKeywords: '研發費用率占營收比重' },
   // 獲利品質 2026-09-21（跟獲利能力分開：一個是賺多少、一個是賺的有沒有現金撐）：沒徽章的三支，深度齊、有溯源。排除 beneish 三支、
   // piotroskiFScore（有自己的頁）、abnormalCapexRatio（模型偏差不是申報比率）。fcfMargin 當時只有 1 期，2026-10-23 回填到 2020Q3／Q4
-  // 起（抽 7 家 23～24 季）才開頁（使用者：「要」）；它＝營業現金流利潤率 − 資本支出佔營收比（同日抽 10 家 231 季都在 0.01 內），
+  // 起（抽 7 家 23～24 季）才開頁（使用者：「要」）；它＝營業現金流利潤率 − 資本支出占營收比（同日抽 10 家 231 季都在 0.01 內），
   // 所以對照畫營業現金流利潤率、接著讀這兩頁。
   // 連續獲利年數 2026-09-22 下架（「資料怪怪的」）：basis=FY 同一年回好幾列而且計數會動（2330 2024=5,5,5,6；1101 2025 年中歸零；
   // 2454 與 2891 序列相同），型錄 metadata 沒錯、是序列不按年；等 analysis-ts 確認一年一列且單調再加回。
