@@ -31,7 +31,7 @@ const facts = computed<FactItem[]>(() => {
     { label: '公司可收回', value: preferredYesNo(stockEntry.redeemable, '可以', '不可以') },
     { label: '發行日', value: stockEntry.issueDate ?? '－' },
     { label: '上市日', value: stockEntry.listingDate ?? '－' },
-    { label: '市場', value: stockEntry.marketType },
+    { label: '市場', value: MARKET_TEXT[stockEntry.market]?.name ?? '－' },
     // 發行公司的信用評等（2026-10-31）：每家機構一列，MOPS 原文。有的最新一筆已經好幾年（國泰金 2015），所以寫公布日
     ...(stockEntry.issuerCreditRatings.length
       ? stockEntry.issuerCreditRatings.map(rating => ({

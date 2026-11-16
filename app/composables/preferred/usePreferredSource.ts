@@ -55,7 +55,8 @@ const CATEGORIES = [
     // 排序與數字條件沒有意義，所以只當欄位；條件只有有沒有評等。不是這檔特別股本身的評等
     { field: 'issuerCreditRatingText', name: '發行公司信用評等', columnOnly: true, description: '發行公司申報的各家機構最新長期評等原文，不是這檔特別股本身的評等' },
     { field: 'hasIssuerCreditRating', name: '有發行公司信用評等', kind: 'categorical', options: yesNo('有評等', '沒有評等') },
-    { field: 'marketType', name: '市場', kind: 'categorical', options: [{ value: '上市', label: '上市' }, { value: '上櫃', label: '上櫃' }] }
+    // 市場讀 market（sii／otc，2026-11-16 詞彙檢核 X15）：marketType（中文上市／上櫃）是退役的舊名，讀者先換、上游再停
+    { field: 'market', name: '市場', kind: 'categorical', options: [{ value: 'sii', label: '上市' }, { value: 'otc', label: '上櫃' }] }
   ])
 ]
 
@@ -204,6 +205,10 @@ export function usePreferredSource(): UniverseSource & { dataDate: Readonly<Ref<
     // 表頭不需要等任何資料（欄名寫在 METRICS；2026-10-16 拿掉表頭說明之前要等欄位公式），所以一進來就能建表頭
     ready: computed(() => true),
     defaultColumns: DEFAULT_COLUMNS,
+    // 2026-11-16 以前存的條件、欄位組合與書籤寫 marketType，值是中文；讀進來換成 market 與 sii／otc。shortcut: 帳號裡的存檔不改寫，
+    // 下次儲存才換；網址永遠可能是舊的，這兩行留著（同 ETF 的 assetClass）
+    renamedFields: { marketType: 'market' },
+    renamedValues: { market: { 上市: 'sii', 上櫃: 'otc' } },
     filterTemplates: FILTER_TEMPLATES,
     columnTemplates: COLUMN_TEMPLATES,
     column,

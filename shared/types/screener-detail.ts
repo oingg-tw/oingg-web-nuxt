@@ -118,7 +118,8 @@ export interface PreferredStockEntry {
   companyName: string
   isinCode: string | null
   listingDate: string | null
-  marketType: string
+  // sii 上市、otc 上櫃（2026-11-16 起不讀退役的 marketType）
+  market: string
   issueDate: string | null
   issuePrice: number | null
   // 每年股息（元）

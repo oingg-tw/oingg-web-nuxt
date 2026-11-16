@@ -93,6 +93,8 @@ export interface UniverseSource {
   defaultColumns: string[]
   // 上游改過名的欄位（舊名 → 新名）：存檔的條件與排序、欄位組合、網址裡的舊名，讀進來就換成新名
   renamedFields?: Record<string, string>
+  // 改名時連值也換了的類別欄位（新欄位名 → 舊值 → 新值）：存檔、網址裡的舊條件值讀進來就換成新值
+  renamedValues?: Record<string, Record<string, string>>
   filterTemplates: UniverseTemplate[]
   // fieldKeys 是畫面的欄位 id
   columnTemplates: ColumnPresetTemplate[]
@@ -180,7 +182,12 @@ export function useUniverseScreener(source: UniverseSource) {
         exclude: filter.exclude ?? false,
         // 類別值換成選項的型別（同普通股的 currentValues）：ETF 的除權息月份選項 2026-11-03 起是整數，存檔、網址裡是 "7"；
         // 不換的話條件標籤寫「7」不寫「7 月」、勾選框不打勾
-        values: filter.values?.length ? filter.values.map(value => findScreenerOption(locateFieldInSchema(source.categories.value, fieldId)?.metric.options, value)?.value ?? value) : undefined
+        values: filter.values?.length
+          ? filter.values.map((stored) => {
+            const value = source.renamedValues?.[snapshotField(fieldId)]?.[String(stored)] ?? stored
+            return findScreenerOption(locateFieldInSchema(source.categories.value, fieldId)?.metric.options, value)?.value ?? value
+          })
+          : undefined
       }
     })
   }

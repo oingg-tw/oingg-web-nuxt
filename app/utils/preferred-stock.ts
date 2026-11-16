@@ -20,7 +20,7 @@ const FIELD_FACETS: Record<string, typeof PREFERRED_FACETS[number]['suffix']> = 
   exDividendMonths: '/dividends', cashDividendYears: '/dividends', cashDividendSkipped: '/dividends',
   issuerCreditRatingText: '/terms', hasIssuerCreditRating: '/terms',
   cumulativeDividend: '/terms', participatingExcessDividend: '/terms', liquidationPreference: '/terms', votingRights: '/terms', convertible: '/terms',
-  redeemable: '/terms', issueDate: '/terms', marketType: '/terms'
+  redeemable: '/terms', issueDate: '/terms', market: '/terms'
 }
 export const preferredFieldPath = (code: string, field: string): string | null =>
   FIELD_FACETS[field] === undefined ? null : `${preferredStockPath(code)}${FIELD_FACETS[field]}`
