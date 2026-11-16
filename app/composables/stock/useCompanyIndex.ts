@@ -13,7 +13,8 @@ interface SecuritiesResponse {
   count: number
   limit: number
   offset: number
-  entries: { symbol: string; companyName: string | null; type: 'COMMON' | 'PREFERRED' | 'ETF' }[]
+  // COMMON／PREFERRED／ETF；數據中台要換成小寫（詞彙檢核 X8），換值前後都認
+  entries: { symbol: string; companyName: string | null; type: string }[]
 }
 
 const KINDS: Record<string, CompanyIndexEntry['kind']> = { COMMON: 'common', PREFERRED: 'preferred', ETF: 'etf' }
@@ -38,7 +39,7 @@ export function useCompanyIndex() {
       total = response.count
       if (!response.entries.length) break
       for (const entry of response.entries) {
-        const kind = KINDS[entry.type]
+        const kind = KINDS[entry.type.toUpperCase()]
         if (!kind) continue
         // name 型別上可能是 null（本機 0 筆）。用代號頂上：搜尋會對 name 呼叫 toLowerCase()，一筆 null 就讓整個搜尋壞掉
         entries.push({ code: entry.symbol, name: entry.companyName ?? entry.symbol, kind })

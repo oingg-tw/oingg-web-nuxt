@@ -762,7 +762,8 @@ export const getExDividendMonth = defineCachedFunction(
         exDate: entry.exDate,
         symbol: entry.symbol,
         name: entry.companyName ?? entry.symbol,
-        kind: EX_DIVIDEND_KINDS[entry.securityType ?? ''] ?? null,
+        // 證券類別大小寫都認：數據中台要換成小寫、改叫 type（詞彙檢核 X8）
+        kind: EX_DIVIDEND_KINDS[(entry.securityType ?? '').toUpperCase()] ?? null,
         exType: entry.exType,
         cash: entry.distributionPerUnit ?? entry.cashDividend,
         stockPerShare: entry.stockDividendRatio,
