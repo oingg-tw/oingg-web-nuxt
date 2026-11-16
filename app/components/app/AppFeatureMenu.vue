@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Setting } from '@element-plus/icons-vue'
+import { Bell, Setting } from '@element-plus/icons-vue'
 
 // The CONTENTS of the 選單 slide-in layer — 手機版左側全螢幕圖層（2026-09-23）. Rendered by
 // layouts/default.vue and layouts/landing.vue inside AppSlideLayer.vue's slot; it has neither a
@@ -28,6 +28,8 @@ import { Setting } from '@element-plus/icons-vue'
 // 順序改讀 app-features.ts 的同一份（頁首攤平再接總經特區、大師徽章），補上原本只有桌機有的「排行」；最上面的使用者那一列改成整列的
 // 「頭像、名稱、個人資料與設定」（原本是一行帶底線的 email 連結），登出時是整列的「登入」。
 const { close } = useSlideLayer()
+// 有未讀的站內信時（2026-11-16）使用者那一列下面多一列「站內信」，看過就收起來（帳號區的側欄一直都有）
+const unseen = useInboxUnseen()
 </script>
 
 <template>
@@ -45,6 +47,11 @@ const { close } = useSlideLayer()
   <div class="feature-menu__user" @click="close">
     <UserMenuButton layout="row" />
   </div>
+  <NuxtLink v-if="unseen" to="/account/notices" class="app-card feature-menu__notice" @click="close">
+    <el-icon class="feature-menu__notice-icon" aria-hidden="true"><Bell /></el-icon>
+    <span class="feature-menu__notice-label">站內信</span>
+    <span class="feature-menu__notice-count">{{ unseenText(unseen) }} 則未讀</span>
+  </NuxtLink>
 
   <div class="feature-menu__grid">
     <NuxtLink
@@ -134,6 +141,39 @@ const { close } = useSlideLayer()
 /* Now shown (was hidden on mobile via display:none until direct request moved it ahead of the
    grid instead — see the template's own comment) — a bottom border stands in for the visual
    separation a literal footer position used to give it for free. */
+/* 站內信那一列：一張卡片（.app-card），整列寬、44px 以上（2026-11-16） */
+.feature-menu__notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+}
+
+.feature-menu__notice-icon {
+  font-size: 1.375rem;
+  color: var(--el-color-primary-dark-2);
+}
+
+.feature-menu__notice-label {
+  flex: 1;
+  font-weight: 600;
+}
+
+.feature-menu__notice-count {
+  padding: 0 0.625rem;
+  border-radius: 999px;
+  background: var(--el-text-color-primary);
+  color: var(--el-bg-color);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.75;
+}
+
 .feature-menu__user {
   margin-bottom: 16px;
   padding-bottom: 16px;

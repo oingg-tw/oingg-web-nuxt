@@ -85,6 +85,8 @@ const stageStyle = computed(() => {
 
       <main id="main-content" class="app-shell__content" :class="{ 'app-shell__content--centered': centered }" tabindex="-1">
         <div class="app-shell__inner" :class="{ 'app-shell__inner--centered': centered }">
+          <!-- 全站橫幅（站內信，2026-11-16）：維護、緊急狀況，伺服器就畫好 -->
+          <AppNoticeBanner />
           <UserEmailVerificationGate>
             <slot />
           </UserEmailVerificationGate>

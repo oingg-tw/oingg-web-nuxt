@@ -69,6 +69,7 @@ const stageStyle = computed(() => {
       <LazyAppHeaderMenu hydrate-on-visible class="app-shell__header-desktop" />
 
       <main id="landing-main-content" class="landing-shell__content" tabindex="-1">
+        <AppNoticeBanner />
         <slot />
       </main>
 

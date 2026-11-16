@@ -18,6 +18,24 @@ export interface ReleaseNote {
   // 只有維護公告有；endedAt 是 null＝進行中
   startedAt?: string | null
   endedAt?: string | null
+  // 通知方式（2026-11-16 站內信，詞彙表二之十）：inbox＝站內信、banner＝全站橫幅、null＝只放更新紀錄（一般更新）
+  channel?: string | null
+  // 橫幅從 publishedAt 掛到這個時刻；null＝一直掛，到管理站填上為止
+  bannerEndsAt?: string | null
+}
+
+const YEAR_MS = 365 * 86_400_000
+const newestFirst = (a: ReleaseNote, b: ReleaseNote) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
+
+// 站內信（帳號區的「站內信」）：近 12 個月 channel 是 inbox 的，新的在上；更早的看更新紀錄
+export const inboxNotes = (items: ReleaseNote[], now: number) =>
+  items.filter(note => note.channel === 'inbox' && Date.parse(note.publishedAt) <= now && now - Date.parse(note.publishedAt) <= YEAR_MS).sort(newestFirst)
+
+// 全站橫幅：已發布、還沒過 bannerEndsAt、這台瀏覽器沒關掉的；同時有好幾則只掛最新的一則（通知降噪指南，2026-11-16）
+export function activeBanner(items: ReleaseNote[], now: number, dismissed: string[]): ReleaseNote | null {
+  const live = items.filter(note => note.channel === 'banner' && Date.parse(note.publishedAt) <= now
+    && (!note.bannerEndsAt || Date.parse(note.bannerEndsAt) > now) && !dismissed.includes(note.id))
+  return live.sort(newestFirst)[0] ?? null
 }
 
 export const RELEASE_KIND_LABELS: Record<ReleaseKind, string> = { site: '網站功能', data: '資料', maintenance: '維護公告' }

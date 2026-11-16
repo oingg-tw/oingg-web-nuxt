@@ -89,6 +89,7 @@ export function useEntitlementSync() {
   const authResolved = useAuthResolved()
   const applying = useState('entitlement-sync-applying-started', () => false)
   const pending = useState('entitlement-sync-pending', () => false)
+  const inboxUnseen = useInboxUnseen()
 
   onMounted(() => {
     if (applying.value) return
@@ -102,11 +103,14 @@ export function useEntitlementSync() {
         if (!uid) {
           entitlement.value = null
           entitlementFailure.value = null
+          inboxUnseen.value = 0
           return
         }
         pending.value = true
         try {
-          await authedFetch('/users/me')
+          // 同一支也帶回站內信的未讀數（2026-11-16，見 useInboxUnseen）
+          const me = await authedFetch<{ user?: { unseenInboxCount?: number } }>('/users/me')
+          inboxUnseen.value = me.user?.unseenInboxCount ?? 0
         } catch (error) {
           devWarn('entitlement', 'GET /users/me (provisioning) failed', error)
         }

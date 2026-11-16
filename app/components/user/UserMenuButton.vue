@@ -23,15 +23,18 @@ const authResolved = useAuthResolved()
 const authHint = useAuthHint()
 const resolving = computed(() => !mounted.value || !authResolved.value)
 
+const unseen = useInboxUnseen()
 const displayLabel = computed(() => currentUser.value?.displayName || currentUser.value?.email || '')
 const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
 </script>
 
 <template>
   <template v-if="layout === 'bar'">
-    <NuxtLink v-if="currentUser && !resolving" to="/account" class="app-bar-item user-menu-button user-menu-button__trigger">
+    <!-- 有未讀的站內信時（2026-11-16）帳號旁掛數字，點了直接到站內信；看過就回到帳號與登入 -->
+    <NuxtLink v-if="currentUser && !resolving" :to="unseen ? '/account/notices' : '/account'" class="app-bar-item user-menu-button user-menu-button__trigger">
       <el-avatar :size="24" :src="currentUser.photoURL ?? undefined" alt="" class="user-menu-button__avatar">{{ initial }}</el-avatar>
-      帳號<span class="visually-hidden">：帳號與登入、方案與用量</span>
+      帳號<span v-if="unseen" class="user-menu-button__badge" aria-hidden="true">{{ unseenText(unseen) }}</span>
+      <span class="visually-hidden">{{ unseen ? `：${unseen} 則未讀站內信` : '：帳號與登入、方案與用量' }}</span>
     </NuxtLink>
     <span v-else-if="resolving && authHint" class="app-bar-item user-menu-button user-menu-button--pending" aria-hidden="true">
       <span class="user-menu-button__pending-avatar" />帳號
@@ -66,6 +69,29 @@ const initial = computed(() => displayLabel.value.slice(0, 1).toUpperCase())
 .user-menu-button__avatar {
   flex-shrink: 0;
   background: var(--el-color-primary);
+}
+
+/* 未讀站內信的數字（2026-11-16）：疊在頭像右上角，不佔寬度（登入前後同寬，搜尋框才不會移位）。深字底反白，兩種模式都清楚；
+   不只靠顏色，數字本身就是內容 */
+.user-menu-button__trigger {
+  position: relative;
+}
+
+.user-menu-button__badge {
+  position: absolute;
+  top: 0.125rem;
+  left: 1.625rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  box-sizing: border-box;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--el-text-color-primary);
+  color: var(--el-bg-color);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
 }
 
 .user-menu-button--pending {

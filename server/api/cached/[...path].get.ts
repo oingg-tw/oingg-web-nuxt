@@ -37,7 +37,7 @@ import { createHash } from 'node:crypto'
 // 不給 KV 到期時間）加一次打業務中台——實測 /api/cached/securities?probe=… 回 200、寫進一個新鍵。不在表上的參數、格式不對的值一律丟掉。
 // shortcut: 值只驗格式、不列舉，合法值的組合（limit、from、symbols）仍造得出新鍵；KV 鍵數明顯變多時再替 KV 寫入補到期時間
 const COUNT = /^\d{1,5}$/
-const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily'; query?: Record<string, RegExp> }[] = [
+const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily'; query?: Record<string, RegExp> }[] = [
   { pattern: /^stocks\/\d{4}$/, ttl: 'quote' },
   { pattern: /^stocks\/\d{4}\/daily-price-history$/, ttl: 'quote', query: { limit: COUNT, from: /^\d{4}-\d{2}-\d{2}$/ } },
   { pattern: /^stocks\/\d{4}\/profile$/, ttl: 'daily' },
@@ -51,13 +51,13 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'quote' | 'hourly' | 'daily'; query?: 
   { pattern: /^stocks\/preferred-stocks$/, ttl: 'hourly' },
   { pattern: /^securities$/, ttl: 'hourly', query: { limit: COUNT, offset: COUNT } },
   // 更新紀錄（2026-10-29，/changelog）：管理站寫、業務中台存。
-  // shortcut: 最多舊 15 分鐘加一小時（swrCache 的上限）；維護公告要上橫幅時改短或不用 swr
-  { pattern: /^release-notes$/, ttl: 'quote' },
+  // 2026-11-16 起全站橫幅與站內信也讀它（AppNoticeBanner、/account/notices）：最多舊 1 分鐘加 4 分鐘，維護的橫幅才跟得上
+  { pattern: /^release-notes$/, ttl: 'minute' },
   // REITs 總覽（2026-10-29，/screener/reits）：收盤與淨值一天一次，業務中台也回 max-age=3600
   { pattern: /^reits$/, ttl: 'hourly' }
 ]
 
-const TTL_SECONDS = { quote: 15 * 60, hourly: HOUR, daily: 24 * HOUR }
+const TTL_SECONDS = { minute: 60, quote: 15 * 60, hourly: HOUR, daily: 24 * HOUR }
 
 type QueryRecord = Record<string, string>
 
@@ -80,11 +80,12 @@ function keyOf(path: string, query: QueryRecord): string {
 }
 
 // One cached function per TTL class — defineCachedFunction's maxAge is fixed per function.
+const cachedMinute = defineCachedFunction(upstream, { name: 'cached-get-minute', getKey: keyOf, ...swrCache(TTL_SECONDS.minute, 4 * 60) })
 const cachedQuote = defineCachedFunction(upstream, { name: 'cached-get-quote', getKey: keyOf, ...swrCache(TTL_SECONDS.quote, HOUR) })
 const cachedHourly = defineCachedFunction(upstream, { name: 'cached-get-hourly', getKey: keyOf, ...swrCache(TTL_SECONDS.hourly, 24 * HOUR) })
 const cachedDaily = defineCachedFunction(upstream, { name: 'cached-get-daily', getKey: keyOf, ...swrCache(TTL_SECONDS.daily, 24 * HOUR) })
 
-const BY_TTL = { quote: cachedQuote, hourly: cachedHourly, daily: cachedDaily }
+const BY_TTL = { minute: cachedMinute, quote: cachedQuote, hourly: cachedHourly, daily: cachedDaily }
 
 export default defineEventHandler(async event => {
   const path = (getRouterParam(event, 'path') ?? '').replace(/^\/+|\/+$/g, '')

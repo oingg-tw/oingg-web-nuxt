@@ -20,14 +20,18 @@ watch(() => route.fullPath, () => {
 
 const barRef = ref<HTMLElement>()
 useHeaderHeightMeasure(barRef)
+const unseen = useInboxUnseen()
 </script>
 
 <template>
   <header ref="barRef" class="mobile-header">
     <!-- 圖示＋文字（2026-09-19：每個功能圖示都要有文字）。2026-10-21 頁首重新設計：跟桌機頁首同一個樣子（.app-bar-item，main.css）
          ——原本是 Element 的框線按鈕，兩個頁首各長各的。原生 <button>：沒有 Element 的框線、內距與高度要蓋 -->
+    <!-- 有未讀的站內信時（2026-11-16）圖示右上角疊數字，不佔寬度（logo 才不會移動）；選單裡多一列「站內信」 -->
     <button type="button" class="app-bar-item mobile-header__btn" @click="toggle('menu')">
       <el-icon aria-hidden="true"><Menu /></el-icon>選單
+      <span v-if="unseen" class="mobile-header__badge" aria-hidden="true">{{ unseenText(unseen) }}</span>
+      <span v-if="unseen" class="visually-hidden">，{{ unseen }} 則未讀站內信</span>
     </button>
     <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
          the menu/search buttons on either end are the same 44px circle size, this centers the
@@ -73,6 +77,28 @@ useHeaderHeightMeasure(barRef)
    centering the logo/name group between the menu and search buttons. */
 .mobile-header__spacer {
   flex: 1;
+}
+
+/* 未讀站內信的數字（2026-11-16）：疊在選單圖示右上角，不佔寬度；樣子同頁首「帳號」上的那個（UserMenuButton） */
+.mobile-header__btn {
+  position: relative;
+}
+
+.mobile-header__badge {
+  position: absolute;
+  top: 0.125rem;
+  left: 1.375rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  box-sizing: border-box;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--el-text-color-primary);
+  color: var(--el-bg-color);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
 }
 
 /* flex-shrink: 0 for the same reason as .mobile-header__btn above — without it, the logo/name

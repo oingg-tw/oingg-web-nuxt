@@ -1,6 +1,26 @@
 // 更新紀錄的分組、篩選、站內連結與台灣時間（app/utils/release-notes.ts）。Run: node scripts/check-release-notes.mjs
 import assert from 'node:assert/strict'
-import { releaseKindOf, sitePath, splitReleaseNotes, taipeiDate, taipeiDateTime } from '../app/utils/release-notes.ts'
+import { activeBanner, inboxNotes, releaseKindOf, sitePath, splitReleaseNotes, taipeiDate, taipeiDateTime } from '../app/utils/release-notes.ts'
+
+// 站內信與全站橫幅（2026-11-16）
+{
+  const now = Date.parse('2026-11-16T12:00:00Z')
+  const at = (id, channel, publishedAt, bannerEndsAt = null) => ({ id, kind: 'site', publishedAt, title: id, changes: [], channel, bannerEndsAt })
+  const notes = [
+    at('old-inbox', 'inbox', '2025-10-01T00:00:00Z'),
+    at('inbox-a', 'inbox', '2026-11-10T00:00:00Z'),
+    at('inbox-b', 'inbox', '2026-11-15T00:00:00Z'),
+    at('plain', null, '2026-11-16T00:00:00Z'),
+    at('banner-ended', 'banner', '2026-11-14T00:00:00Z', '2026-11-15T00:00:00Z'),
+    at('banner-open', 'banner', '2026-11-15T00:00:00Z'),
+    at('banner-new', 'banner', '2026-11-16T06:00:00Z', '2026-11-20T00:00:00Z'),
+    at('banner-future', 'banner', '2026-11-17T00:00:00Z')
+  ]
+  assert.deepEqual(inboxNotes(notes, now).map(note => note.id), ['inbox-b', 'inbox-a'], '站內信：近 12 個月、新的在上，一般更新不算')
+  assert.equal(activeBanner(notes, now, [])?.id, 'banner-new', '橫幅：同時有好幾則掛最新的；過期、還沒發布的不掛')
+  assert.equal(activeBanner(notes, now, ['banner-new'])?.id, 'banner-open', '關掉的不再掛，換下一則；沒有結束時刻的一直掛')
+  assert.equal(activeBanner(notes, now, ['banner-new', 'banner-open']), null)
+}
 
 const note = (id, kind, extra = {}) => ({ id, kind, publishedAt: '2026-10-29T06:00:00Z', title: id, changes: [], ...extra })
 const items = [
