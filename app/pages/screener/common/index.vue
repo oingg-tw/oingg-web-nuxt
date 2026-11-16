@@ -157,8 +157,8 @@ async function confirmGuestOnboarding() {
     <template #result-meta>
       <label class="common-screener__period-toggle">
         <el-switch v-model="showPeriod" />
-        <!-- 手機上只畫「資料時間」（操作區方案 A，跟檔數擠同一行），名稱照樣是「顯示資料時間」 -->
-        <span><span class="common-screener__period-verb">顯示</span>資料時間</span>
+        <!-- 手機上只畫「期別」（操作區方案 A，跟檔數擠同一行），名稱照樣是「顯示期別」。2026-11-16 從「資料時間」改名（詞彙檢核 D3）：開關管的是欄名的期別與每格的期別（26Q2、年度、月份），沒有期別的才寫交易日，同速覽表的「期別」欄 -->
+        <span><span class="common-screener__period-verb">顯示</span>期別</span>
       </label>
     </template>
 

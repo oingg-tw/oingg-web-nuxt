@@ -178,7 +178,7 @@ export function useEtfSource(): UniverseSource {
     const facet = etfFieldFacet(field)
     return {
       field: fieldId,
-      // 不用「（2025）」：表格在「顯示資料時間」關閉時會拿掉結尾的括號（那是普通股的期別）
+      // 不用「（2025）」：表格在「顯示期別」關閉時會拿掉結尾的括號（那是普通股的期別）
       // 基金月報的欄位（規模與資金、報酬率）寫上月份，才不會跟逐日的收盤價看成同一天。月份要等查詢回來，欄位物件早就建好了，所以用 getter
       get label() {
         return reportMonth.value && (facet === 'size' || facet === 'returns') ? `${name} ${reportMonth.value}` : name

@@ -345,7 +345,7 @@ function sortableFor(field: string): boolean | 'custom' {
 // 欄寬照「值」估、表頭在欄寬裡折行（2026-10-22，使用者在方案頁選 1B：「希望 screener 表頭寬度 受限於 值寬度去折行 這樣才能在單位寬度內
 // 看到更多數值」——推翻 2026-10-06 的「我不希望看到有欄位的文字 UI 換行」，值本身照舊不折行）。照欄位型別估、不量載入的列：載入更多、
 // 換排序時欄寬才不會跳。數字（百分比、千分位、負號，例如 -123.45%）104px，表頭一行約三個字；類別照最長的選項，河道位置多一條七格軌道；
-//「顯示資料時間」開著時至少放得下日期（10 碼）
+//「顯示期別」開著時至少放得下日期（10 碼）
 const NUMBER_COLUMN_WIDTH = 104
 const RIVER_TRACK_WIDTH = 60
 function minWidthFor(column: ScreenerResultTableColumn): number {
@@ -1073,7 +1073,7 @@ watch(() => props.loading, (loading, wasLoading) => {
   font-variant-numeric: tabular-nums;
 }
 
-/* 數值一行、資料時間另起一行（同表格的格子）。原本是行內的 span，「顯示資料時間」一開，日期直接黏在數字後面：38.1 跟
+/* 數值一行、資料時間另起一行（同表格的格子）。原本是行內的 span，「顯示期別」（當時叫「顯示資料時間」）一開，日期直接黏在數字後面：38.1 跟
    2026-11-02 連成「38.12026-11-02」（2026-11-02，使用者：「打開資料時間以後整個悲劇跑版」） */
 .smt-card__cell {
   display: flex;
