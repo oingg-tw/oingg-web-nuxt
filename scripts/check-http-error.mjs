@@ -38,5 +38,21 @@ assert(blockedRow.httpRequest.remoteIp === '203.0.113.0' && !blockedLine.include
 assert(blockedRecord('TRACE', '/api/core/x', 405, 'method_not_allowed', undefined).httpRequest.remoteIp === null, '拿不到 IP 記 null')
 assert(blockedRecord('GET', `/api/core/${'a'.repeat(500)}`, 400, 'path_invalid', null).route.length === 200, '超長路徑截到 200 字')
 
+// server/plugins/http-errors.ts 哪些錯誤算回給使用者的 5xx：Nitro 快取的背景更新失敗也會呼叫 error hook（tags ['cache']），
+// 那時使用者拿到的是舊值的 200
+const hooks = {}
+Object.assign(globalThis, { defineNitroPlugin: setup => setup, getResponseStatus: () => 200, routeTemplate, isUpstreamFetchFailure, upstreamFailureReason })
+;(await import('../server/plugins/http-errors.ts')).default({ hooks: { hook: (name, handler) => { hooks[name] = handler } } })
+const written = []
+const realLog = console.log
+console.log = line => written.push(line)
+const request = () => ({ path: '/api/cached/stocks/preferred-stocks', method: 'GET', context: {} })
+hooks.error({ name: 'FetchError', statusCode: 504 }, { event: request(), tags: ['cache'] })
+const afterCache = written.length
+hooks.error({ name: 'FetchError', statusCode: 504 }, { event: request(), tags: ['request'] })
+console.log = realLog
+assert(afterCache === 0, '快取背景更新失敗（舊值照樣回了 200）不記')
+assert(written.length === afterCache + 1 && JSON.parse(written.at(-1)).reason === 'upstream_timeout', '處理器丟出來的上游 504 照記')
+
 console.log(failures ? `\n${failures} 項失敗` : '\n全部通過')
 process.exitCode = failures ? 1 : 0

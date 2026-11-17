@@ -32,9 +32,11 @@ function report(event: H3Event, status: number, reason: HttpErrorReason) {
 const fallbackReason = (status: number): HttpErrorReason => (status === 500 ? 'app_error' : 'upstream_failed')
 
 export default defineNitroPlugin((nitroApp) => {
-  nitroApp.hooks.hook('error', (error, { event }) => {
+  nitroApp.hooks.hook('error', (error, { event, tags }) => {
     const status = (error as { statusCode?: number }).statusCode ?? 500
-    if (!event || status < 500) return
+    // Nitro 的快取把背景更新失敗也丟進來（tags ['cache']）：使用者拿到的是舊值的 200，不是 5xx。沒有舊值可回時錯誤會丟到處理器，
+    // 再以 ['request'] 來一次（2026-11-17，管理站問 /api/cached 的 504 為什麼不回舊值）
+    if (!event || status < 500 || (Array.isArray(tags) && tags.includes('cache'))) return
     let reason = (event.context as Context).httpErrorReason
     // 錯誤鏈裡有打上游失敗的那一環就照它分；其餘 h3 標成 unhandled 的是程式例外
     for (let cause: unknown = error; !reason && cause; cause = (cause as { cause?: unknown }).cause) {
