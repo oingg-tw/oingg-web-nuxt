@@ -26,7 +26,7 @@ definePageMeta({ alias: '/industries' })
 const requestUrl = useRequestURL()
 useSeoMeta({
   title: '台股類股殖利率分析：34 個證交所類股的股利地圖',
-  description: '證交所 34 個類股的現金殖利率中位數與持股股利 5 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，數字另附於產業索引頁。'
+  description: '證交所 34 個類股的現金殖利率中位數與持股股利 5 年成長率中位數畫在同一張圖上，點的大小代表家數；樣本少於 5 家的類股不畫，名單列在頁尾的注意事項。'
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/dividend` }] })
 
@@ -68,10 +68,12 @@ const plotted = computed(() =>
 )
 const excluded = computed(() => rows.value.filter(row => !plotted.value.includes(row)))
 
-const excludedText = computed(() => {
-  const names = excluded.value.map(row => `${row.sectorName}（現金殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）`)
-  return names.length ? `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。` : ''
-})
+// 類股名稱都連到那個類股的殖利率頁，沒列入的也是：首頁的類股膠囊 2026-11-17 拿掉後，爬蟲從首頁三次點擊到小類股的個股頁就靠這裡
+//（首頁 → 這一頁 → 類股的殖利率頁 → 個股，check-click-depth）
+const dividendPageOf = (sectorCode: string) => sectorPath(sectorCode) && industryFacetPath(sectorCode, 'dividend')
+const excludedNote = computed(() => excluded.value.length
+  ? { lead: `任一個數字少於 ${MIN_SAMPLE} 家的類股不列入，共 ${excluded.value.length} 個：`, items: excluded.value.map(row => ({ code: row.sectorCode, name: row.sectorName, to: dividendPageOf(row.sectorCode), counts: `（現金殖利率 ${row.liveCashDividendYield.count} 家、持股股利成長率 ${row.holdingDividendGrowthRate5y.count} 家）` })) }
+  : null)
 
 // 手機上散佈圖換成四張小表（2026-11-02，使用者選「要比很多項目的圖，手機改成清單」）：殖利率以列入的類股中位數的中位數分高低，
 // 持股股利 5 年成長率以 0 分有沒有減少；表內照類股代號排。類股名稱連到那個類股的殖利率頁（2026-11-08：殖利率要跟同業比，那一頁就是同類股的公司比較）
@@ -84,7 +86,7 @@ const quadrants = computed(() =>
     ['現金殖利率較高、股利沒有減少', '現金殖利率較高、股利減少', '現金殖利率較低、股利沒有減少', '現金殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 個類股）`,
-    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode) && industryFacetPath(row.sectorCode, 'dividend'), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.holdingDividendGrowthRate5y.median)] }))
+    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: dividendPageOf(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.holdingDividendGrowthRate5y.median)] }))
   })))
 // 答句只講結果（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）：定義、算法與沒有列入的類股都在頁尾的注意事項。不提「圖」：手機上那個位置是四張表
 const latestAnswer = computed(() =>
@@ -173,14 +175,14 @@ const payoutYear = computed(() => summary.value?.dividendPayoutRatioFiscalYear ?
 const payoutRows = computed(() => (payoutYear.value === null ? [] : rows.value.flatMap((row) => {
   const stat = row.dividendPayoutRatio
   return stat && stat.count >= MIN_SAMPLE && stat.median !== null && stat.q1 !== null && stat.q3 !== null
-    ? [{ code: row.sectorCode, name: row.sectorName, to: sectorPath(row.sectorCode) && industryFacetPath(row.sectorCode, 'dividend'), median: stat.median, q1: stat.q1, q3: stat.q3 }]
+    ? [{ code: row.sectorCode, name: row.sectorName, to: dividendPageOf(row.sectorCode), median: stat.median, q1: stat.q1, q3: stat.q3 }]
     : []
 }).sort((a, b) => b.median - a.median)))
-const payoutExcludedText = computed(() => {
-  const names = payoutRows.value.length
-    ? rows.value.filter(row => row.dividendPayoutRatio && !payoutRows.value.some(item => item.code === row.sectorCode)).map(row => `${row.sectorName}（${row.dividendPayoutRatio!.count} 家）`)
+const payoutExcludedNote = computed(() => {
+  const items = payoutRows.value.length
+    ? rows.value.filter(row => row.dividendPayoutRatio && !payoutRows.value.some(item => item.code === row.sectorCode)).map(row => ({ code: row.sectorCode, name: row.sectorName, to: dividendPageOf(row.sectorCode), counts: `（${row.dividendPayoutRatio!.count} 家）` }))
     : []
-  return names.length ? `盈餘發放率有數值的公司少於 ${MIN_SAMPLE} 家的類股不列入，共 ${names.length} 個：${names.join('、')}。` : ''
+  return items.length ? { lead: `盈餘發放率有數值的公司少於 ${MIN_SAMPLE} 家的類股不列入，共 ${items.length} 個：`, items } : null
 })
 const percentText = (value: number) => `${value.toFixed(2)}%`
 // 在圖上的位置，0～1
@@ -271,13 +273,13 @@ const payoutLegend = computed(() => [{
         <li>各產業的配息習慣本來就不同，類股之間殖利率的高低，多半反映的是這個差異。要看一家公司配得多不多，要跟同類股的公司比：每個類股都有自己的殖利率頁，把同類股的公司畫在一起。</li>
         <li>景氣循環類股的股利跟著景氣起落：景氣好的那一年配得多，之後算出來的一年份殖利率會比平常年份高。各類股的營收跟著景氣怎麼走，在<NuxtLink to="/industries/cycle" class="hub-inline-link">營收與景氣</NuxtLink>。</li>
         <li class="app-wide-only">圖上每一個點是一個類股，點的大小代表該類股現金殖利率有值的公司數。</li>
-        <li v-if="excludedText">{{ excludedText }}</li>
+        <li v-if="excludedNote">{{ excludedNote.lead }}<template v-for="(item, index) in excludedNote.items" :key="item.code">{{ index ? '、' : '' }}<NuxtLink v-if="item.to" :to="item.to" class="hub-inline-link">{{ item.name }}</NuxtLink><template v-else>{{ item.name }}</template>{{ item.counts }}</template>。</li>
         <template v-if="payoutRows.length">
           <li>盈餘發放率是 {{ payoutYear }} 年度的盈餘配出的現金股利，除以那一年的每股盈餘。虧損的公司沒有數值、不算進去；有賺錢、過了隔年 6 月底還沒有分派公告的公司算 0%。每年 9 月換到下一個年度。</li>
           <li>各產業常見的發放率本來就不同：金融業配多少受資本規定限制，成長中的公司要把錢留下來投資。超過 100%，代表配出的現金股利比那一年賺的多。</li>
           <li>「中間一半」是類股裡發放率排在 25% 到 75% 的公司，最高與最低的四分之一不算在這一段裡。</li>
           <li class="app-wide-only">發放率的圖畫到 120%，超過的部分畫到邊為止，實際數字在「中間一半」那一欄。</li>
-          <li v-if="payoutExcludedText">{{ payoutExcludedText }}</li>
+          <li v-if="payoutExcludedNote">{{ payoutExcludedNote.lead }}<template v-for="(item, index) in payoutExcludedNote.items" :key="item.code">{{ index ? '、' : '' }}<NuxtLink v-if="item.to" :to="item.to" class="hub-inline-link">{{ item.name }}</NuxtLink><template v-else>{{ item.name }}</template>{{ item.counts }}</template>。</li>
         </template>
       </ul>
       <p class="hub-answer hub-sources industries-page__sources">資料來源：臺灣證券交易所、證券櫃檯買賣中心公開資訊，以及各公司股利分派公告。母體為上市與上櫃普通股，不含興櫃。</p>

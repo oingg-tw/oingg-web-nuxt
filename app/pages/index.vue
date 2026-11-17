@@ -5,7 +5,8 @@
 //   首屏：H1（定案的 UVP，沒動）＋搜尋（唯一的主要動作）＋資料來源與資料涵蓋（信任條）＋唯一一條免責聲明
 //   接下來的除權息與發放（LandingUpcomingDividends）：伺服器輸出的真資料，每天不一樣
 //   你想做什麼？：大小不一的便當盒格，每格放真資料（今年每月除權息、篩選範本的符合檔數、排行數、類股數），連結取自 SITE_MAP
-//   依類股瀏覽（收合，爬蟲照樣走得到每個類股頁）→ 常見問題（FAQPage 結構化資料）
+//   常見問題（FAQPage 結構化資料）。原本排在它前面的「依類股瀏覽上市櫃公司」2026-11-17 拿掉（使用者：「已經包含在GRID風格中的元素了」，
+//   便當格的類股那一格）；爬蟲從首頁經 /industries 每一列的連結到得了每個類股
 // 刻意沒有的：精選股與排行清單（跟本站不給精選的規則衝突）、定價、AggregateRating、編出來的數字（YMYL 誤導）。原本的樹插圖
 // （public/images/landing-hero-tree.*，使用者提供）這版不用了，檔案留著
 import { Calendar, Filter, OfficeBuilding, Reading, Star } from '@element-plus/icons-vue'
@@ -24,9 +25,8 @@ useSeoMeta({
   description: '安盈選股整理公開財報與交易所資料，陪你篩選、比較、看懂每一檔上市櫃公司的財報指標與股價數據。'
 })
 
-// The 36 exchange sectors, server-rendered as links so a crawler starting here reaches every
-// /industry/… page (and through them every stock page) without JavaScript. Cached 24h on the
-// server (/api/hub/sectors); an empty list simply hides the section.
+// The exchange sectors give the grid's 類股 tile its counts (sectors and companies). Cached 24h on
+// the server (/api/hub/sectors); an empty list drops those two numbers.
 const [{ data: sectors }, { data: home }] = await Promise.all([
   useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] }),
   // 每一塊讀不到就是 null，那一塊不畫（server/api/hub/home.get.ts）
@@ -253,24 +253,6 @@ useHead({
           </ul>
         </div>
       </div>
-    </section>
-
-    <!-- 收合（2026-09-23「首頁資訊太多很雜亂」）：這一塊跟 /industries 幾乎重複，留著是讓爬蟲從首頁到得了每個類股頁。收進原生
-         <details>：開合都在 SSR HTML 裡，check-hub-pages 的 industryLinksMin: 30 照過、個股頁維持點擊深度 2 -->
-    <section v-if="sectors.length" class="landing-page__section" aria-labelledby="landing-sectors-heading">
-      <h2 id="landing-sectors-heading" class="landing-page__section-title">依類股瀏覽上市櫃公司</h2>
-      <p class="landing-page__section-lead">
-        證交所每個類股各有一頁，列出該類股每家公司的股價、本益比、殖利率與 ROE。
-        <NuxtLink to="/industries" class="landing-page__inline-link">看產業索引</NuxtLink>
-      </p>
-      <details class="app-card hub-details landing-page__sectors">
-        <summary>展開 {{ sectors.length }} 個類股</summary>
-        <ul class="hub-chip-list">
-          <li v-for="sector in sectors" :key="sector.code">
-            <NuxtLink :to="sectorPath(sector.code) ?? '/industries'" class="hub-chip">{{ sector.name }} <span class="hub-chip__count">{{ sector.companyCount }}<span class="visually-hidden"> 家</span></span></NuxtLink>
-          </li>
-        </ul>
-      </details>
     </section>
 
     <section class="landing-page__section">
@@ -712,25 +694,6 @@ useHead({
     min-height: 64px;
     padding: 8px 12px;
   }
-}
-
-/* The chip list needs room once it is inside a disclosure — .hub-details styles the shell, this
-   only pads what unfolds out of it. */
-.landing-page__sectors > .hub-chip-list {
-  padding: 0 16px 16px;
-}
-
-.landing-page__section-lead {
-  margin: -8px 0 0;
-  max-width: 40em;
-  color: var(--el-text-color-regular);
-}
-
-.landing-page__inline-link {
-  color: var(--el-color-primary-dark-2);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  white-space: nowrap;
 }
 
 /* 兩欄：每行約 28 字，在文件建議的 30–40 字以內 */

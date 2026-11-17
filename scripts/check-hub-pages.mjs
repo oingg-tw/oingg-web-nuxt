@@ -36,9 +36,10 @@ const QUERY_LINK_ALLOW = [/^\/screener\/common\?(sector|template)=/, /^\/screene
 
 // Routes: expectations on the SSR HTML beyond the shared checks.
 const ROUTES = [
-  { path: '/', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0 },
-  // 2026-10-21 起類股首頁是指標速覽（圖卡＋其他類股），個股連結與公司表都在 /companies 那一面（爬蟲：首頁膠囊 → 速覽 → 公司名單 → 個股，
-  // check-click-depth）
+  // 首頁的「依類股瀏覽」膠囊 2026-11-17 拿掉（使用者：已經包含在便當格裡），首頁不再直接連到類股頁；爬蟲經 /industries 每一列與
+  // 頁尾沒列入的類股，連到各類股的殖利率頁（check-click-depth）
+  { path: '/', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0 },
+  // 2026-10-21 起類股首頁是指標速覽（圖卡＋其他類股），個股連結與公司表在 /companies 與 /dividend 兩面
   { path: '/industry/24-semiconductor', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0 },
   { path: '/industry/24-semiconductor/companies', stockLinksMin: 100, industryLinksMin: 0, tablesMin: 1 },
   // /industry/13-electronics-legacy was listed here as the thin-sector case（noindex, ≥5 stock
@@ -63,7 +64,7 @@ const ROUTES = [
   { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   { path: '/screener/common/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   // 產業索引 2026-11-09 先隱藏（使用者：「把產業殖利率當作產業索引預設畫面，URL不變化」）：/industries 畫的是殖利率分析，要求同下一列
-  { path: '/industries', canonicalPath: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
+  { path: '/industries', canonicalPath: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0
   // 也是刻意的：它的工作是那張圖，逐類股的數字原本在 /industries，硬塞一張重複的表只是為了過檢查。
   { path: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },

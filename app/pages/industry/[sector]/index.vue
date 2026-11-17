@@ -50,7 +50,7 @@ const description = computed(() => clampDescription(`${sectorName}（證交所�
       </div>
     </section>
 
-    <!-- 其他類股攤開（2026-10-21，使用者：「其他類股根本不需要收合」）：膠囊同首頁的「依類股瀏覽」 -->
+    <!-- 其他類股攤開（2026-10-21，使用者：「其他類股根本不需要收合」） -->
     <nav v-if="otherSectors.length" class="stock-page-section" aria-labelledby="industry-other-sectors-heading">
       <h2 id="industry-other-sectors-heading" class="stock-page-section__title">其他類股</h2>
       <ul class="hub-chip-list">
