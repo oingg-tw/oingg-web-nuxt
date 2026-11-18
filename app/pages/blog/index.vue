@@ -12,9 +12,21 @@ const { data: posts } = await useAsyncData('blog-index', () =>
   queryCollection('blog')
     .where('status', '=', 'published')
     .order('date', 'DESC')
-    .select('title', 'path', 'slug', 'date', 'meta_description')
+    .select('title', 'path', 'slug', 'date', 'meta_description', 'category')
     .all()
 )
+
+// 主題（2026-11-19，使用者選「少數大主題」；欄名照詞彙表二之十一叫 category）：照 /changelog 的做法，篩選是連結（?category=），
+// 伺服器就篩好，canonical 不帶查詢字串。只列有文章的主題，空的那類點了只會是空清單；有文章的主題不到兩類就不放這一排
+const route = useRoute()
+const category = computed(() => blogCategoryOf(route.query.category))
+const shown = computed(() => (posts.value ?? []).filter(post => !category.value || post.category === category.value))
+const filters = computed(() => [
+  { label: '全部', category: null },
+  ...(Object.entries(BLOG_CATEGORIES) as [BlogCategory, string][])
+    .filter(([key]) => posts.value?.some(post => post.category === key))
+    .map(([key, label]) => ({ label, category: key }))
+])
 
 useSeoMeta({
   // Brand suffix now comes from nuxt.config.ts's global `titleTemplate` (2026-09-19).
@@ -25,6 +37,7 @@ useSeoMeta({
 const requestUrl = useRequestURL()
 
 useHead({
+  link: [{ rel: 'canonical', href: `${requestUrl.origin}/blog` }],
   script: [
     {
       type: 'application/ld+json',
@@ -44,12 +57,27 @@ useHead({
     <header class="blog-index__header">
       <h1 class="blog-index__title">文章</h1>
       <p class="blog-index__lead">財報指標、殖利率觀念等存股族實用知識，說明計算方式與常見誤區，不做個股推薦。</p>
+      <nav v-if="filters.length > 2" class="blog-index__filters" aria-label="依主題篩選文章">
+        <ul class="blog-index__filter-list">
+          <li v-for="filter in filters" :key="filter.label">
+            <NuxtLink
+              :to="filter.category ? { path: '/blog', query: { category: filter.category } } : '/blog'"
+              class="hub-chip"
+              :aria-current="filter.category === category ? 'page' : undefined"
+            >
+              {{ filter.label }}
+            </NuxtLink>
+          </li>
+        </ul>
+      </nav>
     </header>
 
     <ul class="blog-index__list">
-      <li v-for="post in posts" :key="post.slug" class="blog-index__item">
+      <li v-for="post in shown" :key="post.slug" class="blog-index__item">
         <NuxtLink :to="`/blog/${post.slug}`" class="blog-index__link">
-          <time class="blog-index__date" :datetime="post.date">{{ post.date }}</time>
+          <span class="blog-index__date">
+            <time :datetime="post.date">{{ post.date }}</time>・<span class="blog-index__category">{{ BLOG_CATEGORIES[post.category] }}</span>
+          </span>
           <h2 class="blog-index__item-title">{{ post.title }}</h2>
           <p class="blog-index__item-desc">{{ post.meta_description }}</p>
         </NuxtLink>
@@ -94,6 +122,19 @@ useHead({
   font-size: 1.125rem;
   line-height: 1.6;
   color: var(--el-text-color-secondary);
+}
+
+.blog-index__filters {
+  margin-top: 8px;
+}
+
+.blog-index__filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .blog-index__list {

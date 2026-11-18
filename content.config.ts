@@ -1,5 +1,6 @@
 import { defineCollection, defineContentConfig, z } from '@nuxt/content'
 import { defineSitemapSchema } from '@nuxtjs/sitemap/content'
+import { BLOG_CATEGORIES, type BlogCategory } from './app/utils/blog-categories'
 
 // Schema matches the frontmatter shape obsidian-04's docs/4_blogs drafts already use (see
 // content/blog/*.md). Wired to blog/index.vue and blog/[slug].vue 2026-09-07 — those pages
@@ -22,6 +23,8 @@ export default defineContentConfig({
         meta_description: z.string().optional(),
         target_keywords: z.array(z.string()).optional(),
         status: z.enum(['draft', 'published']).optional(),
+        // 主題（2026-11-19，一篇一類，欄名照詞彙表二之十一；見 app/utils/blog-categories.ts）
+        category: z.enum(Object.keys(BLOG_CATEGORIES) as [BlogCategory, ...BlogCategory[]]),
         tags: z.array(z.string()).optional(),
         aliases: z.array(z.string()).optional(),
         // sitemap（@nuxtjs/sitemap 的 Content 整合，2026-10-23）：取代 nuxt.config 自己掃 frontmatter——那支只讀 content/blog 第一層，

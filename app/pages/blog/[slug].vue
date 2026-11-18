@@ -58,6 +58,7 @@ useHead({
         headline: post.value.title,
         description: post.value.meta_description,
         datePublished: post.value.date,
+        articleSection: BLOG_CATEGORIES[post.value.category],
         url: `${requestUrl.origin}/blog/${post.value.slug}`
       })
     }
@@ -71,7 +72,10 @@ useHead({
 
     <header class="blog-post__header">
       <h1 class="blog-post__title">{{ post.title }}</h1>
-      <time class="blog-post__date" :datetime="post.date">{{ post.date }}</time>
+      <!-- 主題連回列表的那一類（2026-11-19） -->
+      <p class="blog-post__date">
+        <time :datetime="post.date">{{ post.date }}</time>・<NuxtLink :to="{ path: '/blog', query: { category: post.category } }" class="hub-inline-link blog-post__category">{{ BLOG_CATEGORIES[post.category] }}</NuxtLink>
+      </p>
     </header>
 
     <div class="blog-post__body">
@@ -139,6 +143,7 @@ useHead({
 }
 
 .blog-post__date {
+  margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-placeholder);
 }

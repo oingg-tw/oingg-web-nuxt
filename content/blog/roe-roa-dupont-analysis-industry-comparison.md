@@ -5,6 +5,7 @@ aliases:
   - ROE ROA 杜邦五因子
 title: 為什麼同樣是 20% ROE，台積電和銀行股完全不是一回事？
 slug: roe-roa-dupont-analysis-industry-comparison
+category: financials
 date: '2026-09-07'
 meta_description: ROE 高不代表公司賺錢能力強，杜邦分析把 ROE 拆成三到五個因子，才能看出獲利是靠本業、周轉還是借錢撐出來的。本文用台積電、好市多、摩根大通、蘋果的真實數字，教你怎麼跨產業判讀 ROE。
 target_keywords:

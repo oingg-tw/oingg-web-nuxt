@@ -4,6 +4,7 @@ aliases:
   - 本益比很低為什麼不能買
 title: 本益比很低，為什麼反而是陷阱？景氣循環股的反直覺教訓
 slug: low-pe-ratio-trap-cyclical-stocks
+category: financials
 date: '2026-09-07'
 meta_description: 本益比越低越便宜，是多數人的直覺。但海運、鋼鐵、面板這類景氣循環股，本益比最低時往往是股價最高點。本文拆解這個反直覺現象，教你用淨值比交叉檢查。
 target_keywords:
