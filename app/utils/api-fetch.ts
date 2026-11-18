@@ -42,11 +42,13 @@ export function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] 
 
 // 讀取失敗可能的原因。只是「可能」：瀏覽器分不出「伺服器很慢」與「中間的網路很慢」，文案要照這個分寸寫。
 //   offline     瀏覽器回報沒有網路
+//   network     網站完全沒回應（沒有狀態碼）：多半是使用者的網路——瀏覽器以為有網路，其實連著上不了網的 Wi-Fi 或訊號斷斷續續
+//               （2026-11-19，使用者「用戶這邊要怎麼區分是網路斷線還是我系統在更新中?」→「照建議改」；網站在 Cloudflare 上，整個連不上極少見）
 //   timeout     等太久（我們自己逾時，或 業務中台 等上游逾時的 504）
-//   unavailable 連不上或上游掛了（502／503／429、網路錯誤）
+//   unavailable 網站有回應、是後面的系統掛了（502／503／429）
 //   server      其他 5xx
 //   client      4xx——重試多半沒用，不自動重試
-export type LoadFailureKind = 'offline' | 'timeout' | 'unavailable' | 'busy' | 'server' | 'client'
+export type LoadFailureKind = 'offline' | 'network' | 'timeout' | 'unavailable' | 'busy' | 'server' | 'client'
 
 export interface ClassifiedFailure {
   kind: LoadFailureKind
@@ -90,7 +92,10 @@ export function classifyApiError(error: unknown): ClassifiedFailure {
   const wrapped = error && typeof error === 'object' ? (error as { cause?: unknown }).cause : null
   const source = wrapped && typeof wrapped === 'object' && ('response' in wrapped || 'statusCode' in wrapped) ? wrapped : error
   const e = (source ?? {}) as FetchLikeError
-  const status = e.statusCode ?? e.status ?? e.response?.status ?? null
+  // 沒拿到回應（斷線、逾時）時 h3 的 createError 拿 FetchError 自己的 cause（瀏覽器的 TypeError／AbortError）當 cause，外層的 500 是
+  // h3 的預設值、不是伺服器回的；ofetch 在訊息裡寫「<no response>」，外層照抄（2026-11-19 量到：斷線一直被說成「伺服器處理這份資料時發生錯誤」）
+  const noResponse = /<no response>/.test(String((error as { message?: unknown } | null)?.message ?? ''))
+  const status = noResponse ? null : (e.statusCode ?? e.status ?? e.response?.status ?? null)
   const retryAfterRaw = e.response?.headers?.get('retry-after') ?? null
   const retryAfter = retryAfterRaw !== null && /^\d+$/.test(retryAfterRaw.trim()) ? Number(retryAfterRaw) : null
   // 參考編號：X-Request-Id 標頭（業務中台 已對瀏覽器開放），或 problem+json 的 instance（urn:uuid:<同一個 id>）
@@ -102,7 +107,7 @@ export function classifyApiError(error: unknown): ClassifiedFailure {
   if (coded) return { kind: coded, ...base }
   if (status === null || status === 0) {
     const text = `${e.name ?? ''} ${e.message ?? ''}`
-    return { kind: /timeout|timed out|aborted/i.test(text) ? 'timeout' : 'unavailable', ...base }
+    return { kind: /timeout|timed out|aborted/i.test(text) ? 'timeout' : 'network', ...base }
   }
   if (status === 504 || status === 408) return { kind: 'timeout', ...base }
   if (status === 502 || status === 503 || status === 429) return { kind: 'unavailable', ...base }

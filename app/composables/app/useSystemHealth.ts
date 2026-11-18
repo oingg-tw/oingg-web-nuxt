@@ -7,14 +7,19 @@ const CHECK_TIMEOUT_MS = 8_000
 // 開第二個計時器。
 export function useSystemHealth() {
   const healthy = useState('system-health-ok', () => true)
+  // 網站有沒有回應（2026-11-19，使用者「用戶這邊要怎麼區分是網路斷線還是我系統在更新中?」→「照建議改」）：有回應、上游不健康＝我們的問題；
+  // 連狀態碼都沒有（連不上、逾時：伺服器等上游最多 7 秒就會回 ok:false）＝多半是使用者的網路。橫幅照這個換說法
+  const reachable = useState('system-health-reachable', () => true)
   const checking = useState('system-health-checking-started', () => false)
 
   // fresh：略過伺服器那 15 秒的共用結果（server/api/system-health.get.ts），請求失敗後的重查要看上游現在的樣子
   async function check(fresh = false) {
     try {
       const response = await $fetch<{ ok: boolean }>('/api/system-health', { timeout: CHECK_TIMEOUT_MS, query: fresh ? { fresh: 1 } : undefined })
+      reachable.value = true
       healthy.value = response.ok
-    } catch {
+    } catch (error) {
+      reachable.value = !!classifyApiError(error).status
       healthy.value = false
     }
   }
@@ -65,5 +70,5 @@ export function useSystemHealth() {
     })
   })
 
-  return { healthy, reportFailure }
+  return { healthy, reachable, reportFailure }
 }

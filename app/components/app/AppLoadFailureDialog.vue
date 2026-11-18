@@ -37,13 +37,15 @@ const dialogVisible = computed(() => blocking.value.length > 0)
 const noticeVisible = computed(() => !dialogVisible.value && shown.value.length > 0)
 
 // 描述哪一個原因：網路斷線最優先（那時其他錯誤多半也是它造成的）
-const PRIORITY: LoadFailureKind[] = ['offline', 'server', 'busy', 'unavailable', 'timeout', 'client']
+const PRIORITY: LoadFailureKind[] = ['offline', 'network', 'server', 'busy', 'unavailable', 'timeout', 'client']
 const primary = computed(() => [...blocking.value].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind))[0] ?? null)
 
 const MESSAGES: Record<LoadFailureKind, string> = {
   offline: '你的裝置目前沒有網路連線。連上之後會自動繼續，不用重新整理。',
+  // 網站沒回應（network）與網站回了錯誤（unavailable）分開說，用戶才分得出是自己的網路還是我們（2026-11-19，見 api-fetch.ts 的 LoadFailureKind）
+  network: '連不上網站，可能是你的網路連線中斷。連上之後會自動繼續，不用重新整理。',
   timeout: '伺服器這次回應得太慢，可能正在處理大量資料。',
-  unavailable: '暫時連不上我們的伺服器，可能正在更新或短暫故障。',
+  unavailable: '我們的系統暫時有狀況，可能正在更新或短暫故障，不是你的網路問題。',
   busy: '伺服器目前忙碌，正在處理大量請求，稍後會自動再試。',
   server: '伺服器處理這份資料時發生錯誤。',
   client: '這份資料的請求沒有被接受。'

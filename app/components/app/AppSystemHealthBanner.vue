@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Close, WarningFilled } from '@element-plus/icons-vue'
 
-const { healthy } = useSystemHealth()
+const { healthy, reachable } = useSystemHealth()
 
 // Dismissible per direct request — but NOT a one-time-forever dismissal: reset back to false
 // whenever healthy recovers, so a later, separate outage still shows the banner fresh instead
@@ -43,7 +43,8 @@ onUnmounted(() => {
 <template>
   <div v-if="visible" ref="bannerRef" class="app-system-health-banner" role="alert">
     <el-icon aria-hidden="true"><WarningFilled /></el-icon>
-    <span>目前連不上伺服器，部分資料暫時讀不到。</span>
+    <!-- 網站有回應＝我們的問題；沒回應＝多半是使用者的網路（useSystemHealth 的 reachable，2026-11-19） -->
+    <span>{{ reachable ? '我們的系統暫時有狀況，不是你的網路問題。' : '連不上網站，請檢查網路連線。' }}</span>
     <!-- Real, focusable <button>（2026-09-19，原本是不可聚焦的 <el-icon>，鍵盤到不了、除了 hover 才
          看得到的 title 之外沒有任何可及名稱）。
          2026-09-30 依直接指示改回純 X（「請讓她是個單純的 X」）。這推翻了同一次 interface-complexity
