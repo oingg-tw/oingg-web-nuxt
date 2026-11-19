@@ -36,10 +36,12 @@ const answerSkeleton = computed(() => (dupontPending.value ? `${stockShortName.v
 watchLoadFailure(() => `stock-dupont:${code.value}`, () => dupontError.value ?? readFailed.value, refreshDupontData)
 
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
+// 銀行、保險與金控拆成 ROE ≈ 資產報酬率 × 權益乘數（isFinancialDupont，2026-11-19）：答句、表格欄位跟著換，三項相乘那一段不出現
+const financial = computed(() => !!dupontData.value && isFinancialDupont(dupontData.value))
 
-const ascending = computed<MetricsHistoryEntry[]>(() => trimDupontEntries(activeSeries.value?.entries ?? []))
+const ascending = computed<MetricsHistoryEntry[]>(() => trimDupontEntries(activeSeries.value?.entries ?? [], financial.value))
 const periods = computed(() => [...ascending.value].reverse().slice(0, HISTORY_TABLE_PERIODS))
-const latest = computed(() => periods.value.find(isDupontComplete) ?? null)
+const latest = computed(() => periods.value.find(entry => isDupontComplete(entry, financial.value)) ?? null)
 
 // 期別切換（2026-09-22「杜邦分析圖表要可以選單季與近四季」）：兩種序列同一次請求就有，切換是換資料不是重抓。預設仍是近四季（單季
 // ROE 是季報酬，9.71% 被讀成年化會高估約四倍）——但不藏基準也能防誤讀，所以 basisLabel 穿過這一頁的每一句、每個標題與註記。
@@ -58,6 +60,7 @@ const interestBurden = computed(() => valueOf('dupontInterestBurden'))
 const ebitMargin = computed(() => valueOf('dupontEbitMargin'))
 const assetTurnover = computed(() => valueOf('assetTurnover'))
 const equityMultiplier = computed(() => valueOf('equityMultiplier'))
+const roa = computed(() => valueOf('roa'))
 
 const hasFactors = computed(() => latest.value !== null)
 
@@ -92,8 +95,17 @@ const hasExpansion = computed(() =>
 
 const valueAnswer = computed(() => {
   if (!hasFactors.value) return null
+  const lead = `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的 ROE（${basisLabel.value}）為 ${fixedRateText(roe.value)}`
+  // 金融業的期別只保證有 ROE，另外兩個有值才寫
+  if (financial.value) {
+    return joinClauses([
+      lead,
+      roa.value === null ? null : `資產報酬率 ${fixedRateText(roa.value)}`,
+      equityMultiplier.value === null ? null : `權益乘數 ${multipleText(equityMultiplier.value)}`
+    ])
+  }
   return joinClauses([
-    `${stockShortName.value}（${code.value}）${latestPeriodText.value} 的 ROE（${basisLabel.value}）為 ${fixedRateText(roe.value)}`,
+    lead,
     `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
     `資產週轉率 ${timesText(assetTurnover.value)}`,
     `權益乘數 ${multipleText(equityMultiplier.value)}`
@@ -101,7 +113,7 @@ const valueAnswer = computed(() => {
 })
 
 const chainAnswer = computed(() => {
-  if (!hasFactors.value) return null
+  if (!hasFactors.value || financial.value) return null
   // 用字精簡（2026-10-07「但我希望用字精簡點。圖表優先 文字其次」）：只留算式
   return `${fixedRateText(netProfitMargin.value)} × ${timesText(assetTurnover.value)} × ${multipleText(equityMultiplier.value)} ≈ ${fixedRateText(roe.value)}。`
 })
@@ -113,7 +125,7 @@ const expansionAnswer = computed(() => {
 
 const history = computed(() => {
   const list = periods.value
-  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '杜邦三項', basis: basisLabel.value, count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: financial.value ? 'ROE、資產報酬率與權益乘數' : '杜邦三項', basis: basisLabel.value, count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
 const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
 // 拆解表的表名（caption 藏起來，同 SharedTable 的 label；2026-10-13 統一）
@@ -151,10 +163,14 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪三個部分組成？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
+    <StockQuestionSection id="stock-dupont-value" :question="`${stockShortName}（${code}）的 ROE 由哪${financial ? '兩' : '三'}個部分組成？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
       <!-- 讀不到時交給全站讀取失敗彈窗，畫面留空 -->
       <StockDupontChart v-if="dupontData && !readFailed" v-model:basis="basis" :data="dupontData" />
       <SharedChartCard v-else-if="dupontPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
+      <!-- 為什麼少了兩項：說明放在卡片後面（卡片前只放答句） -->
+      <p v-if="financial" class="stock-answer">
+        銀行、保險與金控不拆稅後淨利率與資產週轉率：資產是放款與保單，週轉率沒有意義。ROE ≈ 資產報酬率 × 權益乘數。
+      </p>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="historyAnswer" id="stock-dupont-history" :question="history.question" :answer="historyAnswer">
@@ -162,8 +178,9 @@ const { breadcrumbs } = useStockPageSeo({
         <thead>
           <tr>
             <th scope="col">期別</th>
-            <th scope="col">稅後淨利率</th>
-            <th scope="col">資產週轉率</th>
+            <th v-if="!financial" scope="col">稅後淨利率</th>
+            <th v-if="!financial" scope="col">資產週轉率</th>
+            <th v-if="financial" scope="col">資產報酬率</th>
             <th scope="col">權益乘數</th>
             <th scope="col">ROE</th>
           </tr>
@@ -171,8 +188,9 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
-            <td :title="nullReasonTitle(entry.values.netProfitMargin)">{{ reasonedCellText(entry.values.netProfitMargin, fixedRateText) }}</td>
-            <td :title="nullReasonTitle(entry.values.assetTurnover)">{{ reasonedCellText(entry.values.assetTurnover, timesText) }}</td>
+            <td v-if="!financial" :title="nullReasonTitle(entry.values.netProfitMargin)">{{ reasonedCellText(entry.values.netProfitMargin, fixedRateText) }}</td>
+            <td v-if="!financial" :title="nullReasonTitle(entry.values.assetTurnover)">{{ reasonedCellText(entry.values.assetTurnover, timesText) }}</td>
+            <td v-if="financial" :title="nullReasonTitle(entry.values.roa)">{{ reasonedCellText(entry.values.roa, fixedRateText) }}</td>
             <td :title="nullReasonTitle(entry.values.equityMultiplier)">{{ reasonedCellText(entry.values.equityMultiplier, multipleText) }}</td>
             <td :title="nullReasonTitle(entry.values.roe)">{{ reasonedCellText(entry.values.roe, fixedRateText) }}</td>
           </tr>

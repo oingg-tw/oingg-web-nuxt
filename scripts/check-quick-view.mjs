@@ -3,7 +3,7 @@ import { chromium } from 'playwright'
 // 指標速覽每一種圖都畫得出來（2026-10-16「指標速覽沒有顯示所有的指標圖，為什麼？這邊不是統一模板了嗎」→ slug 對應哪張圖只在
 // metric-pages.ts 的 quickViewChartOf，能不能釘也讀它）。每種 kind 各釘一支，用指標速覽自己的「加入指標」彈窗釘（未登入，釘選只在記憶體）：
 //   - 2330：每一張卡都要畫出圖（SVG 裡有形狀，或現金循環時間軸的色段），不能落到只有標題的空卡
-//   - 2891（金控）：每一支都要有卡——三率、流動資產這些拆不開的是空狀態卡，不是整格消失
+//   - 2891（金控）：每一支都要有卡——三率、流動資產這些拆不開的是空狀態卡，不是整格消失；杜邦分析畫 ROE、資產報酬率、權益乘數（2026-11-19）
 //   - 彈窗裡沒有純表格頁（填權填息、三大報表）
 //   - 近期新聞（2026-11-16 起能釘，不在預設）：2330 列出新聞，卡片不比旁邊的圖表卡高
 // 用法：先開伺服器（正式建置：PORT=3100 node --env-file=.env .output/server/index.mjs），
@@ -143,6 +143,11 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
       const card = cardOf(page, label)
       const ok = await waitFor(async () => (await card.count()) === 1 && (!needChart || await hasChart(card)))
       expect(code, `${label} ${needChart ? '有圖' : '有卡片'}`, ok)
+    }
+    // 金控的杜邦拆不出三項，改畫 ROE ≈ 資產報酬率 × 權益乘數（2026-11-19，使用者：「遇到金控 就畫 ROE 權益乘數 ROA 三條」）
+    if (!needChart && labels.includes('杜邦分析')) {
+      const dupontCard = cardOf(page, '杜邦分析')
+      expect(code, '金控的杜邦分析畫出 ROE、資產報酬率、權益乘數', await waitFor(async () => await hasChart(dupontCard) && (await dupontCard.getByText('資產報酬率').count()) > 0 && (await dupontCard.getByText('稅後淨利率').count()) === 0))
     }
     // 新聞卡跟圖表卡的骨架一樣高（StockNewsCard）：桌機兩欄時不把同一列撐高。量法同基本資料卡，先取消拉伸
     if (labels.includes('近期新聞')) {

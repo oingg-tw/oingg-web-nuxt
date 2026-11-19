@@ -24,12 +24,22 @@ const ROE_SERIES = [
   { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'solid', symbol: 'diamond', axis: 'right', format: dupontMultipleText }
 ] as const satisfies readonly LineSeriesSpec[]
 
+// 銀行、保險與金控畫這三條（isFinancialDupont）：線型、顏色（palette compare）照 ROE 頁的同一張圖，兩頁看起來是同一件事
+const FINANCIAL_SERIES = [
+  { code: 'roe', name: 'ROE', lineType: 'solid', symbol: 'circle', fenceCap: true },
+  { code: 'roa', name: '資產報酬率', lineType: 'dashed', symbol: 'triangle', fenceCap: true },
+  { code: 'equityMultiplier', name: '權益乘數（倍）', lineType: 'dotted', symbol: 'diamond', axis: 'right', format: dupontMultipleText }
+] as const satisfies readonly LineSeriesSpec[]
+
+const financial = computed(() => isFinancialDupont(props.data))
+const lines = computed(() => (financial.value ? FINANCIAL_SERIES : ROE_SERIES))
+
 const ascending = computed(() => {
-  const list = trimDupontEntries((basis.value === 'Q' ? props.data.quarterlySeries : props.data.series)?.entries ?? [])
+  const list = trimDupontEntries((basis.value === 'Q' ? props.data.quarterlySeries : props.data.series)?.entries ?? [], financial.value)
   if (basis.value === 'Q') return list
   // 近四季跨到只申報半年報那一年的期別：空白照留，提示框寫原因（使用者 2026-11-11 對 3158 選 B）
   const quarterly = props.data.quarterlySeries?.entries ?? []
-  return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, ROE_SERIES.map(series => series.code)) }))
+  return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, lines.value.map(series => series.code)) }))
 })
 
 // 圖表區間（2026-09-22「圖表要可以選 1235 年」）與自訂區間：useChartPeriod＋SharedChartCard，從已載入的期數切片不重抓。停用的
@@ -40,13 +50,9 @@ const { period, shown } = useChartPeriod({
   labelOf: key => key.replace('Q', ' Q')
 })
 
-// 沒有分解的原因從資料讀（2026-09-22 之前無條件寫成「銀行、保險與金控」，但歷史淺的 2207 和泰車不是金融股）：金融股沒有資產週轉率、
-// 歷史淺的公司有它但缺三個獲利因子，兩者都沒有才是一般的「沒有資料」。
-const emptyReason = computed<'financial' | 'history' | 'none'>(() => {
-  const entry = props.data.series?.entries.at(-1)
-  if (!entry) return 'none'
-  return entry.values.assetTurnover?.value == null ? 'financial' : 'history'
-})
+// 沒有圖的原因（2026-09-22 之前無條件寫成「銀行、保險與金控」，但歷史淺的 2207 和泰車不是金融股）：有期別卻缺因子是歷史還不夠，
+// 什麼都沒有才是一般的「沒有資料」。金融股 2026-11-19 起畫三條線，連 ROE 都沒有才落到這裡
+const emptyReason = computed<'history' | 'none'>(() => (props.data.series?.entries.length && !financial.value ? 'history' : 'none'))
 </script>
 
 <template>
@@ -61,10 +67,7 @@ const emptyReason = computed<'financial' | 'history' | 'none'>(() => {
         <el-radio-button value="Q">單季</el-radio-button>
       </el-radio-group>
     </template>
-    <StockMultiSeriesLineChart v-if="ascending.length" :entries="shown" :series="ROE_SERIES" unit="%" unit-right="倍 / 次" :format="fixedRateText" />
-    <p v-else-if="emptyReason === 'financial'" class="stock-dupont-chart__line">
-      銀行、保險與金控不適用：資產是放款與保單，資產週轉率沒有意義。
-    </p>
+    <StockMultiSeriesLineChart v-if="ascending.length" :entries="shown" :series="lines" :palette="financial ? 'compare' : undefined" unit="%" :unit-right="financial ? '倍' : '倍 / 次'" :format="fixedRateText" />
     <p v-else-if="emptyReason === 'history'" class="stock-dupont-chart__line">
       三項裡有一項還算不出來，所以暫時沒有這張圖。
     </p>

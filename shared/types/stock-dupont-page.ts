@@ -63,8 +63,9 @@ export const DUPONT_FACTOR_CODES = [
   'equityMultiplier'
 ] as const
 
-// 7 codes, inside the 10 metrics-history allows in one request, so the whole page is one cached
+// 8 codes, inside the 10 metrics-history allows in one request, so the whole page is one cached
 // round trip. netProfitMargin is fetched as the published figure rather than multiplied out here:
 // the page's claim is that the backend's own numbers agree, and computing one side of that claim
-// in the frontend would make it circular.
-export const DUPONT_METRIC_CODES: string[] = ['roe', 'netProfitMargin', ...DUPONT_FACTOR_CODES]
+// in the frontend would make it circular. roa is for banks, insurers and 金控, which draw ROE,
+// 資產報酬率 and 權益乘數 instead (isFinancialDupont in app/utils/dupont-series.ts).
+export const DUPONT_METRIC_CODES: string[] = ['roe', 'netProfitMargin', ...DUPONT_FACTOR_CODES, 'roa']
