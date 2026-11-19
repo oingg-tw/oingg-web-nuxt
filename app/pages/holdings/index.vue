@@ -179,10 +179,12 @@ const pnlPctLabel = computed(() => (withDividends.value ? '含息報酬率' : '�
 //「合併成兩行的格子」）；損益與報酬率各一欄、今日漲跌不放（2026-11-19，使用者：「holdings 移除今日漲跌」「我主要希望把報酬率與損益拆開」；
 // 組合的今日漲跌照舊在總覽）。股數也自己一欄就放不進 720 寬的表格（跟指標檢視同一條斷點），欄寬照 720 寬量到的最寬數字（16px）：
 // 損益 150 放得下「▲ +60,600,000 元」、報酬率 104 放得下「+1011.11%」（長期持有的四位數報酬率常見；第二行是 14px，拆出來才變寬）、
-// 市值 108 放得下八位數、預估年股利 96 放得下七位數。放不下時 el-table 會在數字中間折行
+// 預估年股利 96 放得下七位數。放不下時 el-table 會在數字中間折行。
+// 市值寫萬／億（2026-11-19，使用者看設計圖選 F1）：同篩選頁的市值欄，4 位有效數字（8,700萬、7.404萬），排序照精確的數字。
+// 欄寬 84：最寬的是下面一行的股數「1,234,567」（14px 約 59px）
 const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
   { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', under: 'marketValue', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
-  { key: 'marketValue', label: '市值', minWidth: 108, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
+  { key: 'marketValue', label: '市值', minWidth: 84, card: 'summary', text: row => row.figures.marketValue === null ? '－' : formatSignificantDigits(row.figures.marketValue, 4), sortValue: row => row.figures.marketValue },
   {
     key: 'pnl', label: pnlLabel.value, minWidth: 150, card: 'summary',
     text: row => signedMoney(pnlOf(row.figures)),

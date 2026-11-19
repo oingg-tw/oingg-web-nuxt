@@ -12,6 +12,7 @@
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-share-links.mjs（要 A11Y_TEST_EMAIL／PASSWORD；DIR＝截圖目錄，可省略）
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
+import { formatSignificantDigits } from '../shared/utils/number-format.ts'
 const base = process.env.BASE ?? 'http://localhost:3000'
 const dir = process.env.DIR
 const shot = async (page, name, fullPage = false) => { if (dir) await page.screenshot({ path: `${dir}/${name}.png`, fullPage }) }
@@ -534,12 +535,16 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
       check(JSON.stringify(headers) === '["名稱","占比"]', `${label}：各檔只有占比（${headers.join('、')}）`)
     } else if (payload === 'ratios') {
       check(JSON.stringify(headers) === '["名稱","占比","報酬率","今日漲跌"]', `${label}：欄位只有勾的那三欄（${headers.join('、')}）`)
+      // 今日漲跌在報酬率下面一行（2026-11-19「把報酬率與今日漲跌合一起」）：三欄表頭，報酬率那一格兩顆
+      const columnCount = await page.locator('.view-table th:has(.symbol-table__head)').count()
+      check(columnCount === 3, `${label}：今日漲跌併在報酬率那一格（${columnCount} 欄）`)
       const first = (await page.locator('.view-table tbody tr').first().innerText()).replace(/\s+/g, ' ')
       check(first.includes('2330') && first.includes('60.0%') && first.includes('+25.00%'), `${label}：依占比排、2330 在第一列，占比 60.0%、報酬率 +25.00%（${first}）`)
     } else {
       check(JSON.stringify(headers) === '["名稱","市值","股數","未實現損益"]', `${label}：欄位只有勾的那三欄，股數在市值下面（${headers.join('、')}）`)
       const row = (await page.locator('.view-table tbody tr', { hasText: '2330' }).innerText()).replace(/\s+/g, ' ')
-      const value = (1000 * priceOf('2330')).toLocaleString('en-US')
+      // 市值寫萬／億、4 位有效數字（2026-11-19 F1，同持股總覽與篩選的市值欄）
+      const value = formatSignificantDigits(1000 * priceOf('2330'), 4)
       const pnl = (1000 * (priceOf('2330') - 80)).toLocaleString('en-US')
       check(row.includes(value) && row.includes(`▲ +${pnl} 元`), `${label}：市值與未實現損益用公開報價算，跟持股總覽同一套（市值 ${value}、損益 +${pnl}；${row}）`)
     }
