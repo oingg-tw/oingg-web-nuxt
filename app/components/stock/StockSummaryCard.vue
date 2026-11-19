@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Star, StarFilled, Share } from '@element-plus/icons-vue'
+import { Star, StarFilled, Share, Close } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/stock/useStocks'
 
 // 摘要卡不放說明文字（2026-11-08，使用者：「Summary不該放說明文字」）：代號、名稱、全名、股價與漲跌，加上帶日期的狀態（停止買賣、下市）。
@@ -70,29 +70,27 @@ function shareStock(): void {
   void shareLink(`${props.shortName} ${props.stock.code} ${props.topic}`, window.location.href)
 }
 
-// NO COMPANY LOGO HERE ANY MORE（2026-09-22,「拿掉 logo，以後Logo不要從前端拿，改成從後端analysis
-// 拿，存進DB」）. This card fetched one straight from Brandfetch's CDN per render; Brandfetch began
-// answering every request — any domain, including their own example — with a 302 to their usage
-// guidelines page instead of an image, so no logo had been rendering for anyone. Sourcing it from
-// a third-party CDN at render time was the actual mistake: the logo is company data and belongs in
-// analysis-ts's database beside the rest of the profile, fetched once upstream rather than by
-// every visitor's browser. Requested there the same day; this card stays logo-free until it
-// arrives as a normal field.
-//
-// `mounted` stays — the QR code below needs window.location.href, which SSR has no equivalent of.
-const mounted = ref(false)
-onMounted(() => {
-  mounted.value = true
-})
 // QR code share added 2026-09-15 per direct request ("要有QR Code分享功能一樣放在左上角 一樣是個
 // icon") alongside the existing navigator.share button — covers the "someone standing next to me
 // wants this exact page, no chat app in common" case navigator.share can't (that always requires
-// a target app to hand the link to). No QR-generation package in this app yet and one isn't worth
-// adding for a single small image — reuses the same "trust an external CDN for a small generated
-// image" pattern. Gated on `mounted` since window.location.href doesn't exist during SSR.
-const qrCodeUrl = computed(() =>
-  mounted.value ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}` : null
-)
+// a target app to hand the link to).
+// 2026-11-19 改版（使用者看過設計稿 https://claude.ai/artifact/C9WZqV4Ym25k3aKg6F1niL 選 B3）：上緣一條主色的品牌條（網站標誌＋名稱），
+// 公司 logo、代號與簡稱、這一頁的主題，大的 QR 碼，不放數字（「我擔心B的資訊太多」）。QR 碼網站自己畫（同日「我贊同自己產生」）：
+// 原本每次打開都把這一頁的網址送給 api.qrserver.com 換一張圖，它一掛就破圖。uqr 打開時才載入，不進每個個股頁的 bundle。
+// 容錯 H：正中間蓋著網站標誌（約 5% 面積，H 補得回 30%）
+const qrSrc = ref<string | null>(null)
+const qrFailed = ref(false)
+async function openQr() {
+  qrDialogVisible.value = true
+  qrFailed.value = false
+  try {
+    const { renderSVG } = await import('uqr')
+    qrSrc.value = `data:image/svg+xml,${encodeURIComponent(renderSVG(window.location.href, { ecc: 'H', border: 0, pixelSize: 1 }))}`
+  } catch {
+    // 部署後還開著的舊頁面：舊版的程式片段已經不在，載不到
+    qrFailed.value = true
+  }
+}
 
 // Switched from el-popover to el-dialog 2026-09-15 per direct follow-up ("QR Code打開時 要讓背景
 // 是灰色壟罩。避免視覺失焦") — a popover has no backdrop/mask at all, the rest of the page stayed
@@ -222,7 +220,7 @@ const qrDialogVisible = ref(false)
       </el-button>
       <!-- 真正的 QR 圖示（2026-09-15，「請找真正的qr code icon」）：@element-plus/icons-vue 沒有 QR 字形（Grid 看起來只是格子），
            用一個內嵌 SVG（三個定位角＋散點，QR 閱讀器圖示的通用語法），不打網路、不加套件。 -->
-      <el-button text class="summary-card__action-btn" @click="qrDialogVisible = true">
+      <el-button text class="summary-card__action-btn" @click="openQr">
         <svg class="summary-card__qr-icon" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true">
           <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM3 14h7v7H3v-7zm2 2v3h3v-3H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM14 14h3v3h-3v-3zM19 14h2v2h-2v-2zM14 19h2v2h-2v-2zM19 19h2v2h-2v-2zM17 17h2v2h-2v-2z" />
         </svg>QR 碼
@@ -252,12 +250,45 @@ const qrDialogVisible = ref(false)
          needed. append-to-body for the same reason every other dialog in this app uses it (see
          GuruBadgeCard.vue's own comment) — this button sits inside an absolutely-positioned
          corner group, an ancestor's own overflow/stacking context could otherwise clip it. -->
-    <el-dialog v-model="qrDialogVisible" title="掃描開啟此頁面" width="min(280px, 90vw)" append-to-body>
-      <img v-if="qrCodeUrl" :src="qrCodeUrl" width="200" height="200" alt="掃描 QR Code 開啟此頁面" class="summary-card__qr-image">
+    <!-- 2026-11-19 B3：品牌條是彈窗的標頭（標題「掃描開啟此頁面」只給報讀器，el-dialog 的 aria-labelledby 指向它），× 是站上自己的 44px 鈕 -->
+    <el-dialog v-model="qrDialogVisible" class="summary-qr" width="min(343px, calc(100vw - 32px))" :show-close="false" append-to-body>
+      <template #header="{ titleId }">
+        <div class="summary-qr__band">
+          <span class="summary-qr__brand"><span class="summary-qr__glyph" aria-hidden="true" />安盈選股</span>
+          <h2 :id="titleId" class="visually-hidden">掃描開啟此頁面</h2>
+          <button type="button" class="summary-qr__close" aria-label="關閉" @click="qrDialogVisible = false">
+            <el-icon aria-hidden="true"><Close /></el-icon>
+          </button>
+        </div>
+      </template>
+      <div class="summary-qr__body">
+        <!-- 沒有 logo 的公司（約三分之一）不留位置、不放替代圖，同上面的卡片 -->
+        <p class="summary-qr__identity">
+          <img
+            v-if="logo"
+            :src="logo.url"
+            alt=""
+            :width="logo.width ?? undefined"
+            :height="logo.height ?? undefined"
+            class="summary-qr__logo"
+            :class="{ 'summary-qr__logo--needs-dark': logo.needsDarkBackdrop }"
+          >
+          <span class="summary-qr__name">{{ stock.code }} <strong>{{ shortName }}</strong></span>
+          <span class="summary-qr__topic">{{ topic }}</span>
+        </p>
+        <p v-if="qrFailed" class="summary-qr__failed">QR 碼暫時產生不了，請改用「分享」傳連結。</p>
+        <!-- 固定大小的白底：深色模式也是白底黑格，相機才掃得到；QR 碼還沒畫好時先佔住位置 -->
+        <div v-else class="app-card summary-qr__tile">
+          <template v-if="qrSrc">
+            <img :src="qrSrc" :alt="`開啟 ${shortName} ${topic}這一頁的 QR 碼`" class="summary-qr__code">
+            <span class="summary-qr__mark" aria-hidden="true"><img src="/images/logo-white.png" alt=""></span>
+          </template>
+        </div>
+      </div>
       <!-- Visible "關閉" button (2026-09-19, interface-complexity review) — see element-plus.css's own
            .dialog-close-button comment. -->
       <template #footer>
-        <el-button class="dialog-close-button" @click="qrDialogVisible = false">關閉</el-button>
+        <el-button class="dialog-close-button summary-qr__done" @click="qrDialogVisible = false">關閉</el-button>
       </template>
     </el-dialog>
   </el-card>
@@ -619,8 +650,158 @@ html.dark .summary-card__favorite-btn.is-plain {
   }
 }
 
-.summary-card__qr-image {
+/* QR 碼彈窗（2026-11-19 B3）。品牌條：主色底、字與標誌是壓在主色上的字色（--app-on-primary：淺色白、深色近黑）。標誌是白色的 PNG，
+   拿來當遮罩、塗上字色，深色模式才不會是白字壓淺金 */
+.summary-qr__band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 0 6px 0 16px;
+  background: var(--el-color-primary);
+  color: var(--app-on-primary);
+}
+
+.summary-qr__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summary-qr__glyph {
+  width: 28px;
+  height: 28px;
+  background: currentColor;
+  -webkit-mask: url('/images/logo-white.png') center / contain no-repeat;
+  mask: url('/images/logo-white.png') center / contain no-repeat;
+}
+
+.summary-qr__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--el-border-radius-base);
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.summary-qr__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+}
+
+.summary-qr__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 16px 0;
+}
+
+/* logo、代號與簡稱、主題一行，放不下就折，整組置中 */
+.summary-qr__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 0;
+  color: var(--el-text-color-primary);
+}
+
+/* 同卡片上的 logo：白底不加內距，近白的圖案墊深底 */
+.summary-qr__logo {
+  height: 40px;
+  width: auto;
+  max-width: 120px;
+  border-radius: 4px;
+  background: #ffffff;
+  object-fit: contain;
+}
+
+.summary-qr__logo--needs-dark {
+  background: var(--el-color-info-dark-2, #303133);
+}
+
+.summary-qr__name {
+  font-size: 1.375rem;
+  line-height: 1.4;
+}
+
+.summary-qr__topic {
+  color: var(--el-text-color-secondary);
+}
+
+/* 卡片的框與圓角（.app-card），底色固定白：QR 碼要白底黑格 */
+.summary-qr__tile {
+  position: relative;
+  box-sizing: border-box;
+  width: 248px;
+  height: 248px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.summary-qr__code {
   display: block;
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
+}
+
+/* 正中間的網站標誌，同頁首的標誌（主色方塊＋白色字形），外圍一圈白邊跟 QR 碼隔開 */
+.summary-qr__mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--el-color-primary);
+  box-shadow: 0 0 0 4px #ffffff;
+  transform: translate(-50%, -50%);
+}
+
+.summary-qr__mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.summary-qr__failed {
+  margin: 0;
+  text-align: center;
+}
+
+.summary-qr__done {
+  width: 100%;
+}
+</style>
+
+<style>
+/* QR 碼彈窗的外框（掛在 body，只能不加 scoped，同 ScreenerConditionPanel 的 .condition-panel）：彈窗本身不留內距，品牌條貼齊上緣、
+   圓角裁掉它的兩個角；內距由品牌條、內容、頁尾各自帶 */
+.el-dialog.summary-qr {
+  padding: 0;
+  overflow: hidden;
+}
+
+.el-dialog.summary-qr .el-dialog__header {
+  padding: 0;
+}
+
+.el-dialog.summary-qr .el-dialog__footer {
+  padding: 16px;
 }
 </style>
