@@ -78,7 +78,7 @@ const ascending = computed<(MetricsHistoryEntry & { note?: string })[]>(() => {
   const quarterly = marginsData.value?.series?.entries ?? []
   return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, MARGIN_RATE_CODES) }))
 })
-const periods = computed(() => [...ascending.value].reverse())
+const periods = computed(() => [...ascending.value].reverse().slice(0, HISTORY_TABLE_PERIODS))
 
 const latest = computed(() => periods.value[0] ?? null)
 

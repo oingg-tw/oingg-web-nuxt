@@ -10,13 +10,13 @@ import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/t
 // rather than assumed）— these are balance-sheet snapshots, and a ratio of two point-in-time
 // figures has no rolling-four-quarter form to offer.
 //
-// 20 periods (5 years), the depth「任何指標的歷史，放五年就好，足夠了」set for every page here.
+// 32 periods (8 years) since 2026-11-19 so the chart's 近8年 can be picked (STOCK_CHART_HISTORY_LIMIT); the table still lists 5 years.
 
 export default defineEventHandler(async (event): Promise<StockSolvencyPageResponse> => {
   const code = requireListedSymbol(event)
 
   // A history hiccup must degrade the page, never 500 it — the page decides what degrading means.
-  const series = await settle(cachedMetricsHistory(code, 'Q', SOLVENCY_METRIC_CODES, STOCK_HISTORY_LIMIT))
+  const series = await settle(cachedMetricsHistory(code, 'Q', SOLVENCY_METRIC_CODES, STOCK_CHART_HISTORY_LIMIT))
 
   return { symbol: code, series }
 })

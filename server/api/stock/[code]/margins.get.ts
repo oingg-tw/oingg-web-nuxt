@@ -7,8 +7,8 @@ import { MARGIN_METRIC_CODES, THREE_MARGINS_RISING_CODE, type StockMarginsPageRe
 // file the page component reads too. Five codes in ONE request — metrics-history takes up to 10
 // per call, so the whole page costs a single 業務中台 round trip, cached like every other read here.
 //
-// 20 periods (5 years of TTM quarters), the same depth and for the same reason as metric.get.ts:
-//「任何指標的歷史，放五年就好，足夠了」(2026-09-21).
+// 32 periods (8 years) since 2026-11-19 so the chart's 近8年 can be picked (STOCK_CHART_HISTORY_LIMIT); the table still
+// lists 5 years, the depth「任何指標的歷史，放五年就好，足夠了」(2026-09-21) set for tables.
 //
 // Q（單季）, one basis only — changed from TTM on 2026-09-21 along with every other metric default
 // in this app（「請讓指標預設只用單季數字」, reason given: search behaviour）. Verified before
@@ -31,8 +31,8 @@ export default defineEventHandler(async (event): Promise<StockMarginsPageRespons
   // bare Promise.all, same rule metric.get.ts states: a backend hiccup degrades this page, it
   // never 500s it.
   const [series, ttmSeries, badges] = await Promise.all([
-    settle(cachedMetricsHistory(code, 'Q', MARGIN_METRIC_CODES, STOCK_HISTORY_LIMIT)),
-    settle(cachedMetricsHistory(code, 'TTM', MARGIN_METRIC_CODES, STOCK_HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, 'Q', MARGIN_METRIC_CODES, STOCK_CHART_HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, 'TTM', MARGIN_METRIC_CODES, STOCK_CHART_HISTORY_LIMIT)),
     settle(cachedBadges(code))
   ])
 

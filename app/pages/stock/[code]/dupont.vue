@@ -38,7 +38,7 @@ watchLoadFailure(() => `stock-dupont:${code.value}`, () => dupontError.value ?? 
 const activeSeries = computed(() => (basis.value === 'Q' ? dupontData.value?.quarterlySeries : dupontData.value?.series))
 
 const ascending = computed<MetricsHistoryEntry[]>(() => trimDupontEntries(activeSeries.value?.entries ?? []))
-const periods = computed(() => [...ascending.value].reverse())
+const periods = computed(() => [...ascending.value].reverse().slice(0, HISTORY_TABLE_PERIODS))
 const latest = computed(() => periods.value.find(isDupontComplete) ?? null)
 
 // 期別切換（2026-09-22「杜邦分析圖表要可以選單季與近四季」）：兩種序列同一次請求就有，切換是換資料不是重抓。預設仍是近四季（單季

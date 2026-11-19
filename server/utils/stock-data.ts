@@ -44,6 +44,11 @@ interface MetricsHistoryResponse {
 // 這種通名遲早會被某個檔案的同名區域變數靜默遮蔽。
 export const STOCK_HISTORY_LIMIT = 20
 
+// 拿伺服器這份資料切近N年的圖（杜邦、財報三率、償債能力）要抓到 8 年：圖表右上的近N年最長是 8 年（2026-10-15「1 年 2年 3年 5年 8年」），
+// 只抓 20 期的話這幾張圖的近8年永遠是灰的（2026-11-19，使用者：「要讓每個選項預設都有12358年喔」「底層用季計算也是同樣道理」）。
+// 表格照舊只列 5 年：頁面截在 HISTORY_TABLE_PERIODS（app/utils/metric-history-points.ts）
+export const STOCK_CHART_HISTORY_LIMIT = 32
+
 export const cachedMetricsHistory = defineCachedFunction(
   async (symbol: string, timeframe: MetricsHistoryTimeframe, codes: string[], limit: number): Promise<MetricsHistorySeries> => {
     const response = await businessFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {

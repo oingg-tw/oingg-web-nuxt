@@ -46,6 +46,10 @@ export function metricCellText(point: { value: number | null; nullReason: string
   return nullReasonShortText(point.nullReason)
 }
 
+// 歷史表最多列幾期：近 5 年（2026-09-21，使用者：「任何指標的歷史，放五年就好，足夠了」）。圖表的資料抓到 8 年讓近8年選得到
+//（STOCK_CHART_HISTORY_LIMIT，2026-11-19），表格不跟著變長：杜邦、財報三率、償債能力頁的表截在這裡
+export const HISTORY_TABLE_PERIODS = 20
+
 // 個股頁每一張「一列一期」的歷史表共用的問句、答句與表名（2026-10-13，使用者：「每個表格的標題文字內容都不太一樣」，選了
 // 問句統一「X的Y歷年變化如何？」、caption 一律藏起來）。label 同時是 <caption>（visually-hidden）與 SharedTable 的 label，
 // check-stock-pages 斷言兩者相同。答句交代表格涵蓋多久，讀者不必數列數；頁面有其他帶數字的話接在這一句後面，不取代它。

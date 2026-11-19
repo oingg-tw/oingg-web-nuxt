@@ -12,7 +12,7 @@ import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types
 // each basis is cached under its own key, so a visitor who never touches the toggle still costs
 // exactly what they did before once both are warm.
 //
-// 20 periods (5 years), the depth「任何指標的歷史，放五年就好，足夠了」set for every page here.
+// 32 periods (8 years) since 2026-11-19 so the chart's 近8年 can be picked (STOCK_CHART_HISTORY_LIMIT); the table still lists 5 years.
 
 export default defineEventHandler(async (event): Promise<StockDupontPageResponse> => {
   const code = requireListedSymbol(event)
@@ -21,8 +21,8 @@ export default defineEventHandler(async (event): Promise<StockDupontPageResponse
   // Independently per basis: one failing must not take the other down, since either alone is a
   // usable page.
   const [series, quarterlySeries] = await Promise.all([
-    settle(cachedMetricsHistory(code, 'TTM', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT)),
-    settle(cachedMetricsHistory(code, 'Q', DUPONT_METRIC_CODES, STOCK_HISTORY_LIMIT))
+    settle(cachedMetricsHistory(code, 'TTM', DUPONT_METRIC_CODES, STOCK_CHART_HISTORY_LIMIT)),
+    settle(cachedMetricsHistory(code, 'Q', DUPONT_METRIC_CODES, STOCK_CHART_HISTORY_LIMIT))
   ])
 
   return { symbol: code, series, quarterlySeries }
