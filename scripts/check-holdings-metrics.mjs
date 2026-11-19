@@ -4,7 +4,7 @@
 // Run: node scripts/check-holdings-metrics.mjs
 import { readFileSync } from 'node:fs'
 import { BANNED_WORDS } from '../shared/utils/compliance-words.ts'
-import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, TAIL_MIN_DAYS, UNDER_A_YEAR, coverageText, drawdownDates, firstReason, holdingsMetricText, partialCoverageText, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
+import { COVARIANCE_MIN_DAYS, NO_RISK_FREE, UNDER_A_YEAR, coverageText, firstReason, holdingsMetricText, partialCoverageText, riskFreeLine, sampleShortfall } from '../app/utils/holdings-metrics.ts'
 
 let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
@@ -35,13 +35,10 @@ console.log('(a) 一年、全部有值')
 console.log('(b) 40 個交易日')
 {
   const p = fixture('b-short-window.performance')
-  const r = fixture('b-short-window.risk')
   // 「未滿一年」照 業務中台 的判定（twr 有值、annualized.twr 是 null），頁面不自己重算門檻
   assert(p.twr !== null && p.annualized.twr === null, '40 天：業務中台 判定未滿一年，不換算年化')
   const sharpe = holdingsMetricText(p.riskAdjusted.sharpe, 'ratio', firstReason(!p.riskFree && NO_RISK_FREE, sampleShortfall(p.riskAdjusted.sampleDays, COVARIANCE_MIN_DAYS)))
   assert(sharpe.startsWith('樣本不足'), `Sharpe 寫樣本不足（得到「${sharpe}」）`)
-  const tail = holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS)))
-  assert(tail === `樣本不足（${r.tradingDays} 天，需 100 天）`, `VaR 寫樣本不足（得到「${tail}」）`)
 }
 
 console.log('(c) 取不到無風險利率')
@@ -65,8 +62,7 @@ console.log('(c) 風險頁：利率缺、其餘不受影響')
 {
   // 這個情境只有績效那份不同；風險、已實現跟 (a) 同一份
   const r = fixture('a-normal-1y.risk')
-  assert(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS) === null && r.portfolio.valueAtRisk95 !== null, 'VaR 照常有值（樣本夠）')
-  assert(r.portfolio.annualizedVolatility !== null && r.diversificationRatio !== null, '波動度與分散化比率不受利率影響')
+  assert(r.portfolio.annualizedVolatility !== null, '波動度不受利率影響')
   const c = fixture('a-normal-1y.realized')
   assert(c.tradeStats.sellCount === 2 && holdingsMetricText(c.tradeStats.winRate, 'pct') === '50.0%', '已實現統計照常：2 筆賣出、獲利筆數占比 50.0%')
 }
@@ -84,16 +80,6 @@ console.log('(d) 期間中才有股價、整段沒有股價')
   assert(Array.isArray(p.missingPrices) && JSON.stringify(p.missingPrices).includes('9999'), '報酬頁的 missingPrices 列出沒有股價的代號')
 }
 
-console.log('(e) 回撤尚未回到前高')
-{
-  const e = fixture('e-drawdown-not-recovered.risk')
-  const text = drawdownDates(e.portfolio.maxDrawdown)
-  assert(text === '2026-02-26 高點 → 2026-03-31 低點，期間結束時尚未回到前高', `尚未回到前高（得到「${text}」）`)
-  const a = fixture('a-normal-1y.risk')
-  assert(drawdownDates(a.portfolio.maxDrawdown).endsWith('回到前高') && !drawdownDates(a.portfolio.maxDrawdown).includes('尚未'), '已回到前高的寫日期')
-  assert(drawdownDates(null) === '', '沒有回撤資料就不寫')
-}
-
 console.log('(a) 已實現統計')
 {
   const t = fixture('a-normal-1y.realized').tradeStats
@@ -103,7 +89,7 @@ console.log('(a) 已實現統計')
 
 console.log('用詞')
 {
-  const texts = [UNDER_A_YEAR, NO_RISK_FREE, sampleShortfall(1, 120), riskFreeLine(fixture('a-normal-1y.performance').riskFree), drawdownDates(fixture('e-drawdown-not-recovered.risk').portfolio.maxDrawdown)]
+  const texts = [UNDER_A_YEAR, NO_RISK_FREE, sampleShortfall(1, 120), riskFreeLine(fixture('a-normal-1y.performance').riskFree)]
   const hit = BANNED_WORDS.filter(word => texts.some(text => text.includes(word)))
   assert(hit.length === 0, `沒有禁用詞${hit.length ? `（命中 ${hit.join('、')}）` : ''}`)
 }

@@ -10,8 +10,7 @@ export type HoldingsMetricFormat = 'pct' | 'signedPct' | 'ratio' | 'money'
 export const UNDER_A_YEAR = '期間未滿一年'
 export const NO_RISK_FREE = '無風險利率暫時取不到'
 
-// 尾端風險（VaR／ES）要 100 個交易日（尾端才有 5 筆以上）；共變異數與跟大盤比的那些要 120 個（業務中台 的門檻）
-export const TAIL_MIN_DAYS = 100
+// 共變異數與跟大盤比的那些要 120 個交易日（業務中台 的門檻）
 export const COVARIANCE_MIN_DAYS = 120
 
 // 負號是減號「−」（2026-11-03，使用者：「負號統一」；同 shared 的 minusSign，這個檔案不 import 所以自己換開頭那一個）
@@ -40,12 +39,6 @@ export function firstReason(...reasons: (string | null | false | undefined)[]): 
 export function riskFreeLine(riskFree: { rates: { yearMonth: string; ratePct: number; sourceYearMonth: string }[] } | null): string | null {
   const last = riskFree?.rates.at(-1)
   return last ? `無風險利率：五大銀行一年期定存 ${last.ratePct.toFixed(2)}%（${last.sourceYearMonth}）` : null
-}
-
-// 「2026-02-26 高點 → 2026-03-31 低點，期間結束時尚未回到前高」（風險頁「計算方式」裡的最大回撤）
-export function drawdownDates(drawdown: { peakDate: string | null; troughDate: string | null; recoveryDate: string | null } | null): string {
-  if (!drawdown?.peakDate || !drawdown.troughDate) return ''
-  return `${drawdown.peakDate} 高點 → ${drawdown.troughDate} 低點，${drawdown.recoveryDate ? `${drawdown.recoveryDate} 回到前高` : '期間結束時尚未回到前高'}`
 }
 
 // 風險頁的那一行：「東聯互動 7738 2025-10-16 起、仁大 7767 無股價」——期間中才有股價（partial）或整段沒有股價（none）的持股

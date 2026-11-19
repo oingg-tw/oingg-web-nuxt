@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RiskDrawdown, RiskOutcome, RiskReport } from '~/composables/holdings/holdings-model'
+import type { RiskOutcome } from '~/composables/holdings/holdings-model'
 import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 // 持股的風險指標（2026-10-05）：使用者在 業務中台 那邊要了組合的風險指標，選「用現在的持股回推」——拿現在每一檔
 // 的市值比例，套用過去的股價（GET /holdings/risk，業務中台 23b7b09）。放在側欄第四項而不是交易績效頁：它描述
@@ -7,6 +7,8 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 //
 // 2026-10-21 加過實際經歷的跌幅（每天真的持股，從報酬與大盤搬來的四列），2026-11-08 整段刪掉（使用者：「實際經歷多大跌幅這個卡片刪掉」），
 // 這頁從此只有回推、只讀 GET /holdings/risk。同一天潰瘍指數自成一段、放最上面（「潰瘍指數卡片放上面」，見下面的方案 C）
+// 2026-11-19「其他風險指標跟大盤比起來如何？」那一段（最大回撤、VaR、ES、下行標準差、相關係數、分散化比率的表）也刪掉（使用者：
+// 「holdings/risk 移除 其他風險指標跟大盤比起來如何」）；同日頁名改叫「胃痛風險」（「siidebar中文名稱改為胃痛風險」，頁首跟側欄同一個名字）
 //
 // 業務中台 要求照實呈現的四件事，這頁都做到：
 //   1. 沒有報酬率與夏普比率（持股是事後選的，回推的報酬會偏高；真實報酬看交易績效）。
@@ -15,7 +17,7 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 //   4. 只陳述數字與定義，不加「風險偏高」這類評語或等級（投信投顧法）。
 //
 // Personal page: out of the index and the sitemap (/holdings/**).
-useSeoMeta({ title: '風險', robots: 'noindex, nofollow' })
+useSeoMeta({ title: '胃痛風險', robots: 'noindex, nofollow' })
 
 const authResolved = useAuthResolved()
 const { fetchRisk, ledgerVersion } = useHoldings()
@@ -44,53 +46,6 @@ function pct(value: number | null | undefined, digits = 1): string {
   if (value === null || value === undefined) return '－'
   return minusSign(`${(value * 100).toFixed(digits)}%`)
 }
-
-function plain(value: number | null | undefined, digits = 2): string {
-  return value === null || value === undefined ? '－' : minusSign(value.toFixed(digits))
-}
-
-function drawdownText(drawdown: RiskDrawdown | null): string {
-  if (!drawdown) return '－'
-  return pct(drawdown.depth)
-}
-
-// ---- 2026-10-07 加的指標（使用者確認的設計：分佈型風險補進同一張表、VaR／ES 換成金額、新增「集中與分散」）。
-// 缺值的原因分開命名，邏輯與檢查在 utils/holdings-metrics.ts。
-// 2026-10-19 簡化（使用者：「holdings/risk 版面太複雜請簡化」）：預設只列 core 的幾項，波動、跌幅、最差的日子各一項，
-// 加上潰瘍指數（使用者同日：「潰瘍指數很重要呢 希望他不要預設被隱藏」；2026-11-08 方案 C 起，年化波動度在波動占比那段的答句、
-// 潰瘍指數自成一段放最上面，兩個都不在這張表裡）；
-// 其餘連同原本自成一張表的分散化比率，按「顯示全部指標」才列在同一張表、欄位對齊（同財報頁的「顯示全部科目」）。
-// 原本表格下面那句 VaR／ES 換成金額，寫進這兩列的「意思」。
-// 2026-10-20 Beta 拿掉（使用者：「holdings/analysis holdings/risk 做好資訊分工 避免重複」，選「Beta 歸持股特色」）：持股分析的
-// 持股特色是同一支、同一段近一年的數字，還會跟著分享帶出去。這頁只講價格起伏：波動、跌幅、哪幾檔占了波動
-// （現在持有的「是什麼」在持股分析，「漲跌起伏多大」在這裡）。
-const showAllMetrics = ref(false)
-const metricsTableId = useId()
-// 讀的時候（2026-10-20）：用一份空的報告算出同樣的列（名稱與意思），數值清空，表格畫成骨架（HoldingsMetricTable loading）。
-// 空報告的欄位都是 undefined，pct／plain／holdingsMetricText／drawdownText 都當成沒有值
-const BLANK_REPORT = { tradingDays: 0, marketValue: null, portfolio: {}, benchmark: {}, diversificationRatio: null } as unknown as RiskReport
-const metricRows = computed(() => {
-  if (!report.value) return outcome.value ? [] : metricRowsOf(BLANK_REPORT).map(row => ({ ...row, value: '', market: '' }))
-  return metricRowsOf(report.value)
-})
-function metricRowsOf(r: RiskReport) {
-  const tailMissing = firstReason(sampleShortfall(r.tradingDays, TAIL_MIN_DAYS))
-  // 以現在的市值，最差 5% 的日子單日會少多少（業務中台 已乘好，通常 ≤ 0，這裡寫成「少 N 元」）
-  // 市值明確比 null：0 用 r.marketValue && … 會被當成沒有
-  const loss = (value: number | null) => (r.marketValue != null && value != null ? holdingsMetricText(Math.abs(value), 'money') : null)
-  const varLoss = loss(r.portfolio.valueAtRisk95Amount)
-  const esLoss = loss(r.portfolio.expectedShortfall95Amount)
-  return [
-    { core: false, name: '下行標準差（年化）', value: holdingsMetricText(r.portfolio.downsideDeviation, 'pct'), market: holdingsMetricText(r.benchmark.downsideDeviation, 'pct'), meaning: '只算下跌那幾天的波動，換算成一年' },
-    { core: true, name: '最大回撤', value: drawdownText(r.portfolio.maxDrawdown), market: drawdownText(r.benchmark.maxDrawdown), meaning: '期間內從高點到之後低點的最大跌幅' },
-    { core: true, name: '單日 VaR（95%）', value: holdingsMetricText(r.portfolio.valueAtRisk95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.valueAtRisk95, 'pct', tailMissing, 2), meaning: varLoss ? `以現在市值 ${holdingsMetricText(r.marketValue, 'money')}計，最差 5% 的日子單日約少 ${varLoss}` : '把期間內每天的漲跌排序，最差 5% 的那個門檻' },
-    { core: false, name: '單日 ES（95%）', value: holdingsMetricText(r.portfolio.expectedShortfall95, 'pct', tailMissing, 2), market: holdingsMetricText(r.benchmark.expectedShortfall95, 'pct', tailMissing, 2), meaning: esLoss ? `最差 5% 的那些天，以現在市值平均約少 ${esLoss}` : '最差 5% 的那些天，平均跌多少' },
-    { core: false, name: '與大盤的相關係數', value: plain(r.portfolio.correlation), market: '1.00', meaning: '漲跌方向跟大盤一致的程度，介於 −1 到 1' },
-    // 有效持股數、前三大權重 2026-10-07 搬到持股分析頁（那是占比的事實，不需要股價歷史）；這裡只留要用股價回推的
-    { core: false, name: '分散化比率', value: holdingsMetricText(r.diversificationRatio, 'ratio', firstReason(sampleShortfall(r.tradingDays, COVARIANCE_MIN_DAYS))), meaning: '各檔波動度依權重平均 ÷ 組合的波動度（≥ 1），數字越大，各檔漲跌互相抵銷的部分越多' }
-  ]
-}
-const shownMetricRows = computed(() => metricRows.value.filter(row => row.core || showAllMetrics.value))
 
 // ---- 各檔的市值占比與波動占比 ----
 const holdingLabel = (symbol: string) => {
@@ -213,7 +168,7 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
 </script>
 
 <template>
-  <HoldingsPageShell title="風險" guest-title="登入後查看你的持股風險指標" :pending="pending && !outcome">
+  <HoldingsPageShell title="胃痛風險" guest-title="登入後查看你的持股風險指標" :pending="pending && !outcome">
     <template #default="{ loading }">
 
       <!-- 交易日數寫在期間旁邊（業務中台 要求一併顯示；兩段共用。2026-10-19 從內容上方獨立的一句搬來） -->
@@ -296,15 +251,10 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
             <HoldingsMetricTable v-else caption="各檔持股的市值占比與波動占比" :rows="contributionRows" value-label="市值占比" market-label="波動占比" />
           </section>
 
-          <section aria-labelledby="risk-metrics-title">
-            <h2 id="risk-metrics-title" class="risk-page__section-title">其他風險指標跟大盤比起來如何？</h2>
-            <HoldingsMetricTable :id="metricsTableId" caption="持股與同期加權報酬指數的風險指標" :rows="shownMetricRows" market-label="加權報酬指數" :loading="loading" />
-            <el-button link type="primary" class="risk-page__toggle" :aria-expanded="showAllMetrics" :aria-controls="metricsTableId" @click="showAllMetrics = !showAllMetrics">
-              {{ showAllMetrics ? '只看主要指標' : `顯示全部指標（另有 ${metricRows.length - shownMetricRows.length} 項）` }}
-            </el-button>
-            <!-- 會改變數字的缺口才留在外面，一行（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單） -->
-            <!-- 統計天數不足時照實說，不下結論；少於 120 天時，波動占比與分散化比率的格子自己寫「樣本不足」。放在表格下面
-                 （2026-10-20）：資料到了才知道要不要這一行，原本在最上面，出現時把兩段一起往下推（正式建置量到 0.038） -->
+          <!-- 會改變數字的缺口才留在外面，一行一個（2026-10-08「risk 底部的文字說明太多」：原本是 h3＋說明＋清單）。統計天數不足時照實說，
+               不下結論；少於 120 天時，波動占比的格子自己寫「樣本不足」。放在最後一張卡片後面（2026-10-20）：資料到了才知道要不要這一行，原本在
+               最上面，出現時把兩段一起往下推（正式建置量到 0.038）。2026-11-19 原本那一段刪掉，搬到這裡：業務中台要求照實寫出的兩件事，不跟著刪 -->
+          <div v-if="(loading ? fewDaysSample : fewDays < 60) || (loading || !namesReady ? partialSample : partialHoldings.length)" class="risk-page__gaps">
             <p v-if="loading ? fewDaysSample : fewDays < 60" class="risk-page__note">
               <span v-if="loading" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ fewDaysSample }}</span>
               <template v-else>{{ FEW_DAYS_NOTE }}</template>
@@ -313,7 +263,7 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
               <span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow" aria-hidden="true">{{ partialSample }}</span>
               <template v-else>{{ PARTIAL_NOTE }}{{ partialCoverageText(partialHoldings) }}</template>
             </p>
-          </section>
+          </div>
 
           <!-- 口徑與回撤日期收進「計算方式」，同持股總覽（2026-10-08 同一句） -->
           <details class="app-disclosure">
@@ -324,8 +274,6 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
               <li>波動占比（風險貢獻）：每一檔占整體波動的比例，合計約 100%。</li>
               <!-- 含息、還原減資（業務中台 5593cce，2026-10-23）：個股用還原收盤價，跟 analysis-ts 的 Beta 同一套；大盤用報酬指數 -->
               <li>股價含息：現金股利、股票股利與分割、減資退還的股款都已還原；大盤用發行量加權股價報酬指數（含息）。</li>
-              <li v-if="report && drawdownDates(report.portfolio.maxDrawdown)">持股最大回撤：{{ drawdownDates(report.portfolio.maxDrawdown) }}</li>
-              <li v-if="report && drawdownDates(report.benchmark.maxDrawdown)">加權報酬指數最大回撤：{{ drawdownDates(report.benchmark.maxDrawdown) }}</li>
             </ul>
           </details>
 
@@ -347,10 +295,6 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.risk-page__toggle {
-  min-height: 44px;
 }
 
 .risk-contribution-chart {
@@ -439,8 +383,15 @@ watch([authResolved, holdingsScope, range, ledgerVersion], ([resolved, uid]) => 
   margin: 0;
 }
 
+/* 兩行缺口說明是 body 的一個子元素：分開放的話 body 的 24px 間距會把兩行拉開 */
+.risk-page__gaps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .risk-page__note {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--el-text-color-regular);
 }
 

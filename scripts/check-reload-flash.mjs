@@ -23,7 +23,7 @@ const ROUTES = {
   // '/holdings/columns': { first: ['.columns-toolbar', '.sheet'], marker: '.sheet' },
   // 測試帳號沒有配息：上次 0 筆時讀的時候不畫月曆與表格
   '/holdings/dividends': { first: ['#dividends-title'], marker: '.dividends-page__footnote' },
-  '/holdings/risk': { first: ['#risk-metrics-title'], marker: '.risk-page__body' },
+  '/holdings/risk': { first: ['#risk-ulcer-title'], marker: '.risk-page__body' },
   '/holdings/statistics': { first: ['#statistics-relative-title'], marker: '.statistics-page__body' },
   '/holdings/realized': { first: ['#realized-title'], marker: '#realized-title' },
   '/holdings/performance': { first: ['#performance-compare-title'], marker: '#performance-compare-title' },
