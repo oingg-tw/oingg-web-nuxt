@@ -308,12 +308,19 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
 // 搜尋指標時比對的英文縮寫（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）：一個字的網址代號（roe、eps、bvps 本身就是
 // 縮寫），加上那一頁 <title> 長尾片語裡的英文縮寫（titleKeywords 的 PER、PBR、ROE…；本益比的網址是 pe-ratio，打 PER 對不到）。
 // 多個字的代號是描述（revenue-per-share）不比：打 per 會對到一串每股的頁。比字的開頭。指標總覽與速覽「加入指標」的搜尋共用；
-// query 是 searchKey 過的
-export function matchesStockNavKeyword(node: StockNavNode, query: string): boolean {
+// query 是 searchKey 過的。
+// 型錄的搜尋別名（數據中台的 searchAliases，篩選挑指標也讀它；2026-11-19，使用者：「加入指標 輸入 流速動比 沒東西跑出來」）：中文俗稱
+// 比對整串，英文只比對全大寫的縮寫（CR、QR）的開頭，同上：英文寫法（Working Capital Ratio）的一般單字會讓打 per 撈出一串頁
+export function matchesStockNavKeyword(node: StockNavNode, query: string, aliasesOf?: (metricCode: string) => string[] | undefined): boolean {
   const slug = node.to?.('_').split('/').pop() ?? ''
   const page = findMetricPage(slug) ?? findBadgePage(slug)
-  const words = [...(slug.includes('-') ? [] : [slug]), ...(page?.titleKeywords.match(/[A-Za-z][A-Za-z0-9]*/g) ?? [])]
-  return words.some(word => word.toLowerCase().startsWith(query))
+  const aliases = (page && aliasesOf?.(page.metricCode)) || []
+  const words = [
+    ...(slug.includes('-') ? [] : [slug]),
+    ...(page?.titleKeywords.match(/[A-Za-z][A-Za-z0-9]*/g) ?? []),
+    ...aliases.filter(alias => /^[A-Z][A-Z0-9]+$/.test(alias))
+  ]
+  return words.some(word => word.toLowerCase().startsWith(query)) || aliases.some(alias => /\p{Script=Han}/u.test(alias) && searchKey(alias).includes(query))
 }
 
 // slug 從節點自己的 `to` 推出來而不是在資料裡再寫一次：`to` 已經是那一頁位址的唯一來源，多存一份 slug

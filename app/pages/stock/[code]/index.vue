@@ -219,18 +219,23 @@ const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
 const pickerGroups = STOCK_METRIC_INDEX
   .map(group => ({ label: group.label, children: (group.children ?? []).filter(link => hasPinnableChart(slugOf(link))) }))
   .filter(group => group.children.length)
-// 搜尋（2026-11-15，使用者：「加入指標彈窗 這邊要放搜尋欄位」）：名稱裡有就列，沒有的分組整組不畫；比對同篩選挑指標（searchKey：全形、
+// 搜尋（2026-11-15，使用者：「加入指標彈窗 這邊要放搜尋欄位」）：名稱、英文縮寫或型錄別名裡有就列，沒有的分組整組不畫；比對同篩選挑指標（searchKey：全形、
 // 大小寫、臺／台）。每次打開清空
 const pickerQuery = ref('')
+// 型錄的搜尋別名（流速動比、CR）在長文字那一份裡：打開彈窗才抓，到之前只比對名稱
+const { texts: metricTexts, load: loadMetricTexts } = useMetricTexts()
+const aliasesOf = (metricCode: string) => metricTexts.value?.[metricCode]?.searchAliases
 const shownPickerGroups = computed(() => {
   const query = searchKey(pickerQuery.value)
   if (!query) return pickerGroups
   return pickerGroups
-    .map(group => ({ ...group, children: group.children.filter(link => searchKey(link.label).includes(query) || matchesStockNavKeyword(link, query)) }))
+    .map(group => ({ ...group, children: group.children.filter(link => searchKey(link.label).includes(query) || matchesStockNavKeyword(link, query, aliasesOf)) }))
     .filter(group => group.children.length)
 })
 watch(pickerOpen, (open) => {
-  if (open) pickerQuery.value = ''
+  if (!open) return
+  pickerQuery.value = ''
+  loadMetricTexts()
 })
 
 // 河流圖與互動卡片自己讀資料；其餘的圖跟它那一頁讀同一支端點（Nitro 快取的同一份），有釘那一種才抓。以 kind 為鍵：

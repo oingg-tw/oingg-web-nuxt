@@ -81,9 +81,17 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     const all = await chips.count()
     await search.fill('營收')
     const revenue = (await chips.allTextContents()).map(text => text.trim())
-    expect(code, `搜「營收」只剩名稱有營收的（${all} → ${revenue.length} 個）`, revenue.length > 0 && revenue.length < all && revenue.every(text => text.includes('營收')))
+    // 型錄別名有「營收」的也列（研發費用率的別名是「研發費用占營收比」，2026-11-19），名稱與別名都沒有的不列
+    expect(code, `搜「營收」：名稱有營收的都在、ROE 不在（${all} → ${revenue.length} 個）`, revenue.length < all && ['月營收', '股價營收比', '每股營收'].every(label => revenue.includes(label)) && !revenue.includes('ROE'))
     await search.fill('roe')
     expect(code, '搜小寫 roe 找得到 ROE', (await chips.allTextContents()).some(text => text.trim() === 'ROE'))
+    // 型錄的搜尋別名（2026-11-19，使用者：「加入指標 輸入 流速動比 沒東西跑出來」）：中文俗稱比對整串、全大寫的縮寫比開頭。
+    // 別名是彈窗打開才抓的，所以等；排在 PER 前面，PER 那一條才是在別名到了之後驗不會多撈
+    const listsQuickRatio = () => waitFor(async () => (await chips.allTextContents()).some(text => text.trim() === '速動比率'), 15000)
+    await search.fill('酸性')
+    expect(code, '搜「酸性」找得到速動比率（型錄別名「酸性測驗比率」）', await listsQuickRatio())
+    await search.fill('qr')
+    expect(code, '搜 qr 找得到速動比率（型錄縮寫 QR）', await listsQuickRatio())
     // 英文縮寫只寫在頁面標題裡（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）；網址代號比字的開頭，per 不對到 operating
     await search.fill('PER')
     const per = (await chips.allTextContents()).map(text => text.trim())

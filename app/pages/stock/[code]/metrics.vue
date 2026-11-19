@@ -77,8 +77,13 @@ const totalLinks = computed(() => sections.value.reduce((sum, section) => sum + 
 const query = ref('')
 // 比對鍵見 utils/search-text.ts（「周轉」也找得到「週轉」，2026-10-23）
 const normalizedQuery = computed(() => searchKey(query.value))
+// 型錄的搜尋別名（流速動比、CR）在長文字那一份裡：開始打字才抓，到之前只比對頁面上的字
+const { texts: metricTexts, load: loadMetricTexts } = useMetricTexts()
+const aliasesOf = (metricCode: string) => metricTexts.value?.[metricCode]?.searchAliases
+watch(query, text => text && loadMetricTexts())
 
-// 比對六個欄位：label、hook、視角、母項名、母項說明句、英文字（matchesStockNavKeyword：網址代號拆開的字與頁面標題的英文縮寫）。
+// 比對六個欄位：label、hook、視角、母項名、母項說明句、英文字與別名（matchesStockNavKeyword：網址代號拆開的字、頁面標題的英文縮寫、
+// 型錄的搜尋別名）。
 //
 // 英文字在裡面是為了讓「roe」「bvps」這種縮寫打得到——中文名叫「股東權益報酬率」，但讀者會打 ROE；本益比的網址是 pe-ratio，
 // PER 只寫在標題裡（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）。
@@ -98,7 +103,7 @@ const matches = computed(() => {
       const hit = searchKey(link.label).includes(q)
         || searchKey(link.hook ?? '').includes(q)
         || searchKey(link.perspective ?? '').includes(q)
-        || matchesStockNavKeyword(link, q)
+        || matchesStockNavKeyword(link, q, aliasesOf)
       if (hit) direct.push({ link, group: section.label })
       else if (groupHit) byGroup.push({ link, group: section.label })
     }
