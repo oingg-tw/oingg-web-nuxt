@@ -6,7 +6,7 @@
 // 所以部署前先看分支最新的 commit：已經不是這一版，就是後面還有一個建置會部署更新的那版，這一版不部署、不登記，正常結束。
 // 查不到（網路、沒有分支名稱）就照常部署：寧可偶爾多部署一次，也不要因為查不到而不部署。
 // 較早的建置通過檢查時，較新的還沒推上來；較新的建置至少要幾分鐘才跑完，比這一版的 wrangler deploy 晚，所以最後線上一定是最新的。
-// 判斷規則在 deployDecision，scripts/check-deploy-guard.mjs 驗
+// 判斷規則在 deployDecision，scripts/check-deploy-guard.mjs 驗。主控台的部署指令 2026-11-19 起就是這一支（使用者在 Workers Builds 設定改的）
 import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
