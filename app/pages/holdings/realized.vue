@@ -89,9 +89,9 @@ const dayText = (date: string) => (date.slice(0, 4) === latestPriceDate.value?.s
 const expanded = ref<string[]>([])
 const columns = computed<HoldingsSymbolColumn<RealizedRow>[]>(() => [
   // 卡片上報酬率寫在金額後面（同持股總覽的未實現損益）
-  { key: 'value', label: '已實現損益', minWidth: 140, card: 'summary', text: row => holdingsSignedMoney(row.value), cardText: row => (row.pct === null ? holdingsSignedMoney(row.value) : `${holdingsSignedMoney(row.value)} ${holdingsSignedPct(row.pct)}`), sortValue: row => row.value, tone: row => Math.round(row.value) },
-  // 表格裡排在已實現損益下面一行，同持股總覽的損益／報酬率（under）
-  { key: 'pct', label: '報酬率', minWidth: 110, under: 'value', text: row => holdingsSignedPct(row.pct), sortValue: row => row.pct, tone: row => (row.pct === null ? null : Number((row.pct * 100).toFixed(2))) },
+  { key: 'value', label: '已實現損益', minWidth: 150, card: 'summary', text: row => holdingsSignedMoney(row.value), cardText: row => (row.pct === null ? holdingsSignedMoney(row.value) : `${holdingsSignedMoney(row.value)} ${holdingsSignedPct(row.pct)}`), sortValue: row => row.value, tone: row => Math.round(row.value) },
+  // 表格裡自己一欄，同持股總覽（2026-11-19「我主要希望把報酬率與損益拆開」）；欄寬也同持股總覽
+  { key: 'pct', label: '報酬率', minWidth: 104, text: row => holdingsSignedPct(row.pct), sortValue: row => row.pct, tone: row => (row.pct === null ? null : Number((row.pct * 100).toFixed(2))) },
   {
     key: 'price',
     label: latestPriceDate.value ? `收盤價（${dayText(latestPriceDate.value)}）` : '收盤價',

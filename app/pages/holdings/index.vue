@@ -94,14 +94,6 @@ const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.in
 const dayDate = computed(() => Object.values(market.value).map(quote => quote.dayPriceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
 const dayTotals = computed(() => summarizeDayChange(baseRows.value.map(row => row.dayInput), dayDate.value))
 const shortDate = (date: string) => date.slice(5).replace('-', '/')
-// 收盤還停在更早那一天的那一檔：漲跌照樣顯示，但標出是哪一天，不讓人當成今天
-function dayChangeText(row: HoldingRow, withAmount: boolean): string {
-  const change = dayChange(row.dayInput)
-  if (change.pct === null) return '－'
-  const text = withAmount ? `${signedMoney(change.amount)} ${signedPct(change.pct)}` : signedPct(change.pct)
-  const date = row.dayInput.date
-  return date && dayDate.value && date < dayDate.value ? `${text}（${shortDate(date)}）` : text
-}
 
 // 明細表（寬螢幕表格、窄的是卡片、排序、展開）在 HoldingsSymbolTable.vue，已實現損益頁共用。
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題）。
@@ -183,24 +175,16 @@ const pnlPctOf = (figures: HoldingRowFigures) => (withDividends.value ? figures.
 const pnlLabel = computed(() => (withDividends.value ? '含息損益' : '未實現損益'))
 const pnlPctLabel = computed(() => (withDividends.value ? '含息報酬率' : '報酬率'))
 
-// 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。表格裡股數在市值下面、報酬率在損益下面
-//（under，2026-11-14「合併成兩行的格子」）：六欄放得進 720 寬的表格，跟指標檢視同一條斷點
+// 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。表格裡股數在市值下面（under，2026-11-14
+//「合併成兩行的格子」）；損益與報酬率各一欄、今日漲跌不放（2026-11-19，使用者：「holdings 移除今日漲跌」「我主要希望把報酬率與損益拆開」；
+// 組合的今日漲跌照舊在總覽）。股數也自己一欄就放不進 720 寬的表格（跟指標檢視同一條斷點），欄寬照 720 寬量到的最寬數字（16px）：
+// 損益 150 放得下「▲ +60,600,000 元」、報酬率 104 放得下「+1011.11%」（長期持有的四位數報酬率常見；第二行是 14px，拆出來才變寬）、
+// 市值 108 放得下八位數、預估年股利 96 放得下七位數。放不下時 el-table 會在數字中間折行
 const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
   { key: 'quantity', label: '股數', minWidth: 100, card: 'detail', under: 'marketValue', text: row => groupThousands(row.holding.quantity), sortValue: row => row.holding.quantity },
-  { key: 'marketValue', label: '市值', minWidth: 120, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
-  // 今日漲跌（2026-10-15）：卡片上也看得到（金額＋漲跌幅，同未實現損益的寫法），表格只放漲跌幅、組合的金額在總覽
+  { key: 'marketValue', label: '市值', minWidth: 108, card: 'summary', text: row => row.figures.marketValue === null ? '－' : money(row.figures.marketValue), sortValue: row => row.figures.marketValue },
   {
-    key: 'dayChange', label: '今日漲跌', minWidth: 90, card: 'summary',
-    text: row => dayChangeText(row, false),
-    cardText: row => dayChangeText(row, true),
-    sortValue: row => dayChange(row.dayInput).pct,
-    tone: (row) => {
-      const pct = dayChange(row.dayInput).pct
-      return pct === null ? null : Number(pct.toFixed(2))
-    }
-  },
-  {
-    key: 'pnl', label: pnlLabel.value, minWidth: 140, card: 'summary',
+    key: 'pnl', label: pnlLabel.value, minWidth: 150, card: 'summary',
     text: row => signedMoney(pnlOf(row.figures)),
     cardText: row => `${signedMoney(pnlOf(row.figures))} ${signedPct(pnlPctOf(row.figures))}`,
     sortValue: row => pnlOf(row.figures),
@@ -210,7 +194,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
     }
   },
   {
-    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 120, under: 'pnl',
+    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 104,
     text: row => signedPct(pnlPctOf(row.figures)) || '－',
     sortValue: row => pnlPctOf(row.figures),
     tone: (row) => {
@@ -218,7 +202,7 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
       return pct === null ? null : Number(pct.toFixed(2))
     }
   },
-  { key: 'annualDividend', label: '預估年股利', minWidth: 100, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
+  { key: 'annualDividend', label: '預估年股利', minWidth: 96, card: 'detail', text: row => row.figures.annualDividend === null ? '－' : money(row.figures.annualDividend), sortValue: row => row.figures.annualDividend }
 ])
 
 // ---- 持股明細的兩種檢視（2026-11-14，使用者：「持股管理 也要有地方可以切換顯示的欄位，共用欄位設定」，看過設計圖選方案 A：「A很好，請這樣做」）----
