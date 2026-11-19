@@ -92,6 +92,12 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     expect(code, '搜「酸性」找得到速動比率（型錄別名「酸性測驗比率」）', await listsQuickRatio())
     await search.fill('qr')
     expect(code, '搜 qr 找得到速動比率（型錄縮寫 QR）', await listsQuickRatio())
+    // 使用者的叫法，數據中台 2026-11-19 加進兩支的別名（9f6d721）
+    await search.fill('流速動比')
+    expect(code, '搜「流速動比」列出流動比率與速動比率', await waitFor(async () => {
+      const shown = (await chips.allTextContents()).map(text => text.trim())
+      return shown.includes('流動比率') && shown.includes('速動比率')
+    }, 15000))
     // 英文縮寫只寫在頁面標題裡（2026-11-16，使用者：「metrics 搜尋PER找不到本益比河流圖」）；網址代號比字的開頭，per 不對到 operating
     await search.fill('PER')
     const per = (await chips.allTextContents()).map(text => text.trim())
