@@ -4,6 +4,8 @@
 //     （2026-11-14「合併成兩行的格子」），損益與報酬率各一欄、沒有今日漲跌（2026-11-19）；這個檢視不問指標（不呼叫 /etf-screener）
 //   - 損益與指標同一條斷點（使用者：「「損益」和「指標」我認為可以用同樣斷點」）：持股明細這一塊 720 起兩個都是表格、719 兩個都是卡片；
 //     720 的損益表也放得下、不左右捲
+//   - 切換損益／指標時順序沿用（2026-11-19，使用者：「切換膠囊的時候 在上面的還是要在上面 不然對不到位置」）：指標每一段照損益的先後，
+//     回到損益照指標由上到下，排序選單寫「沿用指標的順序」
 //   - 指標：每一類一段，表格同觀察清單（代號、名稱、那一類的欄位組合）；選單換組合＝那一類的預設；欄位設定有組合就改那一組，基本欄位就新增
 //     一組「持股欄位」並設成預設
 //   - 手機：損益是持股自己的卡片，指標是篩選的卡片；沒有橫向捲動。2026-11-14 的手機整理：總覽每一列左右（名稱左、金額右）、未計入收成一行、
@@ -195,6 +197,10 @@ console.log('損益（1440，預設）')
   await page.locator('.el-radio-button', { hasText: '指標' }).click()
   await settled(page)
   check((await ctx.cookies()).find(cookie => cookie.name === 'holdings-view')?.value === 'metrics', '記在 cookie')
+  // 切換時順序沿用（2026-11-19，使用者：「切換膠囊的時候 在上面的還是要在上面 不然對不到位置」）：損益剛照代號由大到小排，
+  // ETF 這一段就是 00878 在 0050 前面（沒沿用的話照市值，四檔一樣大，是持股原本的 0050、00878）
+  const etfCodes = await sectionOf(page, 'ETF').locator('.smt-table-view .el-table__body tr.el-table__row').evaluateAll(rows => rows.map(row => row.querySelector('td')?.innerText.trim()))
+  check(JSON.stringify(etfCodes) === '["00878","0050"]', `指標沿用損益的順序（ETF：${etfCodes.join('、')}）`)
   const labels = await page.locator('.holdings-kind').evaluateAll(list => list.map(el => el.getAttribute('aria-label')))
   check(JSON.stringify(labels) === '["普通股","ETF","特別股"]', `三段依序：${labels}`)
   check(JSON.stringify(await page.locator('.holdings-kind__title').allInnerTexts()) === '["普通股1 檔","ETF2 檔","特別股1 檔"]', '每段的標題寫檔數')
@@ -223,6 +229,16 @@ console.log('損益（1440，預設）')
   check(state.writes.some(write => write.startsWith('POST preferred 持股欄位 ') && !write.includes('ytwPct')), `基本欄位：新增一組「持股欄位」（${state.writes.filter(write => write.startsWith('POST')).join('｜')}）`)
   check(state.writes.at(-1) === 'PATCH new-preferred {"isDefault":true}', '新增的那組設成預設')
   check(state.blocked.length === 0, `沒有其他寫入（${state.blocked.join(',') || '無'}）`)
+
+  // 反過來：指標裡 ETF 改照代號由小到大，回到損益就照指標由上到下（普通股、ETF、特別股接起來），排序選單寫「沿用指標的順序」
+  await sectionOf(page, 'ETF').locator('button.screener-result-table__head[data-field="symbol"]').click()
+  await page.locator('[role="menu"] [role="menuitem"]:visible', { hasText: '由小到大' }).click()
+  await page.waitForTimeout(300)
+  await page.locator('.el-radio-button', { hasText: '損益' }).click()
+  await settled(page)
+  const pnlCodes = await page.locator('.view-table .el-table__body tr.el-table__row').evaluateAll(rows => rows.map(row => row.querySelector('.symbol-table__sub')?.textContent.split('・')[0].trim()))
+  const sortValue = await page.locator('.symbol-table__toolbar select').inputValue()
+  check(JSON.stringify(pnlCodes) === '["2330","0050","00878","2881A"]' && sortValue === 'inherited', `損益沿用指標的順序（${pnlCodes.join('、')}；排序選單 ${sortValue}）`)
   await ctx.close()
 
   const darkContext = await newContext(1440, newState(MIXED), { dark: true, view: 'metrics' })

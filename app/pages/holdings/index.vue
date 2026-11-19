@@ -210,6 +210,23 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
 // 篩選的結果表，窄的時候是卡片）；組合跟篩選、觀察清單同一組（useWatchlistColumns），在這裡換組合或改欄位，篩選與觀察清單也跟著變，反過來也是。
 // 選了哪一個記在 cookie：重新整理時伺服器的第一個畫面就是那一個。自訂欄位頁（/holdings/columns）照舊藏著
 const view = useCookie<'pnl' | 'metrics'>('holdings-view', { default: () => 'pnl', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+// 切換損益／指標時順序沿用（2026-11-19，使用者：「切換膠囊的時候 在上面的還是要在上面 不然對不到位置」「這樣我才知道我認為基本面可以加碼的
+// 現在賺或是賠多少」）：換之前記下畫面上由上到下的代號，另一邊照這個順序排。指標分段：從損益過去每一段照損益的先後，回到損益照指標由上到下
+// （普通股、ETF、特別股接起來）。兩邊預設都是市值由大到小，第一次切也對得上。不記在 cookie：重新整理回到市值
+const sharedOrder = ref<string[] | null>(null)
+const marketValueOrder = computed(() => sortRowsBy(baseRows.value, row => row.figures.marketValue, 'descending').map(row => row.symbol))
+const orderIndex = computed(() => new Map((sharedOrder.value ?? marketValueOrder.value).map((symbol, index) => [symbol, index])))
+const pnlTable = ref<{ displayedOrder: string[] } | null>(null)
+const metricTables: Partial<Record<WatchlistKind, { displayedSymbols: string[] }>> = {}
+function switchView(next: 'pnl' | 'metrics') {
+  if (next === view.value) return
+  const known = new Set(baseRows.value.map(row => row.symbol))
+  const shown = view.value === 'pnl' ? pnlTable.value?.displayedOrder ?? [] : WATCHLIST_KINDS.flatMap(kind => metricTables[kind]?.displayedSymbols ?? [])
+  // 還在畫骨架（代號是假的）就不沿用
+  const order = shown.filter(symbol => known.has(symbol))
+  if (order.length) sharedOrder.value = order
+  view.value = next
+}
 const { sources, loaded: columnsLoaded, load: loadColumns, clear: clearColumns, columnsOf, saveFields, categoriesOf, basicColumns, linksOf } = useWatchlistColumns()
 onMounted(() => {
   watch(currentUser, (user) => {
@@ -251,7 +268,7 @@ const skeletonRowsOf = (kind: WatchlistKind) => Array.from({ length: kindRowHint
 function metricSections(loading: boolean) {
   const waiting = loading || !namesReady.value || !columnsLoaded.value || (metricPending.value && !metricPriceDate.value) || (metricCodes.value.length > 0 && !kindsReady.value)
   const list = WATCHLIST_KINDS.flatMap((kind) => {
-    const rows = waiting ? skeletonRowsOf(kind) : metricRows.value.filter(row => row.kind === kind)
+    const rows = waiting ? skeletonRowsOf(kind) : sortRowsBy(metricRows.value.filter(row => row.kind === kind), row => orderIndex.value.get(row.code) ?? null, 'ascending')
     return rows.length ? [{ kind, label: WATCHLIST_KIND_LABELS[kind], rows, skeleton: waiting }] : []
   })
   return list.map(section => ({ ...section, multi: list.length > 1 }))
@@ -516,7 +533,7 @@ async function submit() {
             </h2>
             <!-- 切換與分享一組：放得下就跟標題同一行（手機設計圖方案 B），放不下整組換到下一行、分享靠右 -->
             <div class="holdings-page__list-tools">
-              <el-radio-group v-model="view" class="holdings-page__view" aria-label="持股明細的檢視">
+              <el-radio-group :model-value="view" class="holdings-page__view" aria-label="持股明細的檢視" @update:model-value="value => switchView(value as 'pnl' | 'metrics')">
                 <el-radio-button value="pnl">損益</el-radio-button>
                 <el-radio-button value="metrics">指標</el-radio-button>
               </el-radio-group>
@@ -533,7 +550,10 @@ async function submit() {
           </div>
           <HoldingsSymbolTable
             v-if="view === 'pnl'"
+            ref="pnlTable"
             class="holdings-page__pnl"
+            :initial-order="sharedOrder"
+            initial-order-label="沿用指標的順序"
             :skeleton-rows="loading ? holdingsCountHint : 0"
             v-model:expanded="expanded"
             :rows="baseRows"
@@ -562,6 +582,7 @@ async function submit() {
           <div v-else class="holdings-page__metrics">
             <section v-for="section in metricSections(loading)" :key="section.kind" class="holdings-kind" :aria-label="section.label">
               <WatchlistTable
+                :ref="table => (metricTables[section.kind] = (table as { displayedSymbols: string[] } | null) ?? undefined)"
                 :rows="section.rows"
                 :columns="columnsOf(section.kind)"
                 :categories="categoriesOf(section.kind)"

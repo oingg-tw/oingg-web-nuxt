@@ -472,6 +472,8 @@ const cardRows = computed(() => {
   const sorted = [...props.rows].sort(compare)
   return order === 'descending' ? sorted.reverse() : sorted
 })
+// 畫面上由上到下的代號：表格跟卡片同一個順序（client 模式 el-table 用同一個比較函式排，後端排的照收到的順序）。持股切換損益／指標時拿來沿用順序
+defineExpose({ displayedSymbols: computed(() => cardRows.value.map(row => row.symbol)) })
 
 // 名稱欄跟著資料寬（2026-10-22，使用者：「screener 名稱 的 欄位 寬度 符合資料寬度就好」）：目前載入的列裡最長的名稱，用表格的字型量，
 // 加格子左右內距 24px；不窄於表頭（「名稱」兩個字＋排序圖示＋按鈕內距）。原本三組固定 160px（ETF 簡稱常有 8 個字），普通股兩三個字的

@@ -52,7 +52,11 @@ const props = withDefaults(defineProps<{
   // 資料還沒到：畫這麼多列骨架（useLayoutHint 記住的列數），0＝資料到了（2026-10-20，使用者：「載入之前，可以讓用戶看的出來畫面結構」
   //「然後不要閃動」）。表頭、卡片上的欄名、「明細」照畫，數字是骨架，大小跟資料到了一樣
   skeletonRows?: number
-}>(), { toggleLabels: () => ['明細', '收合'], skeletonRows: 0 })
+  // 一打開先照這個順序排（代號由上到下；不在裡面的排最後），排序選單多一個 initialOrderLabel 的選項，選了別的欄位也能選回來。
+  // 持股切換損益／指標時沿用順序（2026-11-19，使用者：「切換膠囊的時候 在上面的還是要在上面 不然對不到位置」）
+  initialOrder?: string[] | null
+  initialOrderLabel?: string
+}>(), { toggleLabels: () => ['明細', '收合'], skeletonRows: 0, initialOrder: null, initialOrderLabel: '沿用的順序' })
 const emit = defineEmits<{ open: [symbol: string] }>()
 const expanded = defineModel<string[]>('expanded', { default: () => [] })
 // variant：明細畫在桌機的展開列（table）還是手機卡片裡（card）——卡片裡的排法不同（見 HoldingsDetailPanel）
@@ -78,18 +82,29 @@ const skeletonShare = (minWidth: number) => {
 // 「排序：市值 ⌄」加方向，寬螢幕點表頭打開指標檢視同一個選單（SharedColumnMenu，只有排序）。換欄時方向回到那一欄的預設：數字大到小、
 // 代號小到大。沒有值的一律排最後（sortRowsBy）
 type SortOrder = 'ascending' | 'descending'
-const naturalOrder = (key: string): SortOrder => (key === 'symbol' ? 'ascending' : 'descending')
-const sort = reactive({ key: props.defaultSort, order: naturalOrder(props.defaultSort) })
-const labelOf = (key: string) => (key === 'symbol' ? '代號' : props.columns.find(column => column.key === key)?.label ?? '')
-const sortOptions = computed(() => [...props.columns.map(column => ({ value: column.key, label: column.label })), { value: 'symbol', label: '代號' }])
+// 沿用的順序（initialOrder）當成一個排序鍵：由小到大＝照那個順序，反過來也行
+const INHERITED = 'inherited'
+const inheritedIndex = new Map((props.initialOrder ?? []).map((symbol, index) => [symbol, index]))
+const naturalOrder = (key: string): SortOrder => (key === 'symbol' || key === INHERITED ? 'ascending' : 'descending')
+const startKey = inheritedIndex.size ? INHERITED : props.defaultSort
+const sort = reactive({ key: startKey, order: naturalOrder(startKey) })
+const labelOf = (key: string) => (key === 'symbol' ? '代號' : key === INHERITED ? props.initialOrderLabel : props.columns.find(column => column.key === key)?.label ?? '')
+const sortOptions = computed(() => [
+  ...(inheritedIndex.size ? [{ value: INHERITED, label: props.initialOrderLabel }] : []),
+  ...props.columns.map(column => ({ value: column.key, label: column.label })),
+  { value: 'symbol', label: '代號' }
+])
 function pickSort(key: string, order = naturalOrder(key)) {
   sort.key = key
   sort.order = order
 }
 const sortedRows = computed(() => {
+  if (sort.key === INHERITED) return sortRowsBy(props.rows, (row: T) => inheritedIndex.get(row.symbol) ?? null, sort.order)
   const column = props.columns.find(item => item.key === sort.key)
   return sortRowsBy(props.rows, column ? column.sortValue : (row: T) => row.symbol, sort.order)
 })
+// 畫面上由上到下的代號（持股切換損益／指標時沿用順序）
+defineExpose({ displayedOrder: computed(() => sortedRows.value.map(row => row.symbol)) })
 // el-table 的表頭沒有 aria-sort：排序狀態寫在表頭按鈕裡（SharedSortIcon 是裝飾）
 const sortStateText = (key: string) => (sort.key === key ? `，${sort.order === 'ascending' ? '由小到大' : '由大到小'}排序中` : '')
 

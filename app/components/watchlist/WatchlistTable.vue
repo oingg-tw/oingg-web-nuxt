@@ -67,6 +67,9 @@ const resetKey = ref(0)
 async function save(fields: string[]) {
   if (props.save && !(await props.save(fields.filter(field => !WATCHLIST_FIXED_COLUMNS.some(column => column.field === field))))) resetKey.value++
 }
+// 畫面上由上到下的代號（持股切換損益／指標時沿用順序，見 pages/holdings/index.vue 的 switchView）
+const metricTable = ref<{ displayedSymbols: string[] } | null>(null)
+defineExpose({ displayedSymbols: computed(() => metricTable.value?.displayedSymbols ?? props.rows.map(row => row.code)) })
 </script>
 
 <template>
@@ -74,6 +77,7 @@ async function save(fields: string[]) {
   <div class="watchlist-table">
     <SharedTable custom class="watchlist-table__card">
       <SharedMetricTable
+        ref="metricTable"
         :key="resetKey"
         :rows="tableRows"
         :columns="tableColumns"
