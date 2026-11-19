@@ -107,6 +107,7 @@ const cell = (thousand: number, row: Row) => {
       <StockStackedBarChart
         :categories="shown.map(row => row.label)"
         :layers="layers"
+        :others="kindDef.others"
         :unit="unit.label"
         :total-name="totalLabel"
         :value-formatter="value => money(value * unit.divisor)"

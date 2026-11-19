@@ -12,3 +12,7 @@ export function bookValueFlowLayers(entries: BookValueBreakdownEntry[]): { name:
     { name: '其他', values: entries.map(entry => entry.other) }
   ]
 }
+
+// 圖上小到看不見的項目併進「其他」（2026-11-20 起的組成圖規則，見 metric-composition.ts 的 foldSmallLayers）。增資與股數變動只有兩個都小到看不見時才會
+// 一起進「其他」，名字寫出含了哪幾項；表格照列六欄
+export const BOOK_VALUE_FLOW_OTHERS: Record<string, string> = { 普通股淨利: '其他', 現金股利: '其他', 其他綜合損益: '其他', 增資: '其他', 股數變動: '其他' }

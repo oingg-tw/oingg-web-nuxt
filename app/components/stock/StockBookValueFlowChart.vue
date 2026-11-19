@@ -18,6 +18,7 @@ const layers = computed(() => bookValueFlowLayers(shown.value))
     <StockStackedBarChart
       :categories="shown.map(entry => String(entry.fiscalYear))"
       :layers="layers"
+      :others="BOOK_VALUE_FLOW_OTHERS"
       unit="元／股"
       total-name="淨值變動"
       :tooltip-header="index => `${shown[index]?.fiscalYear} 年　${shown[index]?.openingBvps} → ${shown[index]?.closingBvps} 元`"

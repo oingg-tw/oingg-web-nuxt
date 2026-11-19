@@ -159,6 +159,7 @@ const compositionLayers = computed(() => ETF_DISTRIBUTION_PARTS.map(part => ({ n
     <StockStackedBarChart
       :categories="compositionShown.map(event => event.exDividendDate)"
       :layers="compositionLayers"
+      :others="ETF_DISTRIBUTION_OTHERS"
       unit="%"
       total-name="合計"
       :value-formatter="value => `${value.toFixed(2)}%`"

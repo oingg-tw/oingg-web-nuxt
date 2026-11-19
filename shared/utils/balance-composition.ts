@@ -175,16 +175,21 @@ export function equityCompositionOf(statement: Record<string, number | null> | n
   return { equity, parts }
 }
 
+// 圖上小到看不見的項目併進哪一個「其他」（層名對層名，給 StockStackedBarChart 的 others；規則與 2% 門檻在 metric-composition.ts 的 foldSmallLayers，
+// 2026-11-20 使用者：「…就讓它直接合併到其他流動資產。所有類似組成畫面比照此規則」）。負債的流動與非流動各併進自己那一邊的其他；淨值五項都是科目、
+// 沒有殘差那一項，不併
+const othersOf = (keys: readonly string[], labels: Record<string, string>, other: string): Record<string, string> => Object.fromEntries(keys.map(key => [labels[key]!, other]))
+
 // 四張組成頁各拆哪一塊（2026-10-16 從 StockBalanceCompositionPage 搬來：指標速覽畫同一張圖，兩邊讀這一份）。total 是合計的名字，
 // shareOfAssets 是表格每一格附不附占總資產%（資產與負債附；淨值的各項占淨值，見那一頁）
 export const BALANCE_COMPOSITION_KINDS = {
-  current: { total: '流動資產', labels: CURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true },
-  noncurrent: { total: '非流動資產', labels: NONCURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true },
-  debt: { total: '負債', labels: DEBT_PART_LABELS as Record<string, string>, shareOfAssets: true },
-  equity: { total: '淨值', labels: EQUITY_PART_LABELS as Record<string, string>, shareOfAssets: false },
+  current: { total: '流動資產', labels: CURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true, others: othersOf(Object.keys(CURRENT_KEYS), CURRENT_ASSET_PART_LABELS, CURRENT_ASSET_PART_LABELS.other) },
+  noncurrent: { total: '非流動資產', labels: NONCURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true, others: othersOf(Object.keys(NONCURRENT_KEYS), NONCURRENT_ASSET_PART_LABELS, NONCURRENT_ASSET_PART_LABELS.other) },
+  debt: { total: '負債', labels: DEBT_PART_LABELS as Record<string, string>, shareOfAssets: true, others: { ...othersOf(Object.keys(DEBT_CURRENT_KEYS), DEBT_PART_LABELS, DEBT_PART_LABELS.otherCurrent), ...othersOf(Object.keys(DEBT_NONCURRENT_KEYS), DEBT_PART_LABELS, DEBT_PART_LABELS.otherNoncurrent) } },
+  equity: { total: '淨值', labels: EQUITY_PART_LABELS as Record<string, string>, shareOfAssets: false, others: {} as Record<string, string> },
   // 無形資產（2026-10-23，使用者：「個股瀏覽新增指標頁面 無形資產 用柱狀圖」）：只有合計、沒有分項——商譽與其他無形資產的拆分只有
   // 少數公司申報（量 10 家最新一季只有 1101 有），所以圖是一組柱子、表格一欄
-  intangible: { total: '無形資產', labels: {} as Record<string, string>, shareOfAssets: true }
+  intangible: { total: '無形資產', labels: {} as Record<string, string>, shareOfAssets: true, others: {} as Record<string, string> }
 } as const
 export type BalanceCompositionKind = keyof typeof BALANCE_COMPOSITION_KINDS
 

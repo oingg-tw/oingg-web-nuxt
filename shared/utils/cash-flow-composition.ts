@@ -34,7 +34,13 @@ export const CASH_FLOW_PART_LABELS: Record<CashFlowPart, string> = {
 }
 
 // 給組成圖（StockBalanceCompositionChart）的合計名稱與各項名稱，同 BALANCE_COMPOSITION_KINDS 的形狀
-export const CASH_FLOW_COMPOSITION_KIND = { total: '現金增減', labels: CASH_FLOW_PART_LABELS as Record<string, string> }
+// others：小到看不見的資本支出併進其他投資活動，股利與借還款併進其他籌資活動（規則見 metric-composition.ts 的 foldSmallLayers）；營業活動與匯率影響
+// 沒有同一段的其他，不併
+export const CASH_FLOW_COMPOSITION_KIND = {
+  total: '現金增減',
+  labels: CASH_FLOW_PART_LABELS as Record<string, string>,
+  others: Object.fromEntries((['capex', 'dividends', 'borrowing', 'repayment'] as const).map(part => [CASH_FLOW_PART_LABELS[part], CASH_FLOW_PART_LABELS[part === 'capex' ? 'otherInvesting' : 'otherFinancing']])) as Record<string, string>
+}
 
 export interface CashFlowComposition {
   // 現金增減（千元）＝各項相加

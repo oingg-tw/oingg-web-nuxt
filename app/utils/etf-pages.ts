@@ -44,6 +44,9 @@ export const ETF_DISTRIBUTION_PARTS = [
   { key: 'otherIncomePct', name: '其他' }
 ] as const
 
+// 圖上小到看不見的來源併進「其他」（2026-11-20 起的組成圖規則，見 metric-composition.ts 的 foldSmallLayers）；表格照列五欄
+export const ETF_DISTRIBUTION_OTHERS: Record<string, string> = Object.fromEntries(ETF_DISTRIBUTION_PARTS.filter(part => part.key !== 'otherIncomePct').map(part => [part.name, '其他']))
+
 export const hasEtfComposition = (composition: EtfDistributionComposition | null): composition is EtfDistributionComposition =>
   !!composition && ETF_DISTRIBUTION_PARTS.some(part => composition[part.key] !== null)
 

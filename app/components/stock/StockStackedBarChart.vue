@@ -38,8 +38,13 @@ const props = defineProps<{
   // 提示框每一列的數字怎麼印（2026-10-12）。金額圖傳 formatMoney，讓提示框跟表格是同一串字；預設 4 位有效數字，不印原始浮點數
   valueFormatter?: (value: number) => string
   height?: number
+  // 小到看不見的層併進哪一層（層名對層名，例如 流動金融資產 → 其他流動資產；2026-11-20 起的全站規則，門檻與規則在 foldSmallLayers）。
+  // 不給的話只是不畫全是 0 的層
+  others?: Record<string, string>
 }>()
 const formatValue = (value: number) => (props.valueFormatter ?? (v => formatSignificantDigits(v, 4)))(value)
+// 圖上真正畫的層：小項併好、全是 0 的拿掉。圖例、提示框、顏色與合計線都讀這一份
+const drawn = computed(() => foldSmallLayers(props.layers, props.others))
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
 
@@ -57,11 +62,11 @@ const layerColors = computed(() => {
   if (!props.neutralLayerName) return ordered
   const rest = ordered.filter(color => color !== neutral)
   let i = 0
-  return props.layers.map(layer => (layer.name === props.neutralLayerName ? neutral : rest[i++ % rest.length]!))
+  return drawn.value.map(layer => (layer.name === props.neutralLayerName ? neutral : rest[i++ % rest.length]!))
 })
 
-const totals = computed(() => props.categories.map((_, index) => props.layers.reduce((sum, layer) => sum + (layer.values[index] ?? 0), 0)))
-const showTotal = computed(() => props.layers.some(layer => layer.values.some(value => value < 0)))
+const totals = computed(() => props.categories.map((_, index) => drawn.value.reduce((sum, layer) => sum + (layer.values[index] ?? 0), 0)))
+const showTotal = computed(() => drawn.value.some(layer => layer.values.some(value => value < 0)))
 const totalColor = computed(() => getChartInk(resolvedMode.value).primary)
 
 // 日期類別（ETF 配息組成、持有人結構）寫短（2026-11-02 手機掃描：六根柱子只標得出兩個日期）：同一年只寫「月/日」，跨年時年份換行
@@ -78,7 +83,8 @@ const dateLabel = computed(() => {
 })
 
 const chartOption = computed(() => {
-  const { categories, layers } = props
+  const { categories } = props
+  const layers = drawn.value
   return {
     // 圖例不畫在畫布裡（2026-10-12，/stock/2330/quick-view 負債組成跑版）：ECharts 不會替圖例保留空間，原本 grid.bottom: 56
     // 是照「最多折兩行」抓的，九層的負債組成在指標速覽的半寬卡片折成四行，直接疊在長條與 X 軸上。改成畫布下方的 HTML 清單，
@@ -155,7 +161,7 @@ const chartOption = computed(() => {
          初始化了——只在瀏覽器渲染的地方（指標速覽）ECharts 會量到 0 高、印「Can't get DOM width or height」。SSR 的頁面變數已在 HTML 裡，所以沒事 -->
     <SharedChart class="stock-stacked-bar-chart__canvas" :style="{ height: `clamp(20rem, 85vw, ${height ?? 380}px)` }" :option="chartOption" autoresize />
     <ul class="stock-stacked-bar-chart__legend" aria-label="圖例">
-      <li v-for="(layer, index) in layers" :key="layer.name" class="stock-stacked-bar-chart__legend-item">
+      <li v-for="(layer, index) in drawn" :key="layer.name" class="stock-stacked-bar-chart__legend-item">
         <span class="stock-stacked-bar-chart__swatch" :style="{ background: layerColors[index] }" aria-hidden="true" />{{ layer.name }}
       </li>
       <li v-if="showTotal" class="stock-stacked-bar-chart__legend-item">
