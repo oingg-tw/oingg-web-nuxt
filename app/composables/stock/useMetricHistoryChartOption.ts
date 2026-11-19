@@ -80,9 +80,12 @@ export function useMetricHistoryChartOption(
           // 但 X 軸最右邊本來就是最新一期，而那個染色會跟正負上色打架：一根虧損的最新期會變成墨色，
           // 讀者看不出它是負的。
           // growthLog：營收 0（−100%）沒有倍數，畫到最底、灰色
+          // 0 也看得到（2026-11-19，使用者：「2420 沒有股本變化年增率嗎」：每一季都是 0%，柱子沒有高度，整張圖看起來是空的）：
+          // 每根至少 3px，剛好是 0 的用中性墨色，不用正負色（紅色會被讀成正的）。沒有值的期別（null）ECharts 不畫，照舊留空
+          barMinHeight: 3,
           data: list.map(entry => ({
             value: capOf(entry.value)?.value ?? (growthLog && entry.value !== null ? growthLogValue(entry.value) : entry.value),
-            itemStyle: { color: growthLog && entry.value !== null && entry.value <= -100 ? mutedInk.value : (entry.value ?? 0) < 0 ? priceColors.value.down : priceColors.value.up }
+            itemStyle: { color: entry.value === 0 || (growthLog && entry.value !== null && entry.value <= -100) ? mutedInk.value : (entry.value ?? 0) < 0 ? priceColors.value.down : priceColors.value.up }
           }))
         },
         // 截到邊上的柱子，邊上畫一個箭頭：只有箭頭、沒有線的一條折線（不用多註冊 markPoint）。往裡收半個箭頭，不被繪圖區切掉。
