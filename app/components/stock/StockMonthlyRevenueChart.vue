@@ -33,7 +33,7 @@ const chartEntries = computed<LineChartEntry[]>(() =>
     values: {
       [PRICE_CODE]: { value: priceByMonth.value.get(entry.yearMonth) ?? null },
       // null stays null — a company listed within the last year has no year-ago month; drawing 0 would invent a 100% collapse.
-      [YOY_CODE]: { value: entry.yoyChangePct },
+      [YOY_CODE]: { value: entry.yoyChangePct, nullReason: entry.yoyChangePctNullReason ?? null },
       [AMOUNT_CODE]: { value: monthlyRevenueHundredMillion(entry.currentMonthRevenue) }
     }
   }))

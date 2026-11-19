@@ -94,7 +94,7 @@ const { breadcrumbs } = useStockPageSeo({
           <tr v-for="entry in descending" :key="entry.yearMonth">
             <th scope="row">{{ entry.yearMonth }}</th>
             <td class="seo-table__num">{{ amount(entry.currentMonthRevenue) }}</td>
-            <td class="seo-table__num">{{ monthlyRevenueRateText(entry.momChangePct) }}</td>
+            <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.momChangePct, entry.momChangePctNullReason)">{{ monthlyRevenueRateText(entry.momChangePct, entry.momChangePctNullReason) }}</td>
             <td class="seo-table__num">{{ amount(entry.cumulativeRevenue) }}</td>
           </tr>
         </tbody>

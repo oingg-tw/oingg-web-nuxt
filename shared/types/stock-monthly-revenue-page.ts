@@ -18,17 +18,24 @@ export interface MonthlyRevenueEntry {
   // label have to agree on one side; this app does both in one place, the page's own 億元 formatter.
   currentMonthRevenue: number | null
   lastYearSameMonthRevenue: number | null
-  // Null for companies listed within the last year — there is no same month to compare against.
-  // 226 rows market-wide（0.4%）. Passed through as null rather than zero by explicit agreement
-  // with analysis-ts, so the chart can leave a real gap instead of drawing a fall to zero.
+  // Null when there is no same month a year ago (listed within the last year) or it was ≤ 0 — a
+  // 金控 can file a negative month (2881 2025-05). Passed through as null rather than zero by explicit
+  // agreement with analysis-ts, so the chart can leave a real gap instead of drawing a fall to zero.
   yoyChangePct: number | null
-  // Null only on the series' earliest entry (no prior month) — 業務中台 computes this themselves,
-  // analysis-ts's source has no MoM field at all.
+  // 數據中台 computes it from each filing's own previous-month revenue, null when that is ≤ 0（2026-11-19；
+  // until then it divided by the stored month before, negative or not）.
   // Field names: the *Pct forms since 2026-10-10（業務中台 18612f4; the *Percent aliases go away after we confirm）.
   momChangePct: number | null
   cumulativeRevenue: number | null
   cumulativeLastYearRevenue: number | null
-  cumulativeChangePct: number
+  cumulativeChangePct: number | null
+  // Why each rate is null（數據中台 2026-11-19, the <field>NullReason convention）: zero_or_negative_denominator
+  //（the base month or last year's total ≤ 0）, insufficient_history（the filing has nothing to compare with）,
+  // missing_input（this month has no revenue）; null when the rate has a value. Optional until 業務中台
+  // forwards them — without one, a null still reads「尚無資料」.
+  yoyChangePctNullReason?: string | null
+  momChangePctNullReason?: string | null
+  cumulativeChangePctNullReason?: string | null
   // The company's own filed revenue-variance explanation. A literal「無」means the company
   // explicitly reported nothing unusual; real null means no disclosure at all — 業務中台 confirmed
   // these are two distinct states, so they must not collapse into one「沒有說明」case.

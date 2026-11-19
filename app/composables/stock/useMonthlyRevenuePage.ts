@@ -40,4 +40,7 @@ const THOUSAND_TO_HUNDRED_MILLION = 100_000
 export const monthlyRevenueHundredMillion = (thousands: number | null): number | null => (thousands === null ? null : thousands / THOUSAND_TO_HUNDRED_MILLION)
 // formatMoney（萬／億／兆＋4 位有效數字，2026-10-12）：原本固定 toFixed(1) 億元，月營收 300 萬的公司印成「0.0 億元」
 export const monthlyRevenueAmountText = (hundredMillion: number | null): string => (hundredMillion === null ? '尚無資料' : formatMoney(hundredMillion * THOUSAND_TO_HUNDRED_MILLION * 1000))
-export const monthlyRevenueRateText = (value: number | null): string => (value === null ? '尚無資料' : minusSign(`${value.toFixed(2)}%`))
+// 空值照原因寫（2026-11-19：2881 去年同月是負數的年增率原本印「尚無資料」，像是資料還沒到）：分母 ≤ 0 是「無法計算」，title 放完整原因，
+// 同多欄歷史表的 reasonedCellText；沒有原因（業務中台還沒轉原因欄）才是「尚無資料」
+export const monthlyRevenueRateText = (value: number | null, nullReason?: string | null): string => (value === null ? nullReasonShortText(nullReason) : minusSign(`${value.toFixed(2)}%`))
+export const monthlyRevenueRateTitle = (value: number | null, nullReason?: string | null): string | undefined => nullReasonTitle({ value, nullReason: nullReason ?? null })

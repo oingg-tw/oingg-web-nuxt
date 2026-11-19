@@ -37,7 +37,7 @@ const tableText = computed(() => historyTableText({ shortName: stockShortName.va
 const answer = computed(() => {
   const entry = latest.value
   if (!entry) return ''
-  return `${stockShortName.value}（${code.value}）${entry.yearMonth} 月營收年增率 ${monthlyRevenueRateText(entry.yoyChangePct)}、今年累計營收年增率 ${monthlyRevenueRateText(entry.cumulativeChangePct)}。`
+  return `${stockShortName.value}（${code.value}）${entry.yearMonth} 月營收年增率 ${monthlyRevenueRateText(entry.yoyChangePct, entry.yoyChangePctNullReason)}、今年累計營收年增率 ${monthlyRevenueRateText(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason)}。`
 })
 
 // The company's OWN filed explanation, shown verbatim and attributed. 「無」is a real answer — the company said nothing was unusual —
@@ -120,8 +120,8 @@ const { breadcrumbs } = useStockPageSeo({
         <tbody>
           <tr v-for="entry in descending" :key="entry.yearMonth">
             <th scope="row">{{ entry.yearMonth }}</th>
-            <td class="seo-table__num">{{ monthlyRevenueRateText(entry.yoyChangePct) }}</td>
-            <td class="seo-table__num">{{ monthlyRevenueRateText(entry.cumulativeChangePct) }}</td>
+            <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.yoyChangePct, entry.yoyChangePctNullReason)">{{ monthlyRevenueRateText(entry.yoyChangePct, entry.yoyChangePctNullReason) }}</td>
+            <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason)">{{ monthlyRevenueRateText(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason) }}</td>
           </tr>
         </tbody>
       </SharedTable>
