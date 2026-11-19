@@ -10,7 +10,12 @@
 import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
-// git ls-remote origin refs/heads/<分支> 的輸出（「<sha>\trefs/heads/<分支>」）跟這次建置的 commit 比
+// 去掉網址裡的帳密：Workers Builds 複製 repo 時 origin 可能帶著一次性的權杖，過期後拿它查會被拒；repo 是公開的，查分支不用權杖
+export function publicRemote(url) {
+  return url.trim().replace(/^(https?:\/\/)[^@/]+@/, '$1')
+}
+
+// git ls-remote <遠端> refs/heads/<分支> 的輸出（「<sha>\trefs/heads/<分支>」）跟這次建置的 commit 比
 export function deployDecision(commitSha, lsRemoteOutput) {
   const head = /^([0-9a-f]{40})\s/.exec(lsRemoteOutput ?? '')?.[1]
   if (!commitSha || !head) return { deploy: true, reason: '查不到分支最新的 commit，照常部署' }
@@ -29,10 +34,20 @@ function main() {
   const branch = process.env.WORKERS_CI_BRANCH ?? ''
   let lsRemote = ''
   if (commitSha && branch) {
+    // 先用去掉帳密的公開網址，查不到再用 origin 本身
+    let remotes = ['origin']
     try {
-      lsRemote = execFileSync('git', ['ls-remote', 'origin', `refs/heads/${branch}`], { encoding: 'utf8', timeout: 30_000 })
+      remotes = [...new Set([publicRemote(execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' })), 'origin'])]
     } catch (error) {
-      console.warn(`git ls-remote 失敗：${error.message}`)
+      console.warn(`讀不到 origin 的網址：${error.message}`)
+    }
+    for (const remote of remotes) {
+      try {
+        lsRemote = execFileSync('git', ['ls-remote', remote, `refs/heads/${branch}`], { encoding: 'utf8', timeout: 30_000 })
+        if (lsRemote.trim()) break
+      } catch (error) {
+        console.warn(`git ls-remote 失敗（${remote === 'origin' ? 'origin' : '公開網址'}）：${error.message}`)
+      }
     }
   }
   const decision = deployDecision(commitSha, lsRemote)
