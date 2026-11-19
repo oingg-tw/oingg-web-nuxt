@@ -440,7 +440,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :compare-metric-code="item.spec.compareMetricCode"
           :compare-name="item.spec.compareMetricCode && nameOf(item.spec.compareMetricCode)"
           :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
-          :right-metric="item.spec.rightMetricCode ? { code: item.spec.rightMetricCode, name: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.name ?? item.spec.rightMetricCode, unit: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.unit ?? '', timeframes: timeframesOf(item.spec.rightMetricCode) } : undefined"
+          :right-metric="item.spec.rightMetricCode ? { code: item.spec.rightMetricCode, name: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.name ?? item.spec.rightMetricCode, unit: findMetricInSchema(categories, item.spec.rightMetricCode)?.metric.unit ?? '', timeframes: timeframesOf(item.spec.rightMetricCode), bar: item.spec.rightMetricBar } : undefined"
         >
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockMetricHistoryChartInteractive>

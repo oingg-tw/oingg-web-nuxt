@@ -102,6 +102,15 @@ const compareTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
   return (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf))
 })
 
+// 右軸的第二支（registry 的 rightMetricCode；名稱、單位、期別從型錄讀，同徽章頁）。rightMetricBar 畫成柱子（股本變化的流通股數）
+const rightMetric = computed(() => {
+  const code = metricPage.rightMetricCode
+  const metric = code ? findMetricInSchema(filterSchema.value?.categories ?? [], code)?.metric : undefined
+  if (!code || !metric) return undefined
+  const periods = metric.fields.map(field => field.period)
+  return { code, name: metric.name, unit: metric.unit ?? '', timeframes: (['TTM', 'Q', 'FY'] as const).filter(tf => periods.includes(tf)), bar: metricPage.rightMetricBar }
+})
+
 // 通則區（StockMetricGuide）的內容：前端文案優先、型錄補空，徽章頁共用同一個解析
 const guide = computed(() => metricGuideFrom(copy.value, metricText.value))
 const definition = computed(() => guide.value.definition[0] ?? null)
@@ -366,6 +375,7 @@ const { breadcrumbs } = useStockPageSeo({
           :compare-metric-code="metricPage.compareMetricCode"
           :compare-name="compareName"
           :compare-timeframes="compareTimeframes"
+          :right-metric="rightMetric"
         />
       </template>
       <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
@@ -408,7 +418,7 @@ const { breadcrumbs } = useStockPageSeo({
          沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
          最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
     <template #guide>
-      <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="[...(definition ? [firstSentence(definition)!] : []), ...(metricPage.compositionNote ? [metricPage.compositionNote] : [])]" />
+      <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="[...(definition ? [firstSentence(definition)!] : []), ...(metricPage.compositionNote ? [metricPage.compositionNote] : []), ...(metricPage.chartNote ? [metricPage.chartNote] : [])]" />
     </template>
   </StockPageShell>
 </template>

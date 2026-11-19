@@ -46,7 +46,8 @@ const props = defineProps<{
   // 對照指標的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
   compareName?: string
   // 第三條線，畫在右軸（registry 的 rightMetricCode；名稱、單位、期別由呼叫端從型錄取，理由同 compareTimeframes）
-  rightMetric?: { code: string; name: string; unit: string; timeframes: MetricsHistoryTimeframe[] }
+  // bar：右軸那一支畫成柱子、主指標畫成折線，不需要對照線（2026-11-19 股本變化：流通股數的柱子配年增率的線，registry 的 rightMetricBar）
+  rightMetric?: { code: string; name: string; unit: string; timeframes: MetricsHistoryTimeframe[]; bar?: boolean }
 }>()
 
 // Stable order regardless of what order the catalog happens to list `fields` in.
@@ -67,8 +68,10 @@ const compareCode = computed(() => {
   return supported.includes(timeframe.value) ? code : null
 })
 
-// 右軸那一條同理：只在它自己也有這個期別、而且有對照線（折線模式）時才查
-const rightCode = computed(() => (compareCode.value && props.rightMetric?.timeframes.includes(timeframe.value) ? props.rightMetric.code : null))
+// 右軸那一條同理：只在它自己也有這個期別、而且有對照線（折線模式）時才查；畫成柱子的那種自己就成一組，不用對照線
+const rightCode = computed(() => ((compareCode.value || props.rightMetric?.bar) && props.rightMetric?.timeframes.includes(timeframe.value) ? props.rightMetric.code : null))
+// 跟主指標一起畫的那一支：對照線，沒有的話是右軸的柱子。有它才是折線模式（StockMultiSeriesLineChart）
+const pairedCode = computed(() => compareCode.value ?? (props.rightMetric?.bar ? rightCode.value : null))
 
 const codesRef = computed(() => [
   props.metricCode,
@@ -217,7 +220,7 @@ const compareEntries = computed(() => {
 // （銀行沒有存貨相關的指標、有些基準只有單季），而一條全空的線比不畫更難解釋——讀者會當成 0。
 // 所以少於兩點就退回原本的柱狀圖，並在答句的位置說一句為什麼。
 const comparePoints = computed(() =>
-  compareCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[compareCode.value!]?.value != null)
+  pairedCode.value === null ? [] : compareEntries.value.filter(entry => entry.values[pairedCode.value!]?.value != null)
 )
 
 // 空圖回報給管理站（2026-11-12，shared/utils/chart-empty.ts）：照模板分支的順序判斷畫的是哪一種空圖
@@ -232,7 +235,7 @@ watchChartEmpty(() => (emptyReason.value ? { symbol: props.symbol, chart: 'metri
 // 權益乘數 1.5 倍會穿過左軸 40% 附近的格線，圖例不寫「（倍）」就會被讀成百分比（同杜邦圖）
 const compareSeries = computed<LineSeriesSpec[]>(() => [
   { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle', marginCap: MARGIN_CAP_METRICS.has(props.metricCode) },
-  { code: compareCode.value ?? '', name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle', marginCap: MARGIN_CAP_METRICS.has(compareCode.value ?? '') },
+  ...(compareCode.value ? [{ code: compareCode.value, name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle', marginCap: MARGIN_CAP_METRICS.has(compareCode.value) } satisfies LineSeriesSpec] : []),
   ...(rightCode.value && props.rightMetric
     ? [{
         code: rightCode.value,
@@ -240,6 +243,8 @@ const compareSeries = computed<LineSeriesSpec[]>(() => [
         lineType: 'dotted',
         symbol: 'diamond',
         axis: 'right',
+        // 柱子跟折線同框時拿最淡的墨色（StockMultiSeriesLineChart），折線才是主角
+        ...(props.rightMetric.bar ? { type: 'bar' as const } : {}),
         format: (value: number | null) => (value === null ? '－' : `${formatSignificantDigits(value, 4)}${props.rightMetric!.unit ? ` ${props.rightMetric!.unit}` : ''}`)
       } satisfies LineSeriesSpec]
     : [])
