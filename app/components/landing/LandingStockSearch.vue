@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
 import type { StockSuggestion } from '~/composables/stock/useStockSearch'
+import type { CompanyIndexEntry } from '~/composables/stock/useCompanyIndex'
 // 整個沿用 useStockSearch()（AppHeaderMenu 用的同一支），這裡只擁有自己的視覺外殼，不重做比對與選取後導覽的邏輯。
-const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry, routeFor } = useStockSearch()
+// 搜尋紀錄（2026-11-20，useStockSearchHistory）：手機搜尋層還沒打字時直接列出來；首頁的大搜尋框跟頁首一樣，聚焦時在下拉裡
+const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry, routeFor, history, rememberSearch, clearHistory } = useStockSearch({ history: true })
 const router = useRouter()
 
 // Same aria-activedescendant clean-up as AppHeaderMenu.vue — see the composable's own comment.
@@ -22,6 +24,18 @@ const results = computed(() => {
   return found.filter(isCompanyEntry)
 })
 
+// 搜尋層的每一列是連結，不經過 handleSelect：點了自己記一筆
+function pick(item: CompanyIndexEntry) {
+  rememberSearch?.(item)
+  keyword.value = ''
+}
+// 「清除」按了就不見了：焦點回到輸入框，不掉到頁面最前面
+const layerInputRef = ref<{ focus: () => void } | null>(null)
+function clearRecent() {
+  clearHistory?.()
+  layerInputRef.value?.focus()
+}
+
 // Landing-page-only behavior, not part of useStockSearch() itself — an empty query there just
 // no-ops (see its own handleEnter), which is correct for the app-shell header (there's nowhere
 // obvious to send an empty header search). Here on the homepage, an empty "立即查詢" click has
@@ -39,6 +53,7 @@ function handleSubmit() {
   <!-- 手機的搜尋層：輸入框下面直接列結果（見 inLayer 的註解）。沒有浮出來的下拉，所以也沒有 el-autocomplete 的 SSR 問題、不用 ClientOnly -->
   <div v-if="inLayer" class="landing-stock-search landing-stock-search--layer">
     <el-input
+      ref="layerInputRef"
       v-model="keyword"
       class="landing-stock-search__input"
       placeholder="代號或名稱，例如 2330"
@@ -56,7 +71,7 @@ function handleSubmit() {
     <p id="layer-search-status" class="visually-hidden" role="status">{{ keyword.trim() ? `${results.length} 筆符合` : '' }}</p>
     <ul v-if="keyword.trim()" class="landing-stock-search__results">
       <li v-for="item in results.slice(0, RESULT_LIMIT)" :key="item.code">
-        <NuxtLink :to="routeFor(item)" class="landing-stock-search__result" @click="keyword = ''">
+        <NuxtLink :to="routeFor(item)" class="landing-stock-search__result" @click="pick(item)">
           <span class="landing-stock-search__option-name">
             {{ item.name }}
             <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
@@ -68,6 +83,25 @@ function handleSubmit() {
       <li v-if="!results.length" class="landing-stock-search__hint">找不到符合的股票代號或名稱</li>
       <li v-else-if="results.length > RESULT_LIMIT" class="landing-stock-search__hint">還有 {{ results.length - RESULT_LIMIT }} 筆，再多打幾個字縮小範圍</li>
     </ul>
+    <!-- 還沒打字：最近選過的股票直接列出來，同一種列 -->
+    <template v-else-if="history?.length">
+      <div class="landing-stock-search__recent-head">
+        <p id="layer-search-recent" class="landing-stock-search__recent-title">最近搜尋</p>
+        <button type="button" class="landing-stock-search__recent-clear" @click="clearRecent">清除</button>
+      </div>
+      <ul class="landing-stock-search__results" aria-labelledby="layer-search-recent">
+        <li v-for="item in history" :key="item.code">
+          <NuxtLink :to="routeFor(item)" class="landing-stock-search__result" @click="pick(item)">
+            <span class="landing-stock-search__option-name">
+              {{ item.name }}
+              <el-tag v-if="item.kind === 'etf'" size="small" effect="plain">ETF</el-tag>
+              <el-tag v-else-if="item.kind === 'preferred'" size="small" effect="plain">特別股</el-tag>
+            </span>
+            <span class="landing-stock-search__option-code">{{ item.code }}</span>
+          </NuxtLink>
+        </li>
+      </ul>
+    </template>
   </div>
 
   <div v-else class="landing-stock-search">
@@ -90,8 +124,12 @@ function handleSubmit() {
         <template #prefix>
           <el-icon><Search /></el-icon>
         </template>
+        <template v-if="!keyword.trim() && history?.length" #header>
+          <p class="landing-stock-search__history-head">最近搜尋</p>
+        </template>
         <template #default="{ item }">
           <p v-if="item.code === NO_MATCH_SENTINEL" class="landing-stock-search__no-match">{{ item.name }}</p>
+          <p v-else-if="item.code === CLEAR_HISTORY_SENTINEL" class="landing-stock-search__clear-history">{{ item.name }}</p>
           <div v-else class="landing-stock-search__option">
             <span class="landing-stock-search__option-name">
               {{ item.name }}
@@ -181,6 +219,46 @@ function handleSubmit() {
   font-weight: 600;
 }
 
+/* 搜尋紀錄（2026-11-20）：搜尋層的標題列與「清除」，下拉裡的標題與最後一列「清除搜尋紀錄」 */
+.landing-stock-search__recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.landing-stock-search__recent-title {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+}
+
+.landing-stock-search__recent-clear {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--el-border-radius-base);
+  background: none;
+  color: var(--el-color-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.landing-stock-search__recent-clear:hover,
+.landing-stock-search__recent-clear:focus-visible {
+  background: var(--el-fill-color-light);
+}
+
+.landing-stock-search__history-head {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+}
+
+.landing-stock-search__clear-history {
+  margin: 0;
+  color: var(--el-color-primary);
+}
+
 .landing-stock-search__hint {
   padding: 12px 4px;
   color: var(--el-text-color-secondary);
@@ -237,5 +315,11 @@ function handleSubmit() {
    的死區（「我剛誤以為我滑鼠壞掉」）。 */
 .landing-stock-search__popper .el-autocomplete-suggestion__wrap {
   padding: 0;
+}
+
+/* 搜尋紀錄的標題，同 AppHeaderMenu 的同一條 */
+.landing-stock-search__popper .el-autocomplete-suggestion__header {
+  padding: 8px 20px 0;
+  border-bottom: 0;
 }
 </style>

@@ -12,7 +12,8 @@ import { Search, Setting } from '@element-plus/icons-vue'
 //   - 每個控制項都是 .app-bar-item（main.css）：44px、沒有框線、同一套滑過與目前所在；搜尋框也是 44px
 //   - 登入／帳號一樣寬（UserMenuButton 的 bar 版），登入狀態換掉時搜尋框不動
 //   - 桌機版面但不到 1280 寬（平板橫放）時搜尋框收成一個「搜尋」按鈕，開跟手機同一個搜尋滑層（AppSlideLayer 在這個寬度只開放搜尋那一層）
-const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry } = useStockSearch()
+// 搜尋紀錄（2026-11-20）：聚焦時下拉先列最近選過的股票，見 useStockSearchHistory
+const { keyword, fetchSuggestions, handleSelect, handleEnter, isCompanyEntry, history } = useStockSearch({ history: true })
 const { toggle: toggleSlideLayer } = useSlideLayer()
 
 const barRef = ref<HTMLElement>()
@@ -58,8 +59,12 @@ function focusSearch() {
           <template #prefix>
             <el-icon><Search /></el-icon>
           </template>
+          <template v-if="!keyword.trim() && history?.length" #header>
+            <p class="app-header-menu__history-head">最近搜尋</p>
+          </template>
           <template #default="{ item }">
             <p v-if="item.code === NO_MATCH_SENTINEL" class="app-header-menu__no-match">{{ item.name }}</p>
+            <p v-else-if="item.code === CLEAR_HISTORY_SENTINEL" class="app-header-menu__clear-history">{{ item.name }}</p>
             <div v-else class="app-header-menu__option">
               <span class="app-header-menu__option-name">
                 {{ item.name }}
@@ -158,6 +163,17 @@ function focusSearch() {
   color: var(--el-text-color-secondary);
 }
 
+/* 搜尋紀錄（2026-11-20）：清單上面的標題，最後一列「清除搜尋紀錄」是動作，用主題色跟股票分開 */
+.app-header-menu__history-head {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+}
+
+.app-header-menu__clear-history {
+  margin: 0;
+  color: var(--el-color-primary);
+}
+
 /* 「找不到」那一列（useStockSearch 的 NO_MATCH_SENTINEL）是一句說明，不是可選的選項 */
 .app-header-menu__no-match {
   margin: 0;
@@ -183,6 +199,12 @@ function focusSearch() {
 /* Element Plus's own .el-autocomplete-suggestion__wrap default ships `padding: 10px 0` — a
    vertical dead zone above/below the option list where the dropdown is still visually open but
    nothing is hoverable/clickable (reported live: "我剛誤以為我滑鼠壞掉"). */
+/* 搜尋紀錄的標題（el-autocomplete 的 header，2026-11-20）：跟下面的列對齊（左右 20px），不畫 Element 預設那條 3:1 的灰線 */
+.app-header-menu__popper .el-autocomplete-suggestion__header {
+  padding: 8px 20px 0;
+  border-bottom: 0;
+}
+
 .app-header-menu__popper .el-autocomplete-suggestion__wrap {
   padding: 0;
 }
