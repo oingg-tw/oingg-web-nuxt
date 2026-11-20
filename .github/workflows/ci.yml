@@ -4,8 +4,8 @@
 # 瀏覽器檢查要 dev server＋本機業務中台（:5400）＋資料，CI 上沒有。所以自動合併只放 patch，minor／major 留給人在本機跑
 # 瀏覽器檢查（Element Plus 升個 minor 就可能壞版面）。
 #
-# Node 24 與 26 都跑、pnpm 11 跟本機一致（本機 26；Workers Builds 預設 24）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置只預先產生 @nuxt/content
-# 的內容檔，不打後端。action 用 commit SHA 釘住，Dependabot 的 github-actions 生態系會更新它們。
+# Node 24 與 26 都跑、pnpm 11 跟本機一致（本機 26；Workers Builds 預設 24）（scripts/*.mjs 直接 import .ts，靠 Node 內建的型別剝除）。不需要 .env：建置不打後端（部落格文章
+# 2026-11-20 起在業務中台，執行時才讀）。action 用 commit SHA 釘住，Dependabot 的 github-actions 生態系會更新它們。
 #
 # ## Dependabot 自動合併（第二個 job）
 # `needs: [checks, workers]`：同一次執行裡 checks 與 Workers 開機測試都通過才會跑，`--match-head-commit` 只合併剛驗證過的那個 commit。
@@ -99,7 +99,7 @@ jobs:
 
   # Workers 版開機測試（2026-10-28，使用者「請加上測試」）：DEV 跑在 Cloudflare Workers，上面的 Node 版開機測試抓不到只在 workerd 才炸的
   # 問題（缺的 Node API、Cloudflare preset 的打包），而 push 到 development（含 Dependabot 自動合併的 patch）會直接部署。這裡照
-  # Workers Builds 的方式建置（Node 24、同樣兩個變數），用 wrangler dev 在本機的 workerd 開起來（KV、D1 是本機模擬，不需要
+  # Workers Builds 的方式建置（Node 24、同樣兩個變數），用 wrangler dev 在本機的 workerd 開起來（KV 是本機模擬，不需要
   # Cloudflare 帳號），打同一批頁面。業務中台一樣指到連不到的位址
   workers:
     if: github.event.action != 'edited' || github.event.changes.base != null

@@ -3,12 +3,8 @@ const onCloudflare = process.env.NITRO_PRESET === 'cloudflare_module'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  // @nuxt/content installed 2026-09-06, wired to blog/index.vue and blog/[slug].vue 2026-09-07
-  // — content/blog/*.md (see content.config.ts) is now the only source for blog posts, the old
-  // useBlogPosts.ts hand-written array is gone.
-  modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap', '@nuxt/content'],
-  // Content 的 SQLite 用 Node 內建的 node:sqlite（2026-10-23，取代要編譯原生模組的 better-sqlite3；Node 22.5 起才有，engines 是 ≥ 24）
-  content: { experimental: { sqliteConnector: 'native' } },
+  // 部落格文章 2026-11-20 起在業務中台（管理站寫、人按發布），經 /api/cached 讀；@nuxt/content、content/blog 與 D1 都拿掉了
+  modules: ['@element-plus/nuxt', '@nuxtjs/robots', '@nuxtjs/sitemap'],
   // Real production domain (see docs/0_researches/oingg.com 首頁背景漸層設計研究報告.md — the
   // actual intended domain, currently just a Squarespace placeholder, not deployed yet per
   // this repo's own memory of "zero deploy config"). Both @nuxtjs/robots and @nuxtjs/sitemap
@@ -28,8 +24,8 @@ export default defineNuxtConfig({
   // 那些頁同時各自宣告 noindex、也在下面的 sitemap.exclude 裡——三層都在。
   robots: {},
   // @nuxtjs/sitemap auto-discovers static routes from app/pages/ (including /blog itself). The
-  // blog posts come from the module's own Content integration — the `sitemap` field in
-  // content.config.ts (published only, /blog/{slug}) — and land in `pages` with the app sources.
+  // blog posts come from 業務中台 through server/api/__sitemap__/blog.get.ts (published only,
+  // /blog/{slug}) and land in `pages` with the app sources.
   //
   // Split into two sitemaps under one index (2026-09-19): `pages` (the static app routes plus
   // the blog posts) and `stocks` (~13,000 per-stock URLs, fed at request time by the Nitro
@@ -44,7 +40,8 @@ export default defineNuxtConfig({
     exclude: ['/appearance', '/holdings', '/holdings/**', '/watchlist', '/watchlist/**', '/profile', '/account', '/account/**', '/newsletter/**', '/calendar', '/auth/**', '/share/**', '/industries/sensitivity', '/industries', '/industries/overview'],
     sitemaps: {
       pages: {
-        includeAppSources: true
+        includeAppSources: true,
+        sources: ['/api/__sitemap__/blog']
       },
       stocks: {
         sources: ['/api/__sitemap__/stocks'],

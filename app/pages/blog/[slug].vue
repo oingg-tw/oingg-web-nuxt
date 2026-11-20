@@ -1,49 +1,30 @@
 <script setup lang="ts">
+import type { BlogPost, BlogPostSummary } from '#shared/types/blog'
 definePageMeta({ layout: 'landing' })
 
 const route = useRoute()
 const slug = String(route.params.slug)
 
-// Migrated 2026-09-07 from useBlogPosts.ts's hand-written array to @nuxt/content's real
-// content/blog/*.md collection — queried by the `slug` frontmatter field (not Nuxt Content's
-// own auto-generated `path`) since that's the field the rest of the app (this route param,
-// nuxt.config.ts's sitemap, the /screener/preferred page's own hardcoded link) already keys off
-// of. status !== 'published' (including a plain missing field, still mid-draft) 404s exactly
-// like a slug that was never in the old hardcoded array did.
-const { data: post } = await useAsyncData(`blog-${slug}`, () =>
-  queryCollection('blog').where('slug', '=', slug).where('status', '=', 'published').first()
-)
+// 文章在業務中台（2026-11-20 起，原本是網站 repo 的 content/blog），經 /api/cached 讀，同 /changelog。草稿、排程中、下架、不存在的
+// 業務中台都回 404，網址代號格式不對的 /api/cached 自己就 404，所以兩種都是這一頁的 404；其他讀取失敗是 503，不把文章說成不存在
+const [{ data: post, error }, { data: list }] = await Promise.all([
+  useFetch<BlogPost>(`/api/cached/blog-posts/${slug}`, { key: `blog-post-${slug}` }),
+  // 上一篇／下一篇（2026-09-10）從列表算，跟 /blog 同一份快取；列表讀不到就不放這一段，文章照常
+  useFetch<{ entries: BlogPostSummary[] }>('/api/cached/blog-posts', { key: 'blog-posts' })
+])
+if (error.value?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: '找不到這篇文章', fatal: true })
+if (error.value || !post.value) throw createError({ statusCode: 503, statusMessage: '文章暫時無法取得', fatal: true })
 
-// No custom 404 page exists elsewhere in this app to match — createError with fatal:true is
-// Nuxt's own standard unmatched-content behavior, same as any other missing dynamic route.
-if (!post.value) {
-  throw createError({ statusCode: 404, statusMessage: '找不到這篇文章', fatal: true })
-}
-
-// 上一篇/下一篇 nav, added per direct request 2026-09-10. Content v3's replacement for v2's
-// `queryContent().findSurround()` — a separate composable, `queryCollectionItemSurroundings`,
-// not a chained method (confirmed against the current docs, not assumed from v2-era memory).
-// It keys off Nuxt Content's own auto-generated `path`, not this app's `slug` frontmatter field
-// (the field everything else — this route, the sitemap, screener/preferred/index.vue's hardcoded link —
-// keys off), so `path` only ever appears here as the query's own input; the template still
-// links out through `slug` like every other blog link in this app. Ordered by `date` ASC
-// (oldest → newest) specifically for this query, independent of blog/index.vue's own newest-
-// first listing order — "上一篇"/"下一篇" at the bottom of an article conventionally means
-// "published before this one" / "published after this one" in chronological reading order, not
-// list-display order. `status` filtered the same way every other blog query in this app already
-// is, so a draft never surfaces as a prev/next target even if it sits chronologically adjacent.
-const { data: surround } = await useAsyncData(`blog-surround-${slug}`, () =>
-  queryCollectionItemSurroundings('blog', post.value!.path, { fields: ['title', 'slug'] })
-    .where('status', '=', 'published')
-    .order('date', 'ASC')
-)
-const prevPost = computed(() => surround.value?.[0] ?? null)
-const nextPost = computed(() => surround.value?.[1] ?? null)
+// 列表是新到舊：上一篇是早一點發布的那篇，下一篇是晚一點的
+const position = computed(() => list.value?.entries.findIndex(entry => entry.slug === slug) ?? -1)
+const prevPost = computed(() => (position.value >= 0 ? list.value!.entries[position.value + 1] ?? null : null))
+const nextPost = computed(() => (position.value > 0 ? list.value!.entries[position.value - 1] ?? null : null))
+const category = computed(() => blogCategoryOf(post.value?.category))
 
 useSeoMeta({
   // Brand suffix now comes from nuxt.config.ts's global `titleTemplate` (2026-09-19).
   title: post.value.title,
-  description: post.value.meta_description
+  description: post.value.description ?? undefined
 })
 
 const requestUrl = useRequestURL()
@@ -56,9 +37,11 @@ useHead({
         '@context': 'https://schema.org',
         '@type': 'Article',
         headline: post.value.title,
-        description: post.value.meta_description,
-        datePublished: post.value.date,
-        articleSection: BLOG_CATEGORIES[post.value.category],
+        description: post.value.description ?? undefined,
+        datePublished: post.value.publishedAt,
+        dateModified: post.value.updatedAt,
+        author: post.value.authorName ? { '@type': 'Person', name: post.value.authorName } : { '@type': 'Organization', name: '安盈選股' },
+        articleSection: category.value ? BLOG_CATEGORIES[category.value] : undefined,
         url: `${requestUrl.origin}/blog/${post.value.slug}`
       })
     }
@@ -74,13 +57,12 @@ useHead({
       <h1 class="blog-post__title">{{ post.title }}</h1>
       <!-- 主題連回列表的那一類（2026-11-19） -->
       <p class="blog-post__date">
-        <time :datetime="post.date">{{ post.date }}</time>・<NuxtLink :to="{ path: '/blog', query: { category: post.category } }" class="hub-inline-link blog-post__category">{{ BLOG_CATEGORIES[post.category] }}</NuxtLink>
+        <time :datetime="post.publishedAt">{{ taipeiDate(post.publishedAt) }}</time><template v-if="category">・<NuxtLink :to="{ path: '/blog', query: { category } }" class="hub-inline-link blog-post__category">{{ BLOG_CATEGORIES[category] }}</NuxtLink></template>
       </p>
     </header>
 
-    <div class="blog-post__body">
-      <ContentRenderer :value="post" />
-    </div>
+    <!-- 業務中台轉好、跳脫過的 HTML（標籤白名單見 BlogPost.bodyHtml） -->
+    <div class="blog-post__body" v-html="post.bodyHtml" />
 
     <p class="blog-post__disclaimer">
       本文僅為財經知識說明，不構成任何有價證券之買賣建議或獲利保證，實際投資決策請自行判斷並審慎評估風險。
@@ -148,8 +130,7 @@ useHead({
   color: var(--el-text-color-placeholder);
 }
 
-/* The markdown body renders through ContentRenderer as plain h2/p/ul/ol/strong/a elements
-   (no Prose component overrides configured). */
+/* The body is 業務中台's bodyHtml（2026-11-20; ContentRenderer before）: plain h2–h4/p/ul/ol/strong/a/blockquote/table/pre elements. */
 .blog-post__body :deep(h2) {
   margin: 56px 0 20px;
   font-size: 1.75rem;
@@ -213,8 +194,8 @@ useHead({
 }
 
 /* Real bug fixed 2026-09-10 (reported live: "表格有點壞掉") — this block never had any table
-   styling at all (no :deep(table)/(th)/(td) rules existed), so a real GFM table rendered by
-   ContentRenderer came through as a completely bare, unstyled browser-default <table> — no
+   styling at all (no :deep(table)/(th)/(td) rules existed), so a real GFM table in the
+   article body came through as a completely bare, unstyled browser-default <table> — no
    borders, no column padding, no header emphasis — which reads as broken even though the
    markdown itself parsed fine (confirmed live via curl: a real <table>/<thead>/<tbody>
    structure was in the HTML output). Horizontally scrolls its own box rather than overflowing

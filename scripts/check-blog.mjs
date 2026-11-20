@@ -1,4 +1,4 @@
-// 部落格主題篩選的檢查（2026-11-19，使用者選「少數大主題」、一篇一類；欄名照詞彙表二之十一叫 category）。對著跑著的網站：
+// 部落格的檢查（2026-11-19 主題篩選，使用者選「少數大主題」、一篇一類；2026-11-20 文章搬到業務中台後加網站地圖與 404）。對著跑著的網站：
 //   node scripts/check-blog.mjs            （BLOG_URL 可覆寫，例如 DEV 的網址）
 // 照 /changelog 的做法：篩選是連結（?category=），伺服器就篩好，canonical 不帶查詢字串；只列有文章的主題。
 const base = (process.env.BLOG_URL ?? 'http://localhost:3000').replace(/\/$/, '')
@@ -72,6 +72,12 @@ for (const item of items) {
 }
 
 expect((await page('/blog/no-such-post')).status === 404, '不存在的文章沒有回 404')
+// 網址代號格式不對的（大寫、底線）連業務中台都不問，直接 404
+expect((await page('/blog/No_Such')).status === 404, '格式不對的網址代號沒有回 404')
+// 網站地圖列出每一篇已發布的文章（2026-11-20 起由 server/api/__sitemap__/blog.get.ts 從業務中台讀）
+const sitemap = await (await fetch(`${base}/api/__sitemap__/blog`, { signal: AbortSignal.timeout(60_000) })).json()
+const listed = new Set(sitemap.map(entry => entry.loc))
+expect(items.every(item => listed.has(`/blog/${item.slug}`)) && sitemap.length === items.length, `網站地圖的文章跟列表對不上：${sitemap.map(entry => entry.loc).join('、')}`)
 
 console.log(failures.length ? failures.map(failure => `FAIL ${failure}`).join('\n') : `ok   ${items.length} 篇、${labels.size} 個主題`)
 process.exit(failures.length ? 1 : 0)

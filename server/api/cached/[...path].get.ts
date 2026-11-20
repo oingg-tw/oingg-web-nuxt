@@ -53,6 +53,10 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily
   // 更新紀錄（2026-10-29，/changelog）：管理站寫、業務中台存。
   // 2026-11-16 起全站橫幅與站內信也讀它（AppNoticeBanner、/account/notices）：最多舊 1 分鐘加 4 分鐘，維護的橫幅才跟得上
   { pattern: /^release-notes$/, ttl: 'minute' },
+  // 部落格（2026-11-20，文章從網站 repo 搬到業務中台）：同更新紀錄一分鐘，下架的文章 5 分鐘內從列表與文章頁消失。網址代號照業務中台的格式
+  //（小寫英數、連字號分段、最多 100 字），其他的不轉、直接 404
+  { pattern: /^blog-posts$/, ttl: 'minute' },
+  { pattern: /^blog-posts\/(?=[a-z0-9-]{1,100}$)[a-z0-9]+(?:-[a-z0-9]+)*$/, ttl: 'minute' },
   // REITs 總覽（2026-10-29，/screener/reits）：收盤與淨值一天一次，業務中台也回 max-age=3600
   { pattern: /^reits$/, ttl: 'hourly' }
 ]

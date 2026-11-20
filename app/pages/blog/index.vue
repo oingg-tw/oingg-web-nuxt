@@ -1,30 +1,29 @@
 <script setup lang="ts">
+import type { BlogPostSummary } from '#shared/types/blog'
 // Same standalone landing layout as index.vue (no app-shell sidebar/search bar) — a blog exists
 // for SEO/public discovery, not as an in-app tool section, so it belongs on the public
 // marketing track rather than AppPinnedSidebar's authenticated APP_FEATURES list.
 definePageMeta({ layout: 'landing' })
 
-// Migrated 2026-09-07 from a hand-written useBlogPosts.ts array to @nuxt/content's real
-// content/blog/*.md collection (see content.config.ts) — a draft's frontmatter simply won't
-// have status: 'published' yet, same "not in the array" exclusion the old hardcoded array gave
-// for free, just backed by real files now instead of manual transcription.
-const { data: posts } = await useAsyncData('blog-index', () =>
-  queryCollection('blog')
-    .where('status', '=', 'published')
-    .order('date', 'DESC')
-    .select('title', 'path', 'slug', 'date', 'meta_description', 'category')
-    .all()
-)
+// 文章在業務中台（2026-11-20 起，管理站寫、人按發布；原本是網站 repo 的 content/blog），經 /api/cached 讀，同 /changelog。
+// 業務中台只回已發布的文章、新到舊。讀不到就整頁 503，同 /changelog：空的列表會被讀成「沒有文章」
+const { data, error } = await useFetch<{ entries: BlogPostSummary[] }>('/api/cached/blog-posts', { key: 'blog-posts' })
+if (error.value || !data.value) throw createError({ statusCode: 503, statusMessage: '文章列表暫時無法取得', fatal: true })
+const posts = computed(() => data.value?.entries ?? [])
+const categoryLabel = (post: BlogPostSummary): string | null => {
+  const key = blogCategoryOf(post.category)
+  return key ? BLOG_CATEGORIES[key] : null
+}
 
 // 主題（2026-11-19，使用者選「少數大主題」；欄名照詞彙表二之十一叫 category）：照 /changelog 的做法，篩選是連結（?category=），
 // 伺服器就篩好，canonical 不帶查詢字串。只列有文章的主題，空的那類點了只會是空清單；有文章的主題不到兩類就不放這一排
 const route = useRoute()
 const category = computed(() => blogCategoryOf(route.query.category))
-const shown = computed(() => (posts.value ?? []).filter(post => !category.value || post.category === category.value))
+const shown = computed(() => posts.value.filter(post => !category.value || post.category === category.value))
 const filters = computed(() => [
   { label: '全部', category: null },
   ...(Object.entries(BLOG_CATEGORIES) as [BlogCategory, string][])
-    .filter(([key]) => posts.value?.some(post => post.category === key))
+    .filter(([key]) => posts.value.some(post => post.category === key))
     .map(([key, label]) => ({ label, category: key }))
 ])
 
@@ -76,10 +75,10 @@ useHead({
       <li v-for="post in shown" :key="post.slug" class="blog-index__item">
         <NuxtLink :to="`/blog/${post.slug}`" class="blog-index__link">
           <span class="blog-index__date">
-            <time :datetime="post.date">{{ post.date }}</time>・<span class="blog-index__category">{{ BLOG_CATEGORIES[post.category] }}</span>
+            <time :datetime="post.publishedAt">{{ taipeiDate(post.publishedAt) }}</time><template v-if="categoryLabel(post)">・<span class="blog-index__category">{{ categoryLabel(post) }}</span></template>
           </span>
           <h2 class="blog-index__item-title">{{ post.title }}</h2>
-          <p class="blog-index__item-desc">{{ post.meta_description }}</p>
+          <p v-if="post.description" class="blog-index__item-desc">{{ post.description }}</p>
         </NuxtLink>
       </li>
     </ul>
