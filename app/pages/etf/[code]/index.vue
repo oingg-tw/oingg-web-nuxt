@@ -28,13 +28,16 @@ const facts = computed<FactItem[]>(() => {
     { label: '市場', value: MARKETS[text('market') ?? ''] ?? '－' },
     { label: '成立日', value: text('establishedDate') ?? '－', note: years ? `成立 ${years} 年` : undefined },
     { label: '配息頻率', value: text('distributionFrequency') ?? '－' },
+    // 風險等級（2026-11-21）：其餘集保的欄位（經理人、保管機構、收益分配原文）在基本資料那一頁，卡片不加高
+    { label: '風險等級', value: etfRiskText(num('riskLevel')) },
     { label: '基金全名', value: etf.value.fundName || '－' }
   ]
 })
 
 // 卡片順序跟側欄一樣（useEtfFacetOrder，讀者拖曳過就照讀者的）；填息沒有圖，不出卡片
 const { order } = useEtfFacetOrder()
-const chartFacets = computed(() => order.value.filter((key): key is Exclude<typeof key, 'fill'> => key !== 'fill'))
+// 基本資料（2026-11-21）也沒有圖：第一格那張卡片就是它的摘要
+const chartFacets = computed(() => order.value.filter((key): key is Exclude<typeof key, 'fill' | 'profile'> => key !== 'fill' && key !== 'profile'))
 const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.label
 </script>
 
@@ -46,7 +49,7 @@ const labelOf = (key: string) => ETF_FACETS.find(facet => facet.key === key)!.la
       <div class="etf-quick-view__grid">
         <SharedChartCard v-if="facts.length">
           <template #header>
-            <h3 class="etf-quick-view__title">基本資料</h3>
+            <h3 class="etf-quick-view__title"><NuxtLink :to="etfFacetPath(code, 'profile')" class="hub-inline-link">基本資料</NuxtLink></h3>
           </template>
           <SharedFactList :items="facts" :label="`${shortName}的基本資料`" />
         </SharedChartCard>

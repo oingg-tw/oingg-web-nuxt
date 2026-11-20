@@ -17,10 +17,15 @@ export const ETF_FACETS = [
   { key: 'size', label: '規模與受益人數', suffix: '/size' },
   { key: 'premium', label: '折溢價', suffix: '/premium-discount' },
   { key: 'liquidity', label: '成交量', suffix: '/liquidity' },
-  { key: 'holders', label: '持有人結構', suffix: '/holders' }
+  { key: 'holders', label: '持有人結構', suffix: '/holders' },
+  // 基本資料（2026-11-21，使用者 11-12 從基金後台的資料集挑的）：經理人、保管機構、收益分配原文、風險等級，沒有圖
+  { key: 'profile', label: '基本資料', suffix: '/profile' }
 ] as const
 
 export type EtfFacetKey = typeof ETF_FACETS[number]['key']
+
+// 風險等級寫成 RR1～RR5（投信投顧公會的寫法，使用者 11-12 定的）
+export const etfRiskText = (level: number | null | undefined): string => (typeof level === 'number' ? `RR${level}` : '－')
 
 export const etfFacetPath = (code: string, key: EtfFacetKey) => `${etfPath(code)}${ETF_FACETS.find(facet => facet.key === key)!.suffix}`
 
@@ -29,6 +34,8 @@ export const etfFacetPath = (code: string, key: EtfFacetKey) => `${etfPath(code)
 const FIELD_FACETS: [RegExp, EtfFacetKey][] = [
   [/^(aum|holders|netFlow|dcaAmount|marketShareRate|statutoryAumThreshold|belowStatutoryThreshold)$/, 'size'],
   [/^(nav|navDate|close|premiumDiscountPct|tradeDate)$/, 'premium'],
+  // 風險等級（2026-11-21）連到基本資料，日期與其他集保欄位都在那一頁
+  [/^riskLevel$/, 'profile'],
   [/^return/, 'returns'],
   [/^(trailing12MonthDistributionYieldPct|distributionFrequency|exDividendMonths)$/, 'distributions'],
   [/^(expenseRatio|trailing12MonthExpenseRatio)|FeeRate$|^(commissionRate|transactionTaxRate)$/, 'expenses']

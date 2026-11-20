@@ -11,6 +11,8 @@ export interface FactItem {
   warning?: boolean
   // 值是外部網址（公司網站）：另開新視窗，同站上其他外部連結把「（另開新視窗）」寫在連結字裡、同色（灰字 note 的 8px 間距在手機換行時變成縮排）
   href?: string
+  // 一整段的原文（收益分配、投資標的，2026-11-21）：占滿整列、名稱在上一行，不擠在名稱右邊那一條窄欄（手機上排成一長條）
+  long?: boolean
 }
 
 defineProps<{
@@ -21,7 +23,7 @@ defineProps<{
 
 <template>
   <dl class="fact-list" :aria-label="label">
-    <div v-for="item in items" :key="item.label" class="fact-list__item">
+    <div v-for="item in items" :key="item.label" class="fact-list__item" :class="{ 'fact-list__item--long': item.long }">
       <dt class="fact-list__label">{{ item.label }}</dt>
       <dd class="fact-list__value" :class="{ 'fact-list__value--warning': item.warning }">
         <a v-if="item.href" :href="item.href" target="_blank" rel="noopener noreferrer" class="hub-inline-link">{{ item.value }}（另開新視窗）</a>
@@ -78,6 +80,15 @@ defineProps<{
   .fact-list__value a {
     word-break: keep-all;
   }
+}
+
+.fact-list__item--long {
+  grid-column: 1 / -1;
+}
+
+.fact-list__item--long .fact-list__value {
+  flex-basis: 100%;
+  line-height: 1.8;
 }
 
 .fact-list__value--warning {

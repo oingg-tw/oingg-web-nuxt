@@ -46,9 +46,9 @@ export default defineEventHandler(async () => {
   for (const stock of (await settle(cachedPreferredStocks())) ?? []) {
     for (const suffix of ['', '/redemption', '/dividends', '/terms']) urls.push({ loc: `${preferredStockPath(stock.symbol)}${suffix}` })
   }
-  // ETF 每檔十頁（速覽＋九個面向，2026-10-18；後綴同 app/utils/etf-pages.ts 的 ETF_FACETS）
+  // ETF 每檔十一頁（速覽＋十個面向；基本資料 2026-11-21 加；後綴同 app/utils/etf-pages.ts 的 ETF_FACETS）
   for (const symbol of (await settle(cachedEtfSymbols())) ?? []) {
-    for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
+    for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders', '/profile']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
   }
   // REITs 每檔五頁（2026-10-30；後綴同 app/utils/reit-pages.ts 的 REIT_FACETS）。清單同 /screener/reits，約 6 檔
   for (const reit of (await settle(businessFetch<{ entries: { symbol: string }[] }>('/reits')))?.entries ?? []) {

@@ -19,6 +19,8 @@ export interface EtfDetail {
   yearMonth: string
   // expenseRatioHistory 是陣列，其他都是單一值
   values: Record<string, EtfValue | ExpenseRatioYear[]>
+  // 集保（基金資訊觀測站）的基金基本資料（2026-11-21）；集保還沒收錄的新 ETF 是 null。asOfDate 也是 values.riskLevel 的日期
+  fundProfile?: { asOfDate: string; manager: string | null; custodianBank: string | null; distributionRule: string | null; investRegion: string | null; investTarget: string | null } | null
 }
 
 // 逐年總費用率（數據中台 b7a196e，2026-11-04，取代 expenseRatio2001～2026 各一欄）：只列有值的完整年度，由舊到新

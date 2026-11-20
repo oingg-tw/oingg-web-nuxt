@@ -6,7 +6,7 @@ import type { EtfFacetKey } from '~/utils/etf-pages'
 // 有時間軸的接 useChartPeriod；速覽把標題傳進 #header。填息沒有圖（同個股填息頁，只有表）
 const props = defineProps<{
   data: EtfPageResponse
-  facet: Exclude<EtfFacetKey, 'overview' | 'fill'>
+  facet: Exclude<EtfFacetKey, 'overview' | 'fill' | 'profile'>
 }>()
 
 const isDesktop = useIsDesktop()

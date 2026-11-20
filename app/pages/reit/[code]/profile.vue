@@ -26,8 +26,8 @@ const facts = computed<FactItem[]>(() => {
     { label: '到期日', value: item.maturityDate ?? '－' },
     { label: '發行總額', value: item.totalIssueAmountNtd === null ? '－' : formatMoney(item.totalIssueAmountNtd) },
     { label: '信用評等', value: item.creditRating ?? '－' },
-    { label: '收益分配', value: item.distributionPolicy ?? '－', note: '公開資訊觀測站原文' },
-    ...(item.distributionNote ? [{ label: '收益分配說明', value: item.distributionNote, note: '公開資訊觀測站原文' }] : [])
+    { label: '收益分配', value: item.distributionPolicy ?? '－', note: '公開資訊觀測站原文', long: true },
+    ...(item.distributionNote ? [{ label: '收益分配說明', value: item.distributionNote, note: '公開資訊觀測站原文', long: true }] : [])
   ]
 })
 </script>

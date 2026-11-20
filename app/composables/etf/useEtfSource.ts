@@ -118,6 +118,8 @@ function formatValue(field: EtfFilterField | undefined, raw: string | number | n
   if (raw === null || raw === undefined) return '－'
   if (field?.kind === 'categorical') return labelEachValue(raw, value => valueLabel(field.field, value))
   if (typeof raw !== 'number') return raw
+  // 風險等級寫成 RR1～RR5（2026-11-21）
+  if (field?.field === 'riskLevel') return etfRiskText(raw)
   // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
   if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(raw.toFixed(2)) : formatMoney(raw)
   if (field?.unit === '%') return minusSign(`${raw}%`)

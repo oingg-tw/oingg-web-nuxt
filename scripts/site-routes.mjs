@@ -6,7 +6,7 @@ const STOCK_FIXED = ['/profile', '/holders', '/news', '/announcements', '/divide
   '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition',
   '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/monthly-revenue', '/monthly-revenue-growth', '/metrics', '/financial-statements', '/balance-sheet',
   '/income-statement', '/cash-flow-statement']
-const ETF_FACETS = ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders']
+const ETF_FACETS = ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders', '/profile']
 export const ALL_ROUTES = [
   '/', '/stock/2330', '/stock/2330/roe', '/stock/2330/pe-ratio', '/stock/2330/eps', '/stock/7711/shareholder-yield',
   // 銀行與金控的版本（2026-11-20）：財報三率只畫純益率，淨收益組成只有它們有
