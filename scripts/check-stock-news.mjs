@@ -1,7 +1,7 @@
 // app/utils/stock-news.ts：近期新聞依台北日期分組（今天／昨天）、台北時刻，24 小時內的「N 分鐘前／N 小時前」。
 // Run: node scripts/check-stock-news.mjs
 import assert from 'node:assert/strict'
-import { stockNewsAgo, stockNewsGroups } from '../app/utils/stock-news.ts'
+import { stockNewsAgo, stockNewsGroups, announcementGroups } from '../app/utils/stock-news.ts'
 
 const article = (publishedAt, title = publishedAt) => ({ title, source: '三立新聞網', link: `https://example.com/${title}`, publishedAt })
 const groups = stockNewsGroups([
@@ -27,4 +27,12 @@ assert.equal(stockNewsAgo('2026-11-11T09:31:00Z', now), '（23 小時前）')
 assert.equal(stockNewsAgo('2026-11-11T09:30:00Z', now), '', '滿 24 小時只寫時刻')
 assert.equal(stockNewsAgo('2026-11-12T09:35:00Z', now), '', '未來的時間不寫')
 assert.equal(stockNewsAgo('not a date', now), '')
-console.log('PASS: stock news time')
+// 重大訊息（2026-11-21）：依發言日期分組，今天／昨天，時刻取時：分，沒有時刻寫空的
+const announced = announcementGroups([
+  { market: 'sii', announcementDate: '2026-11-12', announcementTime: '21:01:11', announcedAt: '2026-11-12T13:01:11.000Z', factDate: null, generatedDate: null, subject: 'a', clauseNo: 51, description: '' },
+  { market: 'sii', announcementDate: '2026-11-11', announcementTime: '16:09:03', announcedAt: null, factDate: null, generatedDate: null, subject: 'b', clauseNo: null, description: '' },
+  { market: 'sii', announcementDate: '2026-11-11', announcementTime: null, announcedAt: null, factDate: null, generatedDate: null, subject: 'c', clauseNo: null, description: '' },
+  { market: 'sii', announcementDate: '2026-11-03', announcementTime: '09:00:00', announcedAt: null, factDate: null, generatedDate: null, subject: 'd', clauseNo: null, description: '' }
+], '2026-11-12')
+assert.deepEqual(announced.map(group => [group.day, group.prefix, group.items.map(item => item.time)]), [['2026-11-12', '今天', ['21:01']], ['2026-11-11', '昨天', ['16:09', '']], ['2026-11-03', '', ['09:00']]])
+console.log('PASS: stock news time and announcement groups')

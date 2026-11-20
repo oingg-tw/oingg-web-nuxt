@@ -34,7 +34,8 @@
 // these suffixes already have per symbol.
 // /profile（基本資料）joined 2026-11-08 the same way: one suffix per symbol, every listed company has one.
 // /holders（持有人結構）joined 2026-11-12: 集保 covers every listed company; one with no record is noindex on its page.
-const INDEXABLE_SUFFIXES = ['', '/profile', '/holders', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+// /announcements（重大訊息）joined 2026-11-21 the same way: listed and 上櫃 companies announce something most months; none yet is noindex.
+const INDEXABLE_SUFFIXES = ['', '/profile', '/holders', '/announcements', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
 // catalog `description` is null (StockMetricDetailPage.vue's own `noindex` computed), and listing

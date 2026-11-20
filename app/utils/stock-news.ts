@@ -1,4 +1,5 @@
 import type { StockNewsArticle } from '#shared/types/stock-news'
+import type { MaterialAnnouncement } from '#shared/types/material-announcements'
 
 // 近期新聞的時間（2026-11-12 使用者定案「並用」，設計頁 https://claude.ai/artifact/3n25Tvhai5n8ZzkdCqkRhu）：依台北日期分組，組名是
 // 今天／昨天加日期（日期由頁面用 shortDayLabel 寫）；每則寫台北時刻，24 小時內再補「（N 分鐘前／N 小時前）」。
@@ -32,4 +33,23 @@ export function stockNewsAgo(publishedAt: string, now: number): string {
   const minutes = Math.floor((now - Date.parse(publishedAt)) / 60_000)
   if (!(minutes >= 0 && minutes < 24 * 60)) return ''
   return `（${minutes < 60 ? relative.format(-Math.max(minutes, 1), 'minute') : relative.format(-Math.floor(minutes / 60), 'hour')}）`
+}
+
+// 重大訊息（2026-11-21）同一種分組：依發言日期（已經是台灣日期），組名今天／昨天加日期，每則寫發言時刻（時：分；沒有時刻的寫空的）。
+// 上游已經新到舊排好
+export interface AnnouncementGroup {
+  day: string
+  prefix: '今天' | '昨天' | ''
+  items: (MaterialAnnouncement & { time: string })[]
+}
+
+export function announcementGroups(entries: MaterialAnnouncement[], today: string): AnnouncementGroup[] {
+  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+  const groups: AnnouncementGroup[] = []
+  for (const entry of entries) {
+    const day = entry.announcementDate
+    if (groups.at(-1)?.day !== day) groups.push({ day, prefix: day === today ? '今天' : day === yesterday ? '昨天' : '', items: [] })
+    groups.at(-1)!.items.push({ ...entry, time: entry.announcementTime?.slice(0, 5) ?? '' })
+  }
+  return groups
 }
