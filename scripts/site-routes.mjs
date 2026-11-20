@@ -10,7 +10,7 @@ const ETF_FACETS = ['', '/distributions', '/distribution-composition', '/distrib
 export const ALL_ROUTES = [
   '/', '/stock/2330', '/stock/2330/roe', '/stock/2330/pe-ratio', '/stock/2330/eps', '/stock/7711/shareholder-yield',
   // 銀行與金控的版本（2026-11-20）：財報三率只畫純益率，淨收益組成只有它們有
-  '/stock/2881/margins', '/stock/2881/net-revenue-composition',
+  '/stock/2881/margins', '/stock/2881/net-revenue-composition', '/stock/2881/asset-composition', '/stock/2881/debt-composition',
   ...STOCK_FIXED.map(path => `/stock/2330${path}`),
   ...ETF_FACETS.map(path => `/etf/0050${path}`), '/etf/00400a',
   '/preferred/2881a', '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms',

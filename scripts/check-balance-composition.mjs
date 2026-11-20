@@ -2,7 +2,7 @@
 // 期望值是 analysis-ts 同一期的占比（兩位小數）。分組改壞了，這裡的占比會對不上。
 //   node scripts/check-balance-composition.mjs
 import assert from 'node:assert/strict'
-import { assetCompositionOf, debtCompositionOf, equityCompositionOf } from '../shared/utils/balance-composition.ts'
+import { assetCompositionOf, BANK_ASSET_PART_LABELS, bankCompositionOf, debtCompositionOf, equityCompositionOf, pickBalanceComposition } from '../shared/utils/balance-composition.ts'
 import { annualCashFlow, cashFlowCompositionOf } from '../shared/utils/cash-flow-composition.ts'
 
 const tsmc = {
@@ -97,4 +97,17 @@ assert.deepEqual(years.map(year => year.fiscalYear), [2025])
 assert.equal(years[0].cashFlow.netChange, 360)
 assert.equal(years[0].cashFlow.parts.capex, -2080)
 assert.equal(sum(years[0].cashFlow.parts), years[0].cashFlow.netChange)
+
+// 銀行與金控（2026-11-21）：總額沒有就拆不開，缺的成分當 0；負債組成在流動／非流動拆不開時改讀 bank，資產組成只讀 bank
+const bankAssets = bankCompositionOf({ bankAssets: { value: 100 }, bankDiscountsAndLoansNet: { value: 60 }, bankOtherAssets: { value: 40 } }, 'bankAssets', BANK_ASSET_PART_LABELS)
+assert.equal(bankAssets.total, 100)
+assert.equal(bankAssets.parts.bankCashAndCashEquivalents, 0)
+assert.equal(Object.values(bankAssets.parts).reduce((a, b) => a + b, 0), 100)
+assert.equal(bankCompositionOf({ bankDiscountsAndLoansNet: { value: 60 } }, 'bankAssets', BANK_ASSET_PART_LABELS), null)
+const bankPeriod = { assets: null, debt: null, equity: null, intangibleAssets: null, bank: { assets: bankAssets, liabilities: { total: 90, parts: { bankDepositsFromCustomers: 90 } } } }
+assert.equal(pickBalanceComposition('bankAssets', bankPeriod)?.total, 100)
+assert.equal(pickBalanceComposition('debt', bankPeriod)?.total, 90)
+assert.equal(pickBalanceComposition('current', bankPeriod), null)
+assert.equal(pickBalanceComposition('bankAssets', { ...bankPeriod, bank: undefined }), null)
+
 console.log('balance composition: ok')

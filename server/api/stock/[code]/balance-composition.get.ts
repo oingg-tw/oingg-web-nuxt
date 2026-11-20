@@ -1,5 +1,6 @@
 import type { FinancialStatementResponse } from '#shared/types/financial-statement'
 import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '#shared/types/stock-balance-composition'
+import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // GET /api/stock/:code/balance-composition — 資產、負債、淨值的組成金額，逐季（2026-10-12）。
 //
 // 取代 asset-composition 與 equity-composition 兩支：它們各自只抓「最新一期＋5 個年度 Q4」，圖上年與季混在一起（使用者：「我看到的似乎
@@ -9,6 +10,9 @@ import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '
 // 深度：近N年的上限是 8 年（LOOKBACK_YEARS），抓 32 季。上游的資產負債表回得到 2021 Q1 附近，更早的回 found:false、直接略過。
 // 2026-11-20 起一次讀 32 季（cachedStatementHistory）；原本一季一次，冷的時候 32 次。
 const QUARTERS = 32
+// 銀行與金控（2026-11-21）：流動／非流動拆不開時，再讀數據中台的資產 9 支、負債 10 支（metrics-history 一次最多 10 支），掛在每一期的 bank
+const BANK_ASSET_CODES = [BANK_ASSETS_TOTAL_CODE, ...Object.keys(BANK_ASSET_PART_LABELS)]
+const BANK_LIABILITY_CODES = [BANK_LIABILITIES_TOTAL_CODE, ...Object.keys(BANK_LIABILITY_PART_LABELS)]
 
 const toPeriod = (statement: FinancialStatementResponse | null): BalanceCompositionPeriod | null => {
   if (!statement?.found || statement.fiscalYear === null || statement.fiscalQuarter === null) return null
@@ -32,5 +36,29 @@ export default defineEventHandler(async (event): Promise<StockBalanceComposition
   const history = await settle(cachedStatementHistory(code, 'balanceSheet', QUARTERS))
   if (history === null) throw createError({ statusCode: 502, statusMessage: 'balance sheet unavailable' })
   const periods = history.entries.map(toPeriod).filter((period): period is BalanceCompositionPeriod => period !== null)
-  return { symbol: code, periods }
+  // 拆得開（一般公司）就不用讀；銀行、保險、證券、金控的最新一期 assets 是 null，其中只有銀行與金控讀得到這兩組（其他回空的）
+  if (!periods.length || periods.at(-1)!.assets) return { symbol: code, periods }
+  const [assets, liabilities] = await Promise.all([
+    settle(cachedMetricsHistory(code, 'Q', BANK_ASSET_CODES, QUARTERS)),
+    settle(cachedMetricsHistory(code, 'Q', BANK_LIABILITY_CODES, QUARTERS))
+  ])
+  const byPeriod = (entries: MetricsHistoryEntry[] | undefined) => new Map((entries ?? []).map(entry => [`${entry.fiscalYear}-${entry.fiscalQuarter}`, entry.values]))
+  const assetValues = byPeriod(assets?.entries)
+  const liabilityValues = byPeriod(liabilities?.entries)
+  if (!assetValues.size && !liabilityValues.size) return { symbol: code, periods }
+  return {
+    symbol: code,
+    periods: periods.map((period) => {
+      const key = `${period.fiscalYear}-${period.fiscalQuarter}`
+      const assetsOf = assetValues.get(key)
+      const liabilitiesOf = liabilityValues.get(key)
+      return {
+        ...period,
+        bank: {
+          assets: assetsOf ? bankCompositionOf(assetsOf, BANK_ASSETS_TOTAL_CODE, BANK_ASSET_PART_LABELS) : null,
+          liabilities: liabilitiesOf ? bankCompositionOf(liabilitiesOf, BANK_LIABILITIES_TOTAL_CODE, BANK_LIABILITY_PART_LABELS) : null
+        }
+      }
+    })
+  }
 })

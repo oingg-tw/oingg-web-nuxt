@@ -304,7 +304,7 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
-  | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'equity' | 'intangible' }
+  | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'bankAssets' | 'equity' | 'intangible' }
   | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
@@ -344,6 +344,8 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   'debt-composition': { topic: '負債組成', chart: { kind: 'balance', part: 'debt' } },
   'current-asset-composition': { topic: '流動資產組成', chart: { kind: 'balance', part: 'current' } },
   'non-current-asset-composition': { topic: '非流動資產組成', chart: { kind: 'balance', part: 'noncurrent' } },
+  // 銀行與金控（2026-11-21）
+  'asset-composition': { topic: '資產組成', chart: { kind: 'balance', part: 'bankAssets' } },
   // 無形資產（2026-10-23）：同一套頁面與圖，只有合計一組柱子
   'intangible-assets': { topic: '無形資產', chart: { kind: 'balance', part: 'intangible' } }
   // 三大報表四頁（financial-statements…）不在這裡：只有表格，也不是 related 的目的地

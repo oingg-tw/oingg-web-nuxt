@@ -69,6 +69,12 @@ const layers = computed(() => (single.value
   ? [{ name: totalLabel.value, values: shown.value.map(row => row.total / unit.value.divisor) }]
   : order.value.map(key => ({ name: labels.value[key]!, values: shown.value.map(row => (row.parts[key] ?? 0) / unit.value.divisor) }))))
 
+// 有壽險子公司的金控（2026-11-21）：2026 年起保險業改用 IFRS 17，保險合約資產與負債單獨列出、金融資產重新分類（2881 2026Q1 公允價值列損益
+// 13.9% → 6.5%、列其他綜合損益 8.0% → 18.7%），2025 年以前的保險負債在負債準備裡。圖在 2026 年會跳一次，寫在圖卡底下。看全部期別，
+// 不看畫面上那一段：讀者選了 2025 年以前的區間，負債準備一樣大
+const reclassified = computed(() => (props.kind === 'bankAssets' || props.kind === 'debt') && props.periods.some(period => 'bank' in period && !!period.bank
+  && BANK_INSURANCE_CODES.some(code => (period.bank?.assets?.parts[code] ?? 0) !== 0 || (period.bank?.liabilities?.parts[code] ?? 0) !== 0)))
+
 const money = (thousand: number) => formatMoney(thousand * 1000)
 const table = computed(() => historyTableText({
   shortName: props.shortName,
@@ -113,6 +119,11 @@ const cell = (thousand: number, row: Row) => {
         :value-formatter="value => money(value * unit.divisor)"
         :tooltip-header="index => (single ? `${shown[index]?.label}` : `${shown[index]?.label}　${totalLabel} ${money(shown[index]?.total ?? 0)}`)"
       />
+      <template v-if="reclassified && !chartOnly" #footer>
+        <p class="stock-balance-composition__note">
+          2026 年起保險業改用新的保險會計準則（IFRS 17）：保險合約資產與負債單獨列出、金融資產重新分類{{ kind === 'debt' ? '，2025 年以前壽險子公司的保險負債含在負債準備裡' : '' }}。所以圖在 2026 年會跳一次，是報表分類改了，不是真的變動。
+        </p>
+      </template>
     </SharedChartCard>
     <StockQuestionSection v-if="!chartOnly" :id="tableSectionId" class="stock-balance-composition__table-section" :question="table.question" :answer="tableAnswer">
     <SharedTable :label="table.label">
@@ -127,7 +138,7 @@ const cell = (thousand: number, row: Row) => {
       <tbody>
         <tr v-for="row in [...shown].reverse()" :key="row.label">
           <th scope="row">{{ row.label }}</th>
-          <td class="seo-table__num">{{ shareOfAssets ? cell(row.total, row) : money(row.total) }}</td>
+          <td class="seo-table__num">{{ shareOfAssets && kind !== 'bankAssets' ? cell(row.total, row) : money(row.total) }}</td>
           <td v-for="key in order" :key="key" class="seo-table__num">{{ cell(row.parts[key] ?? 0, row) }}</td>
         </tr>
       </tbody>
@@ -140,5 +151,10 @@ const cell = (thousand: number, row: Row) => {
 /* 表格自己的問句段落接在圖例下面，留一段距離，不然標題看起來像圖例的一部分 */
 .stock-balance-composition__table-section {
   margin-top: 32px;
+}
+
+.stock-balance-composition__note {
+  margin: 0;
+  line-height: 1.7;
 }
 </style>

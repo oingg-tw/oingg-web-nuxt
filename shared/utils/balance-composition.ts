@@ -175,6 +175,48 @@ export function equityCompositionOf(statement: Record<string, number | null> | n
   return { equity, parts }
 }
 
+// ---- 銀行與金控的資產、負債（2026-11-21，數據中台的 19 支 Q 指標，千元，2018Q1 起；使用者 11-20 的「1 按建議做」）----
+// 它們的資產負債表不分流動與非流動，上面的拆法不適用。這一組是數據中台算好的，metrics-history 一次拿：「其他」＝總額減列出的科目，沒有單獨
+// 列示的是 0，所以每期加起來等於總額。鍵就是指標代號。金控的負債準備在 2025 年以前含壽險子公司的保險負債，2026 年起改列保險合約負債
+// （圖卡底下寫一句，見 StockBalanceCompositionChart）
+export const BANK_ASSETS_TOTAL_CODE = 'bankAssets'
+export const BANK_LIABILITIES_TOTAL_CODE = 'bankLiabilities'
+export const BANK_ASSET_PART_LABELS: Record<string, string> = {
+  bankCashAndCashEquivalents: '現金及約當現金',
+  bankDueFromCentralBankAndCallLoansToBanks: '存放央行及拆借同業',
+  bankFinancialAssetsAtFvtpl: '金融資產（公允價值列損益）',
+  bankFinancialAssetsAtFvoci: '金融資產（公允價值列其他綜合損益）',
+  bankFinancialAssetsAtAmortisedCost: '金融資產（攤銷後成本）',
+  bankDiscountsAndLoansNet: '貼現及放款',
+  bankInsuranceContractAssets: '保險合約資產',
+  bankOtherAssets: '其他資產'
+}
+export const BANK_LIABILITY_PART_LABELS: Record<string, string> = {
+  bankDepositsFromCustomers: '存款及匯款',
+  bankDepositsFromCentralBankAndBanks: '央行及同業存款',
+  bankFinancialLiabilitiesAtFvtpl: '金融負債（公允價值列損益）',
+  bankSecuritiesSoldUnderRepurchaseAgreements: '附買回票券及債券負債',
+  bankCommercialPapersIssued: '應付商業本票',
+  bankBondsPayable: '應付債券',
+  bankProvisions: '負債準備',
+  bankInsuranceContractLiabilities: '保險合約負債',
+  bankOtherLiabilities: '其他負債'
+}
+// 保險合約資產或負債有值＝有壽險子公司的金控，2026 年起才單獨列出
+export const BANK_INSURANCE_CODES = ['bankInsuranceContractAssets', 'bankInsuranceContractLiabilities']
+
+export interface BankComposition {
+  total: number
+  parts: Record<string, number>
+}
+
+// 一期的總額與各項（千元）：總額沒有就拆不開，成分缺的是沒有單獨列示，當 0（數據中台的口徑）
+export function bankCompositionOf(values: Record<string, { value: number | null } | null | undefined>, totalCode: string, labels: Record<string, string>): BankComposition | null {
+  const total = values[totalCode]?.value
+  if (total === null || total === undefined) return null
+  return { total, parts: Object.fromEntries(Object.keys(labels).map(code => [code, values[code]?.value ?? 0])) }
+}
+
 // 圖上小到看不見的項目併進哪一個「其他」（層名對層名，給 StockStackedBarChart 的 others；規則與 2% 門檻在 metric-composition.ts 的 foldSmallLayers，
 // 2026-11-20 使用者：「…就讓它直接合併到其他流動資產。所有類似組成畫面比照此規則」）。負債的流動與非流動各併進自己那一邊的其他；淨值五項都是科目、
 // 沒有殘差那一項，不併
@@ -185,7 +227,10 @@ const othersOf = (keys: readonly string[], labels: Record<string, string>, other
 export const BALANCE_COMPOSITION_KINDS = {
   current: { total: '流動資產', labels: CURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true, others: othersOf(Object.keys(CURRENT_KEYS), CURRENT_ASSET_PART_LABELS, CURRENT_ASSET_PART_LABELS.other) },
   noncurrent: { total: '非流動資產', labels: NONCURRENT_ASSET_PART_LABELS as Record<string, string>, shareOfAssets: true, others: othersOf(Object.keys(NONCURRENT_KEYS), NONCURRENT_ASSET_PART_LABELS, NONCURRENT_ASSET_PART_LABELS.other) },
-  debt: { total: '負債', labels: DEBT_PART_LABELS as Record<string, string>, shareOfAssets: true, others: { ...othersOf(Object.keys(DEBT_CURRENT_KEYS), DEBT_PART_LABELS, DEBT_PART_LABELS.otherCurrent), ...othersOf(Object.keys(DEBT_NONCURRENT_KEYS), DEBT_PART_LABELS, DEBT_PART_LABELS.otherNoncurrent) } },
+  // 負債組成同一頁也畫銀行與金控（2026-11-21）：兩組鍵不重疊，表格與圖只列有值的那幾項，所以名稱表放在一起
+  debt: { total: '負債', labels: { ...DEBT_PART_LABELS, ...BANK_LIABILITY_PART_LABELS } as Record<string, string>, shareOfAssets: true, others: { ...othersOf(Object.keys(DEBT_CURRENT_KEYS), DEBT_PART_LABELS, DEBT_PART_LABELS.otherCurrent), ...othersOf(Object.keys(DEBT_NONCURRENT_KEYS), DEBT_PART_LABELS, DEBT_PART_LABELS.otherNoncurrent), ...othersOf(Object.keys(BANK_LIABILITY_PART_LABELS).filter(code => code !== 'bankOtherLiabilities'), BANK_LIABILITY_PART_LABELS, BANK_LIABILITY_PART_LABELS.bankOtherLiabilities!) } },
+  // 資產組成（2026-11-21）：只有銀行與金控，一般公司看流動與非流動資產組成
+  bankAssets: { total: '資產', labels: BANK_ASSET_PART_LABELS, shareOfAssets: true, others: othersOf(Object.keys(BANK_ASSET_PART_LABELS).filter(code => code !== 'bankOtherAssets'), BANK_ASSET_PART_LABELS, BANK_ASSET_PART_LABELS.bankOtherAssets!) },
   equity: { total: '淨值', labels: EQUITY_PART_LABELS as Record<string, string>, shareOfAssets: false, others: {} as Record<string, string> },
   // 無形資產（2026-10-23，使用者：「個股瀏覽新增指標頁面 無形資產 用柱狀圖」）：只有合計、沒有分項——商譽與其他無形資產的拆分只有
   // 少數公司申報（量 10 家最新一季只有 1101 有），所以圖是一組柱子、表格一欄
@@ -194,9 +239,10 @@ export const BALANCE_COMPOSITION_KINDS = {
 export type BalanceCompositionKind = keyof typeof BALANCE_COMPOSITION_KINDS
 
 // 從一期取出這一塊的合計與各項（千元）；拆不開回 null
-export function pickBalanceComposition(kind: BalanceCompositionKind, period: { assets: AssetComposition | null; debt: DebtComposition | null; equity: EquityComposition | null; intangibleAssets: number | null }): { total: number; parts: Record<string, number> } | null {
+export function pickBalanceComposition(kind: BalanceCompositionKind, period: { assets: AssetComposition | null; debt: DebtComposition | null; equity: EquityComposition | null; intangibleAssets: number | null; bank?: { assets: BankComposition | null; liabilities: BankComposition | null } | null }): { total: number; parts: Record<string, number> } | null {
   if (kind === 'intangible') return period.intangibleAssets === null ? null : { total: period.intangibleAssets, parts: {} }
-  if (kind === 'debt') return period.debt ? { total: period.debt.liabilities, parts: period.debt.parts } : null
+  if (kind === 'bankAssets') return period.bank?.assets ?? null
+  if (kind === 'debt') return period.debt ? { total: period.debt.liabilities, parts: period.debt.parts } : period.bank?.liabilities ?? null
   if (kind === 'equity') return period.equity ? { total: period.equity.equity, parts: period.equity.parts } : null
   if (!period.assets) return null
   return kind === 'current'

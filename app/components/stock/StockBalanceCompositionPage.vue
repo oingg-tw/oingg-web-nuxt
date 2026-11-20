@@ -11,13 +11,15 @@ import type { CashFlowCompositionPeriod, StockCashFlowCompositionResponse } from
 // 圖與表的期別、近N年、單位在共用的 StockBalanceCompositionChart。答句固定講最新一季。金融業不分流動與非流動，拆不開就只說一句為什麼。
 // 現金流量的組成（cashFlow，2026-10-17）也是這一頁：資料走 cash-flow-composition、答句講最新一個年度的收入與支出各由什麼組成。
 // 無形資產（intangible，2026-10-23，使用者：「個股瀏覽新增指標頁面 無形資產 用柱狀圖」）：只有合計一組柱子，答句是金額與占總資產比
-const props = defineProps<{ kind: 'current' | 'noncurrent' | 'debt' | 'equity' | 'cashFlow' | 'intangible' }>()
+const props = defineProps<{ kind: 'current' | 'noncurrent' | 'debt' | 'bankAssets' | 'equity' | 'cashFlow' | 'intangible' }>()
 
 // 合計名稱、各項名稱與 shareOfAssets 在 BALANCE_COMPOSITION_KINDS（指標速覽畫同一張圖，共用那一份）
 const KINDS = {
   current: { ...BALANCE_COMPOSITION_KINDS.current, topic: '流動資產組成', pathSuffix: '/current-asset-composition', titleKeywords: '流動資產組成現金應收帳款與存貨', metricCode: 'currentAssetsToAssets', learnLabel: '流動資產占比怎麼看' },
   noncurrent: { ...BALANCE_COMPOSITION_KINDS.noncurrent, topic: '非流動資產組成', pathSuffix: '/non-current-asset-composition', titleKeywords: '非流動資產組成廠房設備轉投資與無形資產', metricCode: 'nonCurrentAssetsToAssets', learnLabel: '非流動資產占比怎麼看' },
   debt: { ...BALANCE_COMPOSITION_KINDS.debt, topic: '負債組成', pathSuffix: '/debt-composition', titleKeywords: '負債組成借款應付帳款與公司債', metricCode: 'debtRatio', learnLabel: '負債比率怎麼看' },
+  // 資產組成（2026-11-21，銀行與金控；資料見 balance-composition.ts 的 BANK_*）：定義讀型錄的銀行資產總額
+  bankAssets: { ...BALANCE_COMPOSITION_KINDS.bankAssets, topic: '資產組成', pathSuffix: '/asset-composition', titleKeywords: '資產組成放款金融資產與現金', metricCode: 'bankAssets', learnLabel: '銀行資產怎麼看' },
   // 淨值的各項占「淨值」而不是占總資產：保留盈餘占總資產幾 % 讀不出「淨值是賺來的還是投進來的」。合計是歸屬母公司權益。
   // 定義自己寫：型錄的股東權益比率（equityRatio）沒有說明文字（2026-10-14 實查 description 是 null），而這一頁問的是「淨值」本身；
   // 新手專區連到每股淨值，那一頁有完整說明
@@ -92,7 +94,10 @@ function answerFor(detailed: boolean) {
   const keys = Object.keys(page.labels)
     .filter(key => (picked.parts[key] ?? 0) > 0)
     .sort((a, b) => picked.parts[b]! - picked.parts[a]!)
-  const head = page.shareOfAssets
+  // 資產組成的合計就是總資產，不寫「占總資產 100%」
+  const head = props.kind === 'bankAssets'
+    ? `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total} ${money(picked.total)}`
+    : page.shareOfAssets
     ? `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total} ${money(picked.total)}，占總資產 ${share(picked.total, period.totalAssets)}`
     : `${period.fiscalYear} Q${period.fiscalQuarter} 的${page.total}（歸屬母公司權益）${money(picked.total)}`
   if (detailed) return `${head}：${keys.map(key => `${page.labels[key]} ${money(picked.parts[key]!)}（${share(picked.parts[key]!, base)}）`).join('、')}。`
@@ -104,7 +109,12 @@ const emptyAnswer = computed(() => (props.kind === 'intangible'
   ? `${stockShortName.value}近幾季的資產負債表沒有申報無形資產。`
   : props.kind === 'equity' || props.kind === 'cashFlow'
     ? `${stockShortName.value}目前沒有可以拆開的${props.kind === 'equity' ? '淨值' : '現金流量'}資料。`
-    : `${stockShortName.value}沒有可以拆開的${page.total}。銀行、保險、證券與金控的資產負債表不分流動與非流動，這一頁不適用。`))
+    : props.kind === 'bankAssets'
+      ? `${stockShortName.value}不是銀行或金控，這一頁沒有數字；一般公司的資產看流動資產組成與非流動資產組成。`
+      : props.kind === 'debt'
+        // 銀行與金控 2026-11-21 起有自己的拆法，還不適用的是保險與證券
+        ? `${stockShortName.value}沒有可以拆開的負債。保險與證券業的資產負債表不分流動與非流動，這一頁還不適用。`
+        : `${stockShortName.value}沒有可以拆開的${page.total}。銀行、保險、證券與金控的資產負債表不分流動與非流動，這一頁不適用；銀行與金控看資產組成。`))
 
 const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], page.metricCode)?.metric ?? null)
 const definition = computed(() => ('definition' in page ? page.definition : firstSentence(metricText.value?.description)))
@@ -114,6 +124,13 @@ const SIBLINGS = [
   { slug: 'debt-composition', topic: '負債組成' },
   { slug: 'equity-composition', topic: '淨值組成' }
 ]
+// 銀行與金控（有 bank 那組數字）的同類頁：資產組成取代流動、非流動那兩頁
+const BANK_SIBLINGS = [
+  { slug: 'asset-composition', topic: '資產組成' },
+  { slug: 'debt-composition', topic: '負債組成' },
+  { slug: 'equity-composition', topic: '淨值組成' }
+]
+const isBank = computed(() => periods.value.some(period => 'bank' in period && !!period.bank))
 // 現金流量的組成連到現金流那一組的頁面與現金流量表，不連資產負債表那四頁
 const CASH_FLOW_LINKS = [
   { slug: 'ocf-to-net-income', topic: '營業現金流對淨利比' },
@@ -126,7 +143,7 @@ const footerLinks = computed(() => props.kind === 'cashFlow' ? [
   { to: `/stock/${code.value}/cash-flow-statement`, label: `${stockShortName.value} ${code.value} 最新一期的現金流量表` }
 ] : [
   { to: metricPath('learnMetricCode' in page ? page.learnMetricCode : page.metricCode), label: `${page.learnLabel}（新手專區）` },
-  ...SIBLINGS.filter(sibling => `/${sibling.slug}` !== page.pathSuffix).map(sibling => ({ to: `/stock/${code.value}/${sibling.slug}`, label: sibling.topic })),
+  ...(isBank.value ? BANK_SIBLINGS : SIBLINGS).filter(sibling => `/${sibling.slug}` !== page.pathSuffix).map(sibling => ({ to: `/stock/${code.value}/${sibling.slug}`, label: sibling.topic })),
   ...(props.kind === 'debt' ? [{ to: `/stock/${code.value}/debt-ratio`, label: '負債比率' }] : []),
   ...(props.kind === 'equity' ? [{ to: `/stock/${code.value}/equity-source`, label: '淨值從哪來' }, { to: `/stock/${code.value}/equity-growth`, label: '淨值成長年增率' }] : []),
   { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` }
@@ -141,7 +158,9 @@ const earliestClause = computed(() => {
 })
 const description = computed(() => clampDescription(answer.value ? `${answerFor(true)}${earliestClause.value}` : emptyAnswer.value))
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: page.topic, titleKeywords: page.titleKeywords, pathSuffix: page.pathSuffix, stock, summary, description, sectorCode })
+// 沒有可以拆開的數字就 noindex（2026-11-21：金融股的流動資產組成、一般公司的資產組成都只有一句不適用）
+const noindex = computed(() => !answer.value)
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: page.topic, titleKeywords: page.titleKeywords, pathSuffix: page.pathSuffix, stock, summary, description, noindex, sectorCode })
 </script>
 
 <template>
