@@ -44,6 +44,8 @@ export interface DividendHistoryEntry {
   paymentDate: string | null
   // 那一年最後一次配股的發放日（同上，2026-10-20 之前的配股沒有）
   stockDividendDistributionDate?: string | null
+  // 董事會（與股東會）決議這個年度不分派（2026-11-21，數據中台）：那一列金額是 0、配息次數 0；沒有決議的年度是 null。107 年度起有資料
+  noDistributionResolution?: { boardResolutionDate: string | null; shareholderMeetingDate: string | null } | null
   eps: number | null
   // 盈餘分配 ÷ 年報 EPS（2026-09-25 上游改定義，分子從「現金股利合計」換成「盈餘分配的那一塊」）。
   // 全部來自公積時是 0 不是 null；eps ≤ 0 或缺年報時是 null。注意這跟指標型錄的

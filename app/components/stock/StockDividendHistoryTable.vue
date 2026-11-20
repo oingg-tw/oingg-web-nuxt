@@ -29,6 +29,12 @@ function money(value: number | null): string {
 function date(value: string | null): string {
   return value ?? '－'
 }
+
+// 決議不分派的年度（2026-11-21）：那一列全是 0，不寫一句的話讀起來像沒資料
+function resolutionText(resolution: NonNullable<DividendHistoryEntry['noDistributionResolution']>): string {
+  const dates = [resolution.boardResolutionDate && `董事會 ${resolution.boardResolutionDate}`, resolution.shareholderMeetingDate && `股東會 ${resolution.shareholderMeetingDate}`].filter(Boolean)
+  return dates.length ? `${dates.join('、')} 決議不分派` : '決議不分派'
+}
 </script>
 
 <template>
@@ -53,7 +59,10 @@ function date(value: string | null): string {
     </thead>
     <tbody>
       <tr v-for="row in rows" :key="row.fiscalYear">
-        <th scope="row">{{ row.fiscalYear }} 年</th>
+        <th scope="row">
+          {{ row.fiscalYear }} 年
+          <span v-if="row.noDistributionResolution" class="dividend-history-table__note" :title="resolutionText(row.noDistributionResolution)">決議不分派</span>
+        </th>
         <td class="seo-table__num">{{ money(row.cashDividend) }}</td>
         <td v-if="showStock" class="seo-table__num">{{ money(row.stockDividend) }}</td>
         <td v-if="showStock" class="seo-table__num">{{ money(row.totalDividend) }}</td>
@@ -69,3 +78,10 @@ function date(value: string | null): string {
   </SharedTable>
 </template>
 
+<style scoped>
+.dividend-history-table__note {
+  display: block;
+  color: var(--el-text-color-secondary);
+  font-weight: 400;
+}
+</style>
