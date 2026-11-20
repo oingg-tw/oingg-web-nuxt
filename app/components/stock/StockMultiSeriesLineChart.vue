@@ -89,6 +89,8 @@ export interface LineChartEntry {
   label?: string
   // 整期算不出來的原因，提示框只寫這一句（2026-11-11：近四季跨到只申報半年報的那一年，semiannualWindowNote）
   note?: string
+  // 這一期的說明（2026-11-21，periodNotesText）：接在數字下面，數字照寫
+  remark?: string
   values: Record<string, { value: number | null; nullReason?: string | null } | null | undefined>
 }
 
@@ -270,6 +272,7 @@ const chartOption = computed(() => {
         const rows = entry.note
           ? `<div style="white-space:normal;max-width:min(16em,calc(100vw - 48px))">${entry.note}</div>`
           : props.series.map(series => `<div>${series.name}：${valueText(series)}</div>`).join('')
+            + (entry.remark ? `<div style="white-space:normal;max-width:min(16em,calc(100vw - 48px));margin-top:4px">${entry.remark}</div>` : '')
         const inPeriod = periodRanges.value.find(range => index >= range.from && index <= range.to)
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry)}${inPeriod ? `（${inPeriod.label}）` : ''}</div>${rows}</div>`
       }

@@ -8,6 +8,8 @@ export interface MetricHistoryPoint {
   // null＝這一期沒有值（中間的缺口，留空位不跳過）；nullReason 給提示框說原因
   value: number | null
   nullReason?: string | null
+  // 這一期的說明（2026-11-21，periodNotesText）：提示框接在數字下面
+  remark?: string
 }
 
 export function useMetricHistoryChartOption(
@@ -47,7 +49,8 @@ export function useMetricHistoryChartOption(
         formatter: (params: BarTooltipParam | BarTooltipParam[]) => {
           const entry = list[(Array.isArray(params) ? params[0] : params)?.dataIndex ?? 0]
           if (!entry) return ''
-          return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry.fiscalYear, entry.fiscalQuarter)}</div>${entry.value === null ? nullReasonShortText(entry.nullReason) : valueTextOf(entry.value)}</div>`
+          const remark = entry.remark ? `<div style="white-space:normal;max-width:min(16em,calc(100vw - 48px));margin-top:4px">${entry.remark}</div>` : ''
+          return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${periodLabel(entry.fiscalYear, entry.fiscalQuarter)}</div>${entry.value === null ? nullReasonShortText(entry.nullReason) : valueTextOf(entry.value)}${remark}</div>`
         }
       },
       xAxis: {

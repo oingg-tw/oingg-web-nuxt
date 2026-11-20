@@ -77,8 +77,10 @@ watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?
 // 2026-11-11): one with nothing inside the range stays, a gap on the chart and 無法計算 in the
 // table, as on 杜邦 — 3158's 近四季 2024Q1 and Q3 had been dropped and the line drawn straight
 // across them. A period missing only SOME of the three was always kept.
-const ascending = computed<(MetricsHistoryEntry & { note?: string })[]>(() => {
+const ascending = computed<(MetricsHistoryEntry & { note?: string; remark?: string })[]>(() => {
+  // 這一期的說明（2026-11-21，使用者 11-12 說「好」）：三率帶的同一則只寫一次，表格與提示框共用
   const list = trimEmptyEnds(activeSeries.value?.entries ?? [], entry => rateCodes.value.some(rateCode => entry.values[rateCode]?.value != null))
+    .map(entry => ({ ...entry, remark: periodNotesText(rateCodes.value.map(rateCode => entry.values[rateCode])) || undefined }))
   if (basis.value === 'Q') return list
   // 近四季跨到只申報半年報那一年的期別：提示框寫原因（同杜邦）
   const quarterly = marginsData.value?.series?.entries ?? []
@@ -164,7 +166,8 @@ const waterfallSteps = computed<WaterfallStep[]>(() => {
   if (hasExpenseBreakdown.value) {
     push('推銷及管理', -expenseRatio.value!)
     push('研發', -rdIntensity.value!)
-    push('其他與差額', otherOperating.value!)
+    // 正名「其他收益及費損」（2026-11-21，同每一期的說明用的詞）：這一段主要就是營業利益裡的其他收益及費損淨額，加上四捨五入差額
+    push('其他收益及費損', otherOperating.value!)
   } else {
     push('營業費用', -expenseTotal.value)
   }
@@ -329,11 +332,16 @@ const { breadcrumbs } = useStockPageSeo({
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
-            <th scope="row">{{ periodLabel(entry) }}</th>
-            <td v-for="rateCode in rateCodes" :key="rateCode" :title="nullReasonTitle(entry.values[rateCode])">{{ reasonedCellText(entry.values[rateCode], fixedRateText) }}</td>
-            <td>{{ rateCodes.map(rateCode => entry.values[rateCode]?.knowledgeDate).find(Boolean) ?? '－' }}</td>
-          </tr>
+          <template v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
+            <tr>
+              <th scope="row">{{ periodLabel(entry) }}</th>
+              <td v-for="rateCode in rateCodes" :key="rateCode" :title="nullReasonTitle(entry.values[rateCode])">{{ reasonedCellText(entry.values[rateCode], fixedRateText) }}</td>
+              <td>{{ rateCodes.map(rateCode => entry.values[rateCode]?.knowledgeDate).find(Boolean) ?? '－' }}</td>
+            </tr>
+            <tr v-if="entry.remark" class="stock-margins-page__remark">
+              <td :colspan="rateCodes.length + 2"><span class="stock-margins-page__remark-text">{{ entry.remark }}</span></td>
+            </tr>
+          </template>
         </tbody>
       </SharedTable>
     </StockQuestionSection>
@@ -382,7 +390,7 @@ const { breadcrumbs } = useStockPageSeo({
                 <td>{{ fixedRateText(rdIntensity) }}</td>
               </tr>
               <tr>
-                <th scope="row">加減：其他營業損益與四捨五入差額</th>
+                <th scope="row">加減：其他收益及費損（含四捨五入差額）</th>
                 <td>{{ fixedSignedRateText(otherOperating) }}</td>
               </tr>
             </template>
@@ -444,5 +452,24 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-margins-page__line {
   margin: 0;
+}
+
+/* 那一期的說明（2026-11-21）：接在那一期底下、跟那一期之間不畫線；灰字、可以折行（表格的格子預設不折） */
+.stock-margins-page__remark td {
+  padding-top: 0;
+  white-space: normal;
+  color: var(--el-text-color-secondary);
+}
+
+tr:has(+ .stock-margins-page__remark) > * {
+  border-bottom: 0;
+}
+
+/* 表格比畫面寬、可以左右捲時，說明跟表格一樣寬會被切掉一半：貼在捲動區的左邊、寬度不超過畫面，在看得到的範圍裡折行 */
+.stock-margins-page__remark-text {
+  display: block;
+  position: sticky;
+  left: 16px;
+  max-width: min(40em, calc(100vw - 64px));
 }
 </style>

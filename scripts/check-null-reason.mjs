@@ -2,7 +2,7 @@
 // 近四季跨到只申報半年報那一年時提示框寫的原因，與頭尾修掉、中間留著
 // Run: node scripts/check-null-reason.mjs
 import assert from 'node:assert/strict'
-import { NULL_REASON_LABELS, nullReasonShortText, semiannualWindowNote, screenerNullText } from '../app/utils/metric-null-reason.ts'
+import { NULL_REASON_LABELS, nullReasonShortText, periodNotesText, periodNoteText, semiannualWindowNote, screenerNullText } from '../app/utils/metric-null-reason.ts'
 import { trimEmptyEnds } from '../app/utils/metric-history-points.ts'
 
 const codes = ['roe', 'netProfitMargin']
@@ -55,4 +55,14 @@ assert.equal(screenerNullText('roe.TTM', 'insufficient_history'), null)
 assert.equal(screenerNullText('listedYears.EOD', 'not_listed'), '未上市櫃')
 assert.equal(nullReasonShortText('not_listed'), '不適用')
 assert.ok(NULL_REASON_LABELS.not_listed)
+
+// 每一期的說明（2026-11-21）：數據中台的代碼與參數 → 句子；金額千元；同一句只寫一次；不認得的代碼不寫
+assert.equal(periodNoteText({ code: 'large_net_other_income_expenses', amount: 59607, ratioToRevenue: 37.91, operatingMarginAboveGrossMargin: true }), '營業利益含其他收益及費損 5,961萬元（占營收 37.91%），營業利益率因此高過毛利率。')
+assert.equal(periodNoteText({ code: 'large_net_other_income_expenses', amount: -77640, ratioToRevenue: null, operatingMarginAboveGrossMargin: false }), '營業利益含其他收益及費損 −7,764萬元。')
+assert.equal(periodNoteText({ code: 'operating_expense_not_itemized', reason: 'components_do_not_add_up', unitemizedAmount: -1234 }), '這一期推銷、管理、研發與減損加起來不等於營業費用合計，差 123.4萬元。')
+assert.equal(periodNoteText({ code: 'operating_expense_not_itemized', reason: 'total_only', unitemizedAmount: 999 }), '這一期的營業費用只申報合計，拆不出推銷、管理與研發。')
+assert.equal(periodNoteText({ code: 'something_new' }), null)
+const shared = { code: 'operating_expense_not_itemized', reason: 'financial_industry_format', unitemizedAmount: 624988 }
+assert.equal(periodNotesText([{ notes: [shared] }, { notes: [shared] }, null, { notes: [] }]), '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。')
+
 console.log('check-null-reason: ok')

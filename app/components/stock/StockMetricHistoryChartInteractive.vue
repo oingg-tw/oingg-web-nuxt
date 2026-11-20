@@ -119,6 +119,8 @@ const allPoints = computed(() => {
       fiscalQuarter: entry.fiscalQuarter,
       value: entry.values[props.metricCode]?.value ?? null,
       nullReason: entry.values[props.metricCode]?.nullReason ?? null,
+      // 這一期的說明（2026-11-21）：柱狀圖與堆疊圖的提示框接在數字下面
+      remark: periodNotesText([entry.values[props.metricCode]]) || undefined,
       // 挑期別的規則跟組成表共用同一支（shared/utils/metric-composition.ts），所以圖與表不會各自
       // 判斷一次而給出不同的期別集合。
       parts: compositionRow({
@@ -213,7 +215,7 @@ const compareEntries = computed(() => {
   const shown = new Set(points.value.map(point => `${point.fiscalYear}Q${point.fiscalQuarter}`))
   return source
     .filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
-    .map(entry => ({ ...entry, label: periodLabel(periodKey(entry)) }))
+    .map(entry => ({ ...entry, label: periodLabel(periodKey(entry)), remark: periodNotesText([entry.values[props.metricCode], ...(compareCode.value ? [entry.values[compareCode.value]] : [])]) || undefined }))
 })
 
 // 對照那一支在這家公司身上、在目前這個基準下實際有值的期別。策展的配對也不保證每家公司都有
@@ -311,6 +313,7 @@ const { chartOption, capped } = useMetricHistoryChartOption(
       :total-name="topic"
       :neutral-layer-name="UNSPLIT"
       :tooltip-header="stackedTooltipHeader"
+      :tooltip-note="index => points[index]?.remark ?? ''"
     />
     <div v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart stock-metric-history-chart-interactive__bars">
       <SharedChartLegend v-if="capped" :groups="capLegend" />

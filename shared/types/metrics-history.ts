@@ -4,11 +4,25 @@
 // the composable's own auto-imported runtime names (useState/ref/watch) into the server type
 // program — see the 2026-09-19 SEO build's Phase 0 notes in the plan file.
 
+// 每一期的說明（2026-11-21，數據中台 c28cc6e，使用者 11-12 說「好」）：只有營業費用五支、三率、每股營業利益與其他收益及費損淨額帶 notes。
+// 一則是代碼加參數，句子網站寫（periodNoteText，app/utils/metric-null-reason.ts）
+export interface PeriodNote {
+  code: string
+  // operating_expense_not_itemized：total_only／other_expense_items／components_do_not_add_up／financial_industry_format，金額千元
+  reason?: string
+  unitemizedAmount?: number | null
+  // large_net_other_income_expenses：其他收益及費損淨額（千元）、占營收 %（營收 ≤ 0 是 null）、營業利益率是否高過毛利率
+  amount?: number | null
+  ratioToRevenue?: number | null
+  operatingMarginAboveGrossMargin?: boolean
+}
+
 export interface MetricsHistoryPoint {
   value: number | null
   nullReason: string | null
   knowledgeDate: string
   knowledgeDateIsFallback: boolean
+  notes?: PeriodNote[]
 }
 
 export interface MetricsHistoryEntry {

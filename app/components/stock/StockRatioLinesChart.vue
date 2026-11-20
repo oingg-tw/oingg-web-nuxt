@@ -7,7 +7,7 @@ import { NET_REVENUE_MARGIN_CODE, usesNetRevenueMargin } from '#shared/types/sto
 const props = defineProps<{
   page: 'margins' | 'solvency'
   // 由舊到新，原樣傳進來；note 交給提示框（財報三率的近四季，semiannualWindowNote）
-  entries: (MetricsHistoryEntry & { note?: string })[]
+  entries: (MetricsHistoryEntry & { note?: string; remark?: string })[]
 }>()
 // 期別切換（2026-11-01，財報三率頁）：有綁 v-model:basis 才畫，指標速覽與安全韌性不綁；資料由頁面換（同 StockDupontChart）
 const basis = defineModel<'TTM' | 'Q'>('basis')
@@ -34,7 +34,9 @@ const series = computed(() => (props.page === 'margins' && usesNetRevenueMargin(
   .filter(spec => props.entries.some(entry => entry.values[spec.code]?.value != null)))
 
 // 頭尾一條線都沒有值的期別不畫（金融業會拿到 20 期全是 null，2891 實測），中間的留著空白
-const plotted = computed(() => trimEmptyEnds(props.entries, entry => series.value.some(spec => entry.values[spec.code]?.value != null)))
+// 這一期的說明（2026-11-21）在這裡算，指標速覽的同一張圖也有（頁面傳進來的 remark 優先）
+const plotted = computed(() => trimEmptyEnds(props.entries, entry => series.value.some(spec => entry.values[spec.code]?.value != null))
+  .map(entry => ({ ...entry, remark: entry.remark ?? (periodNotesText(series.value.map(spec => entry.values[spec.code])) || undefined) })))
 const { period, shown } = useChartPeriod({ all: plotted, keyOf: entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`, labelOf: key => key.replace('Q', ' Q') })
 
 // 固定兩位小數（rateText，shared/utils/number-format.ts）：兩頁的表格要逐項加減對得起來

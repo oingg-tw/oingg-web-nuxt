@@ -1,4 +1,5 @@
-import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
+import type { MetricsHistoryEntry, MetricsHistoryPoint, PeriodNote } from '#shared/types/metrics-history'
+import { formatMoney, minusSign } from '../../shared/utils/number-format.ts'
 // 指標為什麼是 null，用讀者的話說。nullReason 的完整列舉由 analysis-ts 確認（2026-09-13，metricNullReasonSchema 當時 4 個值；
 // 2026-10-20 加 low_base）：只有 not_applicable_industry 是「這個指標的模型在觀念上不適用於這家公司」（五個危機預警模型排除金融保險股、
 // 營收年增率的兩支衍生指標排除營建業），其餘都是「真的有數字，只是這一期算不出來或不採用」。2026-09-19 從 StockHistoricalStatisticsTable
@@ -97,4 +98,31 @@ const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_publishe
 export function nullReasonShortText(nullReason: string | null | undefined): string {
   if (nullReason && NOT_APPLICABLE_REASONS.has(nullReason)) return '不適用'
   return nullReason ? '無法計算' : '尚無資料'
+}
+
+// 每一期的說明（2026-11-21，使用者 11-12 說「好」）：數據中台給代碼與參數，句子在這裡寫，放在歷年表那一期底下與提示框。金額是千元。
+// 不認得的代碼不寫（數據中台以後可能加新的），讀不到金額就不寫金額
+const EXPENSE_NOT_ITEMIZED: Record<string, (amount: string) => string> = {
+  total_only: () => '這一期的營業費用只申報合計，拆不出推銷、管理與研發。',
+  other_expense_items: amount => `這一期的營業費用有推銷、管理、研發以外的其他費用科目${amount ? `（${amount}）` : ''}，拆不完。`,
+  components_do_not_add_up: amount => `這一期推銷、管理、研發與減損加起來不等於營業費用合計${amount ? `，差 ${amount}` : ''}。`,
+  financial_industry_format: () => '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。'
+}
+const thousands = (value: number | null | undefined): string => (typeof value === 'number' ? minusSign(formatMoney(value * 1000)) : '')
+
+export function periodNoteText(note: PeriodNote): string | null {
+  // 差額寫正數（「差 123.4萬元」），哪一邊多不是讀者要的
+  if (note.code === 'operating_expense_not_itemized') return EXPENSE_NOT_ITEMIZED[note.reason ?? '']?.(thousands(typeof note.unitemizedAmount === 'number' ? Math.abs(note.unitemizedAmount) : null)) ?? null
+  if (note.code === 'large_net_other_income_expenses') {
+    const amount = thousands(note.amount)
+    if (!amount) return null
+    const ratio = typeof note.ratioToRevenue === 'number' ? `（占營收 ${minusSign(note.ratioToRevenue.toFixed(2))}%）` : ''
+    return `營業利益含其他收益及費損 ${amount}${ratio}${note.operatingMarginAboveGrossMargin ? '，營業利益率因此高過毛利率' : ''}。`
+  }
+  return null
+}
+
+// 同一期好幾支指標帶同一則說明（三率都帶 large_net_other_income_expenses）：同一句只寫一次
+export function periodNotesText(points: (MetricsHistoryPoint | null | undefined)[]): string {
+  return [...new Set(points.flatMap(point => point?.notes ?? []).map(periodNoteText).filter((text): text is string => !!text))].join('')
 }
