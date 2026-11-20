@@ -144,8 +144,14 @@ const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value
 // running total rather than by re-deriving it, so the bars are guaranteed to be the same chain the
 // table prints — except the three totals, which are pinned to the rate's own filed value so a
 // float-accumulated running figure can never drift the anchor bars off their real numbers.
+// 保險業（2026 年 IFRS 17 起，數據中台的替代科目）：分母是保險收入、毛利是保險服務結果，營業利益還含投資等損益，所以營業利益率可能高過
+// 毛利率（2816 2026Q3 15.46% 對 16.20%），不能照一般公司那樣逐項相減。推銷管理與研發費用率對它是 not_applicable_industry，用這個認；
+// 拆解與瀑布圖只給逐項相減成立的公司（2026-11-20，「毛利率 15.46% 扣掉營業費用後是營業利益率 16.20%」那一句就是沒擋到）
+const insurance = computed(() => !netRevenue.value && grossMargin.value !== null && latest.value?.values.operatingExpenseRatio?.nullReason === 'not_applicable_industry')
+const decomposable = computed(() => hasRates.value && !insurance.value)
+
 const waterfallSteps = computed<WaterfallStep[]>(() => {
-  if (!hasRates.value || expenseTotal.value === null) return []
+  if (!decomposable.value || expenseTotal.value === null) return []
   const gross = grossMargin.value!
   const operating = operatingMargin.value!
   const net = netProfitMargin.value!
@@ -182,7 +188,7 @@ const valueAnswer = computed(() => {
 })
 
 const relationAnswer = computed(() => {
-  if (!hasRates.value || expenseTotal.value === null) return null
+  if (!decomposable.value || expenseTotal.value === null) return null
   return `三率的分母都是同一筆營收，可以逐項相減：毛利率 ${fixedRateText(grossMargin.value)} 扣掉營業費用後是營業利益率 ${fixedRateText(operatingMargin.value)}，再計入業外損益與所得稅後是稅後淨利率 ${fixedRateText(netProfitMargin.value)}。`
 })
 
@@ -309,6 +315,7 @@ const { breadcrumbs } = useStockPageSeo({
         目前沒有這檔股票的財報三率資料。
       </p>
       <!-- 銀行與金控（2026-11-20）：為什麼這裡只有一率，寫在圖後面（卡片之前只放答句） -->
+      <p v-if="insurance" class="stock-answer">保險業的三率（2026 年起）以保險收入為分母，毛利是保險服務結果，營業利益還含投資等損益，所以營業利益率可能高過毛利率，三率之間不能照一般公司那樣相減。</p>
       <p v-if="netRevenue" class="stock-answer">銀行與金控的損益表沒有營業收入、營業成本與毛利，這一頁看純益率：稅後損益占淨收益（利息淨收益加利息以外淨收益）的比率，算法同銀行年報的財務分析，銀行與金控之間可以互相比較。</p>
     </StockQuestionSection>
 
