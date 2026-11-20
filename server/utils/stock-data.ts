@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockBadges } from '#shared/types/stock-badges'
-import type { FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
+import type { FinancialStatementHistoryResponse, FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
 import type { DividendFillEvent, DividendHistoryResponse } from '#shared/types/dividend-history'
 import type { StockSeriesPage, StockSeriesResponse } from '#shared/types/stock-series'
@@ -242,14 +242,14 @@ export const cachedFinancialStatement = defineCachedFunction(
   }
 )
 
-// (year, quarter) 之前的 count 季財報，由新到舊；讀不到的是 null。逐季組成的兩支（資產負債、現金流量）共用
-export function cachedEarlierStatements(symbol: string, statementType: StatementType, year: number, quarter: number, count: number) {
-  const latest = year * 4 + quarter - 1
-  return Promise.all(Array.from({ length: count }, (_, i) => {
-    const index = latest - 1 - i
-    return settle(cachedFinancialStatement(symbol, statementType, Math.floor(index / 4), (index % 4) + 1))
-  }))
-}
+// GET /stocks/:symbol/financial-statement-history（2026-11-20，數據中台 0d7362c、業務中台照轉）：同一張報表最近 limit 季（上限 40），一次讀完。
+// 逐季組成的兩支（資產負債 32 季、現金流量 35 季）原本冷的時候一季一次 /financial-statement，11-20 抽樣時兩波共 12,600 次撞到業務中台每台
+// 每分鐘 6,000 次的上限。不帶終點季時從這家公司自己申報到的最新一季往回數，所以 limit 季都是真的資料，中間缺的季才是 found:false
+export const cachedStatementHistory = defineCachedFunction(
+  (symbol: string, statementType: StatementType, limit: number) =>
+    businessFetch<FinancialStatementHistoryResponse>(`/stocks/${symbol}/financial-statement-history`, { query: { statementType, limit } }),
+  { name: 'stock-financial-statement-history', getKey: (symbol, statementType, limit) => `${symbol}:${statementType}:${limit}`, ...swrCache(TTL_STATEMENTS, TTL_STATIC) }
+)
 
 // GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（業務中台 2026-09-27 上線）。
 // 查無權益變動表回 entries: []（200，不是 404），所以呼叫端不需要處理 404。

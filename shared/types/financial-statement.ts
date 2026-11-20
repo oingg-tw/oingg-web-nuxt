@@ -19,6 +19,15 @@ export interface FinancialStatementResponse {
 
 // server/api/stock/[code]/statements.get.ts — the latest filing of each statement plus the same
 // season one year earlier, for the 財務報表 page's server-rendered 當期／去年同期／增減% tables.
+// GET /stocks/:symbol/financial-statement-history（2026-11-20）：同一張報表的最近 limit 季，由舊到新，每期同上；缺的季 found:false、季別連續，
+// 一季都沒有是空陣列
+export interface FinancialStatementHistoryResponse {
+  symbol: string
+  statementType: StatementType
+  timeframe: string
+  entries: FinancialStatementResponse[]
+}
+
 export interface StockStatementsResponse {
   symbol: string
   // Western calendar year/season of the latest filing found (null when nothing was found at all).

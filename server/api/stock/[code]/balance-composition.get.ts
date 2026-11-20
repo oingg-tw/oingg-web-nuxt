@@ -7,7 +7,7 @@ import type { BalanceCompositionPeriod, StockBalanceCompositionResponse } from '
 // 圖表元件自己切年度（只留 Q4）或單季、再切近N年。資產負債表是存量快照，所以沒有「近四季」這種流量口徑。
 //
 // 深度：近N年的上限是 8 年（LOOKBACK_YEARS），抓 32 季。上游的資產負債表回得到 2021 Q1 附近，更早的回 found:false、直接略過。
-// 全部走 cachedFinancialStatement，跟財報頁、淨值頁共用同一份快取；冷的時候 32 次（業務中台那層有限並行），暖的時候零次。
+// 2026-11-20 起一次讀 32 季（cachedStatementHistory）；原本一季一次，冷的時候 32 次。
 const QUARTERS = 32
 
 const toPeriod = (statement: FinancialStatementResponse | null): BalanceCompositionPeriod | null => {
@@ -28,15 +28,9 @@ const toPeriod = (statement: FinancialStatementResponse | null): BalanceComposit
 
 export default defineEventHandler(async (event): Promise<StockBalanceCompositionResponse> => {
   const code = requireListedSymbol(event)
-  // 讀不到（settle 回 null）回錯誤讓頁面交給全站讀取失敗提示；found:false 才是「沒有申報」
-  const latestStatement = await settle(cachedFinancialStatement(code, 'balanceSheet', null, null))
-  if (latestStatement === null) throw createError({ statusCode: 502, statusMessage: 'balance sheet unavailable' })
-  const latest = toPeriod(latestStatement)
-  if (!latest) return { symbol: code, periods: [] }
-
-  const statements = await cachedEarlierStatements(code, 'balanceSheet', latest.fiscalYear, latest.fiscalQuarter, QUARTERS - 1)
-  const periods = [latest, ...statements.map(toPeriod)]
-    .filter((period): period is BalanceCompositionPeriod => period !== null)
-    .sort((a, b) => a.fiscalYear - b.fiscalYear || a.fiscalQuarter - b.fiscalQuarter)
+  // 讀不到（settle 回 null）回錯誤讓頁面交給全站讀取失敗提示；空陣列或全是 found:false 才是「沒有申報」。上游已經由舊到新
+  const history = await settle(cachedStatementHistory(code, 'balanceSheet', QUARTERS))
+  if (history === null) throw createError({ statusCode: 502, statusMessage: 'balance sheet unavailable' })
+  const periods = history.entries.map(toPeriod).filter((period): period is BalanceCompositionPeriod => period !== null)
   return { symbol: code, periods }
 })
