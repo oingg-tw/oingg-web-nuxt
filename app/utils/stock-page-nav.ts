@@ -157,6 +157,9 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       // 月營收年增率（2026-10-23 從月營收拆出來，使用者：「monthly-revenue 現在比較像是 月營收年增率 而不是月營收 希望可以拆分為兩個頁面」）
       { label: '月營收年增率', perspective: '成長率', to: code => `/stock/${code}/monthly-revenue-growth`, hook: '這個月的營收，比去年同一個月多了幾 %' },
       { label: '每股營收', perspective: '每股', to: code => `/stock/${code}/revenue-per-share`, hook: '這一年每一股對應到多少營業額' },
+      // 銀行與金控的營收（2026-11-20）：其他公司點進去是不適用的說明，hook 先講清楚
+      { label: '每股淨收益', perspective: '每股', to: code => `/stock/${code}/net-revenue`, hook: '銀行與金控的營收：利息淨收益加利息以外的淨收益，每一股分到多少' },
+      { label: '淨收益組成', perspective: '組成', to: code => `/stock/${code}/net-revenue-composition`, hook: '銀行與金控的淨收益，放款賺的利息和其他收入各占多少' },
       { label: '每股營業成本', perspective: '每股', to: code => `/stock/${code}/cost-of-goods-sold`, hook: '做出產品本身花了多少，原料漲價會先反映在這裡' },
       { label: '每股毛利', perspective: '每股', to: code => `/stock/${code}/gross-profit`, hook: '賣掉之後扣掉成本，還剩下多少' },
       // hook 講出那一頁有拆解（2026-09-28「metrics 哪裡有費用組成」）。原本寫「賣東西和管理公司花的錢，

@@ -48,7 +48,11 @@ const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency'
 //
 // 寫錯的代號不會靜靜跑 0 條：對不上任何已知路由時直接結束並印出可用清單，否則「全部通過」會變成
 // 「什麼都沒跑」，那正是 check-metric-identities 那種永遠 exit 0 的檢查最糟的失效形狀。
-const ALL_ROUTES = [...FIXED_ROUTES, ...registrySlugs]
+// 只有銀行與金控有的兩頁（2026-11-20）：其他代號點進去是不適用的說明、noindex，沒有圖表與三個問句，所以只在這幾個代號下跑
+//（STOCK_PAGES_SYMBOL=2881 或 2801）
+const BANK_ONLY_ROUTES = new Set(['/net-revenue', '/net-revenue-composition'])
+const BANK_SYMBOLS = new Set(['2801', '2834', '2881', '2882', '2891'])
+const ALL_ROUTES = [...FIXED_ROUTES, '/net-revenue-composition', ...registrySlugs].filter(route => !BANK_ONLY_ROUTES.has(route) || BANK_SYMBOLS.has(symbol))
 // 掛 StockMetricGuide 的路由：四個關係頁加上所有指標／徽章頁（2026-10-12）
 const GUIDE_ROUTES = new Set(['/dupont', '/cash-cycle', '/margins', '/dividend-fill', ...registrySlugs])
 const routeFilter = (process.env.STOCK_PAGES_ROUTES ?? '')

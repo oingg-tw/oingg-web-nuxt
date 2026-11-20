@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
-import { MARGIN_METRIC_CODES, MARGIN_RATE_CODES, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
+import { MARGIN_METRIC_CODES, MARGIN_RATE_CODES, NET_REVENUE_MARGIN_CODE, usesNetRevenueMargin, type StockMarginsPageResponse } from '#shared/types/stock-margins-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // /stock/:code/margins — 財報三率, the first child of the nav's own 財報三率 group. Built from the
 // direct request「希望有頁面同時解釋 三率 的 關係」, which the three per-rate pages structurally
@@ -56,6 +56,12 @@ const [{ data: filterSchema }, { data: marginsData, error: marginsError, status:
 const basis = ref<'TTM' | 'Q'>('Q')
 const basisLabel = computed(() => TIMEFRAME_LABELS[basis.value])
 const activeSeries = computed(() => (basis.value === 'Q' ? marginsData.value?.series : marginsData.value?.ttmSeries))
+// 銀行與金控只看純益率（2026-11-20，usesNetRevenueMargin），其他公司照舊三率。兩種期別一起看，切換期別不會換掉頁面的樣子；任一期別有值就畫圖，
+// 圖卡裡的期別切換才不會跟著消失（保險的近四季要等 2026 年湊滿四季）
+const seriesPair = computed(() => [marginsData.value?.series, marginsData.value?.ttmSeries])
+const netRevenue = computed(() => seriesPair.value.some(series => usesNetRevenueMargin(series?.entries ?? [])))
+const rateCodes = computed<readonly string[]>(() => (netRevenue.value ? [NET_REVENUE_MARGIN_CODE] : MARGIN_RATE_CODES))
+const anyRate = computed(() => seriesPair.value.some(series => (series?.entries ?? []).some(entry => rateCodes.value.some(rateCode => entry.values[rateCode]?.value != null))))
 const readFailed = computed(() => marginsDataStatus.value !== 'pending' && (!!marginsError.value || activeSeries.value === null))
 const answerSkeleton = computed(() => (marginsPending.value ? `2026 Q2（${basisLabel.value}）毛利率 00.00%、營業利益率 00.00%、稅後淨利率 00.00%、財報公告日 2026-08-11。` : null))
 watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?? readFailed.value, refreshMarginsData)
@@ -72,11 +78,11 @@ watchLoadFailure(() => `stock-margins:${code.value}`, () => marginsError.value ?
 // table, as on 杜邦 — 3158's 近四季 2024Q1 and Q3 had been dropped and the line drawn straight
 // across them. A period missing only SOME of the three was always kept.
 const ascending = computed<(MetricsHistoryEntry & { note?: string })[]>(() => {
-  const list = trimEmptyEnds(activeSeries.value?.entries ?? [], entry => MARGIN_RATE_CODES.some(rateCode => entry.values[rateCode]?.value != null))
+  const list = trimEmptyEnds(activeSeries.value?.entries ?? [], entry => rateCodes.value.some(rateCode => entry.values[rateCode]?.value != null))
   if (basis.value === 'Q') return list
   // 近四季跨到只申報半年報那一年的期別：提示框寫原因（同杜邦）
   const quarterly = marginsData.value?.series?.entries ?? []
-  return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, MARGIN_RATE_CODES) }))
+  return list.map(entry => ({ ...entry, note: semiannualWindowNote(entry, quarterly, rateCodes.value) }))
 })
 const periods = computed(() => [...ascending.value].reverse().slice(0, HISTORY_TABLE_PERIODS))
 
@@ -97,7 +103,8 @@ const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }
 // The three rates all divide by the SAME 營收, which is the only reason they can be subtracted from
 // each other at all — that is the whole mechanism this page exists to show, and it is also why a
 // financial (whose income statement has no 營業收入 line in this sense) has no numbers here.
-const hasRates = computed(() => grossMargin.value !== null && operatingMargin.value !== null && netProfitMargin.value !== null)
+// 銀行有券商口徑的三率，但這一頁只給它純益率，所以拆解、瀑布圖、三率三升都看這一個（!netRevenue）
+const hasRates = computed(() => !netRevenue.value && grossMargin.value !== null && operatingMargin.value !== null && netProfitMargin.value !== null)
 
 // 毛利率 − 營業利益率 is an EXACT identity（both are ratios of the same denominator）, so the total
 // operating-expense burden is always computable when the two rates exist. Its breakdown is not
@@ -162,13 +169,15 @@ const waterfallSteps = computed<WaterfallStep[]>(() => {
   return steps
 })
 
+// 最新一期的每一率，缺的寫原因（證券沒有毛利率：「毛利率 不適用」）；銀行與金控只有純益率
+const RATE_NAMES: Record<string, string> = { grossMargin: '毛利率', operatingMargin: '營業利益率', netProfitMargin: '稅後淨利率', [NET_REVENUE_MARGIN_CODE]: '純益率' }
 const valueAnswer = computed(() => {
-  if (!latest.value || !hasRates.value) return null
+  const entry = latest.value
+  if (!entry) return null
+  const knowledgeDate = rateCodes.value.map(rateCode => entry.values[rateCode]?.knowledgeDate).find(Boolean)
   return joinClauses([
-    `${latestPeriodText.value}（${basisLabel.value}）毛利率 ${fixedRateText(grossMargin.value)}`,
-    `營業利益率 ${fixedRateText(operatingMargin.value)}`,
-    `稅後淨利率 ${fixedRateText(netProfitMargin.value)}`,
-    latest.value.values.grossMargin?.knowledgeDate ? `財報公告日 ${latest.value.values.grossMargin.knowledgeDate}` : null
+    ...rateCodes.value.map((rateCode, index) => `${index === 0 ? `${latestPeriodText.value}（${basisLabel.value}）` : ''}${RATE_NAMES[rateCode]} ${reasonedCellText(entry.values[rateCode], fixedRateText)}`),
+    knowledgeDate ? `財報公告日 ${knowledgeDate}` : null
   ])
 })
 
@@ -179,7 +188,7 @@ const relationAnswer = computed(() => {
 
 const history = computed(() => {
   const list = periods.value
-  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: '財報三率', basis: basisLabel.value, count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
+  return historyTableText({ shortName: stockShortName.value, code: code.value, topic: netRevenue.value ? '純益率' : '財報三率', basis: basisLabel.value, count: list.length, from: list.length ? periodLabel(list.at(-1)!) : '', to: list.length ? periodLabel(list[0]!) : '' })
 })
 const historyAnswer = computed(() => (periods.value.length < 2 ? null : history.value.answer))
 // 拆解表的表名（caption 藏起來，同 SharedTable 的 label；2026-10-13 統一）
@@ -200,7 +209,11 @@ const breakdownLabel = (topic: string) => `${stockShortName.value} ${code.value}
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], MARGIN_METRIC_CODES))
 // 頁尾的相關頁面（2026-10-11 從「三率之間的關係」段落末移進 StockPageFooter）：每一率各自的頁，原始金額在損益表
 // 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
-const footerLinks = computed(() => [
+// 銀行與金控沒有三率的三頁可連，改連淨收益組成（2026-11-20）
+const footerLinks = computed(() => netRevenue.value ? [
+  { to: `/stock/${code.value}/net-revenue-composition`, label: '淨收益組成' },
+  { to: `/stock/${code.value}/income-statement`, label: '損益表' }
+] : [
   { to: metricPath('threeMarginsRising'), label: '三率三升怎麼看（新手專區）' },
   { to: `/stock/${code.value}/gross-margin`, label: '毛利率' },
   { to: `/stock/${code.value}/operating-margin`, label: '營業利益率' },
@@ -245,14 +258,15 @@ const risingAnswer = computed(() => {
 })
 
 const description = computed(() => {
-  if (!hasRates.value) return null
-  return clampDescription(`${stockShortName.value}（${code.value}）${joinSentences([valueAnswer.value, relationAnswer.value]) ?? ''}`)
+  if (!valueAnswer.value) return null
+  const note = netRevenue.value ? '純益率是稅後損益占淨收益（利息淨收益加利息以外淨收益）的比率，銀行與金控適用。' : relationAnswer.value
+  return clampDescription(`${stockShortName.value}（${code.value}）${joinSentences([valueAnswer.value, note]) ?? ''}`)
 })
 
-// noindex when this symbol has no three rates to relate — a financial, or a symbol whose history
-// call failed. Same rule as the metric/badge templates: the page still renders whatever it has for
+// noindex when this symbol has no rate at all（since 2026-11-20 banks and 金控 have 純益率 and brokers two of
+// the three, so this is a company with no filings yet or a failed history call）. Same rule as the metric/badge templates: the page still renders whatever it has for
 // a visitor who followed a link here, it just has nothing symbol-specific to be indexed for.
-const noindex = computed(() => !hasRates.value)
+const noindex = computed(() => !valueAnswer.value)
 
 const { breadcrumbs } = useStockPageSeo({
   code,
@@ -287,13 +301,15 @@ const { breadcrumbs } = useStockPageSeo({
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
-    <StockQuestionSection id="stock-margins-value" :question="`${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
-      <StockRatioLinesChart v-if="hasRates" v-model:basis="basis" page="margins" :entries="ascending" />
+    <StockQuestionSection id="stock-margins-value" :question="netRevenue ? `${stockShortName}（${code}）的純益率是多少？` : `${stockShortName}（${code}）的財報三率分別是多少？`" :answer="valueAnswer" :answer-skeleton="answerSkeleton">
+      <StockRatioLinesChart v-if="anyRate" v-model:basis="basis" page="margins" :entries="ascending" />
       <SharedChartCard v-else-if="marginsPending"><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
       <template v-else-if="readFailed" />
       <p v-else class="stock-margins-page__line">
-        目前沒有這檔股票的財報三率資料。三率都以營業收入為分母，銀行與保險業的損益表沒有相同定義的營業收入，因此不會有這組數字。
+        目前沒有這檔股票的財報三率資料。
       </p>
+      <!-- 銀行與金控（2026-11-20）：為什麼這裡只有一率，寫在圖後面（卡片之前只放答句） -->
+      <p v-if="netRevenue" class="stock-answer">銀行與金控的損益表沒有營業收入、營業成本與毛利，這一頁看純益率：稅後損益占淨收益（利息淨收益加利息以外淨收益）的比率，算法同銀行年報的財務分析，銀行與金控之間可以互相比較。</p>
     </StockQuestionSection>
 
     <StockQuestionSection v-if="periods.length" id="stock-margins-history" :question="history.question" :answer="historyAnswer">
@@ -301,17 +317,15 @@ const { breadcrumbs } = useStockPageSeo({
         <thead>
           <tr>
             <th scope="col">期別</th>
-            <th scope="col">毛利率（%）</th>
-            <th scope="col">營業利益率（%）</th>
-            <th scope="col">稅後淨利率（%）</th>
+            <th v-for="rateCode in rateCodes" :key="rateCode" scope="col">{{ RATE_NAMES[rateCode] }}（%）</th>
             <th scope="col">財報公告日</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="entry in periods" :key="`${entry.fiscalYear}-${entry.fiscalQuarter}`">
             <th scope="row">{{ periodLabel(entry) }}</th>
-            <td v-for="rateCode in MARGIN_RATE_CODES" :key="rateCode" :title="nullReasonTitle(entry.values[rateCode])">{{ reasonedCellText(entry.values[rateCode], fixedRateText) }}</td>
-            <td>{{ entry.values.grossMargin?.knowledgeDate ?? '－' }}</td>
+            <td v-for="rateCode in rateCodes" :key="rateCode" :title="nullReasonTitle(entry.values[rateCode])">{{ reasonedCellText(entry.values[rateCode], fixedRateText) }}</td>
+            <td>{{ rateCodes.map(rateCode => entry.values[rateCode]?.knowledgeDate).find(Boolean) ?? '－' }}</td>
           </tr>
         </tbody>
       </SharedTable>

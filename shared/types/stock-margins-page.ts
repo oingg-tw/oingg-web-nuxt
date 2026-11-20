@@ -1,4 +1,4 @@
-import type { MetricsHistorySeries } from './metrics-history'
+import type { MetricsHistoryEntry, MetricsHistorySeries } from './metrics-history'
 import type { StockBadgeEntry } from './stock-badges'
 
 // server/api/stock/[code]/margins.get.ts — everything /stock/:code/margins（財報三率, 2026-09-21）
@@ -53,7 +53,13 @@ export const MARGIN_RATE_CODES = ['grossMargin', 'operatingMargin', 'netProfitMa
 // currently says（reported to analysis-ts 2026-09-21）.
 export const MARGIN_EXPENSE_CODES = ['operatingExpenseRatio', 'rdIntensity'] as const
 
-export const MARGIN_METRIC_CODES: string[] = [...MARGIN_RATE_CODES, ...MARGIN_EXPENSE_CODES]
+// 純益率（2026-11-20，使用者對銀行與金控的這一頁「按照建議改」）：稅後損益 ÷ 淨收益（利息淨收益＋利息以外淨收益），銀行年報財務分析的
+// 算法，數據中台的 netProfitToNetRevenue。只有銀行與金控有，所以序列裡有一期有值就是銀行或金控：這一頁與指標速覽只畫它，不畫券商口徑的
+// 三率（銀行的 netProfitMargin 分母是利息收入總額＋非利息淨收益，跟金控比不起來）
+export const NET_REVENUE_MARGIN_CODE = 'netProfitToNetRevenue'
+export const usesNetRevenueMargin = (entries: MetricsHistoryEntry[]): boolean => entries.some(entry => entry.values[NET_REVENUE_MARGIN_CODE]?.value != null)
+
+export const MARGIN_METRIC_CODES: string[] = [...MARGIN_RATE_CODES, ...MARGIN_EXPENSE_CODES, NET_REVENUE_MARGIN_CODE]
 
 // GET /metrics' key for the 三率三升 badge. Deliberately not in MARGIN_METRIC_CODES above: that
 // array is the history fetch's metricCode list, and this one is read from the BADGES endpoint

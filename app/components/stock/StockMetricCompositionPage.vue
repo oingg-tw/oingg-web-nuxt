@@ -58,9 +58,21 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}/income-statement`, label: `${stockShortName.value} ${code.value} 最新一期的損益表` }
 ])
 
-const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的${valueTopic}由${partNames.value.join('、')}組成：逐期列出各項的數值與占比，資料整理自公開資訊觀測站的財務報表。`))
+// 母項一期值都沒有（淨收益組成之於銀行與金控以外的公司，2026-11-20）：說一句為什麼，不放空的圖與來源段，noindex（同指標頁：沒有這一檔
+// 自己的內容可以收錄）。產業不適用與單純沒資料分開說
+const parentValues = computed(() => (metricData.value?.series?.entries ?? []).map(entry => entry.values[metricPage.metricCode]))
+const hasParent = computed(() => parentValues.value.some(cell => cell?.value != null))
+const parentNotApplicable = computed(() => !hasParent.value && parentValues.value.some(cell => cell?.nullReason === 'not_applicable_industry'))
+const noindex = computed(() => !hasParent.value)
+
+const emptyText = computed(() => (parentNotApplicable.value
+  ? `${stockShortName.value}的財報沒有${valueTopic}（${NULL_REASON_SHORT_LABELS.not_applicable_industry}），這一頁沒有數字。`
+  : `目前沒有${stockShortName.value}的${valueTopic}資料。`))
+const description = computed(() => clampDescription(!hasParent.value
+  ? `${stockShortName.value}（${code.value}）：${emptyText.value}`
+  : `${stockShortName.value}（${code.value}）的${valueTopic}由${partNames.value.join('、')}組成：逐期列出各項的數值與占比，資料整理自公開資訊觀測站的財務報表。`))
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
-const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: props.topic, titleKeywords: props.titleKeywords, pathSuffix: props.pathSuffix, stock, summary, description, sectorCode })
+const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: props.topic, titleKeywords: props.titleKeywords, pathSuffix: props.pathSuffix, stock, summary, description, noindex, sectorCode })
 </script>
 
 <template>
@@ -74,8 +86,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :breadcrumbs="breadcrumbs"
     :footer="{ sources: dataSources, links: footerLinks }"
   >
+    <StockQuestionSection
+      v-if="metricData?.series && !hasParent"
+      id="stock-metric-composition"
+      :question="`${valueTopic}由哪些項目組成？`"
+      :answer="emptyText"
+    />
     <StockMetricCompositionSection
-      v-if="metricData?.series"
+      v-else-if="metricData?.series"
       :entries="metricData.series.entries"
       :parent-code="metricPage.metricCode"
       :part-codes="partCodes"
@@ -104,7 +122,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <SharedChartCard><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>
 
-    <StockQuestionSection id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
+    <StockQuestionSection v-if="hasParent" id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
     <template #guide>
       <StockMetricGuide id-prefix="stock-metric-composition" :topic="metricPage.topic" :definition="[...(definition ? [definition] : []), ...(metricPage.partsNote ? [metricPage.partsNote] : [])]" />
     </template>

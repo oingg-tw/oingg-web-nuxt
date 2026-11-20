@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
+import { NET_REVENUE_MARGIN_CODE, usesNetRevenueMargin } from '#shared/types/stock-margins-page'
 // 財報三率（/margins）與安全韌性（/solvency）的比率折線圖卡（2026-10-16 從兩頁抽出：指標速覽要畫同一張，「指標速覽沒有顯示所有的
 // 指標圖」）。外殼、近N年與自訂區間在 SharedChartCard＋useChartPeriod，區間是這張圖自己的，只切圖、不切頁面上的表。
 const props = defineProps<{
@@ -26,7 +27,11 @@ const SERIES: Record<'margins' | 'solvency', readonly LineSeriesSpec[]> = {
     { code: 'cashRatio', name: '現金比率', lineType: 'dotted', symbol: 'rect' }
   ]
 }
-const series = computed(() => SERIES[props.page])
+// 銀行與金控（2026-11-20）：一條純益率，不畫券商口徑的三率（usesNetRevenueMargin）。一期值都沒有的線不畫：證券沒有毛利率、保險的近四季
+// 要等 2026 年湊滿四季，畫出來只是圖例上一條找不到的線
+const NET_REVENUE_SERIES: readonly LineSeriesSpec[] = [{ code: NET_REVENUE_MARGIN_CODE, name: '純益率', lineType: 'solid', symbol: 'circle', marginCap: true }]
+const series = computed(() => (props.page === 'margins' && usesNetRevenueMargin(props.entries) ? NET_REVENUE_SERIES : SERIES[props.page])
+  .filter(spec => props.entries.some(entry => entry.values[spec.code]?.value != null)))
 
 // 頭尾一條線都沒有值的期別不畫（金融業會拿到 20 期全是 null，2891 實測），中間的留著空白
 const plotted = computed(() => trimEmptyEnds(props.entries, entry => series.value.some(spec => entry.values[spec.code]?.value != null)))
@@ -40,8 +45,8 @@ const { period, shown } = useChartPeriod({ all: plotted, keyOf: entry => `${entr
     <template v-if="$slots.header" #header>
       <slot name="header" />
     </template>
-    <!-- 期別在近N年的左邊，同 StockDupontChart -->
-    <template v-if="basis && plotted.length" #controls>
+    <!-- 期別在近N年的左邊，同 StockDupontChart。這一個期別沒有資料時也留著（保險的近四季），不然切不回另一個 -->
+    <template v-if="basis" #controls>
       <el-radio-group v-model="basis" aria-label="期別（單季或近四季）">
         <el-radio-button value="TTM">近四季</el-radio-button>
         <el-radio-button value="Q">單季</el-radio-button>

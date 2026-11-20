@@ -246,6 +246,10 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 預期信用減損 22.5% 為負、權益法 35.4%、其他利益損失 24.4% 為負，部分-整體的長條畫不出負塊。覆蓋率刻意不寫（回填中會變）。
   // 砍掉兩支：每股少數股東損益 49.5% 的公司值為 0、每股預期信用減損 30.2% 為 0——noindex 擋「沒有值」擋不了「值是 0」。
   { slug: 'revenue-per-share', metricCode: 'revenuePerShare', timeframe: 'TTM', topic: '每股營收', titleKeywords: '每股營收逐季數據', related: ['revenue-growth', 'gross-profit', 'psr'] },
+  // 每股淨收益與淨收益組成（2026-11-20，使用者問 2881「那他有甚麼組成？」之後的「12都做」）：銀行與金控的損益表沒有營業收入，營收的位置是
+  // 淨收益＝利息淨收益＋利息以外淨收益。數據中台 bankNetRevenuePerShare，兩個成分同日擴到金控；每股各自四捨五入，相加最多差 0.01，在
+  // COMPOSITION_TOLERANCE 內。其他產業是 not_applicable_industry：頁面說只有銀行與金控有、noindex（StockMetricCompositionPage）
+  { slug: 'net-revenue', metricCode: 'bankNetRevenuePerShare', timeframe: 'TTM', topic: '每股淨收益', titleKeywords: '每股淨收益利息淨收益與利息以外淨收益', partMetricCodes: ['bankNetInterestIncomePerShare', 'bankNetNonInterestIncomePerShare'], related: ['net-revenue-composition', 'margins', 'eps'] },
   { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本占營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
   { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', partsNote: '預期信用減損是正數時是損失，負數時是迴轉利益（例如收回先前提列的呆帳），會讓營業費用變少。', topic: '每股營業費用', titleKeywords: '每股營業費用與推銷管理研發', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['operating-expense-composition', 'selling-expense', 'administrative-expense', 'rd-expense'] },
@@ -334,6 +338,8 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   // 指標的組成頁（2026-10-14 從指標頁拆出，StockMetricCompositionPage）
   'operating-expense-composition': { topic: '營業費用組成', chart: compositionChart('operating-expense') },
   'shareholder-yield-composition': { topic: '股東回饋組成', chart: compositionChart('shareholder-yield') },
+  // 銀行與金控（2026-11-20）
+  'net-revenue-composition': { topic: '淨收益組成', chart: compositionChart('net-revenue') },
   // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡
   'debt-composition': { topic: '負債組成', chart: { kind: 'balance', part: 'debt' } },
   'current-asset-composition': { topic: '流動資產組成', chart: { kind: 'balance', part: 'current' } },
