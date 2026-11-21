@@ -196,7 +196,15 @@ const latestQuarterly = computed(() => {
   const value = last?.values[metricPage.metricCode]?.value ?? null
   if (!last || value === null) return null
   const growth = metricPage.quarterlyGrowthMetricCode ? (last.values[metricPage.quarterlyGrowthMetricCode]?.value ?? null) : null
-  return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth }
+  return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth, bankNames: last.values[metricPage.metricCode]?.bankNames ?? [] }
+})
+
+// 金控的逾期放款比率、覆蓋率是旗下銀行的數字（2026-11-22，設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz）：答句接在數字後面寫是哪幾家，
+// 兩家以上是合計（2887 台新、新光）。純銀行沒有名字，不寫
+// shortcut: 名字照申報原樣，有的帶公司型態（「玉山商業銀行股份有限公司」、「台北富邦銀行」），這裡只去掉「股份有限公司」；數據中台給一致的簡稱後拿掉 replace
+const bankNote = computed(() => {
+  const names = (latestQuarterly.value?.bankNames ?? []).map(name => name.replace(/股份有限公司$/, ''))
+  return names.length ? `（旗下${names.join('與')}${names.length > 1 ? '合計' : '的數字'}）` : ''
 })
 
 // 最新一季是 0、這一頁又有 zeroText（合約資產、合約負債）：答句說「資產負債表上沒有列出…」、<title> 用固定片語，不寫「為 0%」。
@@ -210,7 +218,7 @@ const quarterlyLead = computed(() => {
   if (q && zeroNotListed.value) return `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季的${metricPage.zeroText}`
   // 「（單季）」只在答句與 meta description，<title> 有自己的一份（字數預算）。近四季那一句本來就寫「近四季」（2026-10-23，使用者：
   //「要標清楚 到底是單季還是近四季」）
-  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季（單季）${valueTopic}為 ${valueTextOf(q.value)}` : null
+  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季（單季）${valueTopic}為 ${valueTextOf(q.value)}${bankNote.value}` : null
 })
 
 // The <title>'s own keyword phrase. useStockPageSeo prefixes「{短名} {代碼} 」and appends the brand

@@ -33,6 +33,8 @@ export interface MetricsHistoryPoint {
   knowledgeDate: string
   knowledgeDateIsFallback: boolean
   notes?: PeriodNote[]
+  // 金控的逾期放款比率、備抵呆帳覆蓋率是旗下哪幾家銀行的數字（數據中台 b839dcc，只有這兩支有）；純銀行是 []
+  bankNames?: string[]
 }
 
 export interface MetricsHistoryEntry {
