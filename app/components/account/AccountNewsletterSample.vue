@@ -52,6 +52,8 @@ const open = defineModel<boolean>({ required: true })
         <h4 class="newsletter-sample__heading">注意股、處置股</h4>
         <p>範例生技 <span class="newsletter-sample__tag">處置股</span> 11/19～12/2，你持有</p>
         <p class="newsletter-sample__small">處置期間交易方式會改變，例如分盤撮合。</p>
+        <!-- 照真的週報（業務中台 2026-11-22，證交所要求註明來源）：這一塊上市、上櫃都有，處置股也是，所以不加括號 -->
+        <p class="newsletter-sample__small">資料來源：臺灣證券交易所、證券櫃檯買賣中心</p>
       </section>
 
       <footer class="newsletter-sample__part newsletter-sample__footer">
