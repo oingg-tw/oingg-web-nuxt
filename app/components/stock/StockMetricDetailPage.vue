@@ -200,10 +200,9 @@ const latestQuarterly = computed(() => {
 })
 
 // 金控的逾期放款比率、覆蓋率是旗下銀行的數字（2026-11-22，設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz）：答句接在數字後面寫是哪幾家，
-// 兩家以上是合計（2887 台新、新光）。純銀行沒有名字，不寫
-// shortcut: 名字照申報原樣，有的帶公司型態（「玉山商業銀行股份有限公司」、「台北富邦銀行」），這裡只去掉「股份有限公司」；數據中台給一致的簡稱後拿掉 replace
+// 兩家以上是合計（2887 台新、新光）。名字是數據中台統一的簡稱（886374b：玉山銀行、合作金庫銀行）。純銀行、申報只寫「銀行子公司」的期別沒有名字，不寫
 const bankNote = computed(() => {
-  const names = (latestQuarterly.value?.bankNames ?? []).map(name => name.replace(/股份有限公司$/, ''))
+  const names = latestQuarterly.value?.bankNames ?? []
   return names.length ? `（旗下${names.join('與')}${names.length > 1 ? '合計' : '的數字'}）` : ''
 })
 
