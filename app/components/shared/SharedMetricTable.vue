@@ -90,6 +90,8 @@ const props = withDefaults(defineProps<{
   layoutKey?: string
   // 這張表叫什麼（左右捲動區的名稱「…，可左右捲動」）：一頁有好幾張時要分得開（觀察清單一類一張，同名是 axe landmark-unique）
   label?: string
+  // 欄位以外、這些列也靠它篩出來的欄位（篩選的條件），一起決定表格下面的資料來源（sourceNote）
+  sourceFields?: (string | null)[]
 }>(), {
   hasMore: false,
   loadingMore: false,
@@ -108,7 +110,8 @@ const props = withDefaults(defineProps<{
   columnDefaults: undefined,
   skeleton: false,
   layoutKey: undefined,
-  label: '股票清單'
+  label: '股票清單',
+  sourceFields: () => []
 })
 const slots = defineSlots<{
   toolbar?: () => unknown
@@ -239,6 +242,16 @@ const orderedColumns = ref<ScreenerResultTableColumn[]>([...props.columns])
 // 釘住的欄（觀察清單的固定欄）一直在最前面；拖曳、表頭選單的移動與移除、欄位設定都只動沒釘住的
 const pinnedColumns = computed(() => orderedColumns.value.filter(column => column.pinned))
 const movableColumns = computed(() => orderedColumns.value.filter(column => !column.pinned))
+
+// 證交所 2026-11-21 的要求（數據中台轉達，它網站條款第八條：引用、轉載要註明來源）：顯示注意股票、上市 ETF 主題的地方寫「資料來源：
+// 臺灣證券交易所」。上櫃的那一半來自櫃買，一起寫。鍵是欄位 id 的指標名（普通股 isAttentionStock.EOD、ETF theme.snapshot）；
+// 只看欄位與條件、不看列，資料到之前就在，不會跳
+const EXCHANGE_FIELDS: Record<string, string> = { isAttentionStock: '注意股票', theme: 'ETF 主題' }
+const sourceNote = computed(() => {
+  const labels = new Set([...orderedColumns.value.map(column => column.field), ...props.sourceFields]
+    .map(field => EXCHANGE_FIELDS[field?.split('.')[0] ?? '']).filter(Boolean))
+  return labels.size ? `資料來源：臺灣證券交易所、證券櫃檯買賣中心（${[...labels].join('、')}）` : null
+})
 
 watch(
   () => props.columns,
@@ -929,6 +942,7 @@ watch(() => props.loading, (loading, wasLoading) => {
         <p v-else-if="endText" class="screener-result-table__load-more screener-result-table__load-more--end">{{ endText }}</p>
       </template>
     </div>
+    <p v-if="sourceNote" class="smt-source">{{ sourceNote }}</p>
   </div>
 </template>
 
@@ -953,9 +967,20 @@ watch(() => props.loading, (loading, wasLoading) => {
   display: none;
 }
 
+/* 資料來源：卡片版面接在最後一張卡片下面、跟卡片同一條左緣；表格版面在外框卡片裡，左右 16px 同工具列 */
+.smt-source {
+  margin: 12px 0 0;
+  color: var(--el-text-color-secondary);
+}
+
 @container (min-width: 720px) {
   .screener-result-table-wrap--cards .smt-table-view {
     display: flex;
+  }
+
+  .smt-source {
+    margin: 0;
+    padding: 12px 16px 16px;
   }
 
   .smt-toolbar .smt-toolbar__settings {

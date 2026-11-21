@@ -184,6 +184,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             :loading="tab.loading"
             :rows="tab.results"
             :columns="tab.columns"
+            :source-fields="tab.slots.map(slot => slot.fieldId)"
             :has-more="tab.page < tab.totalPages"
             :loading-more="tab.loadingMore"
             :sort-field="tab.sortField"
