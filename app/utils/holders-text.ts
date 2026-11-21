@@ -1,5 +1,4 @@
 import type { ShareholdingDistribution } from '#shared/types/screener-detail'
-import { foldSmallLayers } from '../../shared/utils/metric-composition.ts'
 
 type HolderWeek = ShareholdingDistribution['weeks'][number]
 
@@ -48,7 +47,7 @@ export const HOLDER_CATEGORY_LABELS: Record<string, string> = {
 }
 
 // 圖上合成 7 組（11 段的比例條讀不出東西），順序固定、每組顏色跟著組走；不到 2% 的再併進「其他」（全站組成圖的規則，foldSmallLayers），
-// 一段都是 0 的不畫
+// 一段都是 0 的不畫。foldSmallLayers 用 Nuxt 的自動匯入：寫成相對路徑的 import，伺服器打包把它當外部模組、路徑又多算一層（2026-11-22 建置失敗）
 const HOLDER_GROUPS: [string, string[]][] = [
   ['外國法人與基金', ['foreign_financial_institution', 'foreign_juristic', 'foreign_securities_trust_fund']],
   ['本國自然人', ['domestic_individual']],

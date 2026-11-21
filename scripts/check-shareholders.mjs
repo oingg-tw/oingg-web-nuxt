@@ -1,8 +1,12 @@
 // 股權分散表（app/utils/holders-text.ts 的 holderTypeGroups／holderTypeAnswer）與內部人申報轉讓（app/utils/insider-transfers.ts）
 // Run: node scripts/check-shareholders.mjs
 import assert from 'node:assert/strict'
-import { holderTypeAnswer, holderTypeGroups } from '../app/utils/holders-text.ts'
+import { foldSmallLayers } from '../shared/utils/metric-composition.ts'
 import { holdingChangeText, insiderTransferAnswer, insiderTransferGroups, lotsText, transferMethodText, transferPeriodText, untransferredText } from '../app/utils/insider-transfers.ts'
+
+// holders-text.ts 用 Nuxt 自動匯入的 foldSmallLayers（同 check-http-error.mjs 頂替 Nitro 的自動匯入）
+Object.assign(globalThis, { foldSmallLayers })
+const { holderTypeAnswer, holderTypeGroups } = await import('../app/utils/holders-text.ts')
 
 // 2330 2026-04-06 的 11 類（DEV 實測）：圖合成 7 組，外國自然人 0.6%、庫藏股 0% 併進其他（不到 2%）
 const category = (code, sharesPct) => ({ category: code, holderCount: 1, shares: 1, sharesPct })
