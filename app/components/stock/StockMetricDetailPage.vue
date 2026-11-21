@@ -380,7 +380,7 @@ const { breadcrumbs } = useStockPageSeo({
       </template>
       <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
       <template v-else-if="readFailed" />
-      <p v-else class="stock-metric-page__line">目前沒有這檔股票的{{ valueTopic }}資料。</p>
+      <p v-else class="stock-metric-page__line">{{ metricPage.bankOnly ? `${stockShortName}不是銀行或金控，沒有${valueTopic}。` : `目前沒有這檔股票的${valueTopic}資料。` }}</p>
     </StockQuestionSection>
 
     <!-- 段落統一（2026-10-14，指標頁一致性盤點，使用者：「每個單獨頁面，就是一張圖 一張表，通常表就是歷史的資料」「審計功能要保留」）：

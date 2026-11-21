@@ -26,9 +26,17 @@ export function pickQuarterlyHistory(
 // 所以濾掉的只有「這一期根本沒有這支指標的紀錄」。
 export function metricHistoryPoints(entries: MetricsHistoryEntry[], metricCode: string): MetricHistoryEntryPoint[] {
   return entries
+    .filter(entry => !undisclosedQuarter(metricCode, entry))
     .map(entry => ({ ...entry, point: entry.values[metricCode] ?? null }))
     .filter(entry => entry.point !== null)
     .reverse()
+}
+
+// 只在半年報、年報揭露的指標（2026-11-22，銀行資本適足率；彰銀等 5 家實測只有 Q2、Q4 有值）：Q1、Q3 沒有值是因為不揭露，不是缺資料，
+// 照「中間的缺口留空」畫會變成一顆顆斷開的點。那兩季沒有值時整期拿掉，圖、表、開頭那一句都只剩 Q2、Q4；真的有值就照畫
+const HALF_YEARLY_METRICS = new Set(['bankCarRatio'])
+export function undisclosedQuarter(metricCode: string, entry: Pick<MetricsHistoryEntry, 'fiscalQuarter' | 'values'>): boolean {
+  return HALF_YEARLY_METRICS.has(metricCode) && (entry.fiscalQuarter === 1 || entry.fiscalQuarter === 3) && entry.values[metricCode]?.value == null
 }
 
 // A null with a REASON is not the same thing as no data, and this table was printing both as

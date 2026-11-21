@@ -59,9 +59,9 @@ async function indexableMetricPages(): Promise<typeof METRIC_PAGES> {
   try {
     const catalog = await getMetricsCatalog() as { categories: { metrics: { key: string; description: string | null }[] }[] }
     const described = new Set(catalog.categories.flatMap(category => category.metrics).filter(metric => metric.description).map(metric => metric.key))
-    return METRIC_PAGES.filter(page => described.has(page.metricCode))
+    return METRIC_PAGES.filter(page => described.has(page.metricCode) && !page.bankOnly)
   } catch {
-    return METRIC_PAGES
+    return METRIC_PAGES.filter(page => !page.bankOnly)
   }
 }
 

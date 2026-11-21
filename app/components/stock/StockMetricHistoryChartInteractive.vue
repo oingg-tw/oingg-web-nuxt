@@ -102,8 +102,10 @@ const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timefram
 //
 // 不到兩個年度就不推算、維持季頻假設：剛上市的公司只有 Q1、Q2 兩期時，期別數是 2 但它其實是季頻，
 // 推算會把半年當成一年。兩個年度之後才看得出真正的申報頻率。
+// 只在半年報揭露的指標（銀行資本適足率），Q1、Q3 沒有值就整期拿掉（undisclosedQuarter），推算出來就是一年 2 期
+const disclosed = computed(() => (data.value ?? []).filter(entry => !undisclosedQuarter(props.metricCode, entry)))
 const periodsPerYear = computed(() => {
-  const entries = data.value ?? []
+  const entries = disclosed.value
   if (new Set(entries.map(entry => entry.fiscalYear)).size < 2) return 4
   return new Set(entries.map(entry => entry.fiscalQuarter)).size || 4
 })
@@ -113,7 +115,7 @@ const periodsPerYear = computed(() => {
 // 橫軸變成 2024 Q3 → 2025 Q1，讀者看不出中間少了一季。現在只修掉頭尾還沒有值的期別（近四季開頭湊不滿四季那幾期），中間的
 // 缺口畫成空位，提示框說原因。
 const allPoints = computed(() => {
-  const list = (data.value ?? [])
+  const list = disclosed.value
     .map(entry => ({
       fiscalYear: entry.fiscalYear,
       fiscalQuarter: entry.fiscalQuarter,

@@ -3,7 +3,15 @@
 // Run: node scripts/check-null-reason.mjs
 import assert from 'node:assert/strict'
 import { NULL_REASON_LABELS, nullReasonShortText, periodNotesText, periodNoteText, semiannualWindowNote, screenerNullText } from '../app/utils/metric-null-reason.ts'
-import { trimEmptyEnds } from '../app/utils/metric-history-points.ts'
+import { trimEmptyEnds, undisclosedQuarter } from '../app/utils/metric-history-points.ts'
+
+// 只在半年報揭露的資本適足率：Q1、Q3 沒有值整期拿掉，有值照留；其他指標的空季照舊是缺口
+const car = (quarter, value) => ({ fiscalQuarter: quarter, values: { bankCarRatio: { value, nullReason: value === null ? 'missing_input' : null } } })
+assert.equal(undisclosedQuarter('bankCarRatio', car(1, null)), true)
+assert.equal(undisclosedQuarter('bankCarRatio', car(3, null)), true)
+assert.equal(undisclosedQuarter('bankCarRatio', car(2, null)), false)
+assert.equal(undisclosedQuarter('bankCarRatio', car(3, 14.2)), false)
+assert.equal(undisclosedQuarter('roe', { fiscalQuarter: 1, values: { roe: { value: null, nullReason: 'missing_input' } } }), false)
 
 const codes = ['roe', 'netProfitMargin']
 const entry = (fiscalYear, fiscalQuarter, value, nullReason = null) => ({ fiscalYear, fiscalQuarter, values: Object.fromEntries(codes.map(code => [code, { value, nullReason }])) })

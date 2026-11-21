@@ -290,7 +290,11 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '速動比率', perspective: '倍數', to: code => `/stock/${code}/quick-ratio`, hook: '同上，但不把還沒賣掉的存貨算進去' },
       { label: '有息負債權益比', perspective: '倍數', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },
       { label: '長期負債對淨流動資產比', perspective: '倍數', to: code => `/stock/${code}/long-term-debt-to-net-current-assets`, hook: '長期的債，短期資產扛不扛得住' },
-      { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' }
+      { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' },
+      // 銀行與金控的三個比率（2026-11-22）：其他公司點進去是「不是銀行或金控」，hook 先講清楚
+      { label: '資本適足率', perspective: '占比', to: code => `/stock/${code}/capital-adequacy`, hook: '銀行與金控的自有資本，夠不夠吸收放款與投資可能的損失' },
+      { label: '逾期放款比率', perspective: '占比', to: code => `/stock/${code}/npl-ratio`, hook: '銀行放出去的款，有多少已經逾期沒還' },
+      { label: '備抵呆帳覆蓋率', perspective: '占比', to: code => `/stock/${code}/npl-coverage`, hook: '銀行準備的呆帳，是逾期放款的幾倍' }
     ]
   },
   // 原始財報墊底：上面每一個比率都是從這三張表算出來的，要自己核對從這裡進去。這四頁不是指標，
