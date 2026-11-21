@@ -87,8 +87,9 @@ const facts = withPeriodFacts(
   ['eps', 'roe'],
   [{ fiscalYear: 2024, fiscalQuarter: 4, nullReason: 'no_filing' }, { fiscalYear: 2025, fiscalQuarter: 2, nullReason: 'no_filing' }, { fiscalYear: 2025, fiscalQuarter: 4, nullReason: 'unsupported_format' }]
 )
-// 有值的格子不動（3259 的 eps 有值、absentPeriods 卻列成 unsupported_format）
+// 回應裡已經有的期別不動（數據中台不會列，以防萬一）；只申報半年報那幾年的第一、三季（semiannual_only）不補：3158 的 2023 年只有 Q2、Q4
 assert.equal(withPeriodFacts([{ fiscalYear: 2025, fiscalQuarter: 1, values: { eps: cell(-0.51) } }], ['eps'], [{ fiscalYear: 2025, fiscalQuarter: 1, nullReason: 'unsupported_format' }])[0].values.eps.value, -0.51)
+assert.deepEqual(withPeriodFacts([{ fiscalYear: 2023, fiscalQuarter: 2, values: { eps: cell(1) } }, { fiscalYear: 2023, fiscalQuarter: 4, values: { eps: cell(2) } }], ['eps'], [{ fiscalYear: 2023, fiscalQuarter: 3, nullReason: 'semiannual_only' }]).length, 2)
 // 比第一期早的不補；中間與最新的補成帶原因的空格；更正接到那一期有值的格子，沒有紀錄的格子照舊是 null
 assert.deepEqual(facts.map(entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`), ['2025Q1', '2025Q2', '2025Q3', '2025Q4'])
 assert.equal(nullReasonShortText(facts[1].values.eps.nullReason), '未申報')

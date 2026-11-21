@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
+import type { AbsentPeriod, MetricsHistoryEntry, MetricsHistorySeries, MetricsHistoryTimeframe } from '#shared/types/metrics-history'
 import type { StockBadges } from '#shared/types/stock-badges'
 import type { FinancialStatementHistoryResponse, FinancialStatementResponse, StatementType } from '#shared/types/financial-statement'
 import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity-composition'
@@ -33,6 +33,7 @@ const TTL_STATIC = 24 * HOUR
 interface MetricsHistoryResponse {
   total: number
   entries: MetricsHistoryEntry[]
+  absentPeriods?: AbsentPeriod[]
 }
 
 // 個股頁面 SSR 要抓幾期歷史。五個路由各寫一次 `const HISTORY_LIMIT = 20`，2026-10-02 收成一份。
@@ -55,7 +56,7 @@ export const cachedMetricsHistory = defineCachedFunction(
       // 查詢參數 timeframe（2026-10-10 起；原本是 basis，見 useMetricsHistory.ts）
       query: { metricCodes: codes.join(','), timeframe, limit }
     })
-    return { timeframe, codes, limit, entries: withPeriodFacts(response.entries, codes), total: response.total }
+    return { timeframe, codes, limit, entries: withPeriodFacts(response.entries, codes, response.absentPeriods), total: response.total }
   },
   {
     name: 'stock-metrics-history',
