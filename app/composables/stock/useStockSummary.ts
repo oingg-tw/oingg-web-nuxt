@@ -1,3 +1,4 @@
+import type { AuditOpinions } from '~/utils/audit-opinion'
 import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 
 // GET /stocks/{symbol} — 業務中台's real quote endpoint (confirmed live 2026-09-14 by reading
@@ -30,6 +31,8 @@ export interface StockSummary {
   // 停止買賣與下市（2026-10-22 請 業務中台／analysis-ts 在這支帶出，形狀同 GET /stocks 每一列）；沒有是 null
   tradingHalt: TradingHalt | null
   delisting: Delisting | null
+  // 會計師查核（核閱）意見（2026-11-22，app/utils/audit-opinion.ts）：摘要卡的示警與基本資料頁那一段都讀這一份；ETF、查不到是 null
+  auditOpinions: AuditOpinions | null
 }
 
 interface RawStockQuote {
@@ -58,7 +61,11 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
       if (!current) return null
 
       try {
-        const raw = await apiFetch<RawStockQuote>(`/stocks/${current}`, { baseURL: BUSINESS_CACHED_BASE })
+        // 會計師意見跟報價一起讀，示警跟停止買賣同一次出現，不會晚一步把下面推動。只有公司有（ETF 是 0 開頭）；讀不到不擋報價
+        const [raw, auditOpinions] = await Promise.all([
+          apiFetch<RawStockQuote>(`/stocks/${current}`, { baseURL: BUSINESS_CACHED_BASE }),
+          /^[1-9]\d{3}$/.test(current) ? apiFetch<AuditOpinions>(`/stocks/${current}/audit-opinions`, { baseURL: BUSINESS_CACHED_BASE }).catch(() => null) : null
+        ])
         const close = raw.price?.dayClose ?? null
         return {
           symbol: raw.symbol,
@@ -76,7 +83,8 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
               }
             : null,
           tradingHalt: raw.tradingHalt ?? null,
-          delisting: raw.delisting ?? null
+          delisting: raw.delisting ?? null,
+          auditOpinions
         }
       } catch (error) {
         devWarn('stock-summary', `GET /api/cached/stocks/${current} unavailable`, error)

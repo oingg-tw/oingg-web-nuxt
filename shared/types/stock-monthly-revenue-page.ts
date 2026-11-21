@@ -1,3 +1,4 @@
+import type { PeriodNote } from './metrics-history'
 // server/api/stock/[code]/monthly-revenue.get.ts — 月營收（2026-09-23,「個股瀏覽 要上月營收」）.
 //
 // The field notes below were written against 業務中台's own contract on 2026-09-07 (for a client composable that never
@@ -40,6 +41,8 @@ export interface MonthlyRevenueEntry {
   // explicitly reported nothing unusual; real null means no disclosure at all — 業務中台 confirmed
   // these are two distinct states, so they must not collapse into one「沒有說明」case.
   note: string | null
+  // 這個月的營收更正過（數據中台 A 批，2026-11-22）：[{ code: 'monthly_revenue_corrected', announcementDate }]，句子是 periodNotesText 的
+  notes?: PeriodNote[]
 }
 
 // One point per month: the MEAN of that month's daily closes.

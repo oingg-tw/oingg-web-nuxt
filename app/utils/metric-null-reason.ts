@@ -28,6 +28,10 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 上市櫃年數（數據中台 2026-11-16 起）：興櫃公司還沒上市、上櫃。數據中台先等這裡認得這個代碼才上（讀者先行），使用者選了這個新代碼
   //（2026-11-14「照建議」），沒用現有的：not_applicable_industry 是產業不適用、not_published_by_exchange 是交易所不公布
   not_listed: '還沒有上市或上櫃（興櫃公司）',
+  // 沒有申報的期別（數據中台 A 批 absentPeriods，2026-11-22，withPeriodFacts 補成帶這兩個原因的空格）：no_filing 格子寫「未申報」，
+  // unsupported_format 照舊「無法計算」。兩句也是那一期底下的說明（periodNotesText），手機沒有滑鼠移上去的 title
+  no_filing: '沒有申報 XBRL 財報，所以沒有數字',
+  unsupported_format: '財報格式還讀不到，所以算不出來',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
@@ -96,6 +100,7 @@ export function reasonedCellText(point: NullablePoint | null | undefined, format
 // 不適用＝結構性、不會恢復：模型不適用於這個產業，或興櫃本來就沒有這項數字（交易所不公布、只申報半年報）
 const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_published_by_exchange', 'semiannual_only', 'not_listed'])
 export function nullReasonShortText(nullReason: string | null | undefined): string {
+  if (nullReason === 'no_filing') return '未申報'
   if (nullReason && NOT_APPLICABLE_REASONS.has(nullReason)) return '不適用'
   return nullReason ? '無法計算' : '尚無資料'
 }
@@ -109,8 +114,15 @@ const EXPENSE_NOT_ITEMIZED: Record<string, (amount: string) => string> = {
   financial_industry_format: () => '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。'
 }
 const thousands = (value: number | null | undefined): string => (typeof value === 'number' ? minusSign(formatMoney(value * 1000)) : '')
+// 財報、月營收的更正與重編（數據中台 A 批，2026-11-22）：數字已經是更正後的，說哪一天改的。寫「這一期」：季、近四季、年度的表都用得上
+const CORRECTED: Record<string, (at: string) => string> = {
+  financial_report_corrected: at => `這一期的財報${at}更正過，數字是更正後的。`,
+  financial_report_restated: at => `這一期的財報${at}重編，數字是重編後的。`,
+  monthly_revenue_corrected: at => `這個月的營收${at}更正過，數字是更正後的。`
+}
 
 export function periodNoteText(note: PeriodNote): string | null {
+  if (CORRECTED[note.code]) return CORRECTED[note.code]!(note.announcementDate ? `在 ${note.announcementDate} ` : '')
   // 差額寫正數（「差 123.4萬元」），哪一邊多不是讀者要的
   if (note.code === 'operating_expense_not_itemized') return EXPENSE_NOT_ITEMIZED[note.reason ?? '']?.(thousands(typeof note.unitemizedAmount === 'number' ? Math.abs(note.unitemizedAmount) : null)) ?? null
   if (note.code === 'large_net_other_income_expenses') {
@@ -122,7 +134,12 @@ export function periodNoteText(note: PeriodNote): string | null {
   return null
 }
 
-// 同一期好幾支指標帶同一則說明（三率都帶 large_net_other_income_expenses）：同一句只寫一次
-export function periodNotesText(points: (MetricsHistoryPoint | null | undefined)[]): string {
-  return [...new Set(points.flatMap(point => point?.notes ?? []).map(periodNoteText).filter((text): text is string => !!text))].join('')
+// 同一期好幾支指標帶同一則說明（三率都帶 large_net_other_income_expenses、更正帶在每一格）：同一句只寫一次。沒有申報的期別也寫原因
+//（月營收的列也傳進來，它只有 notes）
+const ABSENT_REASONS = new Set(['no_filing', 'unsupported_format'])
+export function periodNotesText(points: (Pick<MetricsHistoryPoint, 'notes'> & Partial<Pick<MetricsHistoryPoint, 'value' | 'nullReason'>> | null | undefined)[]): string {
+  return [...new Set(points.flatMap(point => [
+    ...(point?.notes ?? []).map(periodNoteText),
+    point?.value == null && point?.nullReason && ABSENT_REASONS.has(point.nullReason) ? `${NULL_REASON_LABELS[point.nullReason]}。` : null
+  ]).filter((text): text is string => !!text))].join('')
 }

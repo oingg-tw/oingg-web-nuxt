@@ -1,4 +1,5 @@
 import type { UserWatchlistItem, Watchlist } from '~/composables/watchlist/useUserWatchlist'
+import type { AuditOpinions } from '~/utils/audit-opinion'
 import type { Delisting, TradingHalt } from '~/utils/trading-halt'
 
 // 摘要卡用的最小股票物件。數值可以是 null：業務中台 的 GET /stocks/{symbol} 只有收盤價與估值比率，漲跌由
@@ -18,9 +19,11 @@ export interface Stock {
   // 停止買賣、下市（摘要卡各寫一句話，見 app/utils/trading-halt.ts）；只有個股頁從 GET /stocks/{symbol} 帶得到
   tradingHalt?: TradingHalt | null
   delisting?: Delisting | null
+  // 會計師示警（摘要卡一句，app/utils/audit-opinion.ts）、基本資料頁那一段；同樣只有個股頁帶得到
+  auditOpinions?: AuditOpinions | null
 }
 
-export type StockColumnKey = Exclude<keyof Stock, 'code' | 'name' | 'tradingHalt' | 'delisting'>
+export type StockColumnKey = Exclude<keyof Stock, 'code' | 'name' | 'tradingHalt' | 'delisting' | 'auditOpinions'>
 
 // '－' 是全站缺值的寫法（同特別股表格的 __placeholder），不渲染假的 0.00
 export function formatStockValue(stock: Stock, key: StockColumnKey) {

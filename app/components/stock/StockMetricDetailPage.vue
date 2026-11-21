@@ -149,6 +149,8 @@ watchLoadFailure(() => `stock-metric:${code.value}:${slug.value}`, () => metricE
 const points = computed(() => metricHistoryPoints(metricData.value?.series?.entries ?? [], metricPage.metricCode))
 
 const latest = computed(() => points.value[0] ?? null)
+// 只有銀行有的指標（metricPage.bankOnly）在沒有任何一期有值的公司：寫誰才有，不畫空圖、不列一整排「無法計算」、不收錄
+const bankless = computed(() => !!metricPage.bankOnly && !metricPending.value && !points.value.some(entry => entry.point?.value != null))
 
 const cellTextOf = (point: { value: number | null; nullReason: string | null } | null | undefined): string => metricCellText(point, unit.value)
 // 單季那兩句講的是一個**有值**的數字，沒有 null 的分支要處理，所以不經過 cellTextOf。
@@ -269,7 +271,7 @@ const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.v
 
 const valueAnswer = computed(() => {
   if (riverLead.value) return joinClauses([riverLead.value])
-  if (!latest.value) return null
+  if (!latest.value || bankless.value) return null
   // 財報狗's own shape when a real 單季 figure exists: 單季值 → 年增（財報狗原句是季增，這個目錄
   // 沒有季增率可用，改用年增，見 METRIC_PAGES 裡 eps 這筆自己的註解）→ 近四季值. Falls back to the
   // original TTM-only sentence for any metric page with no quarterlyGrowthMetricCode declared —
@@ -321,7 +323,7 @@ const description = computed(() => {
 // uses: no value at all, or a catalog entry so bare that the「是什麼」section can only show a
 // formula and a link. Both degrade the page rather than erroring it — a visitor who followed a
 // link here still gets whatever there is.
-const noindex = computed(() => !latest.value || !definition.value)
+const noindex = computed(() => !latest.value || bankless.value || !definition.value)
 
 const { breadcrumbs } = useStockPageSeo({
   code,
@@ -355,7 +357,7 @@ const { breadcrumbs } = useStockPageSeo({
            card; these were the exact same three facts restated as separate lines right under
            it. The big number stays — it's a different visual role (large, scannable at a
            glance), not a duplicate of the sentence in the way plain repeated text is. -->
-      <template v-if="latest || metricPending">
+      <template v-if="!bankless && (latest || metricPending)">
         <!-- No big value number here. There WAS one（a bare 2rem figure until 2026-09-21,
              then briefly a labelled stat block）, removed by direct decision after「看久了很
              突兀，有其他方式可以優化UIUX嗎?」and a look at the labelled version. The reason it
@@ -380,14 +382,14 @@ const { breadcrumbs } = useStockPageSeo({
       </template>
       <!-- 讀不到：彈窗會說明並自動重讀；這裡留空，免得落到下一行「目前沒有資料」 -->
       <template v-else-if="readFailed" />
-      <p v-else class="stock-metric-page__line">{{ metricPage.bankOnly ? `${stockShortName}不是銀行或金控，沒有${valueTopic}。` : `目前沒有這檔股票的${valueTopic}資料。` }}</p>
+      <p v-else class="stock-metric-page__line">{{ metricPage.bankOnly ? `${stockShortName}沒有${valueTopic}：${metricPage.bankOnly}。` : `目前沒有這檔股票的${valueTopic}資料。` }}</p>
     </StockQuestionSection>
 
     <!-- 段落統一（2026-10-14，指標頁一致性盤點，使用者：「每個單獨頁面，就是一張圖 一張表，通常表就是歷史的資料」「審計功能要保留」）：
          圖 → 歷年表 → 計算依據（審計）→ 定義 → 頁尾。同類股中位數拿掉（只有 5 頁有）；組成段搬到各自的組成頁
         （營業費用組成、股東回饋組成，StockMetricCompositionPage）；拆不出組成的說明（compositionNote）併進定義。 -->
     <StockMetricHistorySection
-      v-if="historySeries"
+      v-if="historySeries && !bankless"
       :entries="historySeries.entries"
       :metric-code="metricPage.metricCode"
       :timeframe="historySeries.timeframe"
@@ -401,7 +403,7 @@ const { breadcrumbs } = useStockPageSeo({
     <!-- 計算依據（2026-10-01 補上）。徽章頁從 2026-09-20 就有這張表，46 個指標頁一直沒有——
          同一個端點、同一個元件。14 支損益表逐行的每股指標上游還不支援（見 metric.get.ts 的註解），
          那些頁面的 provenance 是 null，這一段不渲染。 -->
-    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" :result="latest ? { value: latestValueText, basis: timeframeLabel } : null" />
+    <StockMetricProvenanceSection :symbol="code" :short-name="stockShortName" :topic="valueTopic" :provenance="bankless ? null : metricData?.provenance ?? null" :expected-value="latest?.point?.value ?? null" :result="latest ? { value: latestValueText, basis: timeframeLabel } : null" />
 
     <!-- 段落分三區（2026-09-30 重排，順序 2026-10-01 調整）：前面是**這家公司自己的數字**
          （是多少／組成／歷年變化／怎麼算出來的），

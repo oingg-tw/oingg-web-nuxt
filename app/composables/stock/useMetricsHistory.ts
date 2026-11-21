@@ -129,7 +129,7 @@ export function useMetricsHistory(symbol: Ref<string | undefined>, metricCodes: 
         // Wire query key stays `basis` — see this file's own top comment.
         query: { metricCodes: codes.join(','), timeframe: targetTimeframe, limit: targetLimit }
       })
-      return { entries: result.entries, total: result.total }
+      return { entries: withPeriodFacts(result.entries, codes), total: result.total }
     } catch (error) {
       devWarn('metrics-history', `GET ${BUSINESS_BASE}/stocks/${targetSymbol}/metrics-history unavailable`, error)
       if (classifyApiError(error).kind === 'client') return null

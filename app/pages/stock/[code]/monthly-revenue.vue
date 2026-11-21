@@ -91,12 +91,18 @@ const { breadcrumbs } = useStockPageSeo({
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in descending" :key="entry.yearMonth">
-            <th scope="row">{{ entry.yearMonth }}</th>
-            <td class="seo-table__num">{{ amount(entry.currentMonthRevenue) }}</td>
-            <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.momChangePct, entry.momChangePctNullReason)">{{ monthlyRevenueRateText(entry.momChangePct, entry.momChangePctNullReason) }}</td>
-            <td class="seo-table__num">{{ amount(entry.cumulativeRevenue) }}</td>
-          </tr>
+          <template v-for="entry in descending" :key="entry.yearMonth">
+            <tr>
+              <th scope="row">{{ entry.yearMonth }}</th>
+              <td class="seo-table__num">{{ amount(entry.currentMonthRevenue) }}</td>
+              <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.momChangePct, entry.momChangePctNullReason)">{{ monthlyRevenueRateText(entry.momChangePct, entry.momChangePctNullReason) }}</td>
+              <td class="seo-table__num">{{ amount(entry.cumulativeRevenue) }}</td>
+            </tr>
+            <!-- 月營收更正過（數據中台 A 批，2026-11-22）：那個月底下一列說哪一天改的 -->
+            <tr v-if="periodNotesText([entry])" class="seo-table__remark">
+              <td colspan="4"><span class="seo-table__remark-text">{{ periodNotesText([entry]) }}</span></td>
+            </tr>
+          </template>
         </tbody>
       </SharedTable>
     </StockQuestionSection>

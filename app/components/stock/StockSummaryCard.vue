@@ -2,7 +2,8 @@
 import { Star, StarFilled, Share, Close } from '@element-plus/icons-vue'
 import type { Stock } from '~/composables/stock/useStocks'
 
-// 摘要卡不放說明文字（2026-11-08，使用者：「Summary不該放說明文字」）：代號、名稱、全名、股價與漲跌，加上帶日期的狀態（停止買賣、下市）。
+// 摘要卡不放說明文字（2026-11-08，使用者：「Summary不該放說明文字」）：代號、名稱、全名、股價與漲跌，加上帶日期的狀態（停止買賣、下市；
+// 2026-11-22 加會計師示警）。
 // 面額那句（「名稱後的 *：每股面額 2.5 元，不是一般的 10 元」，2026-10-22 起）與興櫃那句（「興櫃股票以議價方式交易，這是最後一筆成交價…」）同日拿掉
 const props = defineProps<{
   stock: Stock
@@ -40,6 +41,7 @@ const logo = computed(() => logoData.value?.logo ?? null)
 
 const haltText = computed(() => tradingHaltText(props.stock.tradingHalt))
 const delistText = computed(() => delistingText(props.stock.delisting))
+const auditText = computed(() => auditorWarningText(props.stock.auditOpinions))
 
 // 加入觀察清單（2026-10-19 多組觀察清單）：星號按下去跳出勾選選單（WatchlistPickerPanel），這張卡就是唯一的負責者——原本 25 個頁面
 // 一路把 isFavorite／toggleFavorite 往下傳，現在卡片自己讀 useStocks。訪客按下去是登入。手機一列、桌機右上角各一顆，各自一個 popover
@@ -208,6 +210,8 @@ const qrDialogVisible = ref(false)
       <!-- 停止買賣、下市（2026-10-22，使用者：「做吧」「好」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。是帶日期的狀態，不是說明 -->
       <p v-if="haltText" class="summary-card__status">{{ haltText }}</p>
       <p v-if="delistText" class="summary-card__status">{{ delistText }}</p>
+      <!-- 會計師示警（2026-11-22，使用者「按照建議執行」）：最近一期是繼續經營疑慮、無法表示意見或年報保留意見，帶期別的狀態 -->
+      <p v-if="auditText" class="summary-card__status">{{ auditText }}</p>
     </div>
 
     <!-- 手機的三顆按鈕是卡片的頁尾（2026-10-22，使用者：「summary-card 也一起設計吧」，方案頁選 2B）：沒有框、整排平分、上面一條線，

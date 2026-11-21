@@ -338,8 +338,8 @@ const { breadcrumbs } = useStockPageSeo({
               <td v-for="rateCode in rateCodes" :key="rateCode" :title="nullReasonTitle(entry.values[rateCode])">{{ reasonedCellText(entry.values[rateCode], fixedRateText) }}</td>
               <td>{{ rateCodes.map(rateCode => entry.values[rateCode]?.knowledgeDate).find(Boolean) ?? '－' }}</td>
             </tr>
-            <tr v-if="entry.remark" class="stock-margins-page__remark">
-              <td :colspan="rateCodes.length + 2"><span class="stock-margins-page__remark-text">{{ entry.remark }}</span></td>
+            <tr v-if="entry.remark" class="seo-table__remark">
+              <td :colspan="rateCodes.length + 2"><span class="seo-table__remark-text">{{ entry.remark }}</span></td>
             </tr>
           </template>
         </tbody>
@@ -452,24 +452,5 @@ const { breadcrumbs } = useStockPageSeo({
 
 .stock-margins-page__line {
   margin: 0;
-}
-
-/* 那一期的說明（2026-11-21）：接在那一期底下、跟那一期之間不畫線；灰字、可以折行（表格的格子預設不折） */
-.stock-margins-page__remark td {
-  padding-top: 0;
-  white-space: normal;
-  color: var(--el-text-color-secondary);
-}
-
-tr:has(+ .stock-margins-page__remark) > * {
-  border-bottom: 0;
-}
-
-/* 表格比畫面寬、可以左右捲時，說明跟表格一樣寬會被切掉一半：貼在捲動區的左邊、寬度不超過畫面，在看得到的範圍裡折行 */
-.stock-margins-page__remark-text {
-  display: block;
-  position: sticky;
-  left: 16px;
-  max-width: min(40em, calc(100vw - 64px));
 }
 </style>

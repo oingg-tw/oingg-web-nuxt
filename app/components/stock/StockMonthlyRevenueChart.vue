@@ -35,7 +35,9 @@ const chartEntries = computed<LineChartEntry[]>(() =>
       // null stays null — a company listed within the last year has no year-ago month; drawing 0 would invent a 100% collapse.
       [YOY_CODE]: { value: entry.yoyChangePct, nullReason: entry.yoyChangePctNullReason ?? null },
       [AMOUNT_CODE]: { value: monthlyRevenueHundredMillion(entry.currentMonthRevenue) }
-    }
+    },
+    // 月營收更正過（2026-11-22）：提示框接在數字下面
+    remark: periodNotesText([entry]) || undefined
   }))
 )
 // 近N年（2026-09-30「補區間選單」）與自訂區間：useChartPeriod＋SharedChartCard。**perYear 是 12**：月頻率的近5年是 60 個月。

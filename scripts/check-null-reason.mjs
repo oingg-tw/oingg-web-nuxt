@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict'
 import { NULL_REASON_LABELS, nullReasonShortText, periodNotesText, periodNoteText, semiannualWindowNote, screenerNullText } from '../app/utils/metric-null-reason.ts'
 import { trimEmptyEnds, undisclosedQuarter } from '../app/utils/metric-history-points.ts'
+import { withPeriodFacts } from '../shared/utils/metrics-history.ts'
 
 // 只在半年報揭露的資本適足率：Q1、Q3 沒有值整期拿掉，有值照留；其他指標的空季照舊是缺口
 const car = (quarter, value) => ({ fiscalQuarter: quarter, values: { bankCarRatio: { value, nullReason: value === null ? 'missing_input' : null } } })
@@ -72,5 +73,31 @@ assert.equal(periodNoteText({ code: 'operating_expense_not_itemized', reason: 't
 assert.equal(periodNoteText({ code: 'something_new' }), null)
 const shared = { code: 'operating_expense_not_itemized', reason: 'financial_industry_format', unitemizedAmount: 624988 }
 assert.equal(periodNotesText([{ notes: [shared] }, { notes: [shared] }, null, { notes: [] }]), '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。')
+
+// 財報更正、重編與沒申報的期別（數據中台 A 批，2026-11-22）：句子、短措辭，以及 withPeriodFacts 併進格子
+assert.equal(periodNoteText({ code: 'financial_report_corrected', announcementDate: '2026-11-16' }), '這一期的財報在 2026-11-16 更正過，數字是更正後的。')
+assert.equal(periodNoteText({ code: 'financial_report_restated', announcementDate: '2026-04-02' }), '這一期的財報在 2026-04-02 重編，數字是重編後的。')
+assert.equal(periodNoteText({ code: 'monthly_revenue_corrected' }), '這個月的營收更正過，數字是更正後的。')
+assert.equal(nullReasonShortText('no_filing'), '未申報')
+assert.equal(nullReasonShortText('unsupported_format'), '無法計算')
+const cell = value => ({ value, nullReason: null, knowledgeDate: '2026-11-16', knowledgeDateIsFallback: false })
+const corrected = { code: 'financial_report_corrected', announcementDate: '2026-11-16' }
+const facts = withPeriodFacts(
+  [{ fiscalYear: 2025, fiscalQuarter: 1, values: { eps: cell(1), roe: cell(2) } }, { fiscalYear: 2025, fiscalQuarter: 3, values: { eps: cell(3), roe: null }, notes: [corrected] }],
+  ['eps', 'roe'],
+  [{ fiscalYear: 2024, fiscalQuarter: 4, nullReason: 'no_filing' }, { fiscalYear: 2025, fiscalQuarter: 2, nullReason: 'no_filing' }, { fiscalYear: 2025, fiscalQuarter: 4, nullReason: 'unsupported_format' }]
+)
+// 有值的格子不動（3259 的 eps 有值、absentPeriods 卻列成 unsupported_format）
+assert.equal(withPeriodFacts([{ fiscalYear: 2025, fiscalQuarter: 1, values: { eps: cell(-0.51) } }], ['eps'], [{ fiscalYear: 2025, fiscalQuarter: 1, nullReason: 'unsupported_format' }])[0].values.eps.value, -0.51)
+// 比第一期早的不補；中間與最新的補成帶原因的空格；更正接到那一期有值的格子，沒有紀錄的格子照舊是 null
+assert.deepEqual(facts.map(entry => `${entry.fiscalYear}Q${entry.fiscalQuarter}`), ['2025Q1', '2025Q2', '2025Q3', '2025Q4'])
+assert.equal(nullReasonShortText(facts[1].values.eps.nullReason), '未申報')
+assert.equal(periodNotesText([facts[1].values.eps, facts[1].values.roe]), '沒有申報 XBRL 財報，所以沒有數字。')
+assert.equal(periodNotesText([facts[2].values.eps, facts[2].values.roe]), '這一期的財報在 2026-11-16 更正過，數字是更正後的。')
+assert.equal(facts[2].values.roe, null)
+assert.equal(periodNotesText([facts[3].values.eps]), '財報格式還讀不到，所以算不出來。')
+assert.equal(periodNotesText([facts[0].values.eps]), '')
+// 月營收的列只有 notes
+assert.equal(periodNotesText([{ notes: [{ code: 'monthly_revenue_corrected', announcementDate: '2026-11-20' }] }]), '這個月的營收在 2026-11-20 更正過，數字是更正後的。')
 
 console.log('check-null-reason: ok')

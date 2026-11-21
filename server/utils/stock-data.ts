@@ -55,7 +55,7 @@ export const cachedMetricsHistory = defineCachedFunction(
       // 查詢參數 timeframe（2026-10-10 起；原本是 basis，見 useMetricsHistory.ts）
       query: { metricCodes: codes.join(','), timeframe, limit }
     })
-    return { timeframe, codes, limit, entries: response.entries, total: response.total }
+    return { timeframe, codes, limit, entries: withPeriodFacts(response.entries, codes), total: response.total }
   },
   {
     name: 'stock-metrics-history',

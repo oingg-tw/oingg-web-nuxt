@@ -118,11 +118,16 @@ const { breadcrumbs } = useStockPageSeo({
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in descending" :key="entry.yearMonth">
-            <th scope="row">{{ entry.yearMonth }}</th>
-            <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.yoyChangePct, entry.yoyChangePctNullReason)">{{ monthlyRevenueRateText(entry.yoyChangePct, entry.yoyChangePctNullReason) }}</td>
-            <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason)">{{ monthlyRevenueRateText(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason) }}</td>
-          </tr>
+          <template v-for="entry in descending" :key="entry.yearMonth">
+            <tr>
+              <th scope="row">{{ entry.yearMonth }}</th>
+              <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.yoyChangePct, entry.yoyChangePctNullReason)">{{ monthlyRevenueRateText(entry.yoyChangePct, entry.yoyChangePctNullReason) }}</td>
+              <td class="seo-table__num" :title="monthlyRevenueRateTitle(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason)">{{ monthlyRevenueRateText(entry.cumulativeChangePct, entry.cumulativeChangePctNullReason) }}</td>
+            </tr>
+            <tr v-if="periodNotesText([entry])" class="seo-table__remark">
+              <td colspan="3"><span class="seo-table__remark-text">{{ periodNotesText([entry]) }}</span></td>
+            </tr>
+          </template>
         </tbody>
       </SharedTable>
     </StockQuestionSection>

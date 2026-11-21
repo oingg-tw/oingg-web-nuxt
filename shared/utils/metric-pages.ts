@@ -152,9 +152,11 @@ export interface MetricPageDefinition {
   // 合約負債的公司算 0（2026 年第二季約四分之一的公司，2330 就是），金額若有是併在其他負債裡，所以 0 不一定是沒有。說「沒有單獨列出」，
   // 跟數據中台三支指標的限制段同一個說法（48fa7c5 上 DEV：「0 是資產負債表上沒有單獨列示」）
   zeroText?: string
-  // 只有銀行與金控有數字（2026-11-22 的資本適足率、逾期放款比率、備抵呆帳覆蓋率）：其他公司沒有任何一期，頁面說「不是銀行或金控」，
-  // 不寫「目前沒有資料」；sitemap 也不列（試點的代號 1101～1599 都不是金融股，列了就是 noindex 的網址）
-  bankOnly?: true
+  // 只有銀行（與旗下有銀行的金控）有數字的指標（2026-11-22 的資本適足率、逾期放款比率、備抵呆帳覆蓋率），值是「誰才有」那半句：沒有
+  // 任何一期有值的公司，頁面說「X 沒有資本適足率：只有銀行申報資本適足率。」，不畫空圖、不寫「目前沒有資料」。一般公司沒有列，金控、證券、
+  // 保險公司有列、值全是空的（同日實測 2881、6005、2832 的資本適足率），所以不寫「不是銀行或金控」。sitemap 也不列（試點的代號 1101～1599
+  // 都不是金融股，列了就是 noindex 的網址）
+  bankOnly?: string
 }
 
 // 2026-09-26：topic 改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 name 對齊——篩選器與指標歷史表直接讀即時型錄，
@@ -256,9 +258,9 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 銀行與金控的三個比率（2026-11-22，使用者：「已經在收，接上就有的請設計」→「按照建議執行」，設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz）。
   // 型錄 2026-09-21 起就有，當時「約 95% 的代號不適用」沒開頁；金融股頁面做齊之後補上。資本適足率銀行只在半年報、年報揭露（undisclosedQuarter）；
   // 金控的這一支目前全是 missing_input，等數據中台讀金控的集團資本適足率
-  { slug: 'capital-adequacy', metricCode: 'bankCarRatio', timeframe: 'Q', topic: '資本適足率', titleKeywords: '銀行資本適足率', bankOnly: true, related: ['npl-ratio', 'npl-coverage', 'net-revenue'] },
-  { slug: 'npl-ratio', metricCode: 'bankNplRatio', timeframe: 'Q', topic: '逾期放款比率', titleKeywords: '銀行逾期放款比率與放款品質', bankOnly: true, related: ['npl-coverage', 'capital-adequacy', 'net-revenue'] },
-  { slug: 'npl-coverage', metricCode: 'bankNplCoverageRatio', timeframe: 'Q', topic: '備抵呆帳覆蓋率', titleKeywords: '銀行備抵呆帳覆蓋率', bankOnly: true, related: ['npl-ratio', 'capital-adequacy', 'net-revenue'] },
+  { slug: 'capital-adequacy', metricCode: 'bankCarRatio', timeframe: 'Q', topic: '資本適足率', titleKeywords: '銀行資本適足率', bankOnly: '只有銀行申報資本適足率', related: ['npl-ratio', 'npl-coverage', 'net-revenue'] },
+  { slug: 'npl-ratio', metricCode: 'bankNplRatio', timeframe: 'Q', topic: '逾期放款比率', titleKeywords: '銀行逾期放款比率與放款品質', bankOnly: '只有銀行與旗下有銀行的金控有這個數字', related: ['npl-coverage', 'capital-adequacy', 'net-revenue'] },
+  { slug: 'npl-coverage', metricCode: 'bankNplCoverageRatio', timeframe: 'Q', topic: '備抵呆帳覆蓋率', titleKeywords: '銀行備抵呆帳覆蓋率', bankOnly: '只有銀行與旗下有銀行的金控有這個數字', related: ['npl-ratio', 'capital-adequacy', 'net-revenue'] },
   { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本占營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
   { slug: 'gross-profit', metricCode: 'grossProfitPerShare', timeframe: 'TTM', topic: '每股毛利', titleKeywords: '每股毛利逐季數據', related: ['gross-margin', 'cost-of-goods-sold', 'operating-income'] },
   { slug: 'operating-expense', metricCode: 'operatingExpensePerShare', timeframe: 'TTM', partsNote: '預期信用減損是正數時是損失，負數時是迴轉利益（例如收回先前提列的呆帳），會讓營業費用變少。', topic: '每股營業費用', titleKeywords: '每股營業費用與推銷管理研發', partMetricCodes: ['sellingExpensePerShare', 'administrativeExpensePerShare', 'researchAndDevelopmentExpensePerShare', 'impairmentLossGainIfrs9PerShare', 'bankEmployeeBenefitsExpensePerShare', 'bankDepreciationAmortisationExpensePerShare', 'bankGeneralAdministrativeExpensePerShare'], related: ['operating-expense-composition', 'selling-expense', 'administrative-expense', 'rd-expense'] },
@@ -399,7 +401,9 @@ export const METRIC_PAGE_ALIASES: Record<string, string> = {
   livePbRatio: 'pb-ratio', exchangePbRatio: 'pb-ratio', pbRatioRiverBand: 'pb-ratio',
   psrRiverBand: 'psr', liveShareholderYield: 'shareholder-yield',
   dividendYield: 'dividend', cashDividendYield: 'dividend', liveCashDividendYield: 'dividend', dividendPerShare: 'dividend', liveDividendPerShare: 'dividend',
-  threeMarginsRising: 'margins'
+  threeMarginsRising: 'margins',
+  // 會計師示警（2026-11-22）：基本資料頁有「會計師對X的財報有沒有示警？」那一段，摘要卡也寫著
+  auditorWarning: 'profile'
 }
 
 export function metricPageSlug(metricCode: string): string | null {

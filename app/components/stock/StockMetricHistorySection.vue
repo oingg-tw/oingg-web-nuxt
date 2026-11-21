@@ -68,8 +68,8 @@ const rows = computed(() => {
             <!-- 算不出數值的列不寫財報公告日（2026-10-17「沒上市 那為什麼會有資料時間?」）：那個日期是分母的財報公布日，不是這個數字的 -->
             <td>{{ entry.point?.value != null ? entry.point.knowledgeDate ?? '－' : '－' }}</td>
           </tr>
-          <tr v-if="remark" class="stock-metric-history__remark">
-            <td colspan="3"><span class="stock-metric-history__remark-text">{{ remark }}</span></td>
+          <tr v-if="remark" class="seo-table__remark">
+            <td colspan="3"><span class="seo-table__remark-text">{{ remark }}</span></td>
           </tr>
         </template>
       </tbody>
@@ -77,24 +77,3 @@ const rows = computed(() => {
   </StockQuestionSection>
 </template>
 
-
-<style scoped>
-/* 那一期的說明（2026-11-21）：接在那一期底下、跟那一期之間不畫線；灰字、可以折行（表格的格子預設不折） */
-.stock-metric-history__remark td {
-  padding-top: 0;
-  white-space: normal;
-  color: var(--el-text-color-secondary);
-}
-
-tr:has(+ .stock-metric-history__remark) > * {
-  border-bottom: 0;
-}
-
-/* 表格比畫面寬、可以左右捲時，說明跟表格一樣寬會被切掉一半：貼在捲動區的左邊、寬度不超過畫面，在看得到的範圍裡折行 */
-.stock-metric-history__remark-text {
-  display: block;
-  position: sticky;
-  left: 16px;
-  max-width: min(40em, calc(100vw - 64px));
-}
-</style>
