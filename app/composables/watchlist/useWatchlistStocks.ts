@@ -16,8 +16,9 @@ import type { UniverseSource } from '~/composables/screener/useUniverseScreener'
 //     現金看 paymentDate（只配股的是 null）、配股看 stockDividendDistributionDate，取還沒到的較早那天——
 //     共用的 useExDividendNotices 會把 realized 濾掉（它的呼叫端問的是下一次除息），這裡刻意不用它。
 //
-// 漲跌用 stock.previousClose（業務中台 527c68c）——前一個「真的有成交」的交易日收盤，是原始收盤價不是
-// 除息參考價，所以除息當天的漲跌含配息的那一跌（跟券商 App 的「漲跌」不同，那是對參考價）。
+// 漲跌讀數據中台對交易所參考價算的漲跌與漲跌幅（2026-11-22，69bd3d3）：普通股是型錄的 livePriceChange、livePriceChangeRate，ETF 與特別股是
+// 各自來源的 priceChange、priceChangeRate，跟券商 App 一樣，除息、除權那天不算成下跌。原本用 stock.previousClose 自己算，那是原始收盤價，
+// 除息當天的漲跌含配息的那一跌
 //
 // ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price 與
 // previousClose 都有值。普通股型錄的 325 個欄位它們幾乎都沒有值（2026-11-06 量：ETF 0 個、特別股 1 個），所以清單依類別分段，
@@ -81,8 +82,10 @@ function nextEventOf(notices: ExDividendNotice[], today: string): DividendEvent 
 }
 
 
-// 不論表格上有哪些欄位都要抓的：股價（收盤日也從這裡來）與前一日收盤（算漲跌）。三種類別都有
-const ALWAYS_FIELDS = ['stock.price', 'stock.previousClose']
+// 不論表格上有哪些欄位都要抓的：股價（收盤日也從這裡來，三種類別都有）與普通股的漲跌、漲跌幅
+const ALWAYS_FIELDS = ['stock.price', 'livePriceChange.EOD', 'livePriceChangeRate.EOD']
+// ETF、特別股的漲跌在各自的來源（POST /etf-screener、GET /stocks/preferred-stocks），不論表格上有哪些欄位都要
+const UNIVERSE_CHANGE_FIELDS = ['priceChange', 'priceChangeRate']
 // ponytail: /screener/values 一次 200 檔、ex-dividend-notices 一次 100 檔；超過的那幾檔數字是空的。
 // 觀察清單目前的額度遠低於此，真的有人超過再分批。
 const QUOTE_MAX = 200
@@ -108,7 +111,7 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<Record<Watc
   const codesOfKind = (kind: 'etf' | 'preferred', list: string[]) => list.filter(code => kindOf(code) === kind)
   async function universeRows(kind: 'etf' | 'preferred', symbols: string[]) {
     if (!symbols.length) return []
-    const { rows } = await sources[kind].run({ filters: [], columns: fields.value[kind].map(snapshotField), sort: null, page: 1, pageSize: QUOTE_MAX, symbols })
+    const { rows } = await sources[kind].run({ filters: [], columns: [...new Set([...fields.value[kind].map(snapshotField), ...UNIVERSE_CHANGE_FIELDS])], sort: null, page: 1, pageSize: QUOTE_MAX, symbols })
     return rows
   }
 
@@ -177,10 +180,9 @@ export function useWatchlistStocks(codes: Ref<string[]>, fields: Ref<Record<Watc
     const next = { ...quotes.value }
     for (const code of missing.filter(item => !retry.has(item))) {
       const raw = Object.fromEntries(Object.entries(bySymbol.get(code) ?? {}).map(([field, cell]) => [field, joinedCell(cell)]))
-      const price = numericValue(raw['stock.price']?.value)
-      const previous = numericValue(raw['stock.previousClose']?.value)
-      const change = price !== null && previous !== null && previous !== 0 ? price - previous : null
-      const changePercent = change !== null ? (change / previous!) * 100 : null
+      const universe = universeValues.get(code)
+      const change = numericValue((universe ? universe[snapshotFieldId('priceChange')] : raw['livePriceChange.EOD'])?.value)
+      const changePercent = numericValue((universe ? universe[snapshotFieldId('priceChangeRate')] : raw['livePriceChangeRate.EOD'])?.value)
       const nextDividendEvent = nextEventOf(notices?.notices[code] ?? [], today)
       next[code] = {
         values: {

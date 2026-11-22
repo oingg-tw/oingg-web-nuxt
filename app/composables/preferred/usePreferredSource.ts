@@ -40,6 +40,8 @@ const CATEGORIES = [
     { field: 'close', name: '收盤價', unit: '元' },
     // 收盤價漲跌幅（2026-11-22，使用者 11-20「篩選欄位要多一個收盤價漲跌幅」）：對交易所的參考價算，除息、除權那天不算成下跌；跟 close 同一天
     { field: 'priceChangeRate', name: '收盤價漲跌幅', unit: '%' },
+    // 漲跌金額（同日，觀察清單的「漲跌」也讀它）：收盤減參考價
+    { field: 'priceChange', name: '收盤價漲跌', unit: '元' },
     { field: 'issuePrice', name: '發行價', unit: '元' },
     { field: 'premiumRatePct', name: '溢價率', unit: '%' }
   ]),
