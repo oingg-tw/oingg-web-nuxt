@@ -79,7 +79,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
   // 能釘，側邊欄也就從自選指標進得去。排第一組：先知道這是什麼公司（設計頁 https://claude.ai/artifact/56HsmA1SowvPxnZ4vJzha4）
   {
     label: '公司',
-    answer: '這家公司是什麼、誰在經營、誰在持有、內部人有沒有申報轉讓、股本多大、誰簽證財報、怎麼聯絡，最近又有哪些新聞。',
+    answer: '這家公司是什麼、誰在經營、誰在持有、內部人有沒有申報轉讓、轉投資了哪些公司、股本多大、誰簽證財報、怎麼聯絡，最近又有哪些新聞。',
     children: [
       // 說明寫「股本」：讀者搜的是股本，頁上的問句也是「股本多大」；括號留著「實收資本額」，搜資本額也找得到（2026-11-15，使用者：「指標總覽
       // 搜尋 股本 找不到任何東西?」）
@@ -88,6 +88,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '持有人結構', to: code => `/stock/${code}/holders`, hook: '持有幾張的人各有多少，哪一類股東持有最多' },
       // 內部人申報轉讓（2026-11-22，數據中台 B 批第 12 項）：只寫身分與人數，不寫姓名
       { label: '內部人申報轉讓', to: code => `/stock/${code}/insider-transfers`, hook: '董監、經理人與大股東申報要轉讓多少持股' },
+      // 轉投資（2026-11-23，數據中台第 5 項）：大陸投資與被投資公司的財報附註
+      { label: '轉投資', to: code => `/stock/${code}/investments`, hook: '投資了哪些子公司與關聯企業，在大陸投資多少' },
       // 近期新聞（2026-11-12）：2026-11-16 起能釘成指標速覽的卡片（StockNewsCard），不在預設裡。說明不寫期間：11-15 拉長到一年，
       // 新聞從 2026-11 才開始收，同新聞頁的答句
       { label: '近期新聞', to: code => `/stock/${code}/news`, hook: '最近的新聞標題與來源，點了到原網站看全文' },
@@ -297,6 +299,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '有息負債權益比', perspective: '倍數', to: code => `/stock/${code}/interest-bearing-debt-to-equity`, hook: '要付利息的債，相當於股東資本的幾倍' },
       { label: '長期負債對淨流動資產比', perspective: '倍數', to: code => `/stock/${code}/long-term-debt-to-net-current-assets`, hook: '長期的債，短期資產扛不扛得住' },
       { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' },
+      // 背書保證與資金貸與（2026-11-23，數據中台第 4 項）：財報附註的或有負債與借出去的錢，比率只算集團外
+      { label: '背書保證與資金貸與', perspective: '占比', to: code => `/stock/${code}/guarantees`, hook: '替集團外的人擔保、借錢給別人多少，跟關係人買賣有多大' },
       // 銀行與金控的三個比率（2026-11-22）：其他公司點進去是「不是銀行或金控」，hook 先講清楚
       { label: '資本適足率', perspective: '占比', to: code => `/stock/${code}/capital-adequacy`, hook: '銀行與金控的自有資本，夠不夠吸收放款與投資可能的損失' },
       { label: '逾期放款比率', perspective: '占比', to: code => `/stock/${code}/npl-ratio`, hook: '銀行放出去的款，有多少已經逾期沒還' },

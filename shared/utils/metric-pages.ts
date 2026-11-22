@@ -429,7 +429,10 @@ export const METRIC_PAGE_ALIASES: Record<string, string> = {
   // 逾期占比（同日，B 批第 7 項）：應收帳款帳齡頁
   receivablesOverdueRatio: 'receivables-aging',
   // 金控集團資本適足率（同日）：金控的資本適足率頁畫的就是它（METRIC_PAGES 的 holdingMetricCode）
-  groupCapitalAdequacyRatio: 'capital-adequacy'
+  groupCapitalAdequacyRatio: 'capital-adequacy',
+  // 第 4、5 項（2026-11-23）：背書保證與資金貸與頁（含關係人交易那一段）、轉投資頁
+  endorsementGuaranteeToEquity: 'guarantees', loansToOthersToEquity: 'guarantees', relatedPartySalesToRevenue: 'guarantees', relatedPartyPurchasesToCostOfRevenue: 'guarantees',
+  mainlandChinaInvestmentToEquity: 'investments'
 }
 
 export function metricPageSlug(metricCode: string): string | null {

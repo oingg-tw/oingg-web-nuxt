@@ -2,10 +2,10 @@
 import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 import { NET_REVENUE_MARGIN_CODE, usesNetRevenueMargin } from '#shared/types/stock-margins-page'
-// 財報三率（/margins）與安全韌性（/solvency）的比率折線圖卡（2026-10-16 從兩頁抽出：指標速覽要畫同一張，「指標速覽沒有顯示所有的
+// 財報三率（/margins）、安全韌性（/solvency）、背書保證與資金貸與（/guarantees）、轉投資（/investments）的比率折線圖卡（2026-10-16 從兩頁抽出：指標速覽要畫同一張，「指標速覽沒有顯示所有的
 // 指標圖」）。外殼、近N年與自訂區間在 SharedChartCard＋useChartPeriod，區間是這張圖自己的，只切圖、不切頁面上的表。
 const props = defineProps<{
-  page: 'margins' | 'solvency'
+  page: 'margins' | 'solvency' | 'guarantees' | 'investments'
   // 由舊到新，原樣傳進來；note 交給提示框（財報三率的近四季，semiannualWindowNote）
   entries: (MetricsHistoryEntry & { note?: string; remark?: string })[]
 }>()
@@ -15,7 +15,7 @@ const basis = defineModel<'TTM' | 'Q'>('basis')
 // 一張圖三條線。三率 2026-09-30 曾拆成上下兩張（高齡友善的折線規格一張圖最多兩條線），2026-10-24 合回一張（使用者：「三率的關係
 // 正名 財報三率 並且 合併 三條線，也就是把圖表合併成一個」）。2026-09-30 抽 61 檔、912 期量過：營業利益率沒有一期高過毛利率
 // （差距＝營業費用率）；稅後淨利率有 46.3% 的期別高過營業利益率，那兩條交叉的地方就是業外損益大過所得稅
-const SERIES: Record<'margins' | 'solvency', readonly LineSeriesSpec[]> = {
+const SERIES: Record<'margins' | 'solvency' | 'guarantees' | 'investments', readonly LineSeriesSpec[]> = {
   margins: [
     { code: 'grossMargin', name: '毛利率', lineType: 'solid', symbol: 'circle', marginCap: true },
     { code: 'operatingMargin', name: '營業利益率', lineType: 'dashed', symbol: 'triangle', marginCap: true },
@@ -25,6 +25,15 @@ const SERIES: Record<'margins' | 'solvency', readonly LineSeriesSpec[]> = {
     { code: 'currentRatio', name: '流動比率', lineType: 'solid', symbol: 'circle' },
     { code: 'quickRatio', name: '速動比率', lineType: 'dashed', symbol: 'triangle' },
     { code: 'cashRatio', name: '現金比率', lineType: 'dotted', symbol: 'rect' }
+  ],
+  // 背書保證與資金貸與（2026-11-23，設計稿第 4 張）：兩個占淨值比都只算集團外，同一個分母
+  guarantees: [
+    { code: 'endorsementGuaranteeToEquity', name: '背書保證占淨值比', lineType: 'solid', symbol: 'circle' },
+    { code: 'loansToOthersToEquity', name: '資金貸與占淨值比', lineType: 'dashed', symbol: 'triangle' }
+  ],
+  // 轉投資（同日，第 5 張）：大陸投資帳面占淨值比
+  investments: [
+    { code: 'mainlandChinaInvestmentToEquity', name: '大陸投資帳面占淨值比', lineType: 'solid', symbol: 'circle' }
   ]
 }
 // 銀行與金控（2026-11-20）：一條純益率，不畫券商口徑的三率（usesNetRevenueMargin）。一期值都沒有的線不畫：證券沒有毛利率、保險的近四季

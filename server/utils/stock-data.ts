@@ -325,6 +325,10 @@ const SERIES_GROUPS = {
   TTM_CYCLE_20: { timeframe: 'TTM', codes: ['inventoryDays', 'receivablesDays', 'payablesDays', 'operatingCycle', 'cashConversionCycle', 'inventoryToRevenueRatio'], limit: 20 },
   // 基本資料頁的「經營團隊一年領多少？」（2026-11-22，數據中台 B 批第 6 項）：年報才有，近 5 年
   FY_KEY_MGMT_5: { timeframe: 'FY', codes: ['keyManagementCompensation', 'keyManagementShareBasedPayment', 'keyManagementCompensationToNetIncome'], limit: 5 },
+  // 背書保證與資金貸與頁（2026-11-23，數據中台第 4 項）：圖的兩條占淨值比，加上關係人交易那一段答句的銷貨、進貨比；近 8 年
+  Q_GUARANTEES_32: { timeframe: 'Q', codes: ['endorsementGuaranteeToEquity', 'loansToOthersToEquity', 'relatedPartySalesToRevenue', 'relatedPartyPurchasesToCostOfRevenue'], limit: STOCK_CHART_HISTORY_LIMIT },
+  // 轉投資頁（同日，第 5 項）：大陸投資帳面占淨值比，近 8 年
+  Q_MAINLAND_32: { timeframe: 'Q', codes: ['mainlandChinaInvestmentToEquity'], limit: STOCK_CHART_HISTORY_LIMIT },
 } satisfies Record<string, SeriesGroupPlan>
 
 export type SeriesGroupName = keyof typeof SERIES_GROUPS
@@ -363,7 +367,9 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // 典型 19 期，取 20 不會浪費也不會截掉多少。
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
-  profile: { groups: ['FY_KEY_MGMT_5'] }
+  profile: { groups: ['FY_KEY_MGMT_5'] },
+  guarantees: { groups: ['Q_GUARANTEES_32'] },
+  investments: { groups: ['Q_MAINLAND_32'] }
 }
 
 export function isStockSeriesPage(value: string): value is StockSeriesPage {

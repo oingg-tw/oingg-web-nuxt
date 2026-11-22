@@ -10,7 +10,7 @@ const base = process.env.BASE ?? 'http://localhost:3000'
 const code = process.env.CODE ?? '2330'
 const YEARS = ['近1年', '近2年', '近3年', '近5年', '近8年']
 // 有近N年的頁面；三張歷史表截在 20 列的頁面另外量表格
-const PAGES = ['', 'dupont', 'margins', 'solvency', 'dividend', 'monthly-revenue', 'monthly-revenue-growth', 'current-asset-composition', 'non-current-asset-composition', 'debt-composition', 'equity-composition', 'cash-flow-composition', 'operating-expense-composition', 'equity-source', 'roe', 'eps', 'gross-margin']
+const PAGES = ['', 'dupont', 'margins', 'solvency', 'guarantees', 'investments', 'dividend', 'monthly-revenue', 'monthly-revenue-growth', 'current-asset-composition', 'non-current-asset-composition', 'debt-composition', 'equity-composition', 'cash-flow-composition', 'operating-expense-composition', 'equity-source', 'roe', 'eps', 'gross-margin']
 const TABLE_PAGES = new Set(['dupont', 'margins', 'solvency'])
 
 let failures = 0

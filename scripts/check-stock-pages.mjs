@@ -34,7 +34,7 @@ const METRIC_ROUTES = new Set(METRIC_PAGES.map(page => `/${page.slug}`))
 const BADGE_ROUTES = new Set(BADGE_PAGES.map(page => `/${page.slug}`))
 
 // Routes with their own page file, which no registry knows about.
-const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/monthly-revenue', '/monthly-revenue-growth', '/metrics', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/guarantees', '/investments', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/monthly-revenue', '/monthly-revenue-growth', '/metrics', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // 迭代時只跑受影響的那幾頁（2026-09-29）。`STOCK_PAGES_ROUTES=roic,metrics` 逗號分隔，`index` 指
 // 個股首頁。跟 STOCK_PAGES_WIDTH／STOCK_PAGES_SYMBOL 同一個慣例。實測 2 條 29 秒，整份是 68 條 × 兩個寬度。
@@ -54,7 +54,7 @@ const BANK_ONLY_ROUTES = new Set(['/net-revenue', '/net-revenue-composition', '/
 const BANK_SYMBOLS = new Set(['2801', '2834', '2881', '2882', '2891'])
 const ALL_ROUTES = [...FIXED_ROUTES, '/net-revenue-composition', '/asset-composition', ...registrySlugs].filter(route => !BANK_ONLY_ROUTES.has(route) || BANK_SYMBOLS.has(symbol))
 // 掛 StockMetricGuide 的路由：四個關係頁加上所有指標／徽章頁（2026-10-12）
-const GUIDE_ROUTES = new Set(['/dupont', '/cash-cycle', '/margins', '/dividend-fill', ...registrySlugs])
+const GUIDE_ROUTES = new Set(['/dupont', '/cash-cycle', '/margins', '/dividend-fill', '/guarantees', '/investments', ...registrySlugs])
 const routeFilter = (process.env.STOCK_PAGES_ROUTES ?? '')
   .split(',')
   .map(entry => entry.trim())
