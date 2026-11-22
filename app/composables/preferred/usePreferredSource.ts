@@ -38,6 +38,8 @@ const CATEGORIES = [
   ]),
   snapshotCategory('price', '價格', 1, [
     { field: 'close', name: '收盤價', unit: '元' },
+    // 收盤價漲跌幅（2026-11-22，使用者 11-20「篩選欄位要多一個收盤價漲跌幅」）：對交易所的參考價算，除息、除權那天不算成下跌；跟 close 同一天
+    { field: 'priceChangeRate', name: '收盤價漲跌幅', unit: '%' },
     { field: 'issuePrice', name: '發行價', unit: '元' },
     { field: 'premiumRatePct', name: '溢價率', unit: '%' }
   ]),
