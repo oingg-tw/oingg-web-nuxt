@@ -31,6 +31,11 @@ const limitOf = (tier: PlanQuotas['tier'], row: (typeof QUOTA_ROWS)[number]) =>
         <th scope="row">個股分析、篩選結果、資料來源</th>
         <td colspan="2">兩個方案完全相同</td>
       </tr>
+      <!-- 2026-11-22 投信投顧法自檢（使用者交下的研究報告建議付費賣點旁註明，使用者選「現在就加」） -->
+      <tr>
+        <th scope="row">個人化投資建議</th>
+        <td colspan="2">兩個方案都不提供</td>
+      </tr>
       <tr v-for="row in QUOTA_ROWS" :key="row.resource" :class="{ 'plan-compare__hit': row.resource === highlight }">
         <th scope="row">{{ row.label }}</th>
         <td v-for="tier in TIERS" :key="tier">
