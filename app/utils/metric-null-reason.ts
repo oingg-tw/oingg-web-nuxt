@@ -32,6 +32,10 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // unsupported_format 照舊「無法計算」。兩句也是那一期底下的說明（periodNotesText），手機沒有滑鼠移上去的 title
   no_filing: '沒有申報 XBRL 財報，所以沒有數字',
   unsupported_format: '財報格式還讀不到，所以算不出來',
+  // 逾期占比算不出來的三種（數據中台 B 批第 7 項，2026-11-22；應收帳款帳齡頁與篩選的 receivablesOverdueRatio）
+  invoice_age_basis: '這家公司照發票日（立帳日）算帳齡，不分有沒有逾期',
+  unparsed_rows: '帳齡附註裡有讀不懂的分段，例如只寫「逾期 365 天」，分不出是以內還是以上',
+  no_not_overdue_row: '帳齡附註沒有列出未逾期的金額',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'

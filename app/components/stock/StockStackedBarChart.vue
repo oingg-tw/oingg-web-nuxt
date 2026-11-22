@@ -43,6 +43,8 @@ const props = defineProps<{
   // 小到看不見的層併進哪一層（層名對層名，例如 流動金融資產 → 其他流動資產；2026-11-20 起的全站規則，門檻與規則在 foldSmallLayers）。
   // 不給的話只是不畫全是 0 的層
   others?: Record<string, string>
+  // 縱軸上限：100% 堆疊（應收帳款帳齡，2026-11-22）傳 100，各層加總的浮點數略超過 100 時 ECharts 會把軸拉到 120
+  max?: number
 }>()
 const formatValue = (value: number) => (props.valueFormatter ?? (v => formatSignificantDigits(v, 4)))(value)
 // 圖上真正畫的層：小項併好、全是 0 的拿掉。圖例、提示框、顏色與合計線都讀這一份
@@ -118,6 +120,7 @@ const chartOption = computed(() => {
     yAxis: {
       type: 'value',
       name: props.unit,
+      ...(props.max === undefined ? {} : { max: props.max })
     },
     series: [
       ...layers.map((layer, index) => ({

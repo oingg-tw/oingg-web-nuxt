@@ -48,6 +48,8 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily
   // 股權分散表（2026-11-22，持有人結構頁）：MOPS 一年一期，一天的快取就夠。內部人申報轉讓（同日，/insider-transfers）：兩所每天出表，一小時
   { pattern: /^stocks\/\d{4}\/shareholder-distribution$/, ttl: 'daily' },
   { pattern: /^stocks\/\d{4}\/insider-transfers$/, ttl: 'hourly' },
+  // 應收帳款帳齡（同日，/receivables-aging）：一季一份財報附註，一天的快取就夠
+  { pattern: /^stocks\/\d{4}\/receivables-aging$/, ttl: 'daily' },
   { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly', query: { symbols: /^[0-9A-Z]{4,6}(,[0-9A-Z]{4,6}){0,99}$/ } },
   // metrics 2026-10-16 拿掉：指標目錄改由 /api/hub/filter-schema（精簡版）與 /api/hub/metrics（完整版）提供，同一份快取
   // 公開、不分使用者的型錄與清單（2026-10-16）：原本走不快取的 /api/core，每位訪客打開篩選頁、搜尋框都各打一次上游（業務中台依 IP

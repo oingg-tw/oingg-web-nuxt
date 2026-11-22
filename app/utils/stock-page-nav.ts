@@ -247,6 +247,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '存貨占營收比', perspective: '占比', to: code => `/stock/${code}/inventory-to-revenue`, hook: '倉庫裡的貨，大約等於一年營收的幾成' },
       { label: '存貨週轉天數', perspective: '天數', to: code => `/stock/${code}/inventory-days`, hook: '貨平均要在倉庫放幾天才賣出去' },
       { label: '應收帳款收現天數', perspective: '天數', to: code => `/stock/${code}/receivables-days`, hook: '東西賣出去之後，平均等幾天才收到錢' },
+      // 2026-11-22（數據中台 B 批第 7 項）：財報附註的應收帳款帳齡
+      { label: '應收帳款帳齡', perspective: '組成', to: code => `/stock/${code}/receivables-aging`, hook: '應收帳款有多少還沒逾期，逾期的拖了多久' },
       { label: '應付帳款付現天數', perspective: '天數', to: code => `/stock/${code}/payables-days`, hook: '跟供應商買了東西，平均過幾天才付錢' },
       { label: '營運週期', perspective: '天數', to: code => `/stock/${code}/operating-cycle`, hook: '從進貨、賣出去到收回貨款，整趟要幾天' },
       { label: '現金轉換循環', perspective: '天數', to: code => `/stock/${code}/cash-conversion-cycle`, hook: '錢被卡住幾天。營運週期減掉可以晚一點付的那幾天' },
