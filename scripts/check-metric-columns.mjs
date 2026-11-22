@@ -51,7 +51,7 @@ const mock = async (ctx) => {
     if (p === '/api/core/screener/values' && m === 'POST') {
       const body = JSON.parse(req.postData() ?? '{}')
       if (holdRoe && body.columns.some(({ field }) => field === 'roe.TTM')) await holdRoe.promise
-      const valueOf = (symbol, field) => (field.startsWith('roe.') ? (symbol === '2330' ? '15.2' : null) : field === 'stock.previousClose' ? '98' : '100')
+      const valueOf = (symbol, field) => (field.startsWith('roe.') ? (symbol === '2330' ? '15.2' : null) : field === 'livePriceChange.EOD' ? '2' : field === 'livePriceChangeRate.EOD' ? '2.04' : '100')
       return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: valueOf(symbol, field), knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
     }
     if (m === 'GET' || p === '/api/core/etf-screener' || /identitytoolkit|securetoken/.test(url.host + p)) return route.continue()

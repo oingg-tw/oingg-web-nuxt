@@ -105,7 +105,7 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
     if (p.startsWith('/api/core/public/shares/')) return route.fulfill({ status: 404, contentType: 'application/problem+json', body: JSON.stringify({ type: 'about:blank', title: 'Not Found', status: 404 }) })
     if (p === '/api/core/screener/values' && m === 'POST') {
       const body = JSON.parse(req.postData() ?? '{}')
-      return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: String(field === 'stock.previousClose' ? 100 : 100 + (hash(symbol + field) % 7) - 3), knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
+      return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: String(field.startsWith('livePriceChange') ? (hash(symbol) % 7) - 3 : 100 + (hash(symbol + field) % 7) - 3), knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
     }
     if (m === 'GET' || p === '/api/core/etf-screener' || /identitytoolkit|securetoken/.test(url.host + p)) return route.continue()
     calls.push(`BLOCKED ${m} ${p}`)

@@ -37,10 +37,10 @@ const mock = async (ctx) => {
     if (p === '/api/core/transactions' && m === 'GET') return route.fulfill({ json: { transactions: transactions[url.searchParams.get('symbol')] ?? [] } })
     if (p === '/api/core/shares' && m === 'GET') return route.fulfill({ json: { shares: [] } })
     if (p === '/api/core/holdings/realized' && m === 'GET') return route.fulfill({ json: { from: null, to: null, symbols: [{ symbol: '2330', realizedProfitLoss: '230000', costBasis: '294830', excludedSellCount: 0, excludedShares: 0 }], tradeStats: { sellCount: 1, winCount: 1, lossCount: 0, winRate: '1', averageWin: '230000', averageLoss: null, profitFactor: null, averageHoldingDays: '700' }, totalRealizedProfitLoss: '230000', totalCostBasis: '294830', excludedSellCount: 0, excludedShares: 0 } })
-    // 報價（公開的讀取 POST）：收盤 100、前一天 98——卡片上有市值和漲跌色，數字寬度與對比也一起量到
+    // 報價（公開的讀取 POST）：收盤 100、漲 2（2.04%，2026-11-22 起漲跌是參考價口徑的 livePriceChange）——卡片上有市值和漲跌色，數字寬度與對比也一起量到
     if (p === '/api/core/screener/values' && m === 'POST') {
       const body = JSON.parse(req.postData() ?? '{}')
-      return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: field === 'stock.previousClose' ? '98' : '100', knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
+      return route.fulfill({ json: { results: body.symbols.map(symbol => ({ symbol, values: Object.fromEntries(body.columns.map(({ field }) => [field, { value: field === 'livePriceChange.EOD' ? '2' : field === 'livePriceChangeRate.EOD' ? '2.04' : '100', knowledgeDate: '2026-10-16', nullReason: null }])) })) } })
     }
     if (m === 'GET' || /identitytoolkit|securetoken/.test(url.host + p)) return route.continue()
     blocked.push(`${m} ${p}`)
