@@ -57,10 +57,10 @@ export const agingLayerName = (bucket: AgingBucket) => GROUPS[bucket.group ?? ''
 
 const sortKey = (bucket: AgingBucket): [number, number] => [KIND_ORDER[bucket.kind] ?? 9, GROUPS[bucket.group ?? '']?.from ?? bucket.fromDays ?? -1]
 
-// 圖上各層的順序：未逾期、逾期（由短到長）、帳齡、個別評估、其他；順序固定，顏色跟著層走
-export function agingLayerNames(periods: AgingPeriod[]): string[] {
+// 圖上各層的順序：未逾期、逾期（由短到長）、帳齡、個別評估、其他；順序固定，顏色跟著層走。kinds 只取那幾類（逾期圖只要 overdue）
+export function agingLayerNames(periods: AgingPeriod[], kinds?: string[]): string[] {
   const keys = new Map<string, [number, number]>()
-  for (const bucket of periods.flatMap(period => period.buckets)) {
+  for (const bucket of periods.flatMap(period => period.buckets).filter(bucket => !kinds || kinds.includes(bucket.kind))) {
     const name = agingLayerName(bucket)
     if (!keys.has(name)) keys.set(name, sortKey(bucket))
   }
@@ -75,6 +75,21 @@ export function agingShares(period: AgingPeriod): Record<string, number> {
   for (const bucket of period.buckets) {
     const name = agingLayerName(bucket)
     shares[name] = (shares[name] ?? 0) + (bucket.amount ?? 0) / total * 100
+  }
+  return shares
+}
+
+// 圖只畫逾期的部分（2026-11-22，使用者選「只畫逾期部分」：九成以上是未逾期，100% 長條上逾期只剩一條細線）：各段占未逾期加逾期的 %，
+// 加起來就是逾期占比（個別評估兩邊都不算，同數據中台的算法）。整段期間都沒有逾期的列（發票日口徑）才畫 100% 的帳齡分布
+export const hasOverdueBuckets = (periods: AgingPeriod[]) => periods.some(period => period.buckets.some(bucket => bucket.kind === 'overdue'))
+
+export function agingOverdueShares(period: AgingPeriod): Record<string, number> {
+  const base = period.buckets.filter(bucket => bucket.kind === 'not_overdue' || bucket.kind === 'overdue').reduce((sum, bucket) => sum + (bucket.amount ?? 0), 0)
+  const shares: Record<string, number> = {}
+  if (!base) return shares
+  for (const bucket of period.buckets.filter(item => item.kind === 'overdue')) {
+    const name = agingLayerName(bucket)
+    shares[name] = (shares[name] ?? 0) + (bucket.amount ?? 0) / base * 100
   }
   return shares
 }

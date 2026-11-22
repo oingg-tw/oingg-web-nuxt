@@ -20,7 +20,18 @@ const latest = computed(() => data.value?.periods[0] ?? null)
 const ascending = computed(() => [...(data.value?.periods ?? [])].reverse().map(period => ({ label: agingPeriodLabel(period), period })))
 // 近N年（全站同一組選項；47 季的資料，近 8 年都選得到）
 const { period, shown } = useChartPeriod({ all: ascending, keyOf: row => row.label, perYear: 4 })
-const layers = computed(() => agingLayerNames(shown.value.map(row => row.period)).map(name => ({ name, values: shown.value.map(row => agingShares(row.period)[name] ?? 0) })))
+// 圖只畫逾期的部分（使用者選「只畫逾期部分」）：各逾期天數占未逾期加逾期，加起來就是逾期占比；整段都沒有逾期列的（發票日口徑）畫 100% 的帳齡分布
+const overdueChart = computed(() => hasOverdueBuckets(shown.value.map(row => row.period)))
+const layers = computed(() => (overdueChart.value
+  ? agingLayerNames(shown.value.map(row => row.period), ['overdue']).map(name => ({ name, values: shown.value.map(row => agingOverdueShares(row.period)[name] ?? 0) }))
+  : agingLayerNames(shown.value.map(row => row.period)).map(name => ({ name, values: shown.value.map(row => agingShares(row.period)[name] ?? 0) }))))
+const tooltipHeader = (index: number) => {
+  const row = shown.value[index]
+  if (!row) return ''
+  if (!overdueChart.value) return `${row.label}　應收帳款總額 ${money(row.period.total ?? 0)}`
+  const ratio = row.period.overdueRatio ?? Object.values(agingOverdueShares(row.period)).reduce((sum, value) => sum + value, 0)
+  return `${row.label}　逾期占比 ${ratio.toFixed(2)}%`
+}
 
 const answer = computed(() => (latest.value ? agingAnswer(latest.value, money) : null))
 // 金融保險業（類股 17）沒有應收帳款帳齡這張附註
@@ -72,7 +83,8 @@ const footer = computed(() => ({
 }))
 const GUIDE = [
   '應收帳款帳齡是財報附註裡，把應收帳款依「逾期多久」分段的金額。逾期占比是逾期的金額除以未逾期加逾期；「個別評估」那一段（交易對象已有違約跡象）不照天數分，兩邊都不算。總額扣掉備抵損失，就是資產負債表上的應收帳款。',
-  '分段的寫法有幾十種，歸成五段：未逾期、逾期 1～30 天、31～90 天、91～180 天、181 天以上；公司分得比較粗的（例如只寫「逾期 31 天以上」），照它自己的分段畫。有些公司照發票日（立帳日）算帳齡、不分有沒有逾期，這一頁寫「帳齡 N 天」，沒有逾期占比。'
+  '分段的寫法有幾十種，歸成五段：未逾期、逾期 1～30 天、31～90 天、91～180 天、181 天以上；公司分得比較粗的（例如只寫「逾期 31 天以上」），照它自己的分段畫。有些公司照發票日（立帳日）算帳齡、不分有沒有逾期，這一頁寫「帳齡 N 天」，沒有逾期占比。',
+  '圖畫的是逾期的部分：每一季各逾期天數占未逾期加逾期的比率，疊起來就是逾期占比；未逾期的比率寫在答句與表格裡。照發票日算帳齡的公司沒有逾期可畫，圖改畫各帳齡占總額的比率。'
 ]
 </script>
 
@@ -94,10 +106,10 @@ const GUIDE = [
             :categories="shown.map(row => row.label)"
             :layers="layers"
             unit="%"
-            :max="100"
-            total-name="應收帳款總額"
+            :max="overdueChart ? undefined : 100"
+            :total-name="overdueChart ? '逾期占比' : '應收帳款總額'"
             :value-formatter="value => `${value.toFixed(2)}%`"
-            :tooltip-header="index => `${shown[index]?.label}　應收帳款總額 ${money(shown[index]?.period.total ?? 0)}`"
+            :tooltip-header="tooltipHeader"
           />
         </SharedChartCard>
       </StockQuestionSection>
