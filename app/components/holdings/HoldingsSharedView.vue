@@ -45,7 +45,7 @@ const rows = computed(() => props.holdings.map((holding) => {
       ? null
       : holdingRowFigures({ quantity, costUnknownQuantity: holding.costUnknownQuantity ?? 0, averageCost: holding.averageCost ?? null, price: quote.price, dividendPerShare: quote.dividendPerShare }),
     // 只顯示漲跌幅：金額要乘股數，會透露部位大小
-    dayPct: dayChange({ quantity: 0, price: quote.dayPrice, previousClose: quote.previousClose, date: quote.dayPriceDate }).pct
+    dayPct: dayChange({ quantity: 0, price: quote.dayPrice, priceChange: quote.priceChange, date: quote.dayPriceDate }).pct
   }
 }))
 type SharedRow = (typeof rows.value)[number]

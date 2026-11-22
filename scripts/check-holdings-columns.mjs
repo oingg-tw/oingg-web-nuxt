@@ -38,7 +38,7 @@ const newState = symbols => ({
   etfReads: 0,
   delayMs: 0
 })
-const holding = symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50.0000', totalCost: '50000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-11-13', dayClose: '100', dayCloseTradeDate: '2026-11-13', previousClose: '98' })
+const holding = symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: '50.0000', totalCost: '50000', realizedProfitLoss: '0', close: '100', tradeDate: '2026-11-13', dayClose: '100', dayCloseTradeDate: '2026-11-13', previousClose: '98', priceChange: '2' })
 const tx = symbol => ({ id: `t-${symbol}`, portfolioId: 'p-a', symbol, action: 'BUY', quantity: 1000, price: '50', fee: '20', tax: '0', tradeDate: '2024-01-12', note: null, source: null, externalRef: null, importId: null, costUnknown: false })
 
 const mock = (ctx, state) => ctx.route('**/*', async (route) => {

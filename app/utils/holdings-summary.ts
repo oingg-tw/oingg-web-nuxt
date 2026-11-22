@@ -143,12 +143,14 @@ export interface WeightedYield {
   coverage: number
 }
 
-// 今日漲跌（2026-10-15 使用者：「holdings 要加上今日漲跌幅」）：最近一個交易日的收盤對前一個有成交日的收盤，跟觀察清單的「漲跌」
-// 同一個算法（stock.price 對 stock.previousClose）。那天沒成交、或沒有前一日收盤的那一檔沒有今日漲跌，不是 0。
+// 今日漲跌（2026-10-15 使用者：「holdings 要加上今日漲跌幅」）：最近一個交易日的收盤對交易所的參考價（2026-11-22 使用者「按照交易所參考」，
+// 同觀察清單的「漲跌」）。業務中台每一列給 priceChange（收盤 − 參考價，數據中台算），參考價＝收盤 − priceChange；除息、除權那天配息不算成下跌。
+// 原本對前一個有成交日的收盤（previousClose）。那天沒成交、沒有參考價的那一檔沒有今日漲跌，不是 0。
 export interface DayChangeInput {
   quantity: number
   price: number | null | undefined
-  previousClose: number | null | undefined
+  // 每股的收盤減參考價（元，帶正負號），跟 price 同一天
+  priceChange: number | null | undefined
   // 這筆收盤是哪一天。上市與上櫃更新時間不同（twse-ts／tpex-ts 的 scheduler.config.ts，2026-11-12）：上櫃約 17:00 就有當天收盤，
   // 上市約 17:50（舊版 MI_INDEX 的暫定值，隔天 07:05 用 OpenAPI 定版覆蓋）。所以那段時間的持股會一半是今天、一半是昨天
   date?: string | null
@@ -160,8 +162,10 @@ export interface DayChange {
 }
 
 function dayPrices(row: DayChangeInput): { price: number; previous: number } | null {
-  const { price, previousClose: previous } = row
-  return price != null && price > 0 && previous != null && previous > 0 ? { price, previous } : null
+  const { price, priceChange } = row
+  if (price == null || price <= 0 || priceChange == null) return null
+  const previous = price - priceChange
+  return previous > 0 ? { price, previous } : null
 }
 
 export function dayChange(row: DayChangeInput): DayChange {

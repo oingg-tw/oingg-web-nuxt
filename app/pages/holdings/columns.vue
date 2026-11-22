@@ -110,7 +110,7 @@ const baseRows = computed(() => holdings.value.map((holding) => {
   const figures = holdingRowFigures({ quantity: holding.quantity, costUnknownQuantity: holding.costUnknownQuantity, averageCost: holding.averageCost, price: quote?.price, dividendPerShare: quote?.dividendPerShare })
   const price = quote?.price ?? null
   // 跟持股總覽同一支（holdings-summary.ts 的 dayChange），兩頁的今日漲跌不會不一樣
-  const day = dayChange({ quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose })
+  const day = dayChange({ quantity: holding.quantity, price: quote?.dayPrice, priceChange: quote?.priceChange })
   const fields: RowFields = {
     SHARES: holding.quantity,
     AVGCOST: holding.averageCost,

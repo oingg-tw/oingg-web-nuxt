@@ -18,7 +18,7 @@ export const marketOf = (row: HoldingMarketFields): HoldingMarket => ({
   priceDate: row.tradeDate ?? null,
   dayPrice: row.dayClose ?? null,
   dayPriceDate: row.dayCloseTradeDate ?? null,
-  previousClose: row.previousClose ?? null,
+  priceChange: row.priceChange ?? null,
   dividendPerShare: row.dividendPerShare ?? null,
   dividendYield: row.dividendYield ?? null,
   yieldDate: row.dividendYieldTradeDate ?? null

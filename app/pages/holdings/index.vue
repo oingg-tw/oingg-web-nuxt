@@ -85,7 +85,7 @@ const baseRows = computed(() => holdings.value.map((holding) => {
     link: entry ? routeFor(entry) : securityPath(holding.symbol),
     input,
     figures: holdingRowFigures(input),
-    dayInput: { quantity: holding.quantity, price: quote?.dayPrice, previousClose: quote?.previousClose, date: quote?.dayPriceDate }
+    dayInput: { quantity: holding.quantity, price: quote?.dayPrice, priceChange: quote?.priceChange, date: quote?.dayPriceDate }
   }
 }))
 const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.input)))
