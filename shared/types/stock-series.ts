@@ -9,7 +9,7 @@ import type { DividendFillEvent, DividendHistoryResponse } from './dividend-hist
 // useStockPageDigest can key the app's useState caches exactly the way the card composables will
 // look them up.
 
-export type StockSeriesPage = 'index' | 'dividend' | 'dividend-source' | 'financial-statements' | 'cash-cycle'
+export type StockSeriesPage = 'index' | 'dividend' | 'dividend-source' | 'financial-statements' | 'cash-cycle' | 'profile'
 
 export interface StockSeriesResponse {
   symbol: string

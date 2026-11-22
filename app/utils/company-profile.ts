@@ -1,5 +1,6 @@
 import type { FactItem } from '~/components/shared/SharedFactList.vue'
 import type { CompanyOfficer, CompanyProfileDetail } from '~/composables/stock/useCompanyProfile'
+import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 
 // 個股的基本資料怎麼寫（2026-11-08，指標速覽的基本資料卡與基本資料頁共用；設計頁 https://claude.ai/artifact/56HsmA1SowvPxnZ4vJzha4）。
 // 金額與股數用全站的有效位數（formatMoney、formatSignificantDigits），沒有值寫「－」。scripts/check-company-profile.mjs 用 node 跑
@@ -113,4 +114,32 @@ export function profilePageFacts(detail: CompanyProfileDetail, today: string): R
       { label: '股務地址', value: dash(detail.transferAgencyAddress) }
     ]
   }
+}
+
+// 主要管理階層薪酬（2026-11-22，數據中台 B 批第 6 項；設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz）：年報才有（FY，千元），
+// 新到舊。金控沒有這張附註（missing_input），整段不畫。答句寫最新有數字的那一年，占稅後淨利（虧損年度算不出來）、股份基礎給付有才寫。
+// formatMoney 是自動匯入（scripts/check-company-profile.mjs 在 globalThis 頂替）
+export interface KeyManagementYear {
+  fiscalYear: number
+  compensation: number
+  shareBased: number | null
+  ratio: number | null
+  ratioReason: string | null
+}
+
+export function keyManagementYears(entries: MetricsHistoryEntry[]): KeyManagementYear[] {
+  return entries.filter(entry => entry.values.keyManagementCompensation?.value != null).map(entry => ({
+    fiscalYear: entry.fiscalYear,
+    compensation: entry.values.keyManagementCompensation!.value!,
+    shareBased: entry.values.keyManagementShareBasedPayment?.value ?? null,
+    ratio: entry.values.keyManagementCompensationToNetIncome?.value ?? null,
+    ratioReason: entry.values.keyManagementCompensationToNetIncome?.nullReason ?? null
+  })).reverse()
+}
+
+export function keyManagementAnswer(years: KeyManagementYear[]): string | null {
+  const latest = years[0]
+  if (!latest) return null
+  const money = (thousands: number) => formatMoney(thousands * 1000)
+  return `${latest.fiscalYear} 年主要管理階層薪酬 ${money(latest.compensation)}${latest.ratio !== null ? `，占稅後淨利 ${latest.ratio.toFixed(2)}%` : ''}${latest.shareBased ? `；其中股份基礎給付 ${money(latest.shareBased)}` : ''}。`
 }

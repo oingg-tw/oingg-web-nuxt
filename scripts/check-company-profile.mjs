@@ -1,7 +1,10 @@
 // 個股基本資料的寫法（app/utils/company-profile.ts）：上市櫃滿幾年、負責人一人一行怎麼寫、officers 與舊字串欄怎麼選
 // Run: node scripts/check-company-profile.mjs
 import assert from 'node:assert/strict'
-import { fullYears, officerText, officersOf, websiteHref } from '../app/utils/company-profile.ts'
+import { formatMoney } from '../shared/utils/number-format.ts'
+// keyManagementAnswer 用自動匯入的 formatMoney（同 check-http-error.mjs 頂替 Nitro 的自動匯入）
+Object.assign(globalThis, { formatMoney })
+const { fullYears, officerText, officersOf, websiteHref, keyManagementAnswer, keyManagementYears } = await import('../app/utils/company-profile.ts')
 
 // 滿幾年：還沒到週年要少一年；日期在今天之後或讀不懂是 null
 assert.equal(fullYears('1994-09-05', '2026-11-08'), 32)
@@ -34,4 +37,16 @@ assert.equal(websiteHref('javascript:alert(1)'), undefined)
 assert.equal(websiteHref('https://a.com b.com'), undefined)
 assert.equal(websiteHref(null), undefined)
 
+
+// 主要管理階層薪酬（2026-11-22）：2330 的 2025 年（DEV 實測，千元）；虧損年度沒有占比；金控沒有附註（全部 missing_input）就沒有這一段
+const kmEntry = (fiscalYear, compensation, shareBased, ratio, reason = null) => ({ fiscalYear, fiscalQuarter: 4, values: {
+  keyManagementCompensation: compensation === null ? { value: null, nullReason: 'missing_input' } : { value: compensation, nullReason: null },
+  keyManagementShareBasedPayment: { value: shareBased, nullReason: null },
+  keyManagementCompensationToNetIncome: { value: ratio, nullReason: reason }
+} })
+const kmYears = keyManagementYears([kmEntry(2024, 5808770, 1357432, 0.5), kmEntry(2025, 9224363, 3888675, 0.54)])
+assert.deepEqual(kmYears.map(year => year.fiscalYear), [2025, 2024])
+assert.equal(keyManagementAnswer(kmYears), '2025 年主要管理階層薪酬 92.24億元，占稅後淨利 0.54%；其中股份基礎給付 38.89億元。')
+assert.equal(keyManagementAnswer(keyManagementYears([kmEntry(2025, 2669030, 0, null, 'zero_or_negative_denominator')])), '2025 年主要管理階層薪酬 26.69億元。')
+assert.equal(keyManagementAnswer(keyManagementYears([kmEntry(2025, null, null, null, 'missing_input')])), null)
 console.log('PASS: company profile')

@@ -403,7 +403,9 @@ export const METRIC_PAGE_ALIASES: Record<string, string> = {
   dividendYield: 'dividend', cashDividendYield: 'dividend', liveCashDividendYield: 'dividend', dividendPerShare: 'dividend', liveDividendPerShare: 'dividend',
   threeMarginsRising: 'margins',
   // 會計師示警（2026-11-22）：基本資料頁有「會計師對X的財報有沒有示警？」那一段，摘要卡也寫著
-  auditorWarning: 'profile'
+  auditorWarning: 'profile',
+  // 主要管理階層薪酬（同日，B 批第 6 項）：基本資料頁「經營團隊一年領多少？」那一段
+  keyManagementCompensation: 'profile', keyManagementShareBasedPayment: 'profile', keyManagementCompensationToNetIncome: 'profile'
 }
 
 export function metricPageSlug(metricCode: string): string | null {

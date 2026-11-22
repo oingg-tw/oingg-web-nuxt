@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AuditOpinions } from '~/utils/audit-opinion'
+import type { StockSeriesResponse } from '#shared/types/stock-series'
 // 基本資料（2026-11-08，使用者：「請設計卡片，放基本資料，如上市櫃年數，董事長是誰等等。並設計基本資料頁面」；設計頁
 // https://claude.ai/artifact/56HsmA1SowvPxnZ4vJzha4）：四段，各一個問題、一句答案、一張表格卡片。指標速覽的基本資料卡點標題進來。
 // 欄位是使用者確認的清單，數據中台照這份留；怎麼寫（年數、負責人、金額）在 utils/company-profile.ts，跟卡片共用
@@ -11,13 +12,15 @@ const TOPIC = '基本資料'
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 // 等它到了才畫（同一支快取端點，跟摘要卡的公司資料幾乎同時到）：先畫四段標題再補表格，換頁時表格會把下面推動。
 // 會計師意見（2026-11-22）同理：跟摘要卡同一份網站快取，這裡自己再讀一次（同一個 useAsyncData 鍵再讀，Nuxt 會取消摘要那一個請求重打）
-const [{ data: detail, status }, { data: audit }] = await Promise.all([
+// 主要管理階層薪酬（2026-11-22）：伺服器的 series 計畫 profile（近 5 年 FY），同一套快取
+const [{ data: detail, status }, { data: audit }, { data: series }] = await Promise.all([
   useCompanyProfileDetail(code),
   useAsyncData(
     () => `audit-opinions-${code.value}`,
     () => apiFetch<AuditOpinions>(`/stocks/${code.value}/audit-opinions`, { baseURL: BUSINESS_CACHED_BASE }).catch(() => null),
     { watch: [code] }
-  )
+  ),
+  useFetch<StockSeriesResponse>(() => `/api/stock/${code.value}/series`, { query: { page: 'profile' }, key: () => `stock-series-profile-${code.value}`, watch: [code] })
 ])
 // 404（數據中台的公司目錄沒有這家，例如已經離開櫃買名單）：說沒有資料，不收錄這一頁
 const missing = computed(() => status.value === 'success' && !detail.value)
@@ -47,6 +50,10 @@ const officersAnswer = computed(() => {
   const parts = [chairman ? `董事長是${chairman}` : null, spokesperson ? `發言人是${spokesperson}` : null].filter(Boolean)
   return parts.length ? `${parts.join('，')}。` : null
 })
+
+// 經營團隊一年領多少（2026-11-22，數據中台 B 批第 6 項）：答句寫最新一年，表格列近 5 年；金控沒有這張附註，整段不畫
+const keyManagement = computed(() => keyManagementYears(series.value?.groups.FY_KEY_MGMT_5?.entries ?? []))
+const keyManagementText = computed(() => keyManagementAnswer(keyManagement.value))
 
 const capitalAnswer = computed(() => {
   const item = detail.value
@@ -92,7 +99,7 @@ const { breadcrumbs } = useStockPageSeo({
 })
 
 const footer = computed(() => ({
-  sources: ['公開資訊觀測站、櫃買中心：公司基本資料'],
+  sources: ['公開資訊觀測站、櫃買中心：公司基本資料', ...(keyManagementText.value ? ['公開資訊觀測站：財務報告附註（主要管理階層薪酬）'] : [])],
   freshness: detail.value?.generatedDate ? `出表日 ${detail.value.generatedDate}` : null
 }))
 </script>
@@ -114,6 +121,25 @@ const footer = computed(() => ({
       </StockQuestionSection>
       <StockQuestionSection id="stock-profile-officers" :question="`誰在經營${stockShortName}？`" :answer="officersAnswer">
         <SharedChartCard><SharedFactList :items="facts.officers" :label="`${stockShortName}的經營團隊`" /></SharedChartCard>
+      </StockQuestionSection>
+      <StockQuestionSection v-if="keyManagementText" id="stock-profile-key-management" :question="`${stockShortName}的經營團隊一年領多少？`" :answer="keyManagementText">
+        <SharedTable :label="`${stockShortName}的主要管理階層薪酬`">
+          <thead>
+            <tr>
+              <th scope="col">年度</th>
+              <th scope="col" class="seo-table__num">主要管理階層薪酬</th>
+              <th scope="col" class="seo-table__num">占稅後淨利</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="year in keyManagement" :key="year.fiscalYear">
+              <th scope="row">{{ year.fiscalYear }}</th>
+              <td class="seo-table__num">{{ formatMoney(year.compensation * 1000) }}</td>
+              <td class="seo-table__num" :title="year.ratio === null ? nullReasonTitle({ value: null, nullReason: year.ratioReason }) : undefined">{{ year.ratio === null ? nullReasonShortText(year.ratioReason) : `${year.ratio.toFixed(2)}%` }}</td>
+            </tr>
+          </tbody>
+        </SharedTable>
+        <p class="hub-answer">主要管理階層是董事與公司認定的高階經理人（國際會計準則第 24 號）；財報沒有寫人數，所以不算每人平均。</p>
       </StockQuestionSection>
       <StockQuestionSection id="stock-profile-capital" :question="`${stockShortName}的股本多大？誰簽證財報？`" :answer="capitalAnswer">
         <SharedChartCard><SharedFactList :items="facts.capital" :label="`${stockShortName}的股本與簽證會計師`" /></SharedChartCard>

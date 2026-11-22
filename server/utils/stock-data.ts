@@ -308,6 +308,8 @@ const SERIES_GROUPS = {
   // codes are a subset, so that card renders in SSR from this group.
   TTM_DIV_40: { timeframe: 'TTM', codes: ['dividendPerShare', 'dividendPayoutRatio', 'dividendCoverageRatio', 'shareholderYield', 'buybackYield', 'fcfPerShare', 'ocfPerShare', 'eps'], limit: 40 },
   TTM_CYCLE_20: { timeframe: 'TTM', codes: ['inventoryDays', 'receivablesDays', 'payablesDays', 'operatingCycle', 'cashConversionCycle', 'inventoryToRevenueRatio'], limit: 20 },
+  // 基本資料頁的「經營團隊一年領多少？」（2026-11-22，數據中台 B 批第 6 項）：年報才有，近 5 年
+  FY_KEY_MGMT_5: { timeframe: 'FY', codes: ['keyManagementCompensation', 'keyManagementShareBasedPayment', 'keyManagementCompensationToNetIncome'], limit: 5 },
 } satisfies Record<string, SeriesGroupPlan>
 
 export type SeriesGroupName = keyof typeof SERIES_GROUPS
@@ -345,7 +347,8 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   // 只有 TTM：這六支上游沒有 Q 也沒有 FY（2026-09-26 實測）。20 期是刻意的——最深的 2330 有 24 期、
   // 典型 19 期，取 20 不會浪費也不會截掉多少。
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
-  'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] }
+  'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
+  profile: { groups: ['FY_KEY_MGMT_5'] }
 }
 
 export function isStockSeriesPage(value: string): value is StockSeriesPage {
