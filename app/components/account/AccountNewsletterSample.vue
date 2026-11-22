@@ -14,6 +14,11 @@ const open = defineModel<boolean>({ required: true })
         <p class="newsletter-sample__muted">11/16（一）～11/20（五）這一週</p>
       </header>
 
+      <!-- 第一句就是結論（2026-11-22，〈看盤 SaaS 電子報設計策略〉；同信件的那一列與收件匣預覽文字） -->
+      <section class="newsletter-sample__part">
+        <p class="newsletter-sample__lead">本週總市值 <span class="newsletter-sample__up">▲ 2.3%（+27,800 元）</span>，下週 1 檔除息，約入帳 1,500 元。</p>
+      </section>
+
       <section class="newsletter-sample__part">
         <h4 class="newsletter-sample__heading">你的持股</h4>
         <dl class="newsletter-sample__figures">
@@ -94,6 +99,12 @@ const open = defineModel<boolean>({ required: true })
 .newsletter-sample__title {
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+.newsletter-sample__lead {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .newsletter-sample__heading {
