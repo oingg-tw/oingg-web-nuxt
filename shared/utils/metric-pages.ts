@@ -333,7 +333,7 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 // 指標速覽畫哪張圖。river／metric 由指標頁、徽章頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
-  | { kind: 'metric'; metricCode: string; holdingMetricCode?: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
+  | { kind: 'metric'; metricCode: string; holdingMetricCode?: string; bankOnly?: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'bankAssets' | 'equity' | 'intangible' }
   | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' }
 
@@ -403,7 +403,7 @@ export function quickViewChartOf(slug: string): QuickViewChart | null {
   const relationship = RELATIONSHIP_PAGES[slug]
   if (relationship) return relationship.chart ?? null
   const page = findMetricPage(slug)
-  if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, holdingMetricCode: page.holdingMetricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode, rightMetricCode: page.rightMetricCode, rightMetricBar: page.rightMetricBar }
+  if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, holdingMetricCode: page.holdingMetricCode, bankOnly: page.bankOnly, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode, rightMetricCode: page.rightMetricCode, rightMetricBar: page.rightMetricBar }
   const badge = findBadgePage(slug)
   if (badge?.riverKind) return { kind: 'river', river: badge.riverKind }
   return badge?.chartTimeframe ? { kind: 'metric', metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode, rightMetricCode: badge.rightMetricCode } : null

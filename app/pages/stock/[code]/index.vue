@@ -449,6 +449,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :metric-code="item.spec.metricCode"
           :holding-metric-code="item.spec.holdingMetricCode"
           :holding-topic="item.spec.holdingMetricCode && nameOf(item.spec.holdingMetricCode)"
+          :no-value-text="item.spec.bankOnly && `${stockShortName}沒有${item.spec.topic}：${item.spec.bankOnly}。`"
           :topic="item.spec.topic"
           :unit="findMetricInSchema(categories, item.spec.metricCode)?.metric.unit ?? ''"
           :default-timeframe="item.spec.timeframe"

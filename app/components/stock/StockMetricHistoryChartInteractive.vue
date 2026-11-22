@@ -55,6 +55,9 @@ const props = defineProps<{
   // drawnMetricCode 決定：指標速覽沒有那一頁的資料，所以圖自己判斷；同一次請求，金控也不會先閃一句「沒有資本適足率」
   holdingMetricCode?: string
   holdingTopic?: string
+  // 一期都沒有值時取代圖的那一句（指標速覽的銀行指標：「台產沒有資本適足率：只有銀行與金控申報資本適足率。」，同指標頁的 bankOnly）。
+  // 不給的話是「還沒有可以畫圖的歷史」，那是新上市的公司，不是這類公司本來就沒有
+  noValueText?: string
 }>()
 
 // Stable order regardless of what order the catalog happens to list `fields` in.
@@ -185,6 +188,7 @@ const shortfall = computed(() => {
   //
   // 「這類公司沒有這個數字」跟「尚無資料」對讀者的意思完全不同（analysis-ts 2026-10-01 也是這樣要求
   // 的）：前者不會讓人再回來看一次。
+  if (props.noValueText && !customActive.value && valuedCount.value === 0) return props.noValueText
   if (!customActive.value && allPoints.value.length === 0 && (data.value?.length ?? 0) > 0) {
     return `這家公司沒有${drawnTopic.value}的${TIMEFRAME_LABELS[timeframe.value]}數字。`
   }
