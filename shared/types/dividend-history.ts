@@ -28,8 +28,6 @@ export interface DividendHistoryEvent {
   paymentDate: string | null
   stockDividendDistributionDate?: string | null
   announcementDate: string | null
-  previousClose?: number | null
-  previousTradeDate?: string | null
   yieldOnPreviousClose?: number | null
 }
 
