@@ -28,7 +28,7 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 // 型錄與這一頁的資料同時抓（2026-10-16）：互不相依，快取冷的時候原本要等型錄回來才開始問這一頁。
 // lazy（2026-10-23，使用者：「手機…點按頁面以後，仍是呈現上一個頁面，經過一段時間以後才切換」）：瀏覽器裡換頁不等這一頁的資料，
 // 先換上結構與骨架；伺服器照樣等資料再輸出（Nuxt 的 lazy 只影響瀏覽器，asyncData.js 的 onServerPrefetch）
-const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, pending: metricPending, refresh: refreshMetricData }, { data: metricText }] = await Promise.all([
+const [{ data: filterSchema }, { data: metricData, error: metricError, status: metricStatus, pending: metricPending, refresh: refreshMetricData }, { data: pageText }, holdingText] = await Promise.all([
   useFilterSchema(),
   useAsyncData<StockMetricPageResponse | null>(
     () => `stock-metric-${code.value}-${slug.value}`,
@@ -38,16 +38,30 @@ const [{ data: filterSchema }, { data: metricData, error: metricError, status: m
     { watch: [code, slug], default: () => null, lazy: true }
   ),
   // 說明與參考網址（長文字不在精簡目錄裡，2026-11-13）：只抓這一支
-  useMetricText(metricPage.metricCode)
+  useMetricText(metricPage.metricCode),
+  // 金控改畫的那一支（集團資本適足率）的說明，同時抓
+  metricPage.holdingMetricCode ? useMetricText(metricPage.holdingMetricCode) : null
 ])
+
+// 金控的資本適足率頁畫金控集團資本適足率（MetricPageDefinition.holdingMetricCode）：跟伺服器同一份資料、同一支 drawnMetricCode
+const metricCode = computed(() => drawnMetricCode(metricPage.metricCode, metricPage.holdingMetricCode, metricData.value?.series?.entries ?? []))
+const drawsHolding = computed(() => metricCode.value !== metricPage.metricCode)
+const metricText = computed(() => (drawsHolding.value ? holdingText?.data.value : pageText.value) ?? {})
 
 // The metric's own catalog entry — unit, formula, sources and (when analysis-ts has written them)
 // the description/limitations/misreadings prose. Never a frontend copy of any of it: this app
 // reads metric metadata from GET /metrics precisely so the two can't disagree, and `eps` shipping
 // with description/limitations/misreadings all null (2026-09-20, requested from analysis-ts) is
 // exactly why every one of those sections below is conditional rather than assumed present.
-const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], metricPage.metricCode)?.metric ?? null)
+const metricEntry = computed(() => findMetricInSchema(filterSchema.value?.categories ?? [], metricCode.value)?.metric ?? null)
 const unit = computed(() => metricEntry.value?.unit ?? '')
+// 改畫的那一支的名字讀型錄（金控集團資本適足率）。圖表自己也判斷畫哪一支（指標速覽沒有這一頁的資料），所以給它的是名字本身
+const holdingTopic = computed(() => {
+  const metric = metricPage.holdingMetricCode ? findMetricInSchema(filterSchema.value?.categories ?? [], metricPage.holdingMetricCode)?.metric : undefined
+  return metric ? metricDisplayName(metric) : undefined
+})
+// 頁面本身（標題、麵包屑）仍是 topic；說明段與頁尾的新手專區連結講的是畫出來的那一支
+const guideTopic = computed(() => (drawsHolding.value && holdingTopic.value) || metricPage.topic)
 
 // 說明文案：前端優先，後端墊底（2026-09-22,「這個部分的文案我想改為放在前端」）.
 //
@@ -70,15 +84,15 @@ const related = resolveRelatedPages(metricPage.related)
 // 頁尾的相關頁面（2026-10-11 統一進 StockPageFooter）：原始數字 → 公開說明 → 接著可以看
 // 頁尾第一個連結是新手專區的完整說明（2026-10-12「把教學、說明與指標頁面分開」）：這一頁只留一句定義
 const footerLinks = computed(() => [
-  { to: metricPath(metricPage.metricCode), label: `${metricPage.topic}怎麼看（新手專區）` },
+  { to: metricPath(metricCode.value), label: `${guideTopic.value}怎麼看（新手專區）` },
   { to: `/stock/${code.value}/financial-statements`, label: `${stockShortName.value} ${code.value} 的財務報表原始數字` },
-  ...(metricText.value?.referenceUrl ? [{ to: metricText.value.referenceUrl, label: `${metricPage.topic}的公開說明`, external: true }] : []),
+  ...(metricText.value?.referenceUrl ? [{ to: metricText.value.referenceUrl, label: `${guideTopic.value}的公開說明`, external: true }] : []),
   ...related.map(item => ({ to: `/stock/${code.value}/${item.slug}`, label: item.topic }))
 ])
 
-const copy = computed(() => findMetricCopy(metricPage.metricCode))
-// 數值句裡的名字；頁面本身（標題、「是什麼」）仍用 topic。見 MetricPageDefinition.valueTopic。
-const valueTopic = metricPage.valueTopic ?? metricPage.topic
+const copy = computed(() => findMetricCopy(metricCode.value))
+// 數值句裡的名字；頁面本身（標題、「是什麼」）仍用 topic。見 MetricPageDefinition.valueTopic。金控畫集團資本適足率時用它的名字
+const valueTopic = computed(() => (drawsHolding.value && holdingTopic.value) || (metricPage.valueTopic ?? metricPage.topic))
 
 // 成分的顯示名稱從型錄取，前端不放第二份中文（2026-09-28）。順序跟 partMetricCodes 一一對應，圖那邊
 // 只認索引。
@@ -115,7 +129,7 @@ const rightMetric = computed(() => {
 const guide = computed(() => metricGuideFrom(copy.value, metricText.value))
 const definition = computed(() => guide.value.definition[0] ?? null)
 // 歷年變化表一律單季口徑（2026-10-12）；沒有單季的指標退回頁面本身的口徑
-const historySeries = computed(() => pickQuarterlyHistory(metricData.value?.quarterly, metricData.value?.series, metricPage.metricCode))
+const historySeries = computed(() => pickQuarterlyHistory(metricData.value?.quarterly, metricData.value?.series, metricCode.value))
 
 // Which bases the 目前值 chart's toggle offers (2026-09-21, direct request「不是每個卡片都要用
 // TTM，但是都要可以選擇1235年」) — read from the metric's own LIVE catalog entry (`fields`, the
@@ -146,7 +160,7 @@ watchLoadFailure(() => `stock-metric:${code.value}:${slug.value}`, () => metricE
 // points／期別標籤／儲存格文字／歷年變化那一句都搬到 ~/utils/metric-history-points.ts
 // （2026-10-01）：徽章頁也要那張歷年變化表，而這一頁除了表格之外還要用同一組數字算 <title>、
 // meta description 與開頭那句，所以共用的是函式，不只是元件。
-const points = computed(() => metricHistoryPoints(metricData.value?.series?.entries ?? [], metricPage.metricCode))
+const points = computed(() => metricHistoryPoints(metricData.value?.series?.entries ?? [], metricCode.value))
 
 const latest = computed(() => points.value[0] ?? null)
 // 只有銀行有的指標（metricPage.bankOnly）在沒有任何一期有值的公司：寫誰才有，不畫空圖、不列一整排「無法計算」、不收錄
@@ -171,7 +185,7 @@ const riverLive = ref<RiverLatest | null | undefined>()
 const riverLatest = computed(() => (riverLive.value !== undefined ? riverLive.value : metricData.value?.riverLatest?.[riverTimeframe.value] ?? null))
 const riverLead = computed(() => {
   const point = riverLatest.value
-  return point ? `${stockShortName.value}以 ${point.tradeDate} 收盤 ${groupThousands(point.price)} 元、${point.baseLabel} ${point.base} 元計算，${valueTopic}為 ${valueTextOf(point.ratio)}` : null
+  return point ? `${stockShortName.value}以 ${point.tradeDate} 收盤 ${groupThousands(point.price)} 元、${point.baseLabel} ${point.base} 元計算，${valueTopic.value}為 ${valueTextOf(point.ratio)}` : null
 })
 
 // 單季 + YoY（2026-09-21，直接要求「eps 要可以呈現單季與YOY」，引用財報狗「XX 2026年第2季EPS為
@@ -193,10 +207,10 @@ const riverLead = computed(() => {
 const latestQuarterly = computed(() => {
   const entries = metricData.value?.quarterly?.entries ?? []
   const last = entries[entries.length - 1]
-  const value = last?.values[metricPage.metricCode]?.value ?? null
+  const value = last?.values[metricCode.value]?.value ?? null
   if (!last || value === null) return null
   const growth = metricPage.quarterlyGrowthMetricCode ? (last.values[metricPage.quarterlyGrowthMetricCode]?.value ?? null) : null
-  return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth, bankNames: last.values[metricPage.metricCode]?.bankNames ?? [] }
+  return { fiscalYear: last.fiscalYear, fiscalQuarter: last.fiscalQuarter, value, growth, bankNames: last.values[metricCode.value]?.bankNames ?? [] }
 })
 
 // 金控的逾期放款比率、覆蓋率是旗下銀行的數字（2026-11-22，設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz）：答句接在數字後面寫是哪幾家，
@@ -217,7 +231,7 @@ const quarterlyLead = computed(() => {
   if (q && zeroNotListed.value) return `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季的${metricPage.zeroText}`
   // 「（單季）」只在答句與 meta description，<title> 有自己的一份（字數預算）。近四季那一句本來就寫「近四季」（2026-10-23，使用者：
   //「要標清楚 到底是單季還是近四季」）
-  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季（單季）${valueTopic}為 ${valueTextOf(q.value)}${bankNote.value}` : null
+  return q ? `${stockShortName.value}${q.fiscalYear}年第${q.fiscalQuarter}季（單季）${valueTopic.value}為 ${valueTextOf(q.value)}${bankNote.value}` : null
 })
 
 // The <title>'s own keyword phrase. useStockPageSeo prefixes「{短名} {代碼} 」and appends the brand
@@ -260,13 +274,13 @@ const titleKeywords = computed(() => {
   // 河流圖頁跟著答句（「要連動網頁title」）：最後一點的數字與日期，超過字數就用固定片語
   const point = riverLatest.value
   if (point) {
-    const river = `${valueTopic}為 ${valueTextOf(point.ratio)}（${point.tradeDate.slice(5).replace('-', '/')} 收盤）`
+    const river = `${valueTopic.value}為 ${valueTextOf(point.ratio)}（${point.tradeDate.slice(5).replace('-', '/')} 收盤）`
     return cjkLength(`${stockShortName.value} ${code.value} `) + cjkLength(river) + TITLE_BRAND_COST <= TITLE_BUDGET ? river : metricPage.titleKeywords
   }
   const q = latestQuarterly.value
   // 值是 0 的那一句不放進 <title>：兩頁（合約負債占總資產比、占股本比）會變成同一個標題，主題名稱也不見了
   if (!q || metricPage.valueTopic || zeroNotListed.value) return metricPage.titleKeywords
-  const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic}為 ${valueTextOf(q.value)}`
+  const quarterly = `${q.fiscalYear}年第${q.fiscalQuarter}季${valueTopic.value}為 ${valueTextOf(q.value)}`
   if (!hasTrailingFigure.value) return quarterly
   const full = `${quarterly}，近四季 ${latestValueText.value}`
   const prefix = cjkLength(`${stockShortName.value} ${code.value} `)
@@ -274,7 +288,7 @@ const titleKeywords = computed(() => {
 })
 
 // 讀取中的答句骨架：跟真的答句差不多長（單季、近四季、資料時間），字是透明的，只用來佔同樣的行數
-const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic}為 00.00、近四季${valueTopic}為 00.00、財報公告日 2026-08-11。` : null))
+const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic.value}為 00.00、近四季${valueTopic.value}為 00.00、財報公告日 2026-08-11。` : null))
 
 const valueAnswer = computed(() => {
   if (riverLead.value) return joinClauses([riverLead.value])
@@ -288,7 +302,7 @@ const valueAnswer = computed(() => {
     return joinClauses([
       quarterlyLead.value,
       q.growth !== null ? `年增 ${formatSignificantDigits(q.growth, 4)}%` : null,
-      hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null,
+      hasTrailingFigure.value ? `近四季${valueTopic.value}為 ${latestValueText.value}` : null,
       latest.value.point?.knowledgeDate ? `財報公告日 ${latest.value.point.knowledgeDate}` : null
     ])
   }
@@ -300,14 +314,14 @@ const valueAnswer = computed(() => {
   // follow already state the period and the knowledge date, so deleting the word costs nothing and
   // is correct for every metric rather than just the price-based ones.
   return joinClauses([
-    `${stockShortName.value}的${valueTopic}為 ${latestValueText.value}`,
+    `${stockShortName.value}的${valueTopic.value}為 ${latestValueText.value}`,
     `期別 ${timeframeLabel.value}`,
     `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`,
     latest.value.point?.knowledgeDate ? `財報公告日 ${latest.value.point.knowledgeDate}` : null
   ])
 })
 
-const historyAnswer = computed(() => metricHistoryAnswer(points.value, { shortName: stockShortName.value, topic: valueTopic, timeframe: metricPage.timeframe }))
+const historyAnswer = computed(() => metricHistoryAnswer(points.value, { shortName: stockShortName.value, topic: valueTopic.value, timeframe: metricPage.timeframe }))
 
 const description = computed(() => {
   if (!latest.value) return null
@@ -317,9 +331,9 @@ const description = computed(() => {
   const lead = riverLead.value
     ? joinClauses([riverLead.value])
     : quarterlyLead.value
-    ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${valueTopic}為 ${latestValueText.value}` : null])
+    ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${valueTopic.value}為 ${latestValueText.value}` : null])
     : joinClauses([
-      `${stockShortName.value}（${code.value}）${valueTopic}：${latestValueText.value}`,
+      `${stockShortName.value}（${code.value}）${valueTopic.value}：${latestValueText.value}`,
       `期別 ${timeframeLabel.value}`,
       `資料期間 ${periodLabel(latest.value, metricPage.timeframe)}`
     ])
@@ -377,6 +391,8 @@ const { breadcrumbs } = useStockPageSeo({
           v-else
           :symbol="code"
           :metric-code="metricPage.metricCode"
+          :holding-metric-code="metricPage.holdingMetricCode"
+          :holding-topic="holdingTopic"
           :topic="valueTopic"
           :unit="unit"
           :default-timeframe="metricPage.timeframe"
@@ -398,7 +414,7 @@ const { breadcrumbs } = useStockPageSeo({
     <StockMetricHistorySection
       v-if="historySeries && !bankless"
       :entries="historySeries.entries"
-      :metric-code="metricPage.metricCode"
+      :metric-code="metricCode"
       :timeframe="historySeries.timeframe"
       :topic="valueTopic"
       :unit="unit"
@@ -427,7 +443,7 @@ const { breadcrumbs } = useStockPageSeo({
          沒有搬到第 1 位（看到數字後立刻定義），是因為讀者搜的是「台積電 資產報酬率」，答案要在
          最前面——那是本站既有的立場，不為這件事翻掉；而且擠進去會把公司事實那三段切開。 -->
     <template #guide>
-      <StockMetricGuide id-prefix="stock-metric" :topic="metricPage.topic" :definition="[...(definition ? [firstSentence(definition)!] : []), ...(metricPage.compositionNote ? [metricPage.compositionNote] : []), ...(metricPage.chartNote ? [metricPage.chartNote] : [])]" />
+      <StockMetricGuide id-prefix="stock-metric" :topic="guideTopic" :definition="[...(definition ? [firstSentence(definition)!] : []), ...(metricPage.compositionNote ? [metricPage.compositionNote] : []), ...(metricPage.chartNote ? [metricPage.chartNote] : [])]" />
     </template>
   </StockPageShell>
 </template>

@@ -51,6 +51,10 @@ const props = defineProps<{
   // 第三條線，畫在右軸（registry 的 rightMetricCode；名稱、單位、期別由呼叫端從型錄取，理由同 compareTimeframes）
   // bar：右軸那一支畫成柱子、主指標畫成折線，不需要對照線（2026-11-19 股本變化：流通股數的柱子配年增率的線，registry 的 rightMetricBar）
   rightMetric?: { code: string; name: string; unit: string; timeframes: MetricsHistoryTimeframe[]; bar?: boolean }
+  // 金控改畫的那一支與它的名字（METRIC_PAGES 的 holdingMetricCode：資本適足率頁的金控集團資本適足率）。跟主指標同一次抓，畫哪一支由
+  // drawnMetricCode 決定：指標速覽沒有那一頁的資料，所以圖自己判斷；同一次請求，金控也不會先閃一句「沒有資本適足率」
+  holdingMetricCode?: string
+  holdingTopic?: string
 }>()
 
 // Stable order regardless of what order the catalog happens to list `fields` in.
@@ -78,6 +82,7 @@ const pairedCode = computed(() => compareCode.value ?? (props.rightMetric?.bar ?
 
 const codesRef = computed(() => [
   props.metricCode,
+  ...(props.holdingMetricCode ? [props.holdingMetricCode] : []),
   ...(props.partCodes ?? []),
   ...(compareCode.value ? [compareCode.value] : []),
   ...(rightCode.value ? [rightCode.value] : [])
@@ -89,6 +94,8 @@ const codesRef = computed(() => [
 const FULL_HISTORY_LIMIT = 40
 const limit = computed(() => FULL_HISTORY_LIMIT)
 const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timeframe, limit)
+const metricCode = computed(() => drawnMetricCode(props.metricCode, props.holdingMetricCode, data.value ?? []))
+const drawnTopic = computed(() => (metricCode.value === props.metricCode ? props.topic : props.holdingTopic ?? props.topic))
 
 // 每年幾期，**從實際抓到的期別推算，不寫死 4**（2026-10-01）。寫死 4 在兩種情況下都錯，而且第二種
 // 比第一種常見得多：
@@ -106,7 +113,7 @@ const { data, total, pending } = useMetricsHistory(symbolRef, codesRef, timefram
 // 不到兩個年度就不推算、維持季頻假設：剛上市的公司只有 Q1、Q2 兩期時，期別數是 2 但它其實是季頻，
 // 推算會把半年當成一年。兩個年度之後才看得出真正的申報頻率。
 // 只在半年報揭露的指標（銀行資本適足率），Q1、Q3 沒有值就整期拿掉（undisclosedQuarter），推算出來就是一年 2 期
-const disclosed = computed(() => (data.value ?? []).filter(entry => !undisclosedQuarter(props.metricCode, entry)))
+const disclosed = computed(() => (data.value ?? []).filter(entry => !undisclosedQuarter(metricCode.value, entry)))
 const periodsPerYear = computed(() => {
   const entries = disclosed.value
   if (new Set(entries.map(entry => entry.fiscalYear)).size < 2) return 4
@@ -122,14 +129,14 @@ const allPoints = computed(() => {
     .map(entry => ({
       fiscalYear: entry.fiscalYear,
       fiscalQuarter: entry.fiscalQuarter,
-      value: entry.values[props.metricCode]?.value ?? null,
-      nullReason: entry.values[props.metricCode]?.nullReason ?? null,
+      value: entry.values[metricCode.value]?.value ?? null,
+      nullReason: entry.values[metricCode.value]?.nullReason ?? null,
       // 這一期的說明（2026-11-21）：柱狀圖與堆疊圖的提示框接在數字下面
-      remark: periodNotesText([entry.values[props.metricCode]]) || undefined,
+      remark: periodNotesText([entry.values[metricCode.value]]) || undefined,
       // 挑期別的規則跟組成表共用同一支（shared/utils/metric-composition.ts），所以圖與表不會各自
       // 判斷一次而給出不同的期別集合。
       parts: compositionRow({
-        parent: entry.values[props.metricCode]?.value ?? null,
+        parent: entry.values[metricCode.value]?.value ?? null,
         parts: (props.partCodes ?? []).map(code => signedPart(code, entry.values[code]?.value ?? null))
       })?.parts ?? null
     }))
@@ -179,7 +186,7 @@ const shortfall = computed(() => {
   // 「這類公司沒有這個數字」跟「尚無資料」對讀者的意思完全不同（analysis-ts 2026-10-01 也是這樣要求
   // 的）：前者不會讓人再回來看一次。
   if (!customActive.value && allPoints.value.length === 0 && (data.value?.length ?? 0) > 0) {
-    return `這家公司沒有${props.topic}的${TIMEFRAME_LABELS[timeframe.value]}數字。`
+    return `這家公司沒有${drawnTopic.value}的${TIMEFRAME_LABELS[timeframe.value]}數字。`
   }
   // 未滿一年但有兩期以上就照畫（2026-10-18，剛上市的 7711 股東總回饋率近四季只有 3 季）：sliceToLookbackWindow 在連一年都沒有時回傳全部，
   // 兩點就畫得成線；只有連兩期都沒有才用這一句取代圖
@@ -231,7 +238,7 @@ const compareEntries = computed(() => {
   const shown = new Set(points.value.map(point => `${point.fiscalYear}Q${point.fiscalQuarter}`))
   return source
     .filter(entry => shown.has(`${entry.fiscalYear}Q${entry.fiscalQuarter}`))
-    .map(entry => ({ ...entry, label: periodLabel(periodKey(entry)), remark: periodNotesText([entry.values[props.metricCode], ...(compareCode.value ? [entry.values[compareCode.value]] : [])]) || undefined }))
+    .map(entry => ({ ...entry, label: periodLabel(periodKey(entry)), remark: periodNotesText([entry.values[metricCode.value], ...(compareCode.value ? [entry.values[compareCode.value]] : [])]) || undefined }))
 })
 
 // 對照那一支在這家公司身上、在目前這個基準下實際有值的期別。策展的配對也不保證每家公司都有
@@ -247,12 +254,12 @@ const emptyReason = computed(() => {
   if (pending.value || comparePoints.value.length > 1 || stacked.value || points.value.length > 1) return null
   return 'no_points'
 })
-watchChartEmpty(() => (emptyReason.value ? { symbol: props.symbol, chart: 'metric-history', metric: props.metricCode, timeframe: timeframe.value, lookbackYears: null, reason: emptyReason.value } : null))
+watchChartEmpty(() => (emptyReason.value ? { symbol: props.symbol, chart: 'metric-history', metric: metricCode.value, timeframe: timeframe.value, lookbackYears: null, reason: emptyReason.value } : null))
 
 // 配色是 compare（主角用強調色、對照用灰，2026-10-07），見 StockMultiSeriesLineChart。右軸那一條的名稱帶單位：
 // 權益乘數 1.5 倍會穿過左軸 40% 附近的格線，圖例不寫「（倍）」就會被讀成百分比（同杜邦圖）
 const compareSeries = computed<LineSeriesSpec[]>(() => [
-  { code: props.metricCode, name: props.topic, lineType: 'solid', symbol: 'circle', marginCap: MARGIN_CAP_METRICS.has(props.metricCode) },
+  { code: metricCode.value, name: drawnTopic.value, lineType: 'solid', symbol: 'circle', marginCap: MARGIN_CAP_METRICS.has(props.metricCode) },
   ...(compareCode.value ? [{ code: compareCode.value, name: props.compareName ?? '', lineType: 'dashed', symbol: 'triangle', marginCap: MARGIN_CAP_METRICS.has(compareCode.value) } satisfies LineSeriesSpec] : []),
   ...(rightCode.value && props.rightMetric
     ? [{
@@ -279,7 +286,7 @@ const { resolvedMode } = useAppTheme()
 const capLegend = computed<ChartLegendGroup[]>(() => [{ items: [{ name: MARGIN_CAP_NOTE, color: getChartInk(resolvedMode.value).muted, kind: 'arrow' }] }])
 const { chartOption, capped } = useMetricHistoryChartOption(
   points,
-  computed(() => props.topic),
+  drawnTopic,
   computed(() => props.unit),
   timeframe,
   // 營收這類年增率的柱子用對數刻度（GROWTH_LOG_METRICS）；指標頁、指標速覽、自選釘選的都經過這裡
@@ -326,7 +333,7 @@ const { chartOption, capped } = useMetricHistoryChartOption(
       :categories="stacked.categories"
       :layers="stacked.layers"
       :unit="unit"
-      :total-name="topic"
+      :total-name="drawnTopic"
       :neutral-layer-name="UNSPLIT"
       :others="partOthersByName"
       :tooltip-header="stackedTooltipHeader"

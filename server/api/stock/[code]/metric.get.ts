@@ -33,12 +33,14 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
   // basis at all (dividendPayoutRatio/dividendCoverageRatio/shareholderYield) simply comes back
   // with zero entries and the page falls back to its TTM sentence — no need to know in advance
   // which metrics those are, and no second place to keep that list in sync.
+  const holdingCodes = metricPage.holdingMetricCode ? [metricPage.holdingMetricCode] : []
   const [mainSeries, compareSeries, quarterly, provenance, riverLatest] = await Promise.all([
     // 母項與成分同一次取回（2026-09-28 的組成段）。metrics-history 一次最多 10 支，而最長的一組是
     // 營業費用的 1＋4——不設上限檢查是因為登記表就在同一個檔案裡，加到第十支會在這裡 400，當場看得到。
     // 併在同一次還有一個不只是省請求的理由：成分與母項必須是**同一個快取世代**，分兩次取有機會拿到
     // 重算前後各一半，那時候恆等式會假性失敗，而畫面看起來完全正常。
-    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode, ...(metricPage.partMetricCodes ?? [])], STOCK_HISTORY_LIMIT)),
+    // 金控改畫的那一支（holdingMetricCode）也在這一次：畫哪一支看這份資料（drawnMetricCode），頁面讀的是同一份
+    settle(cachedMetricsHistory(code, metricPage.timeframe, [metricPage.metricCode, ...holdingCodes, ...(metricPage.partMetricCodes ?? [])], STOCK_HISTORY_LIMIT)),
     // 對照指標**分開**取（2026-10-14）：原本跟母項同一次，而 epsGrowthRate 上游只有單季、淨利成長年增率頁是近四季——整個請求 400，
     // 母項也一起沒了，/net-income-growth 只剩一個問句（指標頁一致性盤點時抓到）。對照是附加的一條線，取不到就少那條線，不能拖垮母項。
     // 不需要恆等式，所以分開取不會有快取世代的問題。
@@ -46,7 +48,7 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
     settle(cachedMetricsHistory(
       code,
       'Q',
-      metricPage.quarterlyGrowthMetricCode ? [metricPage.metricCode, metricPage.quarterlyGrowthMetricCode] : [metricPage.metricCode],
+      [metricPage.metricCode, ...holdingCodes, ...(metricPage.quarterlyGrowthMetricCode ? [metricPage.quarterlyGrowthMetricCode] : [])],
       STOCK_HISTORY_LIMIT
     )),
     // 計算依據（2026-10-01）。不帶條件直接打。
@@ -82,5 +84,8 @@ export default defineEventHandler(async (event): Promise<StockMetricPageResponse
       }
     : mainSeries
 
-  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance, riverLatest }
+  // 金控畫的是集團資本適足率：溯源也換成那一支的（銀行資本適足率的溯源在金控是 found:false）
+  const drawn = drawnMetricCode(metricPage.metricCode, metricPage.holdingMetricCode, mainSeries?.entries ?? [])
+  const drawnProvenance = drawn === metricPage.metricCode ? provenance : await settle(cachedMetricProvenance(code, drawn))
+  return { symbol: code, slug: metricPage.slug, series, quarterly, provenance: drawnProvenance, riverLatest }
 })

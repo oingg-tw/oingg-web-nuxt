@@ -104,17 +104,26 @@ const isKnownField = (field: string) => !!locateFieldInSchema(schema.value?.cate
 
 // 每一列帶自己的 slug，不靠索引跟 pinnedSlugs 對齊：清單裡有已下架的 slug 時（目錄查不到、這裡濾掉）
 // 索引會錯位，上移／下移就會動到別支。
+// 金控的資本適足率（METRIC_PAGES 的 holdingMetricCode）：兩支都問，主欄位沒有值、改畫的那一支有（金控）就寫它，同卡片的圖（drawnMetricCode）
+function holdingFieldOf(slug: string): string | null {
+  const metricPage = METRIC_PAGES.find(page => page.slug === slug)
+  return metricPage?.holdingMetricCode ? `${metricPage.holdingMetricCode}.${metricPage.timeframe}` : null
+}
+const knownField = (field: string | null) => (field && isKnownField(field) ? field : null)
 const rows = computed(() =>
   pinnedSlugs.value.flatMap(slug => {
     const node = METRIC_INDEX_BY_SLUG.get(slug)
     if (!node) return []
-    const field = fieldOf(slug)
-    return [{ slug, label: node.label, to: node.to!(code.value), field: field && isKnownField(field) ? field : null }]
+    const field = knownField(fieldOf(slug))
+    const holding = knownField(holdingFieldOf(slug))
+    const shown = holding && values.value[field ?? '']?.value == null && values.value[holding]?.value != null ? holding : field
+    return [{ slug, label: node.label, to: node.to!(code.value), field: shown }]
   })
 )
-const fields = computed(() => [...new Set(rows.value.map(row => row.field).filter((field): field is string => !!field))])
+// 要問的欄位跟著釘選走，不跟著上面寫了哪一支（那要等值回來，跟著它會變成值回來就重問）
+const fields = computed(() => [...new Set(pinnedSlugs.value.flatMap(slug => (METRIC_INDEX_BY_SLUG.has(slug) ? [knownField(fieldOf(slug)), knownField(holdingFieldOf(slug))] : [])).filter((field): field is string => !!field))])
 // 頁尾的資料來源（2026-10-11 補上）：釘選的那幾個欄位各自的型錄來源
-const dataSources = computed(() => collectMetricSources(schema.value?.categories ?? [], fields.value.map(field => field.split('.')[0]!)))
+const dataSources = computed(() => collectMetricSources(schema.value?.categories ?? [], rows.value.flatMap(row => (row.field ? [row.field.split('.')[0]!] : []))))
 
 interface ScreenerValue { value: string | number | null; knowledgeDate: string | null; fiscalYear?: number | null; fiscalQuarter?: number | null; yearMonth?: string | null }
 // 鍵用排好的欄位：調整順序不是換一批欄位，不重抓（2026-11-13 前每按一次上移／下移就重抓同一份）
@@ -438,6 +447,8 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           v-else-if="item.spec.kind === 'metric'"
           :symbol="code"
           :metric-code="item.spec.metricCode"
+          :holding-metric-code="item.spec.holdingMetricCode"
+          :holding-topic="item.spec.holdingMetricCode && nameOf(item.spec.holdingMetricCode)"
           :topic="item.spec.topic"
           :unit="findMetricInSchema(categories, item.spec.metricCode)?.metric.unit ?? ''"
           :default-timeframe="item.spec.timeframe"

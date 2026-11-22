@@ -161,6 +161,15 @@ export interface MetricPageDefinition {
   // 保險公司有列、值全是空的（同日實測 2881、6005、2832 的資本適足率），所以不寫「不是銀行或金控」。sitemap 也不列（試點的代號 1101～1599
   // 都不是金融股，列了就是 noindex 的網址）
   bankOnly?: string
+  // 金控申報的另一支（2026-11-22，金控集團資本適足率；設計稿畫板 3「資本適足率頁改畫集團資本適足率」）：主指標沒有任何一期有值、這一支有的
+  // 公司（金控的銀行資本適足率是不適用），整頁與指標速覽的卡片改畫這一支，名字讀型錄。跟主指標同一次取回（同成分），畫哪一支由 drawnMetricCode 決定
+  holdingMetricCode?: string
+}
+
+// 這家公司畫哪一支（holdingMetricCode）：伺服器（溯源）、指標頁與圖表都用這一支判斷，三處不會各自得出不同的答案
+export function drawnMetricCode(metricCode: string, holdingMetricCode: string | undefined, entries: { values: Record<string, { value: number | null } | null | undefined> }[]): string {
+  const valued = (code: string) => entries.some(entry => entry.values[code]?.value != null)
+  return holdingMetricCode && !valued(metricCode) && valued(holdingMetricCode) ? holdingMetricCode : metricCode
 }
 
 // 2026-09-26：topic 改用中文全稱（EPS→每股盈餘、PER→本益比…），跟 GET /metrics 的 name 對齊——篩選器與指標歷史表直接讀即時型錄，
@@ -261,8 +270,8 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   { slug: 'net-revenue', metricCode: 'bankNetRevenuePerShare', timeframe: 'TTM', topic: '每股淨收益', titleKeywords: '每股淨收益利息淨收益與利息以外淨收益', partMetricCodes: ['bankNetInterestIncomePerShare', 'bankNetNonInterestIncomePerShare'], related: ['net-revenue-composition', 'margins', 'eps'] },
   // 銀行與金控的三個比率（2026-11-22，使用者：「已經在收，接上就有的請設計」→「按照建議執行」，設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz）。
   // 型錄 2026-09-21 起就有，當時「約 95% 的代號不適用」沒開頁；金融股頁面做齊之後補上。資本適足率銀行只在半年報、年報揭露（undisclosedQuarter）；
-  // 金控的這一支目前全是 missing_input，等數據中台讀金控的集團資本適足率
-  { slug: 'capital-adequacy', metricCode: 'bankCarRatio', timeframe: 'Q', topic: '資本適足率', titleKeywords: '銀行資本適足率', bankOnly: '只有銀行申報資本適足率', related: ['npl-ratio', 'npl-coverage', 'net-revenue'] },
+  // 金控的銀行資本適足率是不適用，這一頁改畫金控集團資本適足率（holdingMetricCode，數據中台 d698fa6，同樣只有 Q2、Q4）
+  { slug: 'capital-adequacy', metricCode: 'bankCarRatio', holdingMetricCode: 'groupCapitalAdequacyRatio', timeframe: 'Q', topic: '資本適足率', titleKeywords: '銀行資本適足率', bankOnly: '只有銀行與金控申報資本適足率', related: ['npl-ratio', 'npl-coverage', 'net-revenue'] },
   { slug: 'npl-ratio', metricCode: 'bankNplRatio', timeframe: 'Q', topic: '逾期放款比率', titleKeywords: '銀行逾期放款比率與放款品質', bankOnly: '只有銀行與旗下有銀行的金控有這個數字', related: ['npl-coverage', 'capital-adequacy', 'net-revenue'] },
   { slug: 'npl-coverage', metricCode: 'bankNplCoverageRatio', timeframe: 'Q', topic: '備抵呆帳覆蓋率', titleKeywords: '銀行備抵呆帳覆蓋率', bankOnly: '只有銀行與旗下有銀行的金控有這個數字', related: ['npl-ratio', 'capital-adequacy', 'net-revenue'] },
   { slug: 'cost-of-goods-sold', metricCode: 'operatingCostsPerShare', timeframe: 'TTM', topic: '每股營業成本', titleKeywords: '每股營業成本與毛利的關係', compositionNote: '營業成本看不出組成：損益表只申報一個營業成本總額，材料、人工、製造費用的明細不在申報用的科目表裡——一般產業與保險業連「員工福利費用」「折舊攤銷」這兩個欄位都沒有，折舊與攤銷只有全公司一個總數，沒有拆成營業成本與營業費用各多少。想知道成本占營收多少，看毛利率；想知道這家公司的資產有多重，看每股折舊攤銷——但那是全公司的折舊加攤銷、含非營業的部分，不是營業成本裡的一項。', related: ['revenue-per-share', 'gross-profit', 'gross-margin'] },
@@ -324,7 +333,7 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 // 指標速覽畫哪張圖。river／metric 由指標頁、徽章頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
-  | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
+  | { kind: 'metric'; metricCode: string; holdingMetricCode?: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'bankAssets' | 'equity' | 'intangible' }
   | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' }
 
@@ -394,7 +403,7 @@ export function quickViewChartOf(slug: string): QuickViewChart | null {
   const relationship = RELATIONSHIP_PAGES[slug]
   if (relationship) return relationship.chart ?? null
   const page = findMetricPage(slug)
-  if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode, rightMetricCode: page.rightMetricCode, rightMetricBar: page.rightMetricBar }
+  if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, holdingMetricCode: page.holdingMetricCode, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode, rightMetricCode: page.rightMetricCode, rightMetricBar: page.rightMetricBar }
   const badge = findBadgePage(slug)
   if (badge?.riverKind) return { kind: 'river', river: badge.riverKind }
   return badge?.chartTimeframe ? { kind: 'metric', metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode, rightMetricCode: badge.rightMetricCode } : null
@@ -418,7 +427,9 @@ export const METRIC_PAGE_ALIASES: Record<string, string> = {
   // 主要管理階層薪酬（同日，B 批第 6 項）：基本資料頁「經營團隊一年領多少？」那一段
   keyManagementCompensation: 'profile', keyManagementShareBasedPayment: 'profile', keyManagementCompensationToNetIncome: 'profile',
   // 逾期占比（同日，B 批第 7 項）：應收帳款帳齡頁
-  receivablesOverdueRatio: 'receivables-aging'
+  receivablesOverdueRatio: 'receivables-aging',
+  // 金控集團資本適足率（同日）：金控的資本適足率頁畫的就是它（METRIC_PAGES 的 holdingMetricCode）
+  groupCapitalAdequacyRatio: 'capital-adequacy'
 }
 
 export function metricPageSlug(metricCode: string): string | null {

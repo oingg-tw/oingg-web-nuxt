@@ -33,8 +33,9 @@ export function metricHistoryPoints(entries: MetricsHistoryEntry[], metricCode: 
 }
 
 // 只在半年報、年報揭露的指標（2026-11-22，銀行資本適足率；彰銀等 5 家實測只有 Q2、Q4 有值）：Q1、Q3 沒有值是因為不揭露，不是缺資料，
-// 照「中間的缺口留空」畫會變成一顆顆斷開的點。那兩季沒有值時整期拿掉，圖、表、開頭那一句都只剩 Q2、Q4；真的有值就照畫
-const HALF_YEARLY_METRICS = new Set(['bankCarRatio'])
+// 照「中間的缺口留空」畫會變成一顆顆斷開的點。那兩季沒有值時整期拿掉，圖、表、開頭那一句都只剩 Q2、Q4；真的有值就照畫。
+// 數據中台同日起不再寫這兩季的列（v3），這裡還擋得到的是跟別的指標一起抓時別人的 Q1、Q3，與 absentPeriods 補進來的未申報列
+const HALF_YEARLY_METRICS = new Set(['bankCarRatio', 'groupCapitalAdequacyRatio'])
 export function undisclosedQuarter(metricCode: string, entry: Pick<MetricsHistoryEntry, 'fiscalQuarter' | 'values'>): boolean {
   return HALF_YEARLY_METRICS.has(metricCode) && (entry.fiscalQuarter === 1 || entry.fiscalQuarter === 3) && entry.values[metricCode]?.value == null
 }
