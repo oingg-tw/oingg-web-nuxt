@@ -13,7 +13,7 @@ const check = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${lab
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const PERFORMANCE = '/api/core/holdings/performance'
-const row = (symbol, quantity) => ({ symbol, quantity, costUnknownQuantity: 0, averageCost: 50, totalCost: quantity * 50, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98, priceChange: 2 })
+const row = (symbol, quantity) => ({ symbol, quantity, costUnknownQuantity: 0, averageCost: 50, totalCost: quantity * 50, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', priceChange: 2 })
 const ledgers = {
   // 2330 與 2317 各 1,000 股、收盤 100：總市值 200,000
   1: [row('2330', 1000), row('2317', 1000)],

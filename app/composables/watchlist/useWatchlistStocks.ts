@@ -20,8 +20,8 @@ import type { UniverseSource } from '~/composables/screener/useUniverseScreener'
 // 各自來源的 priceChange、priceChangeRate，跟券商 App 一樣，除息、除權那天不算成下跌。原本用 stock.previousClose 自己算，那是原始收盤價，
 // 除息當天的漲跌含配息的那一跌
 //
-// ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price 與
-// previousClose 都有值。普通股型錄的 325 個欄位它們幾乎都沒有值（2026-11-06 量：ETF 0 個、特別股 1 個），所以清單依類別分段，
+// ETF 與特別股也收（同日使用者決定）。實測 2026-10-06：0056／00878／2881A 的 stock.price
+// 都有值。普通股型錄的 325 個欄位它們幾乎都沒有值（2026-11-06 量：ETF 0 個、特別股 1 個），所以清單依類別分段，
 // 各段讀自己篩選的欄位（見 useWatchlistColumns）：ETF、特別股的欄位走各自的 UniverseSource.run，只要清單上的代號。
 //
 // 沒有股價的那一檔**不丟掉**，照樣列出、數字欄是空的：使用者自己加進來的東西不能在畫面上消失，

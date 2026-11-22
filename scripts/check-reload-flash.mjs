@@ -37,7 +37,7 @@ const trait = value => ({ value, coverage: 1 })
 const TRAITS = { asOf: '2026-10-16', portfolio: { exchangePeRatio: trait(14.2), dividendYield: trait(5.1), roe: trait(12.3), beta: trait(0.7), top3HoldingsPct: trait(60) }, benchmark: null }
 const SYMBOLS = ['2330', '2317', '2412', '2884', '1216', '0056']
 // 收盤價在持股列上（業務中台 136e5d6，web 97680de6 起不再另外問 /screener/values）：沒有的話持股分析寫「目前沒有報價」
-const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: 50, totalCost: 50000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', previousClose: 98, priceChange: 2 }))
+const HOLDINGS = SYMBOLS.map(symbol => ({ symbol, quantity: 1000, costUnknownQuantity: 0, averageCost: 50, totalCost: 50000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', priceChange: 2 }))
 // 風險指標要是上面那六檔的（2026-10-24）：真的端點讀空帳號回 0 個交易日，VaR 寫「樣本不足」折成兩行、「交易日少於 60 天」那句晚出現，
 // 量到的是有持股卻沒有股價歷史這種不會發生的組合。實際跌幅（/holdings/performance）照讀空帳號，驗「期間內沒有持股就不列」
 const drawdown = { depth: -0.1823, peakDate: '2026-01-15', troughDate: '2026-04-09', recoveryDate: '2026-07-20' }

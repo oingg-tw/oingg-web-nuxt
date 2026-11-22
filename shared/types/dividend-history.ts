@@ -12,7 +12,7 @@
 //   previousTradeDate 那一天）; null for the whole year when any event's price is missing. Most companies only have prices
 //   from 2026-06 on (twse-ts's range), so historical rows are mostly null — not missing data. 2026-10-23 analysis-ts
 //   302cc8fc 取代 closeAtExDate／yieldAtExDate（除息當天、已除息的收盤價，殖利率偏高；使用者：「改成除以除息前一天的收盤價」），
-//   名字沿用 GET /stocks/prices 的 previousClose。業務中台還沒對應新欄位時是 undefined
+//   業務中台還沒對應新欄位時是 undefined
 
 // - knowledgeDate = the year's last resolution's announcement date.
 // - Depth: 民國 107 年 (2018) onward today; mops-ts backfills earlier years from 2026-09-24.
