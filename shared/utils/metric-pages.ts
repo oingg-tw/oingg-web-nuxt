@@ -125,6 +125,10 @@ export interface MetricPageDefinition {
   // ifrs-full:GeneralAndAdministrativeExpense；純銀行與金控的第三項來自不同的表要 coalesce。金控數字是全集團合併，頁面要寫。
   // 守衛驗的是自洽不是正確性（6776 母項與成分一起壞恆等式照樣過）。
   partMetricCodes?: string[]
+  // 組成裡要變號的成分（2026-11-22 業外損益組成：每股財務成本是正數、是支出，畫成負的恆等式才成立）
+  negatedPartMetricCodes?: string[]
+  // 組成圖上小到看不見的成分併進哪一個「其他」（成分代碼對成分代碼，全站規則 foldSmallLayers；組成表照列每一項）
+  partOthers?: Record<string, string>
   // 「跟某個指標一起看」的策展預設（2026-09-29「希望模板頁都建立類似機制」）；讀者可在圖上自己換，這裡是打開時已選好的那一支。
   // 同單位同基準的候選實測 ROIC 有 33 支（% 67、元 34、倍 31），所以機制值得做、逐頁硬綁是錯的形狀。先有的三個：roic→roe、
   // equity-growth→bvpsGrowthRate、net-income-growth→epsGrowthRate（總額與每股成長率的差就是股數稀釋，21.5% 的期別差超過 1pp，
@@ -269,7 +273,13 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // rd-intensity 是比率、這一支是它的每股金額，所以是不同的 slug 不是同主題的第二頁
   { slug: 'rd-expense', metricCode: 'researchAndDevelopmentExpensePerShare', timeframe: 'TTM', topic: '每股研發費用', titleKeywords: '每股研發費用逐季數據', related: ['rd-intensity', 'operating-expense'] },
   { slug: 'operating-income', metricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股營業利益', titleKeywords: '每股營業利益逐季數據', related: ['operating-margin', 'gross-profit', 'pretax-income'] },
-  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['non-operating-income-ratio', 'interest-income', 'finance-cost'] },
+  // 組成（2026-11-22，數據中台 B 批第 2 項；使用者「按照建議執行」：匯兌與金融資產評價損益分開畫）：其他收入拆成股利、租金與其餘，其他利益及損失拆成
+  // 處分投資、處分不動產、匯兌、金融資產評價與其餘；12 項加起來等於每股業外損益（財務成本變號）。小項併進同組的其餘
+  { slug: 'non-operating-income', metricCode: 'nonOperatingIncomeExpensesPerShare', compareMetricCode: 'operatingIncomePerShare', timeframe: 'TTM', topic: '每股業外損益', titleKeywords: '每股業外損益的五個組成', related: ['non-operating-composition', 'non-operating-income-ratio', 'interest-income', 'finance-cost'],
+    partMetricCodes: ['interestRevenuePerShare', 'dividendIncomePerShare', 'rentalIncomePerShare', 'otherIncomeRemainderPerShare', 'disposalOfInvestmentsGainsPerShare', 'disposalOfPpeGainsPerShare', 'foreignExchangeGainsPerShare', 'fvtplGainsPerShare', 'otherGainsLossesRemainderPerShare', 'shareOfProfitLossOfAssociatesPerShare', 'financeCostPerShare', 'nonOperatingRemainderPerShare'],
+    negatedPartMetricCodes: ['financeCostPerShare'],
+    partOthers: { dividendIncomePerShare: 'otherIncomeRemainderPerShare', rentalIncomePerShare: 'otherIncomeRemainderPerShare', disposalOfInvestmentsGainsPerShare: 'otherGainsLossesRemainderPerShare', disposalOfPpeGainsPerShare: 'otherGainsLossesRemainderPerShare', foreignExchangeGainsPerShare: 'otherGainsLossesRemainderPerShare', fvtplGainsPerShare: 'otherGainsLossesRemainderPerShare' },
+    partsNote: '財務成本是支出，組成裡畫成負的；業外損益差額是業外合計裡上面各項以外的部分，多數公司是 0。' },
   // 業外損益占稅前淨利比（2026-09-30 直接問「沒有呈現業外損益占稅前淨利比？」）：上一支是金額，這一支才回答「獲利多依賴非本業」。
   // 分母用稅前淨利不用營業利益是量出來的（抽 68 檔單季：業外÷營業利益最大 2787%、業外÷稅前淨利最大 97%，天然有界）。
   // 上游原本只有 Q，之後補 TTM（一次性項目要連續看好幾季，近四季正好平滑）；三段文案上游都齊（analysis-ts 22c20761），不另寫。
@@ -314,14 +324,14 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
 // 指標速覽畫哪張圖。river／metric 由指標頁、徽章頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
-  | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
+  | { kind: 'metric'; metricCode: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'bankAssets' | 'equity' | 'intangible' }
   | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
   const parent = findMetricPage(parentSlug)!
-  return { kind: 'metric', metricCode: parent.metricCode, topic: parent.valueTopic ?? parent.topic, timeframe: parent.timeframe, partCodes: parent.partMetricCodes }
+  return { kind: 'metric', metricCode: parent.metricCode, topic: parent.valueTopic ?? parent.topic, timeframe: parent.timeframe, partCodes: parent.partMetricCodes, negatedPartCodes: parent.negatedPartMetricCodes, partOthers: parent.partOthers }
 }
 
 // 有自己路由檔、沒有登記表的頁。topic：related 的目的地標籤由擁有那一頁的登記表給，呼叫端不寫字——改名不會在別人的頁上留下舊標籤
@@ -349,6 +359,7 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   // 指標的組成頁（2026-10-14 從指標頁拆出，StockMetricCompositionPage）
   'operating-expense-composition': { topic: '營業費用組成', chart: compositionChart('operating-expense') },
   'shareholder-yield-composition': { topic: '股東回饋組成', chart: compositionChart('shareholder-yield') },
+  'non-operating-composition': { topic: '業外損益組成', chart: compositionChart('non-operating-income') },
   // 銀行與金控（2026-11-20）
   'net-revenue-composition': { topic: '淨收益組成', chart: compositionChart('net-revenue') },
   // 資產與負債組成三頁（2026-10-12）：原本是指標頁模板（百分比），同日改成金額的自訂頁（StockBalanceCompositionPage），所以從 METRIC_PAGES 搬到這裡

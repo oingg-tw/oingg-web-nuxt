@@ -31,6 +31,9 @@ const props = defineProps<{
   partCodes?: string[]
   // 成分的顯示名稱，由呼叫端從型錄取（這個元件不碰型錄）。
   partNames?: string[]
+  // 要變號的成分（業外損益組成的財務成本是正數、是支出），與小項併進哪一個其他（成分代碼對成分代碼），見 METRIC_PAGES
+  negatedPartCodes?: string[]
+  partOthers?: Record<string, string>
   // 一起畫的第二支指標（METRIC_PAGES／BADGE_PAGES 的 compareMetricCode）。**由我們決定，沒有選單。**
   // 2026-09-29 一度做成讓讀者自選的下拉：候選是型錄裡所有同單位的指標，於是毛利率頁列出 33 項、
   // 負債比率頁列出 41 項，裡面大半是這家公司根本沒有的（2330 也選得到銀行專用的資本適足率）。
@@ -127,7 +130,7 @@ const allPoints = computed(() => {
       // 判斷一次而給出不同的期別集合。
       parts: compositionRow({
         parent: entry.values[props.metricCode]?.value ?? null,
-        parts: (props.partCodes ?? []).map(code => entry.values[code]?.value ?? null)
+        parts: (props.partCodes ?? []).map(code => signedPart(code, entry.values[code]?.value ?? null))
       })?.parts ?? null
     }))
   const first = list.findIndex(entry => entry.value !== null)
@@ -193,6 +196,17 @@ const shortfall = computed(() => {
 // 堆疊模式（partCodes 有值時）。層的順序由**最新一期拆得開的那一筆**的大小決定，圖與下面的組成表
 // 共用同一個順序——兩邊各自排序的話，讀者在圖上找到的第一層在表上會是第三欄。
 const UNSPLIT = '未拆解'
+// 成分的值：要變號的乘 −1（null 照舊）。併進其他的對照換成層的名字，給 StockStackedBarChart 的 others
+const signedPart = (code: string, value: number | null) => (value !== null && props.negatedPartCodes?.includes(code) ? -value : value)
+const partOthersByName = computed(() => {
+  const codes = props.partCodes ?? []
+  const names = props.partNames ?? []
+  return Object.fromEntries(Object.entries(props.partOthers ?? {}).flatMap(([from, to]) => {
+    const fromName = names[codes.indexOf(from)]
+    const toName = names[codes.indexOf(to)]
+    return fromName && toName ? [[fromName, toName]] : []
+  }))
+})
 const stacked = computed(() => {
   const names = props.partNames ?? []
   if (!props.partCodes?.length || !names.length || points.value.length < 2) return null
@@ -314,6 +328,7 @@ const { chartOption, capped } = useMetricHistoryChartOption(
       :unit="unit"
       :total-name="topic"
       :neutral-layer-name="UNSPLIT"
+      :others="partOthersByName"
       :tooltip-header="stackedTooltipHeader"
       :tooltip-note="index => points[index]?.remark ?? ''"
     />

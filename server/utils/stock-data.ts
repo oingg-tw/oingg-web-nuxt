@@ -50,13 +50,28 @@ export const STOCK_HISTORY_LIMIT = 20
 // 表格照舊只列 5 年：頁面截在 HISTORY_TABLE_PERIODS（app/utils/metric-history-points.ts）
 export const STOCK_CHART_HISTORY_LIMIT = 32
 
+// metrics-history 一次最多 10 支（業務中台）。超過的（業外損益組成的母項＋12 項，2026-11-22）分批同時打、依期別合併，存成同一份快取：
+// 母項與成分還是同一個快取世代，組成的恆等式不會因為兩份快取一新一舊而假性失敗（metric.get.ts 的註解）
+const METRICS_HISTORY_MAX_CODES = 10
+
 export const cachedMetricsHistory = defineCachedFunction(
   async (symbol: string, timeframe: MetricsHistoryTimeframe, codes: string[], limit: number): Promise<MetricsHistorySeries> => {
-    const response = await businessFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {
+    const chunks = Array.from({ length: Math.ceil(codes.length / METRICS_HISTORY_MAX_CODES) }, (_, index) => codes.slice(index * METRICS_HISTORY_MAX_CODES, (index + 1) * METRICS_HISTORY_MAX_CODES))
+    const responses = await Promise.all(chunks.map(chunk => businessFetch<MetricsHistoryResponse>(`/stocks/${symbol}/metrics-history`, {
       // 查詢參數 timeframe（2026-10-10 起；原本是 basis，見 useMetricsHistory.ts）
-      query: { metricCodes: codes.join(','), timeframe, limit }
+      query: { metricCodes: chunk.join(','), timeframe, limit }
+    })))
+    const byPeriod = new Map<string, MetricsHistoryEntry>()
+    responses.forEach((response, index) => {
+      for (const entry of withPeriodFacts(response.entries, chunks[index]!, response.absentPeriods)) {
+        const key = `${entry.fiscalYear}-${entry.fiscalQuarter}`
+        const existing = byPeriod.get(key)
+        if (existing) Object.assign(existing.values, entry.values)
+        else byPeriod.set(key, entry)
+      }
     })
-    return { timeframe, codes, limit, entries: withPeriodFacts(response.entries, codes, response.absentPeriods), total: response.total }
+    const entries = [...byPeriod.values()].sort((a, b) => a.fiscalYear - b.fiscalYear || (a.fiscalQuarter ?? 0) - (b.fiscalQuarter ?? 0))
+    return { timeframe, codes, limit, entries, total: Math.max(...responses.map(response => response.total)) }
   },
   {
     name: 'stock-metrics-history',

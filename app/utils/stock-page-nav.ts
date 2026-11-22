@@ -181,7 +181,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '研發費用率', perspective: '占比', to: code => `/stock/${code}/rd-intensity`, hook: '研發占營業額的比率。要跨公司比較投入程度，用比率' }
     ]
   },
-  // 業外損益。六支全是「每股」，所以 metrics.vue 不會替它渲染視角標題列（單一視角時省略）。
+  // 業外損益。原本六支全是「每股」；2026-11-22 加了業外損益組成（組成），metrics.vue 起照兩種視角分列。
   //
   // 每股利息收入與每股財務成本的主體看起來像現金與負債，但它們是**損益表的每股科目**，分子在損益表
   // 上，所以留在這裡而不是搬去現金流或負債。
@@ -189,6 +189,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     label: '業外損益',
     answer: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這一組。',
     children: [
+      // 業外損益組成（2026-11-22，數據中台 B 批第 2 項）：利息、股利、租金、處分投資、匯兌、金融資產評價、權益法與財務成本各多少
+      { label: '業外損益組成', perspective: '組成', to: code => `/stock/${code}/non-operating-composition`, hook: '業外損益由利息、匯兌、處分投資、權益法與財務成本各貢獻多少' },
       { label: '每股業外損益', perspective: '每股', to: code => `/stock/${code}/non-operating-income`, hook: '不是本業賺的那一塊。想知道獲利有多少不靠本業，看這個' },
       { label: '業外損益占稅前淨利比', perspective: '占比', to: code => `/stock/${code}/non-operating-income-ratio`, hook: '這一季的稅前獲利裡，有多少比例不是本業賺的' },
       { label: '每股利息收入', perspective: '每股', to: code => `/stock/${code}/interest-income`, hook: '帳上現金存著、借出去，收到的利息' },

@@ -97,6 +97,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       :entries="metricData.series.entries"
       :parent-code="metricPage.metricCode"
       :part-codes="partCodes"
+      :negated-part-codes="metricPage.negatedPartMetricCodes"
       :timeframe="metricPage.timeframe"
       :topic="valueTopic"
       :short-name="stockShortName"
@@ -110,6 +111,8 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         :default-timeframe="metricPage.timeframe"
         :available-timeframes="availableTimeframes"
         :part-codes="partCodes"
+        :negated-part-codes="metricPage.negatedPartMetricCodes"
+        :part-others="metricPage.partOthers"
         :part-names="partNames"
       />
     </StockMetricCompositionSection>

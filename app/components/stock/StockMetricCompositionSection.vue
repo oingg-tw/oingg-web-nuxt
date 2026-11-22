@@ -34,6 +34,8 @@ const props = defineProps<{
   entries: MetricsHistoryEntry[]
   parentCode: string
   partCodes: string[]
+  // 要變號的成分（業外損益組成的財務成本），同圖
+  negatedPartCodes?: string[]
   timeframe: MetricsHistoryTimeframe
   topic: string
   shortName: string
@@ -59,7 +61,10 @@ const rows = computed<CompositionRow[]>(() => {
   for (const entry of props.entries) {
     const row = compositionRow({
       parent: entry.values[props.parentCode]?.value ?? null,
-      parts: props.partCodes.map(code => entry.values[code]?.value ?? null)
+      parts: props.partCodes.map((code) => {
+        const value = entry.values[code]?.value ?? null
+        return value !== null && props.negatedPartCodes?.includes(code) ? -value : value
+      })
     })
     if (row) out.push({ entry, ...row })
   }
@@ -97,13 +102,15 @@ const order = computed<number[]>(() => {
 const numberText = (value: number): string => `${formatSignificantDigits(value, 4)}${unit.value}`
 
 // 答句是最新一期的母項與最大的兩項（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」：每一項都在圖例與表格裡）。百分比用母項當分母——
-// 恆等式已經檢查過，所以各項加起來必然接近 100%，不會出現「加起來 97%」那種讀者無法解釋的畫面。
+// 恆等式已經檢查過，所以各項加起來必然接近 100%，不會出現「加起來 97%」那種讀者無法解釋的畫面。成分有正有負時（業外損益組成，2026-11-22）
+// 不寫百分比：合計接近 0 時占比會寫成 3109%，沒有意義，只寫金額
 const answer = computed(() => {
   const last = newest.value
   if (!last) return null
+  const mixed = last.parts.some(value => value > 0) && last.parts.some(value => value < 0)
   const parts = order.value
     .map(i => ({ name: nameOf(props.partCodes[i]!), value: last.parts[i]! }))
-    .map(part => `${part.name} ${numberText(part.value)}（${last.parent === 0 ? '－' : minusSign(`${((part.value / last.parent) * 100).toFixed(1)}%`)}）`)
+    .map(part => (mixed || last.parent === 0 ? `${part.name} ${numberText(part.value)}` : `${part.name} ${numberText(part.value)}（${minusSign(`${((part.value / last.parent) * 100).toFixed(1)}%`)}）`))
   return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，由${parts.slice(0, 2).join('、')}${parts.length > 2 ? '等' : ''}組成。`
 })
 

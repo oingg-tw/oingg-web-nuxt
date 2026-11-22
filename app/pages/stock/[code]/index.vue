@@ -444,6 +444,8 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           :available-timeframes="timeframesOf(item.spec.metricCode)"
           :part-codes="item.spec.partCodes"
           :part-names="item.spec.partCodes?.map(partCode => findMetricInSchema(categories, partCode)?.metric.name ?? partCode)"
+          :negated-part-codes="item.spec.negatedPartCodes"
+          :part-others="item.spec.partOthers"
           :compare-metric-code="item.spec.compareMetricCode"
           :compare-name="item.spec.compareMetricCode && nameOf(item.spec.compareMetricCode)"
           :compare-timeframes="item.spec.compareMetricCode ? timeframesOf(item.spec.compareMetricCode) : undefined"
