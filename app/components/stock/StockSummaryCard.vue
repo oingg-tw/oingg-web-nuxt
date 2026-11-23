@@ -213,6 +213,9 @@ const qrDialogVisible = ref(false)
       <p v-if="delistText" class="summary-card__status">{{ delistText }}</p>
       <!-- 全額交割、處置、可能達處置、注意股票（2026-11-24，使用者 11-23 核准）：同上，帶日期的狀態，跟報價同一次讀到，不會晚一步推動下面 -->
       <p v-for="line in statusTexts" :key="line" class="summary-card__status">{{ line }}</p>
+      <!-- 證交所 2026-11-21 的要求（網站條款第八條，數據中台轉達）：顯示注意股票的地方註明資料來源，同篩選表格的 sourceNote；
+           四種狀態都來自兩所的名單，有任何一種就寫，兩所都寫（同表格，上櫃的來自櫃買） -->
+      <p v-if="statusTexts.length" class="summary-card__status summary-card__source">資料來源：<span>臺灣證券交易所</span>、<span>證券櫃檯買賣中心</span></p>
       <!-- 會計師示警（2026-11-22，使用者「按照建議執行」）：最近一期是繼續經營疑慮、無法表示意見或年報保留意見，帶期別的狀態 -->
       <p v-if="auditText" class="summary-card__status">{{ auditText }}</p>
     </div>
@@ -520,6 +523,15 @@ html.dark .summary-card__favorite-btn.is-plain {
   margin: 0;
   font-size: 1rem;
   color: var(--el-text-color-secondary);
+}
+
+.summary-card__source {
+  font-size: 0.875rem;
+}
+
+/* 窄的時候只在頓號後面換行，機構名不拆開（375 寬會剩一個「心」掉到下一行） */
+.summary-card__source span {
+  white-space: nowrap;
 }
 
 .summary-card__legal-name {
