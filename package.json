@@ -6,7 +6,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "nuxt build",
+    "build": "node scripts/third-party-licenses.mjs && nuxt build",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",

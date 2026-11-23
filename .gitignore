@@ -39,3 +39,6 @@ a11y-report/
 
 # PageSpeed Insights 的完整報告（scripts/lighthouse-check.mjs）：大、只留本機，摘要送業務中台
 lighthouse-report/
+
+# 建置時產生的第三方授權清單（scripts/third-party-licenses.mjs）
+public/third-party-licenses.txt
