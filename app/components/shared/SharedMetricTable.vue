@@ -244,7 +244,9 @@ const movableColumns = computed(() => orderedColumns.value.filter(column => !col
 // 證交所 2026-11-21 的要求（數據中台轉達，它網站條款第八條：引用、轉載要註明來源）：顯示注意股票、上市 ETF 主題的地方寫「資料來源：
 // 臺灣證券交易所」。上櫃的那一半來自櫃買，一起寫。鍵是欄位 id 的指標名（普通股 isAttentionStock.EOD、ETF theme.snapshot）；
 // 只看欄位與條件、不看列，資料到之前就在，不會跳
-const EXCHANGE_FIELDS: Record<string, string> = { isAttentionStock: '注意股票', theme: 'ETF 主題' }
+// 2026-11-24（使用者「寫進去」，CLAUDE.md 的 Exchange data credit 列）：同樣出自兩所名單的處置、全額交割、可能達處置也寫，同摘要卡；
+// 停止買賣出自公開觀測站，不算
+const EXCHANGE_FIELDS: Record<string, string> = { isAttentionStock: '注意股票', isNearDispositionThreshold: '可能達處置', isDisposedStock: '處置股票', isAlteredTradingMethod: '全額交割', theme: 'ETF 主題' }
 const sourceNote = computed(() => {
   const labels = new Set([...orderedColumns.value.map(column => column.field), ...props.sourceFields]
     .map(field => EXCHANGE_FIELDS[field?.split('.')[0] ?? '']).filter(Boolean))
