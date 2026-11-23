@@ -56,7 +56,7 @@ const floorNote = definition.growthBaseFloor
 // 資料的公司」就是錯的。
 const populationNote = definition.screener?.population ?? ''
 // 篩過族群時連那句開頭也要改：那些頁面不是「全市場有資料的公司」。
-const universeText = computed(() => (isEtf ? `有${label}資料的${fundType.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
+const universeText = computed(() => (isEtf ? `${definition.etfPopulation ?? `有${label}資料的`}${fundType.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
 
 // 單位與換算照 RANK_PAGES（市值、ETF 規模回來是元，換成億元才讀得進句子；受益人數是整數要千分位）；其他照上游的單位
 const unit = computed(() => definition.unit ?? data.value?.unit ?? '')

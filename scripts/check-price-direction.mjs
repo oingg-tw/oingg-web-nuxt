@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { colorsByDirection } from '../app/utils/price-direction.ts'
 
-for (const name of ['營收成長年增率', '近三個月營收年增率變化', '股本變化年增率', '收盤價漲跌', '收盤價漲跌幅', '52 週股價漲跌幅']) {
+for (const name of ['營收成長年增率', '近三個月營收年增率變化', '股本變化年增率', '收盤價漲跌', '收盤價漲跌幅', '52 週股價漲跌幅', '集保戶數月增率']) {
   assert.equal(colorsByDirection(name), true, name)
 }
 // 標準差永遠是正的；價格、溢價率是水準，資產報酬率是獲利能力，都沒有漲跌的方向

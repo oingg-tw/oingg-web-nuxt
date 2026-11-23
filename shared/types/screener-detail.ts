@@ -17,8 +17,8 @@ export interface EtfDetail {
   trackingIndex: string | null
   // 月報年月 "YYYY-MM"
   yearMonth: string
-  // expenseRatioHistory 是陣列，其他都是單一值
-  values: Record<string, EtfValue | ExpenseRatioYear[]>
+  // expenseRatioHistory、annualReturnHistory 是陣列，其他都是單一值
+  values: Record<string, EtfValue | ExpenseRatioYear[] | AnnualReturnYear[]>
   // 集保（基金資訊觀測站）的基金基本資料（2026-11-21）；集保還沒收錄的新 ETF 是 null。asOfDate 也是 values.riskLevel 的日期
   fundProfile?: { asOfDate: string; manager: string | null; custodianBank: string | null; distributionRule: string | null; investRegion: string | null; investTarget: string | null } | null
 }
@@ -27,6 +27,12 @@ export interface EtfDetail {
 export interface ExpenseRatioYear {
   year: number
   expenseRatio: number
+}
+
+// 各年度報酬率（數據中台 annualReturnHistory，2026-11-23）：FundClear 公布的日曆年度含息報酬率，由舊到新、只列有值的年份
+export interface AnnualReturnYear {
+  year: number
+  returnPct: number
 }
 
 export interface EtfDistributionComposition {
@@ -82,6 +88,8 @@ export interface EtfMonthlyPoint {
   yearMonth: string
   aum: number | null
   holders: number | null
+  // 受益權單位數（數據中台 236cd83，2026-11-23）：月報的 units_outstanding，加掛外幣的是整檔合計
+  numberOfUnitsIssued?: number | null
   netFlow: number | null
   // 公會獨有、先藏（SITCA_ONLY_ETF_FIELDS，2026-11-23）：伺服器拿掉，所以現在不會有
   dcaAmount?: number | null

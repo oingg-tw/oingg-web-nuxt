@@ -10,6 +10,10 @@ const people = (value: number | null) => (value === null ? '－' : `${groupThous
 const money = (value: number | null | undefined) => (value === null || value === undefined ? '－' : formatMoney(value))
 // 定期定額金額是公會獨有、先藏（SITCA_ONLY_ETF_FIELDS，2026-11-23）：伺服器不送，這一欄跟著不畫；拿掉隱藏就回來
 const hasDca = computed(() => months.value.some(row => typeof row.dcaAmount === 'number'))
+// 受益權單位數（2026-11-23，數據中台 numberOfUnitsIssued）：一億以上寫億、以下寫萬
+// 業務中台還沒轉這一欄時整欄都是空的：有值才畫
+const hasUnits = computed(() => months.value.some(row => typeof row.numberOfUnitsIssued === 'number'))
+const units = (value: number | null | undefined) => (value === null || value === undefined ? '－' : value >= 1e8 ? `${formatSignificantDigits(value / 1e8, 4)} 億` : `${formatSignificantDigits(value / 1e4, 4)} 萬`)
 
 const answer = computed(() => {
   const latest = months.value[0]
@@ -26,12 +30,13 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="size" :description="answer">
     <StockQuestionSection id="etf-size" :question="`${shortName}（${code}）規模多大？受益人數有沒有變？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="size" />
-      <SharedTable v-if="months.length" :label="`${shortName}每月規模與受益人數`" :caption="`${shortName} ${code} 每月規模、受益人數、淨申購${hasDca ? '與定期定額金額' : ''}（投信投顧公會基金月報，新的在上）`">
+      <SharedTable v-if="months.length" :label="`${shortName}每月規模與受益人數`" :caption="`${shortName} ${code} 每月規模、受益人數、${hasUnits ? '受益權單位數、' : ''}淨申購${hasDca ? '與定期定額金額' : ''}（投信投顧公會基金月報，新的在上）`">
         <thead>
           <tr>
             <th scope="col">月份</th>
             <th scope="col" class="seo-table__num">規模</th>
             <th scope="col" class="seo-table__num">受益人數</th>
+            <th v-if="hasUnits" scope="col" class="seo-table__num">受益權單位數</th>
             <th scope="col" class="seo-table__num">淨申購（申購 − 贖回）</th>
             <th v-if="hasDca" scope="col" class="seo-table__num">定期定額金額</th>
           </tr>
@@ -41,6 +46,7 @@ const answer = computed(() => {
             <th scope="row">{{ row.yearMonth }}</th>
             <td class="seo-table__num">{{ money(row.aum) }}</td>
             <td class="seo-table__num">{{ people(row.holders) }}</td>
+            <td v-if="hasUnits" class="seo-table__num">{{ units(row.numberOfUnitsIssued) }}</td>
             <td class="seo-table__num">{{ money(row.netFlow) }}</td>
             <td v-if="hasDca" class="seo-table__num">{{ money(row.dcaAmount) }}</td>
           </tr>

@@ -14,4 +14,5 @@ export function priceDirectionClass(value: number | null | undefined): '' | 'is-
 // 篩選結果表（SharedMetricTable）哪些欄上漲跌色：指標名稱以年增率／年減率（可以再接「變化」）結尾（2026-10-22，使用者：「篩選 表格
 // 舉凡 年增率 年減率 數字 都用 漲跌色」），或以漲跌／漲跌幅結尾（2026-11-23，使用者：「screener/preferred 有些數字可以上漲跌色」）。
 // 「營收年增率波動」是標準差、永遠是正的，不是增減，所以不上色。scripts/check-price-direction.mjs
-export const colorsByDirection = (name: string): boolean => /(年增率|年減率)(變化)?$|漲跌幅?$/.test(name)
+// 月增率（2026-11-23，ETF 集保戶數月增率）跟年增率同一類，一起上色
+export const colorsByDirection = (name: string): boolean => /(年增率|年減率|月增率)(變化)?$|漲跌幅?$/.test(name)

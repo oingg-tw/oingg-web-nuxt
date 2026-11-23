@@ -14,7 +14,8 @@ interface EtfFilterField {
   field: string
   label: string
   // date（成立日）這一版的條件面板還不能設，不放進型錄；「成立年數」數字欄位涵蓋同樣的需求（業務中台 045159d）
-  kind: 'numeric' | 'categorical' | 'date'
+  // history：一串逐年的值（expenseRatioHistory、annualReturnHistory），只能當欄位、不能排序，不放進挑選面板
+  kind: 'numeric' | 'categorical' | 'date' | 'history'
   // 類別欄位的選項：原本全是字串（"true"、"7"），數據中台 2026-11-03 起照型別給（布林、整數）
   values?: (string | number | boolean)[]
   unit?: string
@@ -104,8 +105,9 @@ const DEFAULT_COLUMNS = shown(['close', 'nav', 'aum', 'return1y', 'expenseRatio'
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   // 說明只寫看得到的欄位（近 2 年、定期定額、近 12 個月估算先藏）
-  { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: shown(['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y']) },
-  { key: 'size', name: '規模與資金', description: '規模、受益人數、淨申購與市占率', fieldKeys: shown(['aum', 'holders', 'netFlow', 'dcaAmount', 'marketShareRate']) },
+  // 年化報酬率（2026-11-23，使用者：「etf 欄位要加上不同持續時間的年化報酬率」）接在累積報酬後面；集保戶數與月增率接在受益人數後面
+  { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的累積報酬率，以及近 3、5、10 年的年化報酬率', fieldKeys: shown(['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y', 'annualizedReturn3y', 'annualizedReturn5y', 'annualizedReturn10y']) },
+  { key: 'size', name: '規模與資金', description: '規模、受益人數、集保戶數與月增率、淨申購與市占率', fieldKeys: shown(['aum', 'holders', 'custodyAccountCount', 'custodyAccountCountMonthlyChangeRate', 'netFlow', 'dcaAmount', 'marketShareRate']) },
   { key: 'cost', name: '費用歷史', description: `${LAST_FULL_YEAR} 年到 ${LAST_FULL_YEAR - 24} 年每一年的總費用率`, fieldKeys: shown([...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)]) }
 ]
 
@@ -149,7 +151,7 @@ export function useEtfSource(): UniverseSource {
   if (import.meta.client && catalog.value === null) loadCatalog()
   watchLoadFailure('etf-screener-catalog', () => catalogFailure.value, loadCatalog, { scope: 'section' })
 
-  const fieldsByKey = computed(() => new Map((catalog.value ?? []).flatMap(category => category.fields).filter(field => !SITCA_ONLY_ETF_FIELDS.has(field.field)).map(field => [field.field, field])))
+  const fieldsByKey = computed(() => new Map((catalog.value ?? []).flatMap(category => category.fields).filter(field => field.kind !== 'history' && !SITCA_ONLY_ETF_FIELDS.has(field.field)).map(field => [field.field, field])))
 
   // 已經持有（2026-10-22，見 screener-tab-model.ts 的 HELD_FIELD_ID）：登入的人才有，查詢要帶身分
   const currentUser = useCurrentUser()
@@ -161,7 +163,7 @@ export function useEtfSource(): UniverseSource {
     category.categoryDisplayName,
     index,
     category.fields
-      .filter(field => field.kind !== 'date' && !EXPENSE_RATIO_YEAR.test(field.field) && field.field !== 'expenseRatioHistory' && !SITCA_ONLY_ETF_FIELDS.has(field.field))
+      .filter(field => field.kind !== 'date' && field.kind !== 'history' && !EXPENSE_RATIO_YEAR.test(field.field) && field.field !== 'expenseRatioHistory' && !SITCA_ONLY_ETF_FIELDS.has(field.field))
       .map(field => ({
         field: field.field,
         name: displayLabel(field),

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FactItem } from '~/components/shared/SharedFactList.vue'
+import type { ExpenseRatioYear } from '#shared/types/screener-detail'
 
 // ETF 面向：費用（2026-10-18）。歷年總費用率的折線＋逐年的表，加上目前各項費率的拆解。近 12 個月是估算（analysis-ts 803f6cd9：月底淨資產
 // 平均當分母，官方用每日平均；上游要求標「估算」），未滿 12 個月的已換算成一年
@@ -9,7 +10,7 @@ const { code, data, values, num, shortName } = etfData
 // 新的年份在上面；上游的陣列由舊到新
 const years = computed(() => {
   const history = values.value.expenseRatioHistory
-  return Array.isArray(history) ? history.map(entry => ({ year: String(entry.year), value: entry.expenseRatio })).reverse() : []
+  return Array.isArray(history) ? (history as ExpenseRatioYear[]).map(entry => ({ year: String(entry.year), value: entry.expenseRatio })).reverse() : []
 })
 
 const trailing = computed(() => num('trailing12MonthExpenseRatioPct'))

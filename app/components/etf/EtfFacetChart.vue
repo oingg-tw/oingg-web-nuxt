@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { LineChartEntry, LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
-import type { EtfPageResponse } from '#shared/types/screener-detail'
+import type { AnnualReturnYear, EtfPageResponse, ExpenseRatioYear } from '#shared/types/screener-detail'
 import type { EtfFacetKey } from '~/utils/etf-pages'
 // ETF 每個面向的那一張圖（2026-10-18）：面向頁與速覽首頁畫的是同一張（同個股：指標頁的圖就是速覽格子裡的圖）。外殼是 SharedChartCard，
 // 有時間軸的接 useChartPeriod；速覽把標題傳進 #header。填息沒有圖（同個股填息頁，只有表）
 const props = defineProps<{
   data: EtfPageResponse
-  facet: Exclude<EtfFacetKey, 'overview' | 'fill' | 'profile'>
+  // annualReturns：含息報酬率頁的第二張圖（各年度報酬率，2026-11-23），不是一個面向
+  facet: Exclude<EtfFacetKey, 'overview' | 'fill' | 'profile'> | 'annualReturns'
 }>()
 
 const isDesktop = useIsDesktop()
@@ -49,12 +50,18 @@ const lineSpec = computed<LineSpec | null>(() => {
     }
     case 'expenses': {
       const history = values.expenseRatioHistory
-      const entries = Array.isArray(history) ? history.map(entry => ({ label: String(entry.year), values: { value: { value: entry.expenseRatio } } })) : []
+      const entries = Array.isArray(history) ? (history as ExpenseRatioYear[]).map(entry => ({ label: String(entry.year), values: { value: { value: entry.expenseRatio } } })) : []
       return entries.length ? { entries, series: [{ code: 'value', name: '總費用率', lineType: 'solid', symbol: 'circle', format: pct }], unit: '%', format: pct, perYear: 1 } : null
     }
     case 'returns': {
       const entries = ETF_RETURN_FIELDS.flatMap(({ field, label }) => (typeof values[field] === 'number' ? [{ label, values: { value: { value: values[field] as number } } }] : []))
       return entries.length ? { entries, series: [{ code: 'value', name: '含息報酬率（累積）', type: 'bar', lineType: 'solid', symbol: 'rect', format: pct, signColored: true }], unit: '%', format: pct, perYear: null } : null
+    }
+    // 各年度報酬率（數據中台 annualReturnHistory：FundClear 公布的日曆年度含息報酬率）：一年一根，正負分色
+    case 'annualReturns': {
+      const history = values.annualReturnHistory
+      const entries = Array.isArray(history) ? (history as AnnualReturnYear[]).map(entry => ({ label: String(entry.year), values: { value: { value: entry.returnPct } } })) : []
+      return entries.length ? { entries, series: [{ code: 'value', name: '各年度報酬率（含息）', type: 'bar', lineType: 'solid', symbol: 'rect', format: pct, signColored: true }], unit: '%', format: pct, perYear: 1 } : null
     }
     // 以億元畫：0050 一天上百億，原始的元在縱軸上是 11 位數
     case 'liquidity': {

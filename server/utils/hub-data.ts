@@ -507,7 +507,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   for (let page = 1, totalPages = 1; page <= totalPages; page += 1) {
     const response = await businessFetch<{ totalPages: number; results: EtfResult[] }>('/etf-screener', {
       method: 'POST',
-      body: { columns: [{ field: definition.field }, { field: 'fundType' }, ...(definition.dateField ? [{ field: definition.dateField }] : [])], sortField: definition.field, order: definition.direction, page, pageSize: ETF_PAGE_SIZE }
+      body: { columns: [{ field: definition.field }, { field: 'fundType' }, ...(definition.dateField ? [{ field: definition.dateField }] : [])], ...(definition.etfFilters ? { filters: definition.etfFilters } : {}), sortField: definition.field, order: definition.direction, page, pageSize: ETF_PAGE_SIZE }
     })
     results.push(...response.results)
     totalPages = response.totalPages

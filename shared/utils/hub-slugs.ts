@@ -121,6 +121,9 @@ export interface RankPageDefinition {
   dateField?: string
   // 日期叫什麼，蓋過 rankDateLabel 依欄位推的（集保的週資料是「集保資料日」，不是交易日）
   dateLabel?: string
+  // ETF 的排行先篩母體（POST /etf-screener 的 filters），答句的母體也改寫（例：只排成立滿半年的，剛掛牌的月增率基期太小）
+  etfFilters?: { field: string; min?: number | null; max?: number | null }[]
+  etfPopulation?: string
   // 排的是欄位的相反數（52 週股價跌幅：漲跌幅由低到高取前 50，數值轉成正的跌幅、由高到低寫）。direction 是畫面上的方向
   negate?: true
   // 這個欄位的說明（「是什麼？怎麼算？」與「要注意什麼」）。普通股的排行讀 /metrics 型錄自己的說明，ETF 的型錄沒有，寫在這裡
@@ -241,6 +244,9 @@ export const RANK_PAGES: RankPageDefinition[] = [
   } },
   // ETF 的排行（2026-10-21）。一樣只依一個欄位排序取前 50；說明的事實照 ETF 個別頁已有的寫法（基金月報、估算與完整年度）。
   { slug: 'etf-aum', universe: 'etf', category: 'etf-size', field: 'aum', direction: 'desc', label: '規模', unit: '億元', valueScale: 1e8, monthlyReport: true, note: '規模是投信投顧公會基金月報公布的月底淨資產，每月更新一次；規模跌破法定門檻、而且一段時間沒有回升的 ETF 可能依規定下市清算（以發行投信的公告為準）。' },
+  // 集保戶數月增率（2026-11-23，排行指南的「受益人數與月增率」；公會的受益人數月增率是獨有資料、先藏，改用集保結算所的戶數，數據中台 custodyAccountCountMonthlyChangeRate）。
+  // 只排成立滿半年的：新 ETF 第二個月常常 +200% 以上（00985A +241.52%），會佔滿前面
+  { slug: 'etf-custody-growth', universe: 'etf', category: 'etf-size', field: 'custodyAccountCountMonthlyChangeRate', direction: 'desc', label: '集保戶數月增率', short: '集保戶數月增', unit: '%', monthlyReport: true, etfFilters: [{ field: 'yearsSinceEstablished', min: 0.5 }], etfPopulation: '成立滿半年、有集保戶數月增率資料的', note: '集保戶數月增率是臺灣集中保管結算所每月公布的 ETF 集保戶數，這個月比上個月增減幾 %；集保戶數跟受益人數的算法不同，通常略少。只排成立滿半年的 ETF：剛掛牌的頭幾個月戶數基期小，月增率會被放大。' },
   { slug: 'etf-holders', universe: 'etf', category: 'etf-size', field: 'holders', direction: 'desc', label: '受益人數', unit: '人', monthlyReport: true, note: '受益人數是投信投顧公會基金月報公布的月底人數，每月更新一次。' },
   { slug: 'etf-net-flow', universe: 'etf', category: 'etf-size', field: 'netFlow', direction: 'desc', label: '淨申購', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '淨申購是投信投顧公會基金月報公布的當月申購金額減去贖回金額，每月更新一次；贖回多於申購時是負數。' },
   // 近 5 日平均成交量（2026-11-23，排行指南的「五日均量」，數據中台 averageVolume5dLots，兩所日行情）：張取整數，日期是最後一個交易日
@@ -260,7 +266,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
 // 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
 export const RANK_NAV: Record<'common' | 'etf', string[]> = {
   common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w', 'custody-over-1000-lots'],
-  etf: ['etf-holders', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low']
+  etf: ['etf-holders', 'etf-custody-growth', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low']
 }
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
