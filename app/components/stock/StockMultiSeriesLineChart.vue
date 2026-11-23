@@ -2,7 +2,7 @@
 import type { ChartLegendGroup, ChartLegendItem } from '~/components/shared/SharedChartLegend.vue'
 // Several metricCodes over the same periods, one line each — extracted from
 // app/pages/stock/[code]/margins.vue on 2026-09-21 alongside StockWaterfallChart, when the
-// 安全韌性 page needed the identical chart for its own three ratios.
+// 償債能力比率 page needed the identical chart for its own three ratios.
 //
 // Series are separated by LINE TYPE and SYMBOL SHAPE first and colour second（WCAG 1.4.1）, so
 // shape alone still tells the lines apart. The colours come from getSeriesColors / the inks / the

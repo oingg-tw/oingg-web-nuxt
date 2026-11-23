@@ -1,6 +1,6 @@
 import type { MetricsHistorySeries } from './metrics-history'
 
-// server/api/stock/[code]/solvency.get.ts — everything /stock/:code/solvency（安全韌性的組成,
+// server/api/stock/[code]/solvency.get.ts — everything /stock/:code/solvency（償債能力比率,
 // 2026-09-21）needs in one same-origin round trip.
 //
 // The second page built on the /margins shape（a group's own relationship page, first child of its

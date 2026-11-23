@@ -285,7 +285,8 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
     label: '償債能力',
     answer: '還得出錢嗎，跟借得多不多，是兩件事。流動比率和速動比率答前面那個，負債比率和利息保障倍數答後面那個。',
     children: [
-      { label: '安全韌性的組成', perspective: '組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
+      // 2026-11-23 從「安全韌性的組成」改名（使用者選的）：這一組 9/28 已改叫償債能力，這頁也沒有把哪個總數拆成幾塊，不是組成
+      { label: '償債能力比率', perspective: '組成', to: code => `/stock/${code}/solvency`, hook: '這幾個比率一起看，公司的還債能力長什麼樣' },
       { label: '負債比率', perspective: '占比', to: code => `/stock/${code}/debt-ratio`, hook: '公司的資產裡，有幾成是借來的' },
       { label: '流動資產組成', perspective: '組成', to: code => `/stock/${code}/current-asset-composition`, hook: '一年內能變現的資產，是現金、應收帳款還是存貨' },
       { label: '非流動資產組成', perspective: '組成', to: code => `/stock/${code}/non-current-asset-composition`, hook: '長期資產是廠房設備、轉投資還是無形資產' },

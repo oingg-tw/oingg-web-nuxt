@@ -1,6 +1,6 @@
 import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 
-// GET /api/stock/:code/solvency — the 安全韌性的組成 page's one data call (2026-09-21).
+// GET /api/stock/:code/solvency — the 償債能力比率 page's one data call (2026-09-21).
 //
 // Five codes in ONE request（metrics-history takes up to 10）, so the whole page costs a single
 // cached 業務中台 round trip — same shape as margins.get.ts, and for the same reason: fetching them

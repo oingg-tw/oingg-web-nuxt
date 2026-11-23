@@ -354,7 +354,7 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   news: { topic: '近期新聞', chart: { kind: 'news' } },
   dividend: { topic: '配股配息', chart: { kind: 'dividend' } },
   margins: { topic: '財報三率', chart: { kind: 'margins' } },
-  solvency: { topic: '安全韌性的組成', chart: { kind: 'solvency' } },
+  solvency: { topic: '償債能力比率', chart: { kind: 'solvency' } },
   dupont: { topic: '杜邦分析', chart: { kind: 'dupont' } },
   'monthly-revenue': { topic: '月營收', chart: { kind: 'monthly-revenue' } },
   // 2026-10-23 從月營收拆出來：同一支端點，圖是年增率（StockMonthlyRevenueChart measure yoy）

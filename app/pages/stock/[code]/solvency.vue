@@ -2,7 +2,7 @@
 import type { WaterfallStep } from '~/components/stock/StockWaterfallChart.vue'
 import { SOLVENCY_LIQUIDITY_CODES, SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/types/stock-solvency-page'
 import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
-// /stock/:code/solvency — 安全韌性的組成, the first child of the nav's 安全韌性 group.
+// /stock/:code/solvency — 償債能力比率 (安全韌性的組成 until 2026-11-23), the first child of the nav's 償債能力 group.
 //
 // Built from「只有單一一個指標呈現好像沒甚麼意思」and the decision that followed it（「那先做安全韌
 // 性」）. The five per-ratio pages in that group each answer about ONE ratio; what a reader wants is
@@ -27,7 +27,7 @@ import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
-const TOPIC = '安全韌性的組成'
+const TOPIC = '償債能力比率'
 
 const { stock, profile, stockShortName, stockPending, summary } = useStockDetailSummary(code)
 // 型錄與這一頁的資料同時抓（2026-10-26，冷啟動，同 StockMetricDetailPage）：互不相依，原本一個等一個是兩波上游呼叫。

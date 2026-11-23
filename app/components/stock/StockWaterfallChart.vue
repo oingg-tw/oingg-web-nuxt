@@ -6,7 +6,7 @@ import { CustomChart } from 'echarts/charts'
 // option below needs its own entry here.
 
 // Horizontal waterfall — extracted from app/pages/stock/[code]/margins.vue on 2026-09-21 when the
-// 安全韌性 page needed the same chart for a different chain（流動比率 → 速動比率 → 現金比率）.
+// 償債能力比率 page needed the same chart for a different chain（流動比率 → 速動比率 → 現金比率）.
 // Extracted rather than copied: the custom-series maths below is tuned（the zero-crossing case, the
 // 2px floor, the label placement, the hand-applied text scale）and a second hand-maintained copy
 // would have drifted from it silently.

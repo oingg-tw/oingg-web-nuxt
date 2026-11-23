@@ -4,7 +4,7 @@ import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // /stock/{code}/cash-cycle — 現金循環的組成（2026-09-26「存貨天數加收現天數等於營運週期 所以 營運週期
 // 可以做成拆解？」→「我希望他跟杜邦分析一樣 是可以讓人看這個指標就學到東西」）。
 //
-// 營運周轉那一組的關係頁，跟 /margins 之於三率、/solvency 之於安全韌性、/dupont 之於 ROE 同一個位置。
+// 營運周轉那一組的關係頁，跟 /margins 之於三率、/solvency 之於償債能力、/dupont 之於 ROE 同一個位置。
 // 開在自己的 slug 而不是改寫 /operating-cycle：那一頁是單指標頁，在 METRIC_PAGES 裡，改寫它會讓同一個
 // slug 同時屬於兩種註冊表（assertMetricPagesDisjoint 就是在擋這件事）。
 //

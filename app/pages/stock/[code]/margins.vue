@@ -291,7 +291,7 @@ const { breadcrumbs } = useStockPageSeo({
 })
 
 // The two chart OPTIONS that lived here moved to StockWaterfallChart.vue and
-// StockMultiSeriesLineChart.vue on 2026-09-21, when the 安全韌性 page（/stock/:code/solvency）
+// StockMultiSeriesLineChart.vue on 2026-09-21, when the 償債能力比率 page（/stock/:code/solvency）
 // needed both of them for its own chains. Extracted rather than copied: the waterfall's
 // custom-series maths is tuned（the zero-crossing case, the 2px floor, label placement, the
 // hand-applied text scale）and a second hand-maintained copy would have drifted from it silently.

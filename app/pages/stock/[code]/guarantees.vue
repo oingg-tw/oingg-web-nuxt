@@ -75,7 +75,7 @@ const footer = computed(() => ({
   sources: ['公開資訊觀測站：財務報告附註（為他人背書保證、資金貸與他人、關係人交易）'],
   links: [
     { to: `/stock/${code.value}/investments`, label: '轉投資' },
-    { to: `/stock/${code.value}/solvency`, label: '安全韌性的組成' },
+    { to: `/stock/${code.value}/solvency`, label: '償債能力比率' },
     { to: `/stock/${code.value}/balance-sheet`, label: `${stockShortName.value} ${code.value} 最新一期的資產負債表` }
   ]
 }))

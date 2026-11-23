@@ -76,7 +76,7 @@ const footerLinks = computed(() => [
   { to: `/stock/${code.value}/roe`, label: 'ROE' },
   { to: `/stock/${code.value}/net-profit-margin`, label: '稅後淨利率' },
   { to: `/stock/${code.value}/margins`, label: '財報三率' },
-  { to: `/stock/${code.value}/solvency`, label: '安全韌性的組成' },
+  { to: `/stock/${code.value}/solvency`, label: '償債能力比率' },
   { to: `/stock/${code.value}/income-statement`, label: '損益表' },
   { to: `/stock/${code.value}/balance-sheet`, label: '資產負債表' }
 ])

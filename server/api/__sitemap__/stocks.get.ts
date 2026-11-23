@@ -26,7 +26,7 @@
 // contradiction Search Console reports. Same for the four-digit codes 業務中台 files under a
 // non-industry sector（sectorCode null — 07/91/98/XX）: scripts/check-click-depth.mjs sampled 25 of
 // them on 2026-09-19 and every one was that soft-404.
-// /margins（財報三率）and /solvency（安全韌性的組成）joined 2026-09-21 unconditionally rather than
+// /margins（財報三率）and /solvency（償債能力比率）joined 2026-09-21 unconditionally rather than
 // behind the pilot gate below: each is ONE new suffix for every symbol (~2,600 URLs), the same
 // footprint the three statement pages each added on 2026-09-20, not a per-symbol × per-metric
 // family. Financials render both with no numbers（no comparable 營業收入 line on one, no

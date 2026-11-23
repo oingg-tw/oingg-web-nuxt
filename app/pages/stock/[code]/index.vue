@@ -54,7 +54,7 @@ const profileDateText = computed(() => (profileDetail.value?.generatedDate ? `�
 //   - 杜邦分析：近四季 ROE（三項乘出來的那個數）
 //   - 淨值從哪來：每股淨值；股東回饋組成、營業費用組成：組成的母項
 //   - 資產負債表的四張組成：那一塊占總資產的比率（淨值組成是股東權益比率），同 StockBalanceCompositionPage 的 metricCode
-//   - 安全韌性的組成：流動比率（那一頁的主線）；現金循環的組成：現金轉換循環（時間軸最後算出來的那一段）
+//   - 償債能力比率：流動比率（那一頁的主線）；現金循環的組成：現金轉換循環（時間軸最後算出來的那一段）
 //   - 財報三率是三個數並列，沒有單一數值，只給連結
 const SPECIAL_FIELDS: Record<string, string> = {
   'dividend': 'liveCashDividendYield.EOD',
