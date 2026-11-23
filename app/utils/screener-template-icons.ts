@@ -1,4 +1,4 @@
-import { CircleCheck, Collection, Coin, DataAnalysis, Histogram, Lock, Money, Odometer, PieChart, Refresh, TrendCharts, Trophy, Umbrella } from '@element-plus/icons-vue'
+import { CircleCheck, Clock, Collection, Coin, DataAnalysis, Histogram, Key, Lock, Money, Odometer, PieChart, Refresh, TrendCharts, Trophy, Umbrella, Wallet } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplates'
 import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerColumnPresets'
@@ -62,7 +62,14 @@ const COLUMN_TEMPLATE_ICONS_BY_KEY: Record<string, Component> = {
   balanceSheetHealth: Lock,
   operatingEfficiency: Refresh,
   growth: TrendCharts,
-  cashFlowQuality: CircleCheck
+  cashFlowQuality: CircleCheck,
+  // ETF 與特別股篩選自己的欄位組合範本（useEtfSource、usePreferredSource 的 COLUMN_TEMPLATES；特別股的 valuation 跟普通股同鍵）。2026-11-23 補：
+  // 原本沒有對應，開「新增欄位組合」時主控台跳警告、圖示退回獎盃
+  performance: TrendCharts,
+  size: DataAnalysis,
+  cost: Wallet,
+  rights: Key,
+  'call-risk': Clock
 }
 
 // Keyword fallback kept for a template 業務中台 adds or renames later without this file being
