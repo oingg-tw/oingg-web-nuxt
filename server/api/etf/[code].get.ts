@@ -38,13 +38,14 @@ export default defineEventHandler(async (event): Promise<EtfPageResponse> => {
     settle(cachedEtfPremiumMonths(code)),
     settle(cachedShareholdingDistribution(code))
   ])
+  // 公會獨有的欄位不送到瀏覽器（SITCA_ONLY_ETF_FIELDS）：在這裡拿掉，快取裡存著的舊值也一起擋
   return {
-    etf,
+    etf: { ...etf, values: withoutSitcaOnly(etf.values) },
     distributions,
     quote,
     fills: daily?.length ? computeDividendFills(asDividendHistory(distributions), daily) : null,
     liquidity: daily?.length ? monthlyLiquidity(daily) : null,
-    monthly: monthly?.length ? monthly : null,
+    monthly: monthly?.length ? monthly.map(withoutSitcaOnly) : null,
     premium: premium?.length ? premium : null,
     holders: holders?.weeks.length ? holders : null
   }

@@ -237,7 +237,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-aum', universe: 'etf', category: 'etf-size', field: 'aum', direction: 'desc', label: '規模', unit: '億元', valueScale: 1e8, monthlyReport: true, note: '規模是投信投顧公會基金月報公布的月底淨資產，每月更新一次；規模跌破法定門檻、而且一段時間沒有回升的 ETF 可能依規定下市清算（以發行投信的公告為準）。' },
   { slug: 'etf-holders', universe: 'etf', category: 'etf-size', field: 'holders', direction: 'desc', label: '受益人數', unit: '人', monthlyReport: true, note: '受益人數是投信投顧公會基金月報公布的月底人數，每月更新一次。' },
   { slug: 'etf-net-flow', universe: 'etf', category: 'etf-size', field: 'netFlow', direction: 'desc', label: '淨申購', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '淨申購是投信投顧公會基金月報公布的當月申購金額減去贖回金額，每月更新一次；贖回多於申購時是負數。' },
-  { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
+  // 定期定額金額先藏（2026-11-23）：公會獨有的欄位（SITCA_ONLY_ETF_FIELDS），取得同意再拿掉註解
+  // { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
   { slug: 'etf-distribution-yield', universe: 'etf', category: 'etf-return', short: '配息率', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
   { slug: 'etf-return-1y', universe: 'etf', category: 'etf-return', short: '近1年報酬', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
   { slug: 'etf-return-ytd', universe: 'etf', category: 'etf-return', field: 'returnYtd', direction: 'desc', label: '今年以來報酬率', short: '今年以來', unit: '%', monthlyReport: true, note: '今年以來報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
@@ -251,7 +252,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
 // 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
 export const RANK_NAV: Record<'common' | 'etf', string[]> = {
   common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w'],
-  etf: ['etf-holders', 'etf-aum', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low', 'etf-dca']
+  etf: ['etf-holders', 'etf-aum', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low']
 }
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位

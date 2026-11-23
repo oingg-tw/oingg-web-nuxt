@@ -57,8 +57,9 @@ export const ETF_DISTRIBUTION_OTHERS: Record<string, string> = Object.fromEntrie
 export const hasEtfComposition = (composition: EtfDistributionComposition | null): composition is EtfDistributionComposition =>
   !!composition && ETF_DISTRIBUTION_PARTS.some(part => composition[part.key] !== null)
 
-// 上游報酬率欄位（投信投顧公會基金月報），短到長
-export const ETF_RETURN_FIELDS = [
+// 上游報酬率欄位（投信投顧公會基金月報），短到長。近 2 年是公會獨有、先藏（SITCA_ONLY_ETF_FIELDS，2026-11-23）：報酬率頁的表與圖都不列，
+// 不然會是一列「－」，看起來像沒資料
+export const ETF_RETURN_FIELDS = ([
   { field: 'return3m', label: '近3月' },
   { field: 'return6m', label: '近6月' },
   { field: 'returnYtd', label: '今年以來' },
@@ -67,7 +68,7 @@ export const ETF_RETURN_FIELDS = [
   { field: 'return3y', label: '近3年' },
   { field: 'return5y', label: '近5年' },
   { field: 'return10y', label: '近10年' }
-] as const
+] as const).filter(item => !SITCA_ONLY_ETF_FIELDS.has(item.field))
 
 // 費率拆解（上游 /etfs/{代號} 的各項費率，%）
 export const ETF_FEE_FIELDS = [

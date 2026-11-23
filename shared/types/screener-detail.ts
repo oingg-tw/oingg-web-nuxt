@@ -83,7 +83,8 @@ export interface EtfMonthlyPoint {
   aum: number | null
   holders: number | null
   netFlow: number | null
-  dcaAmount: number | null
+  // 公會獨有、先藏（SITCA_ONLY_ETF_FIELDS，2026-11-23）：伺服器拿掉，所以現在不會有
+  dcaAmount?: number | null
   marketShareRate: number | null
   nav: number | null
   statutoryAumThreshold: number | null

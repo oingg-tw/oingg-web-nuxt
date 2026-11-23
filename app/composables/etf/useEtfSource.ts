@@ -98,12 +98,15 @@ const FILTER_TEMPLATES: UniverseTemplate[] = [
 // 總費用率（最近完整年度，官方值）旁邊放近 12 個月估算：今年才成立的 ETF 沒有完整年度，只有後者（使用者 2026-10-15「新增近 12 個月總費用率欄位」）。
 // 收盤價排第一欄（2026-10-31，使用者：「ETF 基本欄位 設計下排序 收盤價應該要放前面的」，同普通股），淨值緊接在後，兩個並排看得出
 // 折溢價（2026-10-30 數據中台補上 close，使用者「screener/etf 能補上市價嗎?」）
-const DEFAULT_COLUMNS = ['close', 'nav', 'aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'market', 'fundType'].map(snapshotFieldId)
+// 公會獨有的欄位（SITCA_ONLY_ETF_FIELDS，2026-11-23）從預設與範本濾掉，近 12 個月估算現在不在預設裡
+const shown = (fields: string[]) => fields.filter(field => !SITCA_ONLY_ETF_FIELDS.has(field)).map(snapshotFieldId)
+const DEFAULT_COLUMNS = shown(['close', 'nav', 'aum', 'return1y', 'expenseRatio', 'trailing12MonthExpenseRatioPct', 'market', 'fundType'])
 
 const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
-  { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: ['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y'].map(snapshotFieldId) },
-  { key: 'size', name: '規模與資金', description: '規模、受益人數、淨申購、定期定額與市占率', fieldKeys: ['aum', 'holders', 'netFlow', 'dcaAmount', 'marketShareRate'].map(snapshotFieldId) },
-  { key: 'cost', name: '費用歷史', description: `近 12 個月總費用率估算與涵蓋月數，加上 ${LAST_FULL_YEAR} 年到 ${LAST_FULL_YEAR - 24} 年每一年的總費用率`, fieldKeys: [...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)].map(snapshotFieldId) }
+  // 說明只寫看得到的欄位（近 2 年、定期定額、近 12 個月估算先藏）
+  { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的報酬率', fieldKeys: shown(['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y']) },
+  { key: 'size', name: '規模與資金', description: '規模、受益人數、淨申購與市占率', fieldKeys: shown(['aum', 'holders', 'netFlow', 'dcaAmount', 'marketShareRate']) },
+  { key: 'cost', name: '費用歷史', description: `${LAST_FULL_YEAR} 年到 ${LAST_FULL_YEAR - 24} 年每一年的總費用率`, fieldKeys: shown([...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)]) }
 ]
 
 function valueLabel(field: string, value: string): string {
@@ -146,7 +149,7 @@ export function useEtfSource(): UniverseSource {
   if (import.meta.client && catalog.value === null) loadCatalog()
   watchLoadFailure('etf-screener-catalog', () => catalogFailure.value, loadCatalog, { scope: 'section' })
 
-  const fieldsByKey = computed(() => new Map((catalog.value ?? []).flatMap(category => category.fields).map(field => [field.field, field])))
+  const fieldsByKey = computed(() => new Map((catalog.value ?? []).flatMap(category => category.fields).filter(field => !SITCA_ONLY_ETF_FIELDS.has(field.field)).map(field => [field.field, field])))
 
   // 已經持有（2026-10-22，見 screener-tab-model.ts 的 HELD_FIELD_ID）：登入的人才有，查詢要帶身分
   const currentUser = useCurrentUser()
@@ -158,7 +161,7 @@ export function useEtfSource(): UniverseSource {
     category.categoryDisplayName,
     index,
     category.fields
-      .filter(field => field.kind !== 'date' && !EXPENSE_RATIO_YEAR.test(field.field) && field.field !== 'expenseRatioHistory')
+      .filter(field => field.kind !== 'date' && !EXPENSE_RATIO_YEAR.test(field.field) && field.field !== 'expenseRatioHistory' && !SITCA_ONLY_ETF_FIELDS.has(field.field))
       .map(field => ({
         field: field.field,
         name: displayLabel(field),
@@ -192,8 +195,10 @@ export function useEtfSource(): UniverseSource {
   }
 
   // 每年一欄的總費用率不在型錄裡（見 run）；型錄讀不到的時候不判斷
+  // 公會獨有的欄位一律當成不存在，型錄還沒讀到時也一樣（不然第一次查詢會把它帶出去）
   function knownField(fieldId: string): boolean {
     const field = snapshotField(fieldId)
+    if (SITCA_ONLY_ETF_FIELDS.has(field)) return false
     return field === HELD_FIELD_ID || EXPENSE_RATIO_YEAR.test(field) || !catalog.value || fieldsByKey.value.has(field)
   }
 

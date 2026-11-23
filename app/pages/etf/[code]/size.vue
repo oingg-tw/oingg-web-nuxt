@@ -7,7 +7,9 @@ const { code, data, shortName } = etfData
 const months = computed(() => [...(data.value?.monthly ?? [])].reverse())
 const monthText = (yearMonth: string) => `${yearMonth.slice(0, 4)} 年 ${Number(yearMonth.slice(5))} 月`
 const people = (value: number | null) => (value === null ? '－' : `${groupThousands(value)} 人`)
-const money = (value: number | null) => (value === null ? '－' : formatMoney(value))
+const money = (value: number | null | undefined) => (value === null || value === undefined ? '－' : formatMoney(value))
+// 定期定額金額是公會獨有、先藏（SITCA_ONLY_ETF_FIELDS，2026-11-23）：伺服器不送，這一欄跟著不畫；拿掉隱藏就回來
+const hasDca = computed(() => months.value.some(row => typeof row.dcaAmount === 'number'))
 
 const answer = computed(() => {
   const latest = months.value[0]
@@ -24,14 +26,14 @@ const answer = computed(() => {
   <EtfPage :etf-data="etfData" facet="size" :description="answer">
     <StockQuestionSection id="etf-size" :question="`${shortName}（${code}）規模多大？受益人數有沒有變？`" :answer="answer">
       <EtfFacetChart v-if="data" :data="data" facet="size" />
-      <SharedTable v-if="months.length" :label="`${shortName}每月規模與受益人數`" :caption="`${shortName} ${code} 每月規模、受益人數、淨申購與定期定額金額（投信投顧公會基金月報，新的在上）`">
+      <SharedTable v-if="months.length" :label="`${shortName}每月規模與受益人數`" :caption="`${shortName} ${code} 每月規模、受益人數、淨申購${hasDca ? '與定期定額金額' : ''}（投信投顧公會基金月報，新的在上）`">
         <thead>
           <tr>
             <th scope="col">月份</th>
             <th scope="col" class="seo-table__num">規模</th>
             <th scope="col" class="seo-table__num">受益人數</th>
             <th scope="col" class="seo-table__num">淨申購（申購 − 贖回）</th>
-            <th scope="col" class="seo-table__num">定期定額金額</th>
+            <th v-if="hasDca" scope="col" class="seo-table__num">定期定額金額</th>
           </tr>
         </thead>
         <tbody>
@@ -40,7 +42,7 @@ const answer = computed(() => {
             <td class="seo-table__num">{{ money(row.aum) }}</td>
             <td class="seo-table__num">{{ people(row.holders) }}</td>
             <td class="seo-table__num">{{ money(row.netFlow) }}</td>
-            <td class="seo-table__num">{{ money(row.dcaAmount) }}</td>
+            <td v-if="hasDca" class="seo-table__num">{{ money(row.dcaAmount) }}</td>
           </tr>
         </tbody>
       </SharedTable>
