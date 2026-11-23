@@ -186,13 +186,11 @@ function riverZoneOf(column: ScreenerResultTableColumn, raw: string | number | n
   }
 }
 
-// 年增率、年減率的格子用漲跌色（2026-10-22，使用者：「篩選 表格 舉凡 年增率 年減率 數字 都用 漲跌色」）：指標名稱以年增率／年減率結尾
-// （可以再接「變化」）才算。「營收年增率波動」是標準差、永遠是正的，不是增減，所以不上色
-const YOY_NAME = /(年增率|年減率)(變化)?$/
+// 哪些欄上漲跌色照指標名稱（colorsByDirection），三組篩選、觀察清單與持股的指標表都一樣
 function textClassOf(column: ScreenerResultTableColumn, row: ScreenerResultRow): string {
   const raw = row.values[column.field]?.value
   const metric = locateFieldInSchema(props.categories, column.field)?.metric
-  return metric && YOY_NAME.test(metric.name) ? priceDirectionClass(numericValue(raw)) : column.cellClass?.(raw, row) ?? ''
+  return metric && colorsByDirection(metric.name) ? priceDirectionClass(numericValue(raw)) : column.cellClass?.(raw, row) ?? ''
 }
 
 // 有值、而且這一欄有頁才連（空格連過去也是空的）。格子整塊是連結：數字照原本的顏色（年增率的漲跌色、河道位置），只有滑過或聚焦時畫底線
