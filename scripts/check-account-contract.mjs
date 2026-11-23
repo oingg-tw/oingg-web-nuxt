@@ -1,6 +1,7 @@
 // 業務中台 48a1c34 的帳號合約（2026-11-09，資安盤點 M1、H2），網頁這一端：
-//   - 個人資料「登入方式」的解除綁定 LINE：先確認、寫出解除後的後果；DELETE /auth/line/link 成功那一列換回「綁定 LINE」；
-//     401 reauth_required 寫出要先驗證身分、出現密碼欄（標籤寫「解除綁定」）
+//   - 個人資料「登入方式」的解除綁定 LINE（2026-11-24 起一個對話框走完，使用者「一個對話框走完」）：對話框寫出解除後的後果；
+//     DELETE /auth/line/link 成功對話框關掉、那一列換回「綁定 LINE」；401 reauth_required 在同一個對話框裡寫出要驗證身分、
+//     出現密碼欄、按鈕等密碼填了才能按，不再有「再按一次」；「綁定 LINE」也是同一個對話框
 //   - LINE 登入回呼頁的 401 line_link_revoked：說明改用原本的方式登入、再重新綁定，不給「重新用 LINE 登入」
 //   - 記一筆交易被 409 transaction_limit_reached 擋下：寫出上限與目前筆數（延伸欄位 limit／used）
 // 業務中台全部模擬，其他寫入一律擋下（測試帳號不會被寫入）。
@@ -46,17 +47,24 @@ for (const scenario of ['ok', 'reauth']) {
   const unlink = page.getByRole('button', { name: '解除綁定' })
   await unlink.waitFor({ timeout: 30000 })
   await unlink.click()
-  const box = page.locator('.el-message-box')
-  await box.waitFor({ timeout: 5000 })
-  check((await box.innerText()).includes('用 LINE 登入會變成另一個新帳號'), `${scenario}：先確認，寫出解除後的後果`)
-  await box.getByRole('button', { name: '解除綁定' }).click()
+  const dialog = page.getByRole('dialog', { name: '解除綁定 LINE' })
+  await dialog.waitFor({ timeout: 5000 })
+  check((await dialog.innerText()).includes('用 LINE 登入會變成另一個新帳號'), `${scenario}：對話框寫出解除後的後果`)
+  await dialog.getByRole('button', { name: '解除綁定' }).click()
   await page.waitForTimeout(1500)
   if (scenario === 'ok') {
-    check(calls.length === 1 && await page.getByRole('button', { name: '綁定 LINE' }).count() === 1, 'ok：送一次 DELETE，那一列換回「綁定 LINE」')
+    check(calls.length === 1 && await dialog.isHidden() && await page.getByRole('button', { name: '綁定 LINE' }).count() === 1, 'ok：送一次 DELETE，對話框關掉，那一列換回「綁定 LINE」')
     check((await page.locator('.el-message').first().innerText()).includes('已解除綁定 LINE'), 'ok：提示已解除綁定')
+    await page.getByRole('button', { name: '綁定 LINE' }).click()
+    const link = page.getByRole('dialog', { name: '綁定 LINE' })
+    await link.waitFor({ timeout: 5000 })
+    check((await link.innerText()).includes('用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號'), 'ok：「綁定 LINE」也是同一種對話框，先寫綁定之後會怎樣')
+    await link.getByRole('button', { name: '取消' }).click()
   } else {
-    check((await page.locator('.account-page__message').innerText()).includes('請先驗證身分，再按一次「解除綁定」'), 'reauth：寫出要先驗證身分')
-    check((await page.locator('label[for="link-line-password"]').innerText()).includes('再按一次「解除綁定」'), 'reauth：出現密碼欄，標籤寫「解除綁定」')
+    const text = await dialog.innerText()
+    check(text.includes('為了安全，請再驗證一次身分。') && !text.includes('再按一次'), 'reauth：在同一個對話框裡寫出要驗證身分，沒有「再按一次」')
+    check(await dialog.getByLabel('為了安全，請輸入密碼').isVisible(), 'reauth：密碼欄就在對話框裡')
+    check(await dialog.getByRole('button', { name: '解除綁定' }).isDisabled(), 'reauth：密碼沒填之前「解除綁定」不能按')
   }
   await ctx.close()
 }
