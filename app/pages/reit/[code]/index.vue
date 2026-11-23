@@ -9,7 +9,7 @@ const { code, data, reit, shortName } = reitData
 const description = computed(() => {
   const item = reit.value
   if (!item) return null
-  return `${shortName.value}（${code.value}）是${item.trusteeName ? `${item.trusteeName}擔任受託機構的` : ''}不動產投資信託（REITs）。收盤價、每單位淨值、折溢價與歷次收益分配的圖。`
+  return `${shortName.value}（${code.value}）是${item.trusteeName ? `${item.trusteeName}擔任受託機構的` : ''}不動產投資信託（REITs）。收盤價、每單位淨值、折溢價、成交量、持有人結構與歷次收益分配的圖。`
 })
 
 const facts = computed<FactItem[]>(() => {
@@ -23,7 +23,7 @@ const facts = computed<FactItem[]>(() => {
     { label: '近 12 個月\n分配率', value: reitPct(item.trailing12MonthDistributionYieldPct), note: '近 12 個月分配 ÷ 收盤價' }
   ]
 })
-const CHART_FACETS = ['nav', 'distributions'] as const
+const CHART_FACETS = ['nav', 'liquidity', 'holders', 'distributions'] as const
 const facetOf = (key: typeof CHART_FACETS[number]) => REIT_FACETS.find(facet => facet.key === key)!
 </script>
 

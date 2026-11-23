@@ -30,7 +30,7 @@ useHubPageSeo({
 })
 
 const footer = {
-  sources: ['公開資訊觀測站（REITs 基本資料、每日淨值與收益分配公告，以正式公告為準）', '臺灣證券交易所（每日收盤行情）'],
+  sources: ['公開資訊觀測站（REITs 基本資料、每日淨值與收益分配公告，以正式公告為準）', '臺灣證券交易所（每日收盤行情與成交量）', '臺灣集中保管結算所：集保戶股權分散表'],
   links: [{ to: SCREENER_PATHS.reits, label: 'REITs 總覽' }]
 }
 </script>

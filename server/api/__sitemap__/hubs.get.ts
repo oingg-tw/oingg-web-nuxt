@@ -50,9 +50,9 @@ export default defineEventHandler(async () => {
   for (const symbol of (await settle(cachedEtfSymbols())) ?? []) {
     for (const suffix of ['', '/distributions', '/distribution-composition', '/distribution-fill', '/expenses', '/returns', '/size', '/premium-discount', '/liquidity', '/holders', '/profile']) urls.push({ loc: `${etfPath(symbol)}${suffix}` })
   }
-  // REITs 每檔五頁（2026-10-30；後綴同 app/utils/reit-pages.ts 的 REIT_FACETS）。清單同 /screener/reits，約 6 檔
+  // REITs 每檔七頁（2026-10-30，成交量與持有人結構 2026-11-23 加；後綴同 app/utils/reit-pages.ts 的 REIT_FACETS）。清單同 /screener/reits，約 6 檔
   for (const reit of (await settle(businessFetch<{ entries: { symbol: string }[] }>('/reits')))?.entries ?? []) {
-    for (const suffix of ['', '/nav', '/distributions', '/properties', '/profile']) urls.push({ loc: `${reitPath(reit.symbol)}${suffix}` })
+    for (const suffix of ['', '/nav', '/liquidity', '/holders', '/distributions', '/properties', '/profile']) urls.push({ loc: `${reitPath(reit.symbol)}${suffix}` })
   }
 
   return urls

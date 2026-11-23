@@ -1,5 +1,5 @@
 import type { ReitDetail, ReitDistribution, ReitPageResponse } from '#shared/types/screener-detail'
-import type { ReitDailyNav } from '#shared/utils/reit-nav'
+import type { ReitDailyNav, ReitDailyPrice } from '#shared/utils/reit-nav'
 
 // GET /api/reit/:code — REITs 個別頁（/reit/{代號} 底下每個面向共用，2026-10-30）在伺服器端要的一切，SSR 就有內容。代號大小寫都收（網址是
 // 小寫，業務中台要大寫）。基本資料讀不到就是這檔不存在（404，數據中台只認現在掛牌的）；每日淨值、收益分配讀不到只是那一段沒有資料。
@@ -9,16 +9,18 @@ const REIT_SYMBOL = /^0\d{4}T$/
 export default defineEventHandler(async (event): Promise<ReitPageResponse> => {
   const code = (getRouterParam(event, 'code') ?? '').toUpperCase()
   if (!REIT_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a REIT symbol' })
-  const [reit, quote, navMonths, distributions] = await Promise.all([
+  const [reit, quote, navMonths, distributions, liquidity, holders] = await Promise.all([
     cachedReit(code).catch((error: { statusCode?: number }) => {
       if (error?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: 'unknown REIT' })
       throw error
     }),
     settle(cachedLatestClose(code)),
     settle(cachedReitNavMonths(code)),
-    settle(cachedReitDistributions(code))
+    settle(cachedReitDistributions(code)),
+    settle(cachedReitLiquidityMonths(code)),
+    settle(cachedShareholdingDistribution(code))
   ])
-  return { reit, quote, navMonths, distributions }
+  return { reit, quote, navMonths, distributions, liquidity: liquidity?.length ? liquidity : null, holders: holders?.weeks.length ? holders : null }
 })
 
 // 收盤價、淨值、分配一天變一次（業務中台也回 max-age=3600）
@@ -33,4 +35,9 @@ const cachedReitNavMonths = defineCachedFunction(
 const cachedReitDistributions = defineCachedFunction(
   async (symbol: string) => (await businessFetch<{ entries: ReitDistribution[] }>(`/reits/${symbol}/distributions`)).entries ?? [],
   { name: 'reit-distributions', getKey: (symbol: string) => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
+)
+// 每日行情的成交量併成每月一列（含沒成交的日子，見 reitLiquidityMonths）。同個股填息讀的那 2,000 個交易日，REITs 約 8 年
+const cachedReitLiquidityMonths = defineCachedFunction(
+  async (symbol: string) => reitLiquidityMonths((await businessFetch<{ entries: ReitDailyPrice[] }>(`/stocks/${symbol}/daily-price-history`, { query: { limit: DAILY_PRICE_ROWS } })).entries ?? []),
+  { name: 'reit-liquidity-months', getKey: (symbol: string) => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
 )

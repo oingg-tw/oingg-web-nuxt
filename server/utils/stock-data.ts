@@ -141,7 +141,7 @@ export const cachedDividendHistory = defineCachedFunction(
 // 2330 returned 1,433 rows starting 2020-11-02）. Dividend history goes back further（2018）, so
 // the earliest ex-dates have no price to compare against — computeDividendFills says so per row
 // rather than leaving a blank.
-const DAILY_PRICE_ROWS = 2000
+export const DAILY_PRICE_ROWS = 2000
 
 interface DailyClose {
   tradeDate: string

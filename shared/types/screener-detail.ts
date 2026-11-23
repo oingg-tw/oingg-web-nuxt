@@ -216,7 +216,7 @@ export interface ReitProperty {
 }
 
 // /reits/{symbol}/daily-nav 每日一列，伺服器端併成每月一列（shared/utils/reit-nav.ts）
-export type { ReitNavMonthRow as ReitNavMonth } from '../utils/reit-nav'
+export type { ReitNavMonthRow as ReitNavMonth, ReitLiquidityMonthRow as ReitLiquidityMonth } from '../utils/reit-nav'
 
 // /reits/{symbol}/distributions 一次分配（由新到舊）。yieldOnPreviousClose＝每單位分配 ÷ 除息前一個交易日的收盤（%，數據中台算好，同個股配息表的同名欄位）；
 // distributionPerUnit 是公告原值、小數很長，顯示時自己取位
@@ -236,4 +236,7 @@ export interface ReitPageResponse {
   // 讀不到是 null，不讓整頁失敗
   navMonths: import('../utils/reit-nav').ReitNavMonthRow[] | null
   distributions: ReitDistribution[] | null
+  // 每月成交（含沒成交的日數）與每週集保股權分散（2026-11-23）；讀不到是 null
+  liquidity: import('../utils/reit-nav').ReitLiquidityMonthRow[] | null
+  holders: ShareholdingDistribution | null
 }

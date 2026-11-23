@@ -1,6 +1,6 @@
 // REITs 每日淨值併成每月一列（shared/utils/reit-nav.ts）。Run: node scripts/check-reit-nav.mjs
 import assert from 'node:assert/strict'
-import { reitNavMonths } from '../shared/utils/reit-nav.ts'
+import { reitLiquidityMonths, reitNavMonths } from '../shared/utils/reit-nav.ts'
 
 const day = (tradeDate, nav, close, premiumDiscountPct) => ({ tradeDate, nav, close, premiumDiscountPct })
 // 順序打亂也照日期併；月底沒成交時收盤價取那個月最後一筆有成交的；沒成交的日子不算進折溢價
@@ -21,5 +21,19 @@ assert.deepEqual(reitNavMonths([day('2026-08-31', 10.6, null, null)]), [
   { month: '2026-08', close: null, nav: 10.6, tradingDays: 0, premiumAverage: null, premiumHighest: null, premiumLowest: null }
 ])
 assert.deepEqual(reitNavMonths([]), [])
+
+// 成交量：日均除以當月全部交易日，沒成交（close null）的日子算 0 張、它帶的零股 volume 不算；金額是收盤價 × 成交量
+const price = (tradeDate, close, volume) => ({ tradeDate, close, volume })
+assert.deepEqual(reitLiquidityMonths([
+  price('2026-10-02', 10, 30000),
+  price('2026-09-30', null, 568),
+  price('2026-09-01', 9.9, 1500),
+  price('2026-10-01', null, 0),
+  price('2026-09-15', 10, 4000)
+]), [
+  { month: '2026-09', tradingDays: 3, noTradeDays: 1, averageDailyLots: 1.8, averageDailyValue: 18283 },
+  { month: '2026-10', tradingDays: 2, noTradeDays: 1, averageDailyLots: 15, averageDailyValue: 150000 }
+])
+assert.deepEqual(reitLiquidityMonths([]), [])
 
 console.log('PASS: reit nav months')
