@@ -246,6 +246,14 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-premium', universe: 'etf', category: 'etf-return', field: 'premiumDiscountPct', direction: 'asc', label: '折溢價率', short: '折溢價', unit: '%', dateField: 'tradeDate', note: '折溢價率是收盤價相對每單位淨值高或低多少：負數是折價（買進比淨值便宜），正數是溢價（買進比淨值貴）；以各檔最近一個交易日為準，每個交易日更新。' }
 ]
 
+// 側欄與手機膠囊列只列熱門的排行（2026-11-23，使用者選「只列熱門的」）。依據 oingg-conductor-ts/docs/1_raw/選股與選 ETF 常見排行機制與評估標準全解析.md：
+// 個股最常見的是本益比、殖利率、股價淨值比與成長動能；ETF 是受益人數、規模、配息率、含息年報酬率、折溢價與內扣費用（照文件列的順序）。
+// 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
+export const RANK_NAV: Record<'common' | 'etf', string[]> = {
+  common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w'],
+  etf: ['etf-holders', 'etf-aum', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low', 'etf-dca']
+}
+
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
 //（受益人數），其他兩位小數。單位另外由呼叫端接（表頭寫單位、句子裡接在數字後面）。千分位的寫法同 number-format.ts 的 groupThousands
 //（這個檔案要保持零 import：腳本用 Node 直接載入）
