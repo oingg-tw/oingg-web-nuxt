@@ -251,7 +251,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-net-flow', universe: 'etf', category: 'etf-size', field: 'netFlow', direction: 'desc', label: '淨申購', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '淨申購是投信投顧公會基金月報公布的當月申購金額減去贖回金額，每月更新一次；贖回多於申購時是負數。' },
   // 近 5 日平均成交量（2026-11-23，排行指南的「五日均量」，數據中台 averageVolume5dLots，兩所日行情）：張取整數，日期是最後一個交易日
   { slug: 'etf-volume-5d', universe: 'etf', category: 'etf-size', field: 'averageVolume5dLots', direction: 'desc', label: '近5日平均成交量', short: '五日均量', unit: '張', valueDigits: 0, dateField: 'tradeDate', note: '近 5 日平均成交量是最近 5 個交易日成交股數的平均，換算成張（1 張是 1,000 個受益權單位），每個交易日更新；成交少的 ETF，想買賣的張數不一定能在當天、用想要的價格成交完。' },
-  // 定期定額金額先藏（2026-11-23）：公會獨有的欄位（SITCA_ONLY_ETF_FIELDS），取得同意再拿掉註解
+  // 定期定額金額 11-23 藏起來；11-24 使用者「金額與戶數都恢復」（FundClear 也有公布）。數據中台把 dcaAmount 加回 API、上游有值以後再拿掉註解，
+  // 放回 RANK_NAV 的 ETF 那組；每檔定期定額戶數到了再加一頁
   // { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
   { slug: 'etf-distribution-yield', universe: 'etf', category: 'etf-return', short: '配息率', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
   { slug: 'etf-return-1y', universe: 'etf', category: 'etf-return', short: '近1年報酬', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },

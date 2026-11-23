@@ -4,8 +4,8 @@
 //（11-23 定稿：只剩這四欄；近 12 個月估算是用公會的逐月費用算的）。
 // 藏的意思：/api/etf/:code 不送到瀏覽器、ETF 篩選的型錄與欄位當成不存在（查詢不帶、存檔的條件寫「已下架的條件」）、ETF 頁不畫。
 // 取得同意或找到已授權的來源就從這裡拿掉，畫面跟著回來（近 2 年報酬數據中台可以改用 FundClear 淨值加配息自己算）
+// 定期定額金額 2026-11-24 拿掉：使用者人工看過 FundClear 的統計頁也有公布（基金後台轉達），使用者選「金額與戶數都恢復」
 export const SITCA_ONLY_ETF_FIELDS: ReadonlySet<string> = new Set([
-  'dcaAmount',
   'return2y',
   'trailing12MonthExpenseRatioPct',
   'trailing12MonthExpenseRatioMonths'
