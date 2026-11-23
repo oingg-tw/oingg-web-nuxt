@@ -36,6 +36,9 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   invoice_age_basis: '這家公司照發票日（立帳日）算帳齡，不分有沒有逾期',
   unparsed_rows: '帳齡附註裡有讀不懂的分段，例如只寫「逾期 365 天」，分不出是以內還是以上',
   no_not_overdue_row: '帳齡附註沒有列出未逾期的金額',
+  // 上市的三大法人、借券賣出（數據中台 2026-11-24，讀者先行）：證交所只放在舊網站、開放資料沒有，要不要用是使用者的決定。
+  // 不是不適用（之後可能有來源），格子寫尚無資料
+  not_in_open_data: '交易所有公布這項數字，但不在開放資料裡，本站目前還不能使用',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
@@ -106,7 +109,7 @@ const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_publishe
 export function nullReasonShortText(nullReason: string | null | undefined): string {
   if (nullReason === 'no_filing') return '未申報'
   if (nullReason && NOT_APPLICABLE_REASONS.has(nullReason)) return '不適用'
-  return nullReason ? '無法計算' : '尚無資料'
+  return nullReason && nullReason !== 'not_in_open_data' ? '無法計算' : '尚無資料'
 }
 
 // 每一期的說明（2026-11-21，使用者 11-12 說「好」）：數據中台給代碼與參數，句子在這裡寫，放在歷年表那一期底下與提示框。金額是千元。

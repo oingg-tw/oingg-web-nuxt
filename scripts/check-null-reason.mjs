@@ -80,6 +80,9 @@ assert.equal(periodNoteText({ code: 'financial_report_restated', announcementDat
 assert.equal(periodNoteText({ code: 'monthly_revenue_corrected' }), '這個月的營收更正過，數字是更正後的。')
 assert.equal(nullReasonShortText('no_filing'), '未申報')
 assert.equal(nullReasonShortText('unsupported_format'), '無法計算')
+// 上市的三大法人（not_in_open_data）：我們拿不到，不是算不出來，也不是不適用
+assert.equal(nullReasonShortText('not_in_open_data'), '尚無資料')
+assert.ok(NULL_REASON_LABELS.not_in_open_data)
 const cell = value => ({ value, nullReason: null, knowledgeDate: '2026-11-16', knowledgeDateIsFallback: false })
 const corrected = { code: 'financial_report_corrected', announcementDate: '2026-11-16' }
 const facts = withPeriodFacts(
