@@ -27,7 +27,7 @@ watchLoadFailure(() => `stock-investments:${code.value}`, () => failure.value, (
 
 const money = (thousand: number) => formatMoney(thousand * 1000)
 const amount = (thousand: number | null) => (thousand === null ? '－' : money(thousand))
-const entries = computed(() => series.value?.groups.Q_MAINLAND_32?.entries ?? [])
+const entries = computed(() => series.value?.groups.Q_MAINLAND_40?.entries ?? [])
 
 const mainlandText = computed(() => (mainland.value ? mainlandAnswer(mainland.value, money) : null))
 const investeesText = computed(() => (investees.value ? investeesAnswer(investees.value, money) : null))

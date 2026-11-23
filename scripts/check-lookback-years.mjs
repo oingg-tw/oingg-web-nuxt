@@ -41,7 +41,8 @@ for (const slug of PAGES) {
     await page.waitForTimeout(200)
   }
   if (TABLE_PAGES.has(slug)) {
-    const rows = await page.locator('table:has(caption:text-matches("逐期數據")) tbody tr').count()
+    // 期別附註那一列（.seo-table__remark，2026-11-12 起）掛在期別下面，不是另一期
+    const rows = await page.locator('table:has(caption:text-matches("逐期數據")) tbody tr:not(.seo-table__remark)').count()
     check(rows > 0 && rows <= 20, `歷史表只列 5 年（${rows} 列）`)
   }
 }

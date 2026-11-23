@@ -48,7 +48,9 @@ export const STOCK_HISTORY_LIMIT = 20
 // 拿伺服器這份資料切近N年的圖（杜邦、財報三率、償債能力）要抓到 8 年：圖表右上的近N年最長是 8 年（2026-10-15「1 年 2年 3年 5年 8年」），
 // 只抓 20 期的話這幾張圖的近8年永遠是灰的（2026-11-19，使用者：「要讓每個選項預設都有12358年喔」「底層用季計算也是同樣道理」）。
 // 表格照舊只列 5 年：頁面截在 HISTORY_TABLE_PERIODS（app/utils/metric-history-points.ts）
-export const STOCK_CHART_HISTORY_LIMIT = 32
+// 40 期（10 年）而不是剛好 8 年的 32 期（2026-11-23，使用者：「1615 EPS 從 2016開始 但是杜邦分析只從 2018開始?」）：指標頁的圖自己抓 40 期，
+// 這幾頁也抓 40 期，每一頁的圖都從同一年開始；近8年照舊是最長的選項，更早的用自訂區間看
+export const STOCK_CHART_HISTORY_LIMIT = 40
 
 // metrics-history 一次最多 10 支（業務中台）。超過的（業外損益組成的母項＋12 項，2026-11-22）分批同時打、依期別合併，存成同一份快取：
 // 母項與成分還是同一個快取世代，組成的恆等式不會因為兩份快取一新一舊而假性失敗（metric.get.ts 的註解）
@@ -326,9 +328,9 @@ const SERIES_GROUPS = {
   // 基本資料頁的「經營團隊一年領多少？」（2026-11-22，數據中台 B 批第 6 項）：年報才有，近 5 年
   FY_KEY_MGMT_5: { timeframe: 'FY', codes: ['keyManagementCompensation', 'keyManagementShareBasedPayment', 'keyManagementCompensationToNetIncome'], limit: 5 },
   // 背書保證與資金貸與頁（2026-11-23，數據中台第 4 項）：圖的兩條占淨值比，加上關係人交易那一段答句的銷貨、進貨比；近 8 年
-  Q_GUARANTEES_32: { timeframe: 'Q', codes: ['endorsementGuaranteeToEquity', 'loansToOthersToEquity', 'relatedPartySalesToRevenue', 'relatedPartyPurchasesToCostOfRevenue'], limit: STOCK_CHART_HISTORY_LIMIT },
+  Q_GUARANTEES_40: { timeframe: 'Q', codes: ['endorsementGuaranteeToEquity', 'loansToOthersToEquity', 'relatedPartySalesToRevenue', 'relatedPartyPurchasesToCostOfRevenue'], limit: STOCK_CHART_HISTORY_LIMIT },
   // 轉投資頁（同日，第 5 項）：大陸投資帳面占淨值比，近 8 年
-  Q_MAINLAND_32: { timeframe: 'Q', codes: ['mainlandChinaInvestmentToEquity'], limit: STOCK_CHART_HISTORY_LIMIT },
+  Q_MAINLAND_40: { timeframe: 'Q', codes: ['mainlandChinaInvestmentToEquity'], limit: STOCK_CHART_HISTORY_LIMIT },
 } satisfies Record<string, SeriesGroupPlan>
 
 export type SeriesGroupName = keyof typeof SERIES_GROUPS
@@ -368,8 +370,8 @@ const SERIES_PLANS: Record<StockSeriesPage, SeriesPagePlan> = {
   'cash-cycle': { groups: ['TTM_CYCLE_20'] },
   'financial-statements': { groups: ['TTM_PER_SHARE_1', 'Q_BVPS_1'] },
   profile: { groups: ['FY_KEY_MGMT_5'] },
-  guarantees: { groups: ['Q_GUARANTEES_32'] },
-  investments: { groups: ['Q_MAINLAND_32'] }
+  guarantees: { groups: ['Q_GUARANTEES_40'] },
+  investments: { groups: ['Q_MAINLAND_40'] }
 }
 
 export function isStockSeriesPage(value: string): value is StockSeriesPage {

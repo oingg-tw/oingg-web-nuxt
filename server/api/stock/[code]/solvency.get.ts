@@ -10,7 +10,7 @@ import { SOLVENCY_METRIC_CODES, type StockSolvencyPageResponse } from '#shared/t
 // rather than assumed）— these are balance-sheet snapshots, and a ratio of two point-in-time
 // figures has no rolling-four-quarter form to offer.
 //
-// 32 periods (8 years) since 2026-11-19 so the chart's 近8年 can be picked (STOCK_CHART_HISTORY_LIMIT); the table still lists 5 years.
+// 40 periods (10 years, STOCK_CHART_HISTORY_LIMIT): 近8年 can be picked since 2026-11-19, and since 2026-11-23 the start year matches the metric pages; the table still lists 5 years.
 
 export default defineEventHandler(async (event): Promise<StockSolvencyPageResponse> => {
   const code = requireListedSymbol(event)

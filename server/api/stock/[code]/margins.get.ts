@@ -7,7 +7,7 @@ import { MARGIN_METRIC_CODES, THREE_MARGINS_RISING_CODE, type StockMarginsPageRe
 // file the page component reads too. Six codes in ONE request（純益率 joined 2026-11-20 for banks and 金控） — metrics-history takes up to 10
 // per call, so the whole page costs a single 業務中台 round trip, cached like every other read here.
 //
-// 32 periods (8 years) since 2026-11-19 so the chart's 近8年 can be picked (STOCK_CHART_HISTORY_LIMIT); the table still
+// 40 periods (10 years, STOCK_CHART_HISTORY_LIMIT): 近8年 can be picked since 2026-11-19, and since 2026-11-23 the start year matches the metric pages; the table still
 // lists 5 years, the depth「任何指標的歷史，放五年就好，足夠了」(2026-09-21) set for tables.
 //
 // Q（單季）, one basis only — changed from TTM on 2026-09-21 along with every other metric default

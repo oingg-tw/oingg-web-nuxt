@@ -29,7 +29,7 @@ watchLoadFailure(() => `stock-guarantees:${code.value}`, () => failure.value, ()
 
 const money = (thousand: number) => formatMoney(thousand * 1000)
 const amount = (thousand: number | null) => (thousand === null ? '－' : money(thousand))
-const entries = computed(() => series.value?.groups.Q_GUARANTEES_32?.entries ?? [])
+const entries = computed(() => series.value?.groups.Q_GUARANTEES_40?.entries ?? [])
 // 金融保險業（類股 17）：三個比率都是 not_applicable_industry
 const financial = computed(() => profile.value?.sectorCode === '17')
 
