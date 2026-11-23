@@ -74,6 +74,7 @@ export function useStockDetailSummary(code: Ref<string>) {
       changePercent: priceChange.value?.percent ?? null,
       tradingHalt: summary.value?.tradingHalt ?? null,
       delisting: summary.value?.delisting ?? null,
+      tradingStatuses: summary.value?.tradingStatuses ?? null,
       auditOpinions: summary.value?.auditOpinions ?? null
     }
   })

@@ -1,6 +1,6 @@
 // 摘要卡的停止買賣那一句（app/utils/trading-halt.ts）。前三例是 2026-10-22 業務中台 GET /stocks 的真實資料。Run: node scripts/check-trading-halt.mjs
 import assert from 'node:assert/strict'
-import { delistingText, tradingHaltText } from '../app/utils/trading-halt.ts'
+import { delistingText, tradingHaltText, tradingStatusTexts } from '../app/utils/trading-halt.ts'
 
 // 1516 川飛：減資換發中
 assert.equal(tradingHaltText({ status: 'active', reason: 'capital_reduction', haltStartDate: '2026-10-15', haltEndDate: '2026-10-23', resumeDate: '2026-10-27' }), '停止買賣中（減資換發，10/15～10/23），預計 10/27 恢復')
@@ -21,5 +21,27 @@ assert.equal(delistingText({ status: 'announced', date: '2026-11-18' }), '已公
 assert.equal(delistingText({ status: 'effective', date: '2026-11-18' }), '已於 11/18 下市')
 assert.equal(delistingText({ status: 'cancelled', date: '2026-11-18' }), null)
 assert.equal(delistingText(null), null)
+
+// 處置、可能達處置、注意股票、全額交割（數據中台 00185-jqq 的 quote，2026-11-24 實打的例子）
+// 3287：三個都有，處置與可能達處置都寫，注意股票不寫（次數已經算在可能達處置裡）
+assert.deepEqual(tradingStatusTexts({
+  attention: { tradeDate: '2026-11-23' },
+  nearDispositionThreshold: { announcedDate: '2026-11-23', clauses: [{ noticeCount: 2, windowTradingDays: null, startDate: '2026-11-20', endDate: '2026-11-23' }] },
+  disposition: { status: 'active', startDate: '2026-11-20', endDate: '2026-11-26' },
+  alteredTradingMethod: null
+}), ['處置中（11/20～11/26）', '可能達處置標準：連續 2 次注意（11/23 公布）'])
+// 2455 11-06：近 N 個營業日 M 次；一則同時符合兩條就兩條都寫
+assert.deepEqual(tradingStatusTexts({ nearDispositionThreshold: { announcedDate: '2026-11-06', clauses: [{ noticeCount: 5, windowTradingDays: 9, startDate: '2026-10-27', endDate: '2026-11-06' }, { noticeCount: 3, windowTradingDays: null, startDate: '2026-11-04', endDate: '2026-11-06' }] } }), ['可能達處置標準：近 9 個營業日 5 次、連續 3 次注意（11/6 公布）'])
+// 收盤後公告、明天開始的處置；跨年的區間帶年份
+assert.deepEqual(tradingStatusTexts({ disposition: { status: 'upcoming', startDate: '2026-12-30', endDate: '2027-01-12' } }), ['將處置（2026/12/30～2027/1/12）'])
+// 只有注意股票
+assert.deepEqual(tradingStatusTexts({ attention: { tradeDate: '2026-11-23' }, disposition: null, nearDispositionThreshold: null }), ['注意股票（11/23 公布）'])
+// 1213、2067：11-26 之前只有名單日期，只寫全額交割中；之後有生效日（沒有結束日，帶年份）
+assert.deepEqual(tradingStatusTexts({ alteredTradingMethod: { listedDate: '2026-11-23' } }), ['全額交割中'])
+assert.deepEqual(tradingStatusTexts({ alteredTradingMethod: { listedDate: '2026-11-27', startDate: '2026-11-26', status: 'active' } }), ['全額交割中（2026/11/26 起）'])
+assert.deepEqual(tradingStatusTexts({ alteredTradingMethod: { listedDate: '2026-11-27', startDate: '2026-12-01', status: 'upcoming' } }), ['將全額交割（2026/12/1 起）'])
+// 沒見過的狀態、空的 clauses、沒有資料都不寫
+assert.deepEqual(tradingStatusTexts({ disposition: { status: 'ended', startDate: '2026-11-01', endDate: '2026-11-10' }, nearDispositionThreshold: { announcedDate: '2026-11-23', clauses: [] } }), [])
+assert.deepEqual(tradingStatusTexts(null), [])
 
 console.log('PASS: trading halt')

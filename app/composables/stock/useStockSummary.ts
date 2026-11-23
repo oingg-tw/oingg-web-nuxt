@@ -1,5 +1,5 @@
 import type { AuditOpinions } from '~/utils/audit-opinion'
-import type { Delisting, TradingHalt } from '~/utils/trading-halt'
+import type { Delisting, TradingHalt, TradingStatuses } from '~/utils/trading-halt'
 
 // GET /stocks/{symbol} — 業務中台's real quote endpoint (confirmed live 2026-09-14 by reading
 // oingg-bff-ts/src/domainBff/stock/stock.openapi.ts directly, after a reported "打2330出404" bug:
@@ -31,6 +31,8 @@ export interface StockSummary {
   // 停止買賣與下市（2026-10-22 請 業務中台／analysis-ts 在這支帶出，形狀同 GET /stocks 每一列）；沒有是 null
   tradingHalt: TradingHalt | null
   delisting: Delisting | null
+  // 處置、可能達處置、注意股票、全額交割（2026-11-24，app/utils/trading-halt.ts 的 tradingStatusTexts）；上游還沒帶時四個都是 null
+  tradingStatuses: TradingStatuses
   // 會計師查核（核閱）意見（2026-11-22，app/utils/audit-opinion.ts）：摘要卡的示警與基本資料頁那一段都讀這一份；ETF、查不到是 null
   auditOpinions: AuditOpinions | null
 }
@@ -43,6 +45,10 @@ interface RawStockQuote {
   valuation: { tradeDate: string; livePeRatio: number | null; exchangePeRatio: number | null; livePbRatio: number | null; exchangePbRatio: number | null; liveCashDividendYield?: number | null; liveCashDividendYieldTradeDate?: string | null } | null
   tradingHalt?: TradingHalt | null
   delisting?: Delisting | null
+  attention?: TradingStatuses['attention']
+  nearDispositionThreshold?: TradingStatuses['nearDispositionThreshold']
+  disposition?: TradingStatuses['disposition']
+  alteredTradingMethod?: TradingStatuses['alteredTradingMethod']
 }
 
 // Returns null on any failure (unreachable backend, 404 for a symbol with no quote data) rather
@@ -84,6 +90,7 @@ export function useStockSummary(symbol: Ref<string | undefined>) {
             : null,
           tradingHalt: raw.tradingHalt ?? null,
           delisting: raw.delisting ?? null,
+          tradingStatuses: { attention: raw.attention ?? null, nearDispositionThreshold: raw.nearDispositionThreshold ?? null, disposition: raw.disposition ?? null, alteredTradingMethod: raw.alteredTradingMethod ?? null },
           auditOpinions
         }
       } catch (error) {

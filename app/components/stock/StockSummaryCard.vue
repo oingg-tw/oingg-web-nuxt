@@ -41,6 +41,7 @@ const logo = computed(() => logoData.value?.logo ?? null)
 
 const haltText = computed(() => tradingHaltText(props.stock.tradingHalt))
 const delistText = computed(() => delistingText(props.stock.delisting))
+const statusTexts = computed(() => tradingStatusTexts(props.stock.tradingStatuses))
 const auditText = computed(() => auditorWarningText(props.stock.auditOpinions))
 
 // 加入觀察清單（2026-10-19 多組觀察清單）：星號按下去跳出勾選選單（WatchlistPickerPanel），這張卡就是唯一的負責者——原本 25 個頁面
@@ -210,6 +211,8 @@ const qrDialogVisible = ref(false)
       <!-- 停止買賣、下市（2026-10-22，使用者：「做吧」「好」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。是帶日期的狀態，不是說明 -->
       <p v-if="haltText" class="summary-card__status">{{ haltText }}</p>
       <p v-if="delistText" class="summary-card__status">{{ delistText }}</p>
+      <!-- 全額交割、處置、可能達處置、注意股票（2026-11-24，使用者 11-23 核准）：同上，帶日期的狀態，跟報價同一次讀到，不會晚一步推動下面 -->
+      <p v-for="line in statusTexts" :key="line" class="summary-card__status">{{ line }}</p>
       <!-- 會計師示警（2026-11-22，使用者「按照建議執行」）：最近一期是繼續經營疑慮、無法表示意見或年報保留意見，帶期別的狀態 -->
       <p v-if="auditText" class="summary-card__status">{{ auditText }}</p>
     </div>
