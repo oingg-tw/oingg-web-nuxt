@@ -10,7 +10,8 @@ const TIERS = ['FREE', 'PRO'] as const
 const plans = useState<PlanQuotas[] | null | undefined>('billing-plans', () => undefined)
 onMounted(async () => {
   if (plans.value) return
-  plans.value = await apiFetch<{ plans: PlanQuotas[] }>('/billing/plans').then(response => response.plans).catch(() => null)
+  // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊
+  plans.value = await apiFetch<{ plans: PlanQuotas[] }>('/billing/plans').then(response => response.plans.map(plan => ({ ...plan, tier: plan.tier.toUpperCase() as PlanQuotas['tier'] }))).catch(() => null)
 })
 const limitOf = (tier: PlanQuotas['tier'], row: (typeof QUOTA_ROWS)[number]) =>
   quotaLimitText(plans.value?.find(plan => plan.tier === tier)?.quotas[QUOTA_COUNT_KEY[row.resource]], row.unit)

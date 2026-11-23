@@ -159,9 +159,10 @@ export function useAppTheme() {
         // A field can come back null/undefined if the account never set it (e.g.
         // marketColorConvention before this control existed) — never let that stomp the
         // local default with an invalid value.
-        if (remote.mode) mode.value = remote.mode
-        if (remote.accentColor) color.value = remote.accentColor
-        if (remote.marketColorConvention) market.value = remote.marketColorConvention
+        // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊
+        if (remote.mode) mode.value = remote.mode.toUpperCase() as ThemeMode
+        if (remote.accentColor) color.value = remote.accentColor.toUpperCase() as ThemeColor
+        if (remote.marketColorConvention) market.value = remote.marketColorConvention.toUpperCase() as MarketConvention
         // Boolean, not string-enum like the three above — a bare truthy check would wrongly
         // skip a legitimate `false`, so this checks the field actually came back as a
         // boolean instead (業務中台 guarantees it always does, never null/undefined, but this

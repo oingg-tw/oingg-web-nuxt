@@ -696,7 +696,8 @@ export const getFormulaHtml = defineCachedFunction(
 export const getScreenerTemplates = defineCachedFunction(
   async (): Promise<ScreenerTemplateWithSlug[]> => {
     const response = await businessFetch<{ templates: ScreenerTemplateSummary[] }>('/screener/templates')
-    return response.templates.map(template => ({ ...template, slug: screenerTemplateSlug(template.name) }))
+    // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊（status；瀏覽器那份在 useScreenerTemplates）
+    return response.templates.map(template => ({ ...template, status: template.status.toUpperCase() as ScreenerTemplateSummary['status'], slug: screenerTemplateSlug(template.name) }))
   },
   { name: 'hub-screener-templates', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )

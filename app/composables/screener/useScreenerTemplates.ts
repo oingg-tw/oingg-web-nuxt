@@ -38,7 +38,8 @@ export function useScreenerTemplates() {
   async function list(): Promise<ScreenerTemplate[]> {
     try {
       const response = await apiFetch<{ templates: ScreenerTemplate[] }>('/screener/templates', { baseURL: BUSINESS_CACHED_BASE })
-      return response.templates
+      // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊（status；伺服器那份在 server/utils/hub-data.ts 的 getScreenerTemplates）
+      return response.templates.map(template => ({ ...template, status: template.status.toUpperCase() as ScreenerTemplate['status'] }))
     } catch (error) {
       // 讀不到往上丟（2026-10-11）：載入器會報給全站讀取失敗彈窗；原本回 [] 會被當成「目前沒有可用的策略」而且不再重試
       warn('GET /screener/templates', error)

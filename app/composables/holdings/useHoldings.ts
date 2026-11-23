@@ -77,7 +77,8 @@ export function useHoldings() {
   async function loadTransactions(symbol: string) {
     try {
       const response = await request<{ transactions: Transaction[] }>('/transactions', { query: { symbol, ...scopeQuery.value } })
-      transactions.value = { ...transactions.value, [symbol]: response.transactions ?? [] }
+      // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊（BUY／SELL，系統加的 REDUCE 也一樣）
+      transactions.value = { ...transactions.value, [symbol]: (response.transactions ?? []).map(entry => ({ ...entry, action: entry.action.toUpperCase() as Transaction['action'] })) }
     } catch (error) {
       transactions.value = { ...transactions.value, [symbol]: 'failed' }
       devWarn('holdings', `GET /transactions?symbol=${symbol} unavailable`, error)
