@@ -119,6 +119,8 @@ export interface RankPageDefinition {
   fullYear?: boolean
   // ETF 的排行：逐列的資料日期讀這一欄（折溢價率是每天的數字，讀 tradeDate）；沒給就沒有逐列日期
   dateField?: string
+  // 日期叫什麼，蓋過 rankDateLabel 依欄位推的（集保的週資料是「集保資料日」，不是交易日）
+  dateLabel?: string
   // 排的是欄位的相反數（52 週股價跌幅：漲跌幅由低到高取前 50，數值轉成正的跌幅、由高到低寫）。direction 是畫面上的方向
   negate?: true
   // 這個欄位的說明（「是什麼？怎麼算？」與「要注意什麼」）。普通股的排行讀 /metrics 型錄自己的說明，ETF 的型錄沒有，寫在這裡
@@ -156,6 +158,7 @@ export const RANK_CATEGORIES = [
   { key: 'profit', title: '獲利' },
   { key: 'growth', title: '成長' },
   { key: 'size', title: '規模與股價' },
+  { key: 'holders', title: '持有人結構' },
   { key: 'etf-size', title: '規模與資金' },
   { key: 'etf-return', title: '報酬與成本' }
 ] as const
@@ -181,6 +184,9 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // 52 週股價漲幅／跌幅：同一個欄位排兩頭。跌幅那頁排相反數（negate），數值寫成正的跌幅、由高到低；不寫「跌幅由低到高」，
   // 那會被讀成跌最少的排前面
   { slug: 'price-return-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', label: '52週股價漲幅', short: '52週漲幅', metricCode: 'priceReturn52w' },
+  // 持股超過千張的比例（2026-11-23，使用者從排行指南選的「千張大戶持股比例」，數據中台 custodyRatioOver1000Lots，集保每週）：名稱照中性寫法，
+  // 不用「大戶」；會受融資融券、借券與保管專戶影響，寫在型錄的說明裡。剛好 1,000 張的帳戶在第 14 級、不算在內
+  { slug: 'custody-over-1000-lots', category: 'holders', field: 'custodyRatioOver1000Lots.EOD', direction: 'desc', label: '持股超過千張的比例', short: '超過千張持股', metricCode: 'custodyRatioOver1000Lots', dateLabel: '集保資料日' },
   { slug: 'price-drop-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', negate: true, label: '52週股價跌幅', short: '52週跌幅', metricCode: 'priceReturn52w' },
   { slug: 'revenue-growth', category: 'growth', short: '營收年增率', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
   // EPS 的兩頁（2026-10-01）。使用者：「eps 可以分成兩個版本阿 一個說明成長 一個說明由虧轉盈的
@@ -237,6 +243,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-aum', universe: 'etf', category: 'etf-size', field: 'aum', direction: 'desc', label: '規模', unit: '億元', valueScale: 1e8, monthlyReport: true, note: '規模是投信投顧公會基金月報公布的月底淨資產，每月更新一次；規模跌破法定門檻、而且一段時間沒有回升的 ETF 可能依規定下市清算（以發行投信的公告為準）。' },
   { slug: 'etf-holders', universe: 'etf', category: 'etf-size', field: 'holders', direction: 'desc', label: '受益人數', unit: '人', monthlyReport: true, note: '受益人數是投信投顧公會基金月報公布的月底人數，每月更新一次。' },
   { slug: 'etf-net-flow', universe: 'etf', category: 'etf-size', field: 'netFlow', direction: 'desc', label: '淨申購', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '淨申購是投信投顧公會基金月報公布的當月申購金額減去贖回金額，每月更新一次；贖回多於申購時是負數。' },
+  // 近 5 日平均成交量（2026-11-23，排行指南的「五日均量」，數據中台 averageVolume5dLots，兩所日行情）：張取整數，日期是最後一個交易日
+  { slug: 'etf-volume-5d', universe: 'etf', category: 'etf-size', field: 'averageVolume5dLots', direction: 'desc', label: '近5日平均成交量', short: '五日均量', unit: '張', valueDigits: 0, dateField: 'tradeDate', note: '近 5 日平均成交量是最近 5 個交易日成交股數的平均，換算成張（1 張是 1,000 個受益權單位），每個交易日更新；成交少的 ETF，想買賣的張數不一定能在當天、用想要的價格成交完。' },
   // 定期定額金額先藏（2026-11-23）：公會獨有的欄位（SITCA_ONLY_ETF_FIELDS），取得同意再拿掉註解
   // { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
   { slug: 'etf-distribution-yield', universe: 'etf', category: 'etf-return', short: '配息率', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
@@ -251,8 +259,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
 // 個股最常見的是本益比、殖利率、股價淨值比與成長動能；ETF 是受益人數、規模、配息率、含息年報酬率、折溢價與內扣費用（照文件列的順序）。
 // 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
 export const RANK_NAV: Record<'common' | 'etf', string[]> = {
-  common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w'],
-  etf: ['etf-holders', 'etf-aum', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low']
+  common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w', 'custody-over-1000-lots'],
+  etf: ['etf-holders', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low']
 }
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
@@ -272,6 +280,7 @@ export function rankValueText(definition: RankPageDefinition, value: number | nu
 // 排行上的日期叫什麼（2026-11-16 使用者定）：財報類（單季、近四季、年度）寫財報公告日，每日的寫交易日（ETF 只有折溢價率帶逐列日期，
 // 也是交易日）；基金月報的排行只有月份
 export function rankDateLabel(definition: RankPageDefinition): string {
+  if (definition.dateLabel) return definition.dateLabel
   if (definition.monthlyReport) return '月份'
   return /\.(Q|TTM|FY)$/.test(definition.field) ? '財報公告日' : '交易日'
 }
