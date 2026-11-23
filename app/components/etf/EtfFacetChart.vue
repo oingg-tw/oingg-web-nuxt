@@ -28,7 +28,9 @@ interface LineSpec { entries: LineChartEntry[]; series: LineSeriesSpec[]; unit: 
 const lineSpec = computed<LineSpec | null>(() => {
   const values = props.data.etf.values
   switch (props.facet) {
-    // 每個月一格，有除息的月份畫每單位配息：用月份當橫軸，近N年才是真的 N 年（配息頻率會改）
+    // 每個月一格，有除息的月份畫每單位配息：用月份當橫軸，近N年才是真的 N 年（配息頻率會改）。
+    // 有歷年配息率時（2026-11-24）畫成同個股配股配息頁的那張：近 12 個月配息率一條線（左軸），每單位配息是右軸的柱子，
+    // 柱子是當時的金額、不回溯換算分割。配息率＝配息 ÷ 價格，柱子讓讀者分得出線往上是配得多還是價格低
     case 'distributions': {
       if (!events.value.length) return null
       const byMonth = new Map<string, number>()
@@ -37,16 +39,24 @@ const lineSpec = computed<LineSpec | null>(() => {
         const month = event.exDividendDate.slice(0, 7)
         byMonth.set(month, (byMonth.get(month) ?? 0) + event.distributionPerUnit)
       }
-      const first = events.value[0]!.exDividendDate.slice(0, 7)
-      const windowEnd = props.data.distributions?.trailing12MonthWindow?.end.slice(0, 7) ?? ''
-      const lastEvent = events.value.at(-1)!.exDividendDate.slice(0, 7)
+      const yields = props.data.yieldHistory ?? []
       const entries: LineChartEntry[] = []
-      for (let month = first; month <= (windowEnd > lastEvent ? windowEnd : lastEvent); month = nextMonth(month)) {
-        entries.push({ label: month, values: { value: { value: byMonth.get(month) ?? null } } })
+      if (yields.length) {
+        for (const point of yields) entries.push({ label: point.tradeDate.slice(0, 7), values: { yield: { value: point.value }, value: { value: byMonth.get(point.tradeDate.slice(0, 7)) ?? null } } })
+      } else {
+        const first = events.value[0]!.exDividendDate.slice(0, 7)
+        const windowEnd = props.data.distributions?.trailing12MonthWindow?.end.slice(0, 7) ?? ''
+        const lastEvent = events.value.at(-1)!.exDividendDate.slice(0, 7)
+        for (let month = first; month <= (windowEnd > lastEvent ? windowEnd : lastEvent); month = nextMonth(month)) {
+          entries.push({ label: month, values: { value: { value: byMonth.get(month) ?? null } } })
+        }
       }
       // 配息的月份不到一半（半年配、季配）時柱子至少 8px：近 5 年 60 格，每格只剩 3px
       const barMinWidth = byMonth.size * 2 < entries.length ? 8 : undefined
-      return { entries, series: [{ code: 'value', name: '每單位配息', type: 'bar', lineType: 'solid', symbol: 'rect', format: yuan, barMinWidth }], unit: '元', format: yuan, perYear: 12 }
+      const bars: LineSeriesSpec = { code: 'value', name: '每單位配息', type: 'bar', lineType: 'solid', symbol: 'rect', format: yuan, barMinWidth }
+      return yields.length
+        ? { entries, series: [{ code: 'yield', name: '近12個月配息率', lineType: 'solid', symbol: 'circle', format: pct }, { ...bars, axis: 'right' }], unit: '%', unitRight: '元', format: pct, perYear: 12 }
+        : { entries, series: [bars], unit: '元', format: yuan, perYear: 12 }
     }
     case 'expenses': {
       const history = values.expenseRatioHistory

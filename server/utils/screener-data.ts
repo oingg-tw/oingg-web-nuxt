@@ -1,4 +1,5 @@
 import type { EtfDetail, EtfDistributions, EtfMonthlyPoint, EtfPremiumMonth, LatestClose, PreferredStockEntry, ShareholdingDistribution } from '#shared/types/screener-detail'
+import type { DividendYieldPoint } from '#shared/types/stock-dividend-yield-history'
 
 // 篩選區兩種個別頁（ETF、特別股）與它們的 sitemap 的伺服器端讀取（2026-10-15 三組篩選重新設計）。同 stock-data.ts 的規則：
 // businessFetch 丟錯就不快取、具名、stale-while-revalidate。
@@ -20,6 +21,18 @@ export const cachedEtfDistributions = defineCachedFunction(
 export const cachedEtfMonthlyHistory = defineCachedFunction(
   async (symbol: string): Promise<EtfMonthlyPoint[]> => (await businessFetch<{ entries: EtfMonthlyPoint[] }>(`/etfs/${symbol}/monthly-history`)).entries ?? [],
   { name: 'etf-monthly-history', getKey: symbol => symbol, ...swrCache(6 * HOUR, TTL_STATIC) }
+)
+
+// ETF 歷年配息率（2026-11-24，使用者「etf 個別瀏覽要加上 歷年 殖利率」；數據中台 a917c22、業務中台轉發）：每月最後一個有成交的交易日
+// 一點，形狀同個股的殖利率歷史。FundClear 的配息 2019 年起，開頭整段 null（insufficient_history）拿掉，圖與答句從第一個有值的月開始，同個股
+export const cachedEtfDistributionYieldHistory = defineCachedFunction(
+  async (symbol: string): Promise<DividendYieldPoint[]> => {
+    const { entries } = await businessFetch<{ entries: DividendYieldPoint[] | null }>(`/etfs/${symbol}/distribution-yield-history`, { query: { lookbackYears: 10 } })
+    const first = (entries ?? []).findIndex(entry => entry.value !== null)
+    return first < 0 ? [] : entries!.slice(first)
+  },
+  // 最新一點每天變一次，同個股那支
+  { name: 'etf-distribution-yield-history', getKey: symbol => symbol, ...swrCache(HOUR, TTL_STATIC) }
 )
 
 // 每日折溢價彙總成每月的平均、最高、最低：0050 全歷史 5,410 天約 428KB，快取與頁面都只放彙總（約 270 個月）。沒成交的日子上游 null，不算。

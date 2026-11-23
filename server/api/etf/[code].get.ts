@@ -26,7 +26,7 @@ function monthlyLiquidity(daily: { tradeDate: string; close: number; volume?: nu
 export default defineEventHandler(async (event): Promise<EtfPageResponse> => {
   const code = (getRouterParam(event, 'code') ?? '').toUpperCase()
   if (!ETF_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be an ETF symbol' })
-  const [etf, distributions, quote, daily, monthly, premium, holders] = await Promise.all([
+  const [etf, distributions, quote, daily, monthly, premium, holders, yieldHistory] = await Promise.all([
     cachedEtf(code).catch((error: { statusCode?: number }) => {
       if (error?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: 'unknown ETF' })
       throw error
@@ -36,7 +36,8 @@ export default defineEventHandler(async (event): Promise<EtfPageResponse> => {
     settle(cachedDailyCloses(code)),
     settle(cachedEtfMonthlyHistory(code)),
     settle(cachedEtfPremiumMonths(code)),
-    settle(cachedShareholdingDistribution(code))
+    settle(cachedShareholdingDistribution(code)),
+    settle(cachedEtfDistributionYieldHistory(code))
   ])
   // 公會獨有的欄位不送到瀏覽器（SITCA_ONLY_ETF_FIELDS）：在這裡拿掉，快取裡存著的舊值也一起擋
   return {
@@ -47,6 +48,7 @@ export default defineEventHandler(async (event): Promise<EtfPageResponse> => {
     liquidity: daily?.length ? monthlyLiquidity(daily) : null,
     monthly: monthly?.length ? monthly.map(withoutSitcaOnly) : null,
     premium: premium?.length ? premium : null,
-    holders: holders?.weeks.length ? holders : null
+    holders: holders?.weeks.length ? holders : null,
+    yieldHistory: yieldHistory?.length ? yieldHistory : null
   }
 })

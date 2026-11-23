@@ -1,4 +1,5 @@
 import type { DividendFillEvent } from './dividend-history'
+import type { DividendYieldPoint } from './stock-dividend-yield-history'
 
 // 兩種個別頁的資料形狀（2026-10-15 三組篩選重新設計；2026-10-18 搬到 /etf/{代號}、/preferred/{代號}）。
 // 伺服器端的 /api/etf/:code、/api/preferred/:code 回這個，頁面在 SSR 就有內容。
@@ -81,6 +82,8 @@ export interface EtfPageResponse {
   monthly: EtfMonthlyPoint[] | null
   premium: EtfPremiumMonth[] | null
   holders: ShareholdingDistribution | null
+  // 歷年配息率（2026-11-24）：每月一點的近 12 個月配息率，由舊到新、從第一個有值的月開始。讀不到或一個月都算不出來是 null
+  yieldHistory: DividendYieldPoint[] | null
 }
 
 // GET /etfs/{代號}/monthly-history 的一列（定義同 /etfs/{代號}；2024-01 起）
