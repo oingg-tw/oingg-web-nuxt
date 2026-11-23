@@ -15,4 +15,8 @@ export function priceDirectionClass(value: number | null | undefined): '' | 'is-
 // 舉凡 年增率 年減率 數字 都用 漲跌色」），或以漲跌／漲跌幅結尾（2026-11-23，使用者：「screener/preferred 有些數字可以上漲跌色」）。
 // 「營收年增率波動」是標準差、永遠是正的，不是增減，所以不上色。scripts/check-price-direction.mjs
 // 月增率（2026-11-23，ETF 集保戶數月增率）跟年增率同一類，一起上色
-export const colorsByDirection = (name: string): boolean => /(年增率|年減率|月增率)(變化)?$|漲跌幅?$/.test(name)
+// 2026-11-24（使用者：「報酬率上漲跌色，還有哪些需要上漲跌色讓web自行判斷」）：期間報酬率（近 N 月／年、今年以來、成立以來，含年化）；
+// 由網站判斷再加兩類有增有減的：多年成長率（N 年成長率、N 年複合成長率，同年增率）與淨申購（申購減贖回）。不上色的是水準：
+// 資產報酬率、投入資本報酬率這些獲利能力也叫「報酬率」，所以報酬率要有期間在前面；永續成長率是推算的能力，不是實際的增減
+export const colorsByDirection = (name: string): boolean =>
+  /(年增率|年減率|月增率)(變化)?$|漲跌幅?$|(近\s*\d+\s*個?[月年]|今年以來|成立以來)(年化)?報酬率$|\d+\s*年(複合)?成長率$|^淨申購/.test(name)

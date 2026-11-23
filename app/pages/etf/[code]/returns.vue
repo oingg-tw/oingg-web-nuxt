@@ -53,8 +53,8 @@ const annualAnswer = computed(() => {
         <tbody>
           <tr v-for="row in rows" :key="row.label">
             <th scope="row">{{ row.label }}</th>
-            <td class="seo-table__num">{{ etfPct(row.value) }}</td>
-            <td class="seo-table__num">{{ row.annualizable ? etfPct(row.annualized) : '－' }}</td>
+            <td class="seo-table__num" :class="priceDirectionClass(row.value)">{{ etfPct(row.value) }}</td>
+            <td class="seo-table__num" :class="row.annualizable ? priceDirectionClass(row.annualized) : ''">{{ row.annualizable ? etfPct(row.annualized) : '－' }}</td>
           </tr>
         </tbody>
       </SharedTable>
@@ -71,7 +71,7 @@ const annualAnswer = computed(() => {
         <tbody>
           <tr v-for="row in years" :key="row.year">
             <th scope="row">{{ row.year }} 年</th>
-            <td class="seo-table__num">{{ etfPct(row.returnPct) }}</td>
+            <td class="seo-table__num" :class="priceDirectionClass(row.returnPct)">{{ etfPct(row.returnPct) }}</td>
           </tr>
         </tbody>
       </SharedTable>

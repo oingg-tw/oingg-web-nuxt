@@ -127,7 +127,9 @@ function formatValue(field: EtfFilterField | undefined, raw: string | number | n
   if (field?.field === 'riskLevel') return etfRiskText(raw)
   // 淨值、收盤價是每單位的價格（兩位小數），其他「元」是金額（規模、淨申購）
   if (field?.unit === '元') return field.field === 'nav' || field.field === 'close' ? groupThousands(raw.toFixed(2)) : formatMoney(raw)
-  if (field?.unit === '%') return minusSign(`${raw}%`)
+  // 百分比固定兩位（2026-11-24）：債券 ETF 的報酬率上游給四位（00679B 近1年 0.6827），同一欄有「66.75%」「75.3%」「0.6827%」對不齊；
+  // ETF 頁的 etfPct 也是兩位。同貝他的前例，只改顯示，排序與篩選照原值
+  if (field?.unit === '%') return minusSign(`${raw.toFixed(2)}%`)
   // 總費用率年度、費用率細項年度是年份，不分千位（原本寫「2,025 年」）；成立年數也是年，不到千
   if (field?.unit === '年') return `${raw} 年`
   return field?.unit ? `${groupThousands(raw)} ${field.unit}` : groupThousands(raw)
