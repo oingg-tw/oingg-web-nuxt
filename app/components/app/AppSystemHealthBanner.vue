@@ -44,7 +44,7 @@ onUnmounted(() => {
   <div v-if="visible" ref="bannerRef" class="app-system-health-banner" role="alert">
     <el-icon aria-hidden="true"><WarningFilled /></el-icon>
     <!-- 網站有回應＝我們的問題；沒回應＝多半是使用者的網路（useSystemHealth 的 reachable，2026-11-19） -->
-    <span>{{ reachable ? '我們的系統暫時有狀況，不是你的網路問題。' : '連不上網站，請檢查網路連線。' }}</span>
+    <span>{{ reachable ? '很抱歉，我們的系統暫時有狀況，正在處理中。' : '暫時連不上網站，麻煩確認一下網路連線。' }}</span>
     <!-- Real, focusable <button>（2026-09-19，原本是不可聚焦的 <el-icon>，鍵盤到不了、除了 hover 才
          看得到的 title 之外沒有任何可及名稱）。
          2026-09-30 依直接指示改回純 X（「請讓她是個單純的 X」）。這推翻了同一次 interface-complexity

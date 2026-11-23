@@ -40,15 +40,17 @@ const noticeVisible = computed(() => !dialogVisible.value && shown.value.length 
 const PRIORITY: LoadFailureKind[] = ['offline', 'network', 'server', 'busy', 'unavailable', 'timeout', 'client']
 const primary = computed(() => [...blocking.value].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind))[0] ?? null)
 
+// 客服的口吻（2026-11-23，使用者：「MESSAGES 改的再像客服口吻點 比如不要 "不是你的網路問題"」）：我們這邊的問題先說很抱歉、說我們在做什麼，
+// 不寫撇清的話，也不寫伺服器、請求這種技術詞
 const MESSAGES: Record<LoadFailureKind, string> = {
-  offline: '你的裝置目前沒有網路連線。連上之後會自動繼續，不用重新整理。',
+  offline: '目前偵測不到網路連線，連上之後頁面會自動繼續載入，不需要重新整理。',
   // 網站沒回應（network）與網站回了錯誤（unavailable）分開說，用戶才分得出是自己的網路還是我們（2026-11-19，見 api-fetch.ts 的 LoadFailureKind）
-  network: '連不上網站，可能是你的網路連線中斷。連上之後會自動繼續，不用重新整理。',
-  timeout: '伺服器這次回應得太慢，可能正在處理大量資料。',
-  unavailable: '我們的系統暫時有狀況，可能正在更新或短暫故障，不是你的網路問題。',
-  busy: '伺服器目前忙碌，正在處理大量請求，稍後會自動再試。',
-  server: '伺服器處理這份資料時發生錯誤。',
-  client: '這份資料的請求沒有被接受。'
+  network: '暫時連不上網站，麻煩確認一下網路連線；恢復之後頁面會自動繼續載入，不需要重新整理。',
+  timeout: '很抱歉，資料這次回應得比較慢，我們正在自動重新讀取。',
+  unavailable: '很抱歉，我們的系統暫時無法提供資料，可能正在更新或處理中，我們會自動重新讀取，請稍候。',
+  busy: '目前使用的人比較多，我們正在依序處理，稍後會自動再試一次，請稍候。',
+  server: '很抱歉，讀取這份資料時出了點問題，我們正在自動重新讀取。',
+  client: '很抱歉，這份資料目前無法讀取。'
 }
 
 // 寬限期之後的重試間隔：5、10、20、40 秒，之後都 60 秒（上游 502 期間一個分頁 4 分鐘打了約 150 次）。
@@ -193,7 +195,7 @@ function goHome() {
        長相跟全站提示同一種（element-plus.css 的全站提示段落，2026-10-22 方案 B）：深色條、警告圖示、淺金色的「立即重試」、自己的關閉鈕 -->
   <div v-if="noticeVisible" class="load-failure-notice" role="status">
     <el-icon class="load-failure-notice__icon" aria-hidden="true"><WarningFilled /></el-icon>
-    <p class="load-failure-notice__text">部分資料暫時讀不到，正在自動重試。</p>
+    <p class="load-failure-notice__text">部分資料暫時無法顯示，我們正在自動重新讀取。</p>
     <button type="button" class="app-toast__action" :disabled="retrying" @click="retryNow">{{ retrying ? '重試中…' : '立即重試' }}</button>
     <button type="button" class="app-toast__close" aria-label="關閉讀取失敗提示" @click="dismiss">
       <el-icon aria-hidden="true"><Close /></el-icon>

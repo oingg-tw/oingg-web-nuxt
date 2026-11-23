@@ -70,7 +70,7 @@ await scenario('主要資料持續 502：寬限期後才開彈窗，恢復後自
   expect(!(await dialog.isVisible()), '寬限期內就開了彈窗')
   await dialog.waitFor({ state: 'visible', timeout: 8_000 })
   // 網站有回應（502）＝我們的問題，要講明不是用戶的網路（2026-11-19）
-  expect(/不是你的網路問題/.test(await dialog.locator('.load-failure__message').innerText()), '502 沒有說不是用戶的網路問題')
+  expect(/我們的系統/.test(await dialog.locator('.load-failure__message').innerText()), '502 沒有說是我們的系統')
   await page.unroute('**/api/stock/2330/dupont')
   await dialog.waitFor({ state: 'hidden', timeout: 20_000 })
 })
@@ -82,7 +82,7 @@ await scenario('網站沒回應、瀏覽器以為有網路：說可能是用戶�
   await clientNavigate(page, '/stock/2330/dupont')
   await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 8_000 })
   const message = await dialog.locator('.load-failure__message').innerText()
-  expect(/你的網路連線中斷/.test(message) && !/不是你的網路/.test(message), `說法不對：${message}`)
+  expect(/確認一下網路連線/.test(message) && !/我們的系統/.test(message), `說法不對：${message}`)
   await page.unroute('**/api/stock/2330/dupont')
   await dialog.waitFor({ state: 'hidden', timeout: 20_000 })
 })
@@ -182,7 +182,7 @@ await scenario('瀏覽器說沒網路但其實連得上：照樣自動重試，�
   await clientNavigate(page, '/stock/2330/dupont')
   // 斷線不等寬限期
   await dialog.waitFor({ state: 'visible', timeout: 8_000 })
-  expect(/沒有網路/.test(await dialog.locator('.load-failure__message').innerText()), '沒有說是網路的問題')
+  expect(/偵測不到網路連線/.test(await dialog.locator('.load-failure__message').innerText()), '沒有說是網路的問題')
   // 等寬限期的兩次背景重試（最晚第 4 秒）都過了，才讓它恢復：要驗的是之後的排程重試
   await wait(4_200)
   await page.unroute('**/api/stock/2330/dupont')
@@ -209,7 +209,7 @@ await scenario('連不上伺服器的橫幅：晚出現也把頁面往下推、�
   const banner = page.locator('.app-system-health-banner')
   await banner.waitFor({ state: 'visible', timeout: 10_000 })
   // 健康檢查有回應、上游不健康＝我們的問題
-  expect(/不是你的網路問題/.test(await banner.innerText()), `上游不健康時橫幅的說法不對：${await banner.innerText()}`)
+  expect(/我們的系統/.test(await banner.innerText()), `上游不健康時橫幅的說法不對：${await banner.innerText()}`)
   for (const [viewportWidth, dark] of [[width, false], [width, true], [375, false]]) {
     await page.setViewportSize({ width: viewportWidth, height: 900 })
     await page.evaluate(isDark => document.documentElement.classList.toggle('dark', isDark), dark)
@@ -236,7 +236,7 @@ await scenario('健康檢查連網站都沒回應：橫幅請用戶檢查網路'
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
   const banner = page.locator('.app-system-health-banner')
   await banner.waitFor({ state: 'visible', timeout: 10_000 })
-  expect(/檢查網路連線/.test(await banner.innerText()), `連不上網站時橫幅的說法不對：${await banner.innerText()}`)
+  expect(/確認一下網路連線/.test(await banner.innerText()), `連不上網站時橫幅的說法不對：${await banner.innerText()}`)
 })
 
 // 一支請求失敗不等於連不上（2026-11-06，DEV 的 /holdings/statistics 手機位移 0.135）：原本先出橫幅再重查，上游好好的也出現 2 秒，
