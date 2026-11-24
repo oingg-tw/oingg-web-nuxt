@@ -58,6 +58,8 @@ assert.equal(screenerNullText('roeWeighted5y.FY', 'insufficient_history'), '未�
 assert.equal(screenerNullText('beta.5Y_1M', 'insufficient_history'), '未滿 5 年')
 assert.equal(screenerNullText('peRatioRiverBand.3Y_1D', 'insufficient_history'), '未滿 3 年')
 assert.equal(screenerNullText('holdingDividendGrowthRate3y.EOD', 'insufficient_history'), '未滿 3 年')
+assert.equal(screenerNullText('livePriceChangeRate.EOD', 'no_trade'), '無成交')
+assert.equal(NULL_REASON_LABELS.no_trade, '當天沒有成交')
 assert.equal(screenerNullText('epsCagr5y.FY', 'zero_or_negative_denominator'), null)
 assert.equal(screenerNullText('roe.TTM', 'insufficient_history'), null)
 // 興櫃的上市櫃年數（數據中台的 not_listed）：格子寫未上市櫃、短措辭算不適用（結構性），長說明有寫

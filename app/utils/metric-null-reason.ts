@@ -39,6 +39,9 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 上市的三大法人、借券賣出（數據中台 2026-11-24，讀者先行）：證交所只放在舊網站、開放資料沒有，要不要用是使用者的決定。
   // 不是不適用（之後可能有來源），格子寫尚無資料
   not_in_open_data: '交易所有公布這項數字，但不在開放資料裡，本站目前還不能使用',
+  // 2026-11-24 數據中台：最新交易日那檔沒有成交（livePriceChange／livePriceChangeRate），原本標 missing_input。交易所對沒成交的也不給漲跌，
+  // 所以不改用最近一次收盤算；篩選照舊排除。管理站的標籤是同一句（a3282d8）
+  no_trade: '當天沒有成交',
   // REIT 的近一年分配率（數據中台 2026-11-24，GET /reits/{代號}/distribution-yield-spread，讀者先行）：往前 13 個月查不到任何分配紀錄
   //（多一個月給年配的除息日誤差）。使用者要「讓用戶知道這段不在 MOPS 範圍」，但同一個代碼也包含掛牌後還沒開始分配的月份，分不出是哪一種，
   // 所以兩種都寫。目前是 01001T 2006-03～2008-04、01004T 2007-04～2007-09 與 2008-11～2009-09、01007T 2007-10。格子寫尚無資料
@@ -88,6 +91,8 @@ export function semiannualWindowNote(entry: MetricsHistoryEntry, quarterly: read
 // 其他原因照舊「－」
 export function screenerNullText(field: string, nullReason: string | null | undefined): string | null {
   if (nullReason === 'not_listed') return '未上市櫃'
+  // 觀察清單、篩選的漲跌（2026-11-24）：不寫「今日」，週末打開時那一天不是今天
+  if (nullReason === 'no_trade') return '無成交'
   if (nullReason !== 'insufficient_history') return null
   const [metric = '', period = ''] = field.split('.')
   const years = /^(\d+)Y_/.exec(period)?.[1] ?? /(\d+)y$/.exec(metric)?.[1]
