@@ -14,6 +14,12 @@ export interface EtfDetail {
   // 簡稱（發行投信是 issuerName）
   companyName: string | null
   issuerName: string
+  // 2026-11-24（數據中台、業務中台轉）：發行投信的 MOPS 代號（A＋5 碼，投信 logo 的鍵）；公開說明書在公開資訊觀測站電子文件系統的入口頁與
+  // 資料年月（使用者「公開說明書連結要接上並顯示給用戶」）；PCF（申購買回清單）在投信網站的頁面（使用者「加連結」）。只給 http(s)，沒有是 null
+  issuerCode?: string | null
+  prospectusUrl?: string | null
+  prospectusYearMonth?: string | null
+  pcfUrl?: string | null
   category: string | null
   trackingIndex: string | null
   // 月報年月 "YYYY-MM"

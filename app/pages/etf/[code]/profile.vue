@@ -32,6 +32,10 @@ const facts = computed<FactItem[]>(() => {
     { label: '成立日', value: text('establishedDate') ?? '－', note: years ? `成立 ${years} 年` : undefined },
     { label: '管理方式', value: item.trackingIndex ? `被動式，追蹤「${item.trackingIndex}」` : values.value.isActive === true ? '主動式，由經理人選股、不追蹤指數' : '－' },
     { label: '風險等級', value: etfRiskText(num('riskLevel')), note: profile.value ? `資料日期 ${profile.value.asOfDate}` : undefined },
+    // 公開說明書與 PCF（2026-11-24，使用者「公開說明書連結要接上並顯示給用戶」、PCF「加連結」）：外部網址，另開新視窗、寫出會開到哪個網站。
+    // 公開說明書給的是電子文件系統的入口頁（PDF 的連結每次重新產生），開了要再按一次才是 PDF。網址只收 http(s)（websiteHref），沒有就不列
+    ...(websiteHref(item.prospectusUrl) ? [{ label: '公開說明書', value: `公開資訊觀測站${item.prospectusYearMonth ? `（${item.prospectusYearMonth} 版）` : ''}`, href: websiteHref(item.prospectusUrl), note: '開啟後再點一次是 PDF' }] : []),
+    ...(websiteHref(item.pcfUrl) ? [{ label: '申購買回清單（PCF）', value: '投信網站', href: websiteHref(item.pcfUrl), note: '每天公布的持股明細' }] : []),
     ...(profile.value ? [
       { label: '投資區域', value: profile.value.investRegion ?? '－' },
       { label: '投資標的', value: profile.value.investTarget ?? '－', note: '集保原文', long: true },
