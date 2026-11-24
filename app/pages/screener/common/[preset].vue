@@ -40,7 +40,8 @@ function rangeText(filter: ScreenerTemplateWithSlug['filters'][number], unit: st
   const max = filter.max !== null ? `${filter.max}${suffix}` : null
   let text = min && max ? `${min} 到 ${max}` : min ? `≥ ${min}` : max ? `≤ ${max}` : '有值即可'
   if (filter.exclude) text = `排除：${text}`
-  return text
+  // 負的界線用「−」（成長突破的「距 52 週高點 ≥ −15%」，2026-11-24）
+  return minusSign(text)
 }
 
 const conditions = computed<ConditionRow[]>(() =>

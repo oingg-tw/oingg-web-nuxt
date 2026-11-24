@@ -60,12 +60,13 @@ const categoricalText = computed(() => {
 const rangeText = computed(() => {
   if (metric.value?.kind === 'categorical') return categoricalText.value
   if (props.min === null && props.max === null) return '設定範圍'
+  // 負的界線用「−」（全站負號的規則；2026-11-24 成長突破範本的「距 52 週高點 ≥ −15」原本印成 -15）
   if (props.min !== null && props.max !== null) {
-    if (props.min === props.max) return `= ${props.min}`
-    return props.exclude ? `不在 ${props.min}～${props.max}` : `${props.min}～${props.max}`
+    if (props.min === props.max) return minusSign(`= ${props.min}`)
+    return minusSign(props.exclude ? `不在 ${props.min}～${props.max}` : `${props.min}～${props.max}`)
   }
-  if (props.min !== null) return `≥ ${props.min}`
-  return `≤ ${props.max}`
+  if (props.min !== null) return minusSign(`≥ ${props.min}`)
+  return minusSign(`≤ ${props.max}`)
 })
 
 // Period now surfaces here rather than on the field-name half — picking a condition's field
