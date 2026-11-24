@@ -26,6 +26,18 @@ export interface MetricField {
   sort: number
 }
 
+// 常用範圍（2026-11-24，使用者：「挑選器也可以，但是要請數據中臺研究是否有範圍選項可以選。比如毛利大於六成 淨利大於兩成這個區間」，
+// 再補「分位選項不需要每天重算，能找到一個合理的固定數值就好」）：固定的上下限，含等號、單位同指標，null 是不設那一邊；只用在 timeframes
+// 列的期別（單季 ROE 沒有年化，17% 只給近四季與年度）。source 是出處，或「依 2026-11-24 全市場分布取整數」；note 是補充（當時的占比等）
+export interface RangePreset {
+  label: string
+  min: number | null
+  max: number | null
+  timeframes: string[]
+  source: string
+  note: string | null
+}
+
 export interface Metric {
   key: string
   name: string
@@ -134,6 +146,8 @@ export interface Metric {
   options?: { value: string | number, label: string, count?: number, fiscalYear?: number | null, fiscalQuarter?: number | null }[]
   // 條件裡有、選項裡沒有的值要怎麼寫（已經持有：刪掉的帳戶）；不給就照原值
   missingOptionLabel?: string
+  // 設定範圍的常用範圍（數據中台 7f8792e，2026-11-24；沒有是空陣列，見 RangePreset）
+  rangePresets?: RangePreset[]
   // 一格的值可能是好幾個選項用「、」串起來（已經持有的帳戶名稱）：欄寬照全部選項串起來估
   joinedOptions?: boolean
 }

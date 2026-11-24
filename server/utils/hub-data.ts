@@ -629,7 +629,9 @@ export const getFilterSchemaCatalog = defineCachedFunction(
             // formulaLatex 不帶：公式改由 getFormulaHtml 在伺服器排好（/api/hub/formula/[key]），瀏覽器用不到原始 LaTeX。
             // 長文字也不帶（2026-11-13，PageSpeed 第二階段）：英文名、搜尋別名、說明、參考網址、期別的說明與別名占這份的 70 KB，每一頁的
             // payload 都有，卻只有挑指標的面板（打開時）和幾頁的定義段在讀——它們改讀 getMetricTexts（/api/hub/metric-texts）
+            // rangePresets：設定範圍的常用範圍（2026-11-24，數據中台 7f8792e），每支幾個、字很短。空陣列不帶（ScreenerConditionPanel 當沒有）
             ...pickKeys(metric, ['key', 'name', 'nameSuffix', 'unit', 'sort', 'sources', 'kind', 'options', 'conditionOnly', 'hasProvenance']),
+            ...((metric.rangePresets as unknown[] | undefined)?.length ? { rangePresets: metric.rangePresets } : {}),
             fields: (metric.fields as LooseRecord[]).map(field => pickKeys(field, ['key', 'name', 'period', 'unit', 'sort'])),
             ...(badge
               ? {

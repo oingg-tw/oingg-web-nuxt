@@ -67,10 +67,13 @@ const searchQuery = ref('')
 // 同名的幾支只留一支能挑（2026-10-21）：不列的那幾支與留下來的是哪一支、理由，都在 app/utils/replaced-metrics.ts（存過的條件與欄位
 // 也照那張表換掉，2026-10-22）；只藏不換的（PICKER_UNLISTED_METRICS，2026-11-08）在同一個檔案
 const PICKER_HIDDEN_METRICS = new Set([...Object.keys(REPLACED_METRICS), ...PICKER_UNLISTED_METRICS])
+// 分數型有了常用範圍就列（2026-11-24，使用者：「挑選器也可以，但是要請數據中臺研究是否有範圍選項可以選」）：型錄帶 rangePresets 的那一支自己出現，
+// 還沒帶的照舊不列（11-10 的理由：「如果用範圍也看不出來是篩選哪一個數字」）
+const hiddenInPicker = (metric: Metric) => PICKER_HIDDEN_METRICS.has(metric.key) && !(SCORE_METRICS.includes(metric.key) && metric.rangePresets?.length)
 // 選條件時（hidePeriod）也不列只能當欄位的（Metric.columnOnly）
 const sortedCategories = computed(() => props.categories.map(category => ({
   ...category,
-  metrics: category.metrics.filter(metric => !PICKER_HIDDEN_METRICS.has(metric.key) && !(props.hidePeriod && metric.columnOnly))
+  metrics: category.metrics.filter(metric => !hiddenInPicker(metric) && !(props.hidePeriod && metric.columnOnly))
 })))
 
 const activeCategoryKey = ref<string | undefined>(sortedCategories.value[0]?.key)

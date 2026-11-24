@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CircleClose } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
-import type { PeriodOption } from '~/composables/screener/useFilterSchema'
+import type { PeriodOption, RangePreset } from '~/composables/screener/useFilterSchema'
 
 const props = defineProps<{
   fieldLabel: string
@@ -20,6 +20,8 @@ const props = defineProps<{
   options?: { value: string | number, label: string, count?: number }[]
   // 輸入框後面的單位（元、%、倍…）；舊的 ETF 編輯器有、共用之後要保留（2026-10-15）
   unit?: string
+  // 常用範圍（2026-11-24，數據中台的 rangePresets，已照期別篩過）：點了填上下限，之後照樣能改
+  presets?: RangePreset[]
 }>()
 
 const emit = defineEmits<{
@@ -121,6 +123,16 @@ const equalValue = computed<number | null>({
   }
 })
 
+// 點常用範圍：填上下限、條件跟著換（只有下限是大於、只有上限是小於、兩邊都有是之間）。目前的上下限剛好是某一個，那一顆就是按下的，
+// 底下寫它的出處（數據中台的出處與補充；只寫按下的那一個，不然一排選項底下會是一整段出處）
+function applyPreset(preset: RangePreset) {
+  exclude.value = false
+  min.value = preset.min
+  max.value = preset.max
+  mode.value = deriveMode()
+}
+const activePreset = computed(() => (exclude.value ? null : props.presets?.find(preset => preset.min === min.value && preset.max === max.value) ?? null))
+
 function reset() {
   min.value = null
   max.value = null
@@ -195,6 +207,13 @@ function reset() {
         <span v-if="mode === 'between' || mode === 'outside'" class="range-editor__sep">～</span>
         <label v-if="mode !== 'above'" class="range-editor__field"><span class="range-editor__label">上限</span><span class="range-editor__input-row"><el-input-number v-model="max" class="range-editor__input" /><span v-if="unit" class="range-editor__unit">{{ unit }}</span></span></label>
       </div>
+      <div v-if="presets?.length" class="range-editor__presets" role="group" aria-label="常用範圍">
+        <span class="range-editor__label" aria-hidden="true">常用範圍</span>
+        <div class="range-editor__preset-list">
+          <button v-for="preset in presets" :key="preset.label" type="button" class="hub-chip" :aria-pressed="activePreset === preset" @click="applyPreset(preset)">{{ preset.label }}</button>
+        </div>
+        <p v-if="activePreset" class="range-editor__hint">{{ activePreset.source }}{{ activePreset.note ? `；${activePreset.note}` : '' }}</p>
+      </div>
       </template>
     </div>
   </div>
@@ -250,6 +269,18 @@ function reset() {
 .range-editor__input-row > .range-editor__input {
   flex: 1;
   min-width: 0;
+}
+
+.range-editor__presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-editor__preset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .range-editor__unit {

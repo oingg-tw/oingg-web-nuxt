@@ -66,6 +66,11 @@ const title = computed(() => {
   return '選擇篩選指標'
 })
 const periods = computed(() => periodSiblingsOf(props.categories, props.slot?.fieldId ?? null))
+// 常用範圍只給這個期別適用的（RangePreset.timeframes）
+const presets = computed(() => {
+  const timeframe = props.slot?.fieldId?.split('.')[1]
+  return timeframe ? (metric.value?.rangePresets ?? []).filter(preset => preset.timeframes.includes(timeframe)) : []
+})
 // 輸入框後面的單位（元、%、倍、人…），三組型錄的單位都是看得懂的字；沒有單位是 null
 const unit = computed(() => (props.slot?.fieldId ? locateFieldInSchema(props.categories, props.slot.fieldId)?.field.unit : null) ?? '')
 // 設定範圍是一個表單，「完成」是它的送出鈕：輸入框按 Enter 就是「完成」（2026-11-10，使用者：「設定範圍 輸入數值後按下enter 要 視同儲存」）。
@@ -106,6 +111,7 @@ const formId = useId()
         :kind="categorical ? 'categorical' : 'numeric'"
         :options="metric?.options ?? []"
         :unit="unit"
+        :presets="presets"
         :field-label="slot.fieldLabel ?? ''"
         :periods="periods"
         :current-field-id="slot.fieldId"
