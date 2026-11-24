@@ -158,7 +158,7 @@ async function referencePage(page: MacroPageDefinition): Promise<Omit<MacroPageD
   }
   if (page.slug === 'inflation') {
     // 約 2.8 MB（81 項的完整歷史），只在這裡讀、快取一天，頁面只拿最新一期
-    const items = await businessFetch<{ items: { itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[] }>('/macro/cpi-items')
+    const items = await businessFetch<{ items: { itemCode?: string | null; itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[] }>('/macro/cpi-items')
     return { series, cpiItems: cpiTree(items.items) }
   }
   return { series }
@@ -206,5 +206,6 @@ export const getMacroPage = defineCachedFunction(
       ...(spread ? { termSpread: spread.entries.map(({ yearMonth, ...rates }) => ({ period: yearMonth, ...rates })) } : {})
     }
   },
-  { name: 'hub-macro-page', getKey: slug => slug, ...swrCache(TTL_STATIC, TTL_STATIC) }
+  // -v2：2026-11-25 CPI 分項多了 code（細項代碼），舊鍵裡沒有，要等快取過期才拿得到
+  { name: 'hub-macro-page-v2', getKey: slug => slug, ...swrCache(TTL_STATIC, TTL_STATIC) }
 )

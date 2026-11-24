@@ -32,10 +32,12 @@ assert.equal(m2Composition(items.map(item => (item.category === 'postal_savings_
 // CPI 分項：七大類 depth 0，往下一層加一；照主計總處的順序；最新一期取最後一個有年增率的
 const entry = (yearMonth, yoyChangePct) => ({ yearMonth, yoyChangePct })
 const tree = cpiTree([
-  { itemName: '肉類', parentItemName: '食物類', itemOrder: 6, entries: [entry('2026-10', 3.1)] },
-  { itemName: '總指數', parentItemName: null, itemOrder: 1, entries: [entry('2026-09', 1.9), entry('2026-10', 2.33)] },
-  { itemName: '生鮮家畜', parentItemName: '肉類', itemOrder: 7, entries: [entry('2026-09', 4), entry('2026-10', null)] },
+  { itemCode: 'meat', itemName: '肉類', parentItemName: '食物類', itemOrder: 6, entries: [entry('2026-10', 3.1)] },
+  { itemCode: 'total', itemName: '總指數', parentItemName: null, itemOrder: 1, entries: [entry('2026-09', 1.9), entry('2026-10', 2.33)] },
+  { itemCode: null, itemName: '生鮮家畜', parentItemName: '肉類', itemOrder: 7, entries: [entry('2026-09', 4), entry('2026-10', null)] },
   { itemName: '食物類', parentItemName: '總指數', itemOrder: 2, entries: [entry('2026-10', 2.05)] }
 ])
 assert.deepEqual(tree.map(item => `${item.name}:${item.depth}:${item.yearMonth}:${item.yoyChangePct}`), ['總指數:-1:2026-10:2.33', '食物類:0:2026-10:2.05', '肉類:1:2026-10:3.1', '生鮮家畜:2:2026-09:4'])
+// 鍵是細項代碼（2026-11-25）；代碼是 null 或業務中台還沒轉出這個欄位時用名稱
+assert.deepEqual(tree.map(item => item.code), ['total', '食物類', 'meat', '生鮮家畜'])
 console.log('PASS: macro series')

@@ -361,7 +361,7 @@ export interface MacroPageData {
   // 貨幣供給頁的 M2 組成（同日，/macro/monetary-aggregate-components）：每月各層的餘額，單位億元，近 10 年
   composition?: { period: string; values: Record<string, number | null> }[]
   // 消費者物價頁的分項（同日，/macro/cpi-items）：總指數、七大類與各分項最新一期的年增率，照主計總處的順序，depth 0 是七大類
-  cpiItems?: { name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[]
+  cpiItems?: { code: string; name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[]
   // 經濟成長率頁的各需求項目（同日，/macro/gdp-expenditures）：近 8 季的實質年增率
   gdpComponents?: { category: string; entries: { period: string; realYoyChangePct: number | null }[] }[]
 }

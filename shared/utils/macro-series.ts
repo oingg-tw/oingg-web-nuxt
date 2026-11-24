@@ -45,8 +45,9 @@ export function m2Composition(items: { category: string; entries: { yearMonth: s
   })
 }
 
-// CPI 分項：七大類與各分項最新一期的年增率。depth 由上層的名字往上數（七大類是 0）
-export function cpiTree(items: { itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[]): { name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[] {
+// CPI 分項：七大類與各分項最新一期的年增率。depth 由上層的名字往上數（七大類是 0；回應裡上層只有名字）。code 是主計總處的細項代碼
+//（2026-11-25 數據中台 c85130b：名稱可能改字、代碼不變，拿它當鍵），萬一缺就用名稱
+export function cpiTree(items: { itemCode?: string | null; itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[]): { code: string; name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[] {
   const parentOf = new Map(items.map(item => [item.itemName, item.parentItemName]))
   const depthOf = (name: string): number => {
     let depth = -1
@@ -55,7 +56,7 @@ export function cpiTree(items: { itemName: string; parentItemName: string | null
   }
   return [...items].sort((a, b) => a.itemOrder - b.itemOrder).map((item) => {
     const last = item.entries.findLast(entry => entry.yoyChangePct !== null) ?? null
-    return { name: item.itemName, parent: item.parentItemName, depth: depthOf(item.itemName), yearMonth: last?.yearMonth ?? null, yoyChangePct: last?.yoyChangePct ?? null }
+    return { code: item.itemCode ?? item.itemName, name: item.itemName, parent: item.parentItemName, depth: depthOf(item.itemName), yearMonth: last?.yearMonth ?? null, yoyChangePct: last?.yoyChangePct ?? null }
   })
 }
 

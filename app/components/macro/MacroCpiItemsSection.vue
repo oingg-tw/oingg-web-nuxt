@@ -31,13 +31,13 @@ const answer = computed(() => {
     <h2 id="macro-cpi-items-heading" class="stock-page-section__title">哪一類的物價漲得多？</h2>
     <p class="hub-answer">{{ answer }}</p>
     <div class="app-card macro-cpi-items">
-      <details v-for="group in groups" :key="group.item.name" class="app-disclosure macro-cpi-items__group">
+      <details v-for="group in groups" :key="group.item.code" class="app-disclosure macro-cpi-items__group">
         <summary class="macro-cpi-items__summary">
           <span class="macro-cpi-items__name">{{ group.item.name }}</span>
           <span class="macro-cpi-items__value">{{ pct(group.item.yoyChangePct) }}</span>
         </summary>
         <ul class="macro-cpi-items__list">
-          <li v-for="child in group.children" :key="child.name" class="macro-cpi-items__row" :style="{ paddingInlineStart: `calc(23px + ${(child.depth - 1) * 1.25}rem)` }">
+          <li v-for="child in group.children" :key="child.code" class="macro-cpi-items__row" :style="{ paddingInlineStart: `calc(23px + ${(child.depth - 1) * 1.25}rem)` }">
             <span>{{ child.name }}</span>
             <span class="macro-cpi-items__value">{{ pct(child.yoyChangePct) }}<template v-if="child.yearMonth && child.yearMonth !== group.item.yearMonth">（{{ child.yearMonth }}）</template></span>
           </li>
