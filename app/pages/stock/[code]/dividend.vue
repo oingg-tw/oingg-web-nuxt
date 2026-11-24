@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
-import type { ResolvedDividend } from '#shared/types/dividend-history'
 // 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
 // /api/stock/:code/series?page=dividend（useStockPageDigest）。
@@ -45,12 +44,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 const history = computed(() => series.value?.dividendHistory?.entries ?? [])
 // 董事會（或股東會）已經通過、還沒發放的股利（2026-11-24，數據中台 resolvedNotYetDistributed；使用者 11-23 核准「董事會通過的股利」）：
 // 除權息預告要等公司訂了除息日才有，這一段補上更早的那一步。依決議日新到舊
-// shortcut: 數據中台 2026-11-24 的清單裡混著已經除息的（2330 2026Q2、2454 2025 下半年、3008 兩筆），這裡先拿掉同一年度、決議之後已經
-// 除息、現金股利一樣的那幾筆；數據中台修好篩選後拿掉這段
-const alreadyPaid = (item: ResolvedDividend) => history.value.some(entry => entry.fiscalYear === item.fiscalYear && (entry.events ?? []).some(event =>
-  !!event.exDividendDate && event.exDividendDate >= (item.boardResolutionDate ?? '') && Math.abs((event.cashDividend ?? 0) - (item.cashDividend ?? 0)) < 1e-6))
-const resolved = computed(() => (series.value?.dividendHistory?.resolvedNotYetDistributed ?? [])
-  .filter(item => !alreadyPaid(item))
+// 已經除息的不會在清單裡：數據中台照分派公告的季別對（2026-11-24 3a9676b 補上沒填季別的半年配，以日期加金額對）。網站不自己篩：
+// 照金額與日期猜會誤刪，例 2330 第一季與第二季都是 7 元，第一季 9-16 除息、第二季還沒
+const resolved = computed(() => [...(series.value?.dividendHistory?.resolvedNotYetDistributed ?? [])]
   .sort((a, b) => (b.boardResolutionDate ?? '').localeCompare(a.boardResolutionDate ?? '')))
 const resolvedText = (value: number | null) => (value === null ? '－' : value.toFixed(2))
 const resolvedAnswer = computed(() => {
