@@ -32,9 +32,12 @@ const announced = announcementGroups([
   { market: 'sii', announcementDate: '2026-11-12', announcementTime: '21:01:11', announcedAt: '2026-11-12T13:01:11.000Z', factDate: null, generatedDate: null, subject: 'a', clauseNo: 51, description: '' },
   { market: 'sii', announcementDate: '2026-11-11', announcementTime: '16:09:03', announcedAt: null, factDate: null, generatedDate: null, subject: 'b', clauseNo: null, description: '' },
   { market: 'sii', announcementDate: '2026-11-11', announcementTime: null, announcedAt: null, factDate: null, generatedDate: null, subject: 'c', clauseNo: null, description: '' },
-  { market: 'sii', announcementDate: '2026-11-03', announcementTime: '09:00:00', announcedAt: null, factDate: null, generatedDate: null, subject: 'd', clauseNo: null, description: '' }
+  { market: 'sii', announcementDate: '2026-11-03', announcementTime: '09:00:00', announcedAt: null, factDate: null, generatedDate: null, subject: 'd\r\ne', clauseNo: null, description: '1.\r\n2.\r3.' }
 ], '2026-11-12')
 assert.deepEqual(announced.map(group => [group.day, group.prefix, group.items.map(item => item.time)]), [['2026-11-12', '今天', ['21:01']], ['2026-11-11', '昨天', ['16:09', '']], ['2026-11-03', '', ['09:00']]])
+// 換行一律 \n（伺服器畫的 HTML 會拿掉 \r，hydration 對不上）
+assert.equal(announced[2].items[0].subject, 'd\ne')
+assert.equal(announced[2].items[0].description, '1.\n2.\n3.')
 // 重大訊息的負面事件（2026-11-24）：八種都有中文、沒有或不認得的不標
 assert.equal(Object.keys(NEGATIVE_EVENT_LABELS).length, 8)
 assert.equal(negativeEventLabel('cybersecurity_incident'), '資安事件')

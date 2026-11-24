@@ -37,10 +37,11 @@ export function stockNewsAgo(publishedAt: string, now: number): string {
 
 // 重大訊息（2026-11-21）同一種分組：依發言日期（已經是台灣日期），組名今天／昨天加日期，每則寫發言時刻（時：分；沒有時刻的寫空的）。
 // 上游已經新到舊排好
-export interface AnnouncementGroup {
+// 全市場的最新重大訊息（2026-11-24，/market/announcements）也用這一組：那邊的列多了代號與名稱、沒有 market
+export interface AnnouncementGroup<T = MaterialAnnouncement> {
   day: string
   prefix: '今天' | '昨天' | ''
-  items: (MaterialAnnouncement & { time: string })[]
+  items: (T & { time: string })[]
 }
 
 // 重大訊息的負面事件（2026-11-24，數據中台 negativeEvent，詞彙表：網站自己對中文）。不認得的代碼（上游之後新增的）不標
@@ -56,13 +57,14 @@ export const NEGATIVE_EVENT_LABELS: Record<string, string> = {
 }
 export const negativeEventLabel = (code: string | null | undefined): string | null => (code ? NEGATIVE_EVENT_LABELS[code] ?? null : null)
 
-export function announcementGroups(entries: MaterialAnnouncement[], today: string): AnnouncementGroup[] {
+// 主旨與全文的換行一律換成 \n（上游原樣給 \r\n）：伺服器畫出來的 HTML 裡 \r 會被瀏覽器拿掉，跟瀏覽器自己畫的對不上（hydration 不一致，2026-11-24）
+export function announcementGroups<T extends Pick<MaterialAnnouncement, 'announcementDate' | 'announcementTime' | 'subject' | 'description'>>(entries: T[], today: string): AnnouncementGroup<T>[] {
   const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
-  const groups: AnnouncementGroup[] = []
+  const groups: AnnouncementGroup<T>[] = []
   for (const entry of entries) {
     const day = entry.announcementDate
     if (groups.at(-1)?.day !== day) groups.push({ day, prefix: day === today ? '今天' : day === yesterday ? '昨天' : '', items: [] })
-    groups.at(-1)!.items.push({ ...entry, time: entry.announcementTime?.slice(0, 5) ?? '' })
+    groups.at(-1)!.items.push({ ...entry, subject: entry.subject.replace(/\r\n?/g, '\n'), description: entry.description.replace(/\r\n?/g, '\n'), time: entry.announcementTime?.slice(0, 5) ?? '' })
   }
   return groups
 }

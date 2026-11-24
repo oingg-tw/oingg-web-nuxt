@@ -86,7 +86,7 @@ export interface SiteMapLink {
 
 export interface SiteMapGroup {
   // 首頁的便當盒格用它找自己那一組（2026-11-02）
-  key: 'learn' | 'find' | 'dividends' | 'mine' | 'site'
+  key: 'learn' | 'find' | 'market' | 'dividends' | 'mine' | 'site'
   label: string
   links: SiteMapLink[]
 }
@@ -125,6 +125,15 @@ export const SITE_MAP: SiteMapGroup[] = [
       { label: 'REITs 總覽', to: SCREENER_PATHS.reits, description: '比較 REITs 的淨值折溢價與近 12 個月分配率' },
       { ...RANK, description: '單一指標由高到低的全市場排行' },
       { ...INDUSTRIES, description: '證交所各類股的殖利率與股利成長' }
+    ]
+  },
+  // 市場上發生什麼（2026-11-24，使用者選「做一頁」的兩頁）：全市場一覽，個股自己的在各股的頁面
+  {
+    key: 'market',
+    label: '我想知道市場上發生什麼',
+    links: [
+      { label: '注意與處置股票', to: '/market/alerts', description: '交易所列為注意股票、處置股票的有哪些，處置期間與原因' },
+      { label: '最新重大訊息', to: '/market/announcements', description: '上市櫃公司最近發布的重大訊息，點開看公告全文' }
     ]
   },
   {
