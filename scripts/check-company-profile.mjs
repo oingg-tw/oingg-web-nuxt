@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { formatMoney } from '../shared/utils/number-format.ts'
 // keyManagementAnswer 用自動匯入的 formatMoney（同 check-http-error.mjs 頂替 Nitro 的自動匯入）
 Object.assign(globalThis, { formatMoney })
-const { fullYears, officerText, officersOf, websiteHref, keyManagementAnswer, keyManagementYears } = await import('../app/utils/company-profile.ts')
+const { fullYears, officerText, officersOf, websiteHref, keyManagementAnswer, keyManagementYears, meetingText, DIVIDEND_FREQUENCY_TEXT } = await import('../app/utils/company-profile.ts')
 
 // 滿幾年：還沒到週年要少一年；日期在今天之後或讀不懂是 null
 assert.equal(fullYears('1994-09-05', '2026-11-08'), 32)
@@ -49,4 +49,11 @@ assert.deepEqual(kmYears.map(year => year.fiscalYear), [2025, 2024])
 assert.equal(keyManagementAnswer(kmYears), '2025 年主要管理階層薪酬 92.24億元，占稅後淨利 0.54%；其中股份基礎給付 38.89億元。')
 assert.equal(keyManagementAnswer(keyManagementYears([kmEntry(2025, 2669030, 0, null, 'zero_or_negative_denominator')])), '2025 年主要管理階層薪酬 26.69億元。')
 assert.equal(keyManagementAnswer(keyManagementYears([kmEntry(2025, null, null, null, 'missing_input')])), null)
+// 配息頻率與股東會（2026-11-24）：代碼換中文，不認得的種類只寫日期，沒有是「－」
+assert.equal(DIVIDEND_FREQUENCY_TEXT.quarterly, '季配')
+assert.equal(DIVIDEND_FREQUENCY_TEXT.semiannual, '半年配')
+assert.equal(meetingText({ meetingDate: '2026-06-04', meetingType: 'regular' }), '2026-06-04（常會）')
+assert.equal(meetingText({ meetingDate: '2026-12-10', meetingType: 'extraordinary' }), '2026-12-10（臨時會）')
+assert.equal(meetingText({ meetingDate: '2026-12-10', meetingType: 'other' }), '2026-12-10')
+assert.equal(meetingText(null), '－')
 console.log('PASS: company profile')

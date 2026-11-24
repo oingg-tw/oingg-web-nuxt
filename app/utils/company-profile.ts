@@ -76,6 +76,15 @@ export function profileCardFacts(detail: CompanyProfileDetail, today: string): F
 }
 
 // 基本資料頁的四張表
+// 股利發放頻率與股東會（2026-11-24）：上游給代碼，中文在這裡。不認得的頻率寫「－」，股東會的種類不認得就只寫日期
+export const DIVIDEND_FREQUENCY_TEXT: Record<string, string> = { annual: '年配', semiannual: '半年配', quarterly: '季配' }
+const MEETING_TYPE_TEXT: Record<string, string> = { regular: '常會', extraordinary: '臨時會' }
+export function meetingText(meeting: { meetingDate: string; meetingType: string | null } | null): string {
+  if (!meeting) return '－'
+  const type = meeting.meetingType ? MEETING_TYPE_TEXT[meeting.meetingType] : undefined
+  return type ? `${meeting.meetingDate}（${type}）` : meeting.meetingDate
+}
+
 export function profilePageFacts(detail: CompanyProfileDetail, today: string): Record<'company' | 'officers' | 'capital' | 'contact', FactItem[]> {
   return {
     company: [
@@ -86,7 +95,11 @@ export function profilePageFacts(detail: CompanyProfileDetail, today: string): R
       listingFact(detail, today),
       establishedFact(detail, today),
       { label: '統一編號', value: dash(detail.taxId) },
-      ...(detail.foreignRegistrationCountryName ? [{ label: '註冊地', value: detail.foreignRegistrationCountryName }] : [])
+      ...(detail.foreignRegistrationCountryName ? [{ label: '註冊地', value: detail.foreignRegistrationCountryName }] : []),
+      { label: '配息頻率', value: DIVIDEND_FREQUENCY_TEXT[detail.dividendFrequency ?? ''] ?? '－' },
+      { label: '股東會', value: meetingText(detail.shareholderMeeting) },
+      // 一整段原文：占滿整列（同 ETF 的收益分配）
+      { label: '主要經營業務', value: dash(detail.mainBusiness), long: true }
     ],
     officers: [
       { label: '董事長', value: dash(officersOf(detail, 'chairman')) },

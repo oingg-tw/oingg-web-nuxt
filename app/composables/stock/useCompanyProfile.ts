@@ -125,11 +125,23 @@ export interface CompanyProfileDetail {
   transferAgencyPhone: string | null
   transferAgencyAddress: string | null
   generatedDate: string | null
+  // 2026-11-24（數據中台 a917c22、業務中台轉，MOPS 公司基本資料）：主要經營業務（一段原文）、股利發放頻率（annual／semiannual／quarterly，
+  // 中文在 DIVIDEND_FREQUENCY_TEXT）、當期的股東會（日期與 regular 常會／extraordinary 臨時會；興櫃沒有）
+  mainBusiness: string | null
+  dividendFrequency: string | null
+  shareholderMeeting: { meetingDate: string; meetingType: string | null } | null
 }
 
 const OFFICER_ROLES = new Set<string>(['chairman', 'general_manager', 'spokesperson', 'deputy_spokesperson'])
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
 const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null)
+
+// 股東會只認有日期的物件（上游沒有是 null）
+function meetingOf(value: unknown): CompanyProfileDetail['shareholderMeeting'] {
+  const meeting = value && typeof value === 'object' ? value as Record<string, unknown> : null
+  const date = text(meeting?.meetingDate)
+  return date ? { meetingDate: date, meetingType: text(meeting?.meetingType) } : null
+}
 
 function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfileDetail {
   const officers = (Array.isArray(raw.officers) ? raw.officers as Record<string, unknown>[] : []).flatMap(item => (item && OFFICER_ROLES.has(item.role as string) && (text(item.name) || text(item.corporationName))
@@ -162,7 +174,10 @@ function hydrateCompanyProfileDetail(raw: Record<string, unknown>): CompanyProfi
     stockTransferAgency: text(raw.stockTransferAgency),
     transferAgencyPhone: text(raw.transferAgencyPhone),
     transferAgencyAddress: text(raw.transferAgencyAddress),
-    generatedDate: text(raw.generatedDate)
+    generatedDate: text(raw.generatedDate),
+    mainBusiness: text(raw.mainBusiness),
+    dividendFrequency: text(raw.dividendFrequency),
+    shareholderMeeting: meetingOf(raw.shareholderMeeting)
   }
 }
 
