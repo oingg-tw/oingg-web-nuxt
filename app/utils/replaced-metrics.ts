@@ -42,10 +42,10 @@ export const REPLACED_METRICS: Record<string, string> = {
 // 單位是「分」的分數同樣只藏（2026-11-10，使用者：「普查類似這種分數決定的 都從篩選指標中移除」，起因是三率三升：「如果用範圍也看不出來
 // 是篩選哪一個數字 畢竟他有三組」）：型錄裡 10 支全藏，用到它們的官方範本請業務中台拿掉（安全韌性、獲利品質、轉機股、成長動能，欄位範本
 // 存股與股利的 Chowder Number）。新範本等數據中台有上一輪景氣循環的完整資料再設計
-export const PICKER_UNLISTED_METRICS = [
-  'holdingDividendGrowthRate3y', 'yieldOnCost3y', 'yieldOnCost5y',
-  'threeMarginsRising', 'piotroskiFScore', 'altmanZScore', 'altmanZDoublePrimeScore', 'ohlsonOScore', 'zmijewskiScore', 'beneishMScore', 'chowderNumber', 'sue', 'sus'
-]
+// 2026-11-24 官方篩選範本可以用分數了（使用者在業務中台：「開放分數型指標給新範本用」，新範本照數據中台回測第三輪；在這裡選「只給範本用，
+// 挑選器照舊不列」）：套用後的條件照樣能看、能改範圍、能刪。挑選器照舊不列，欄位範本照舊不能用（scripts/check-replaced-metrics.mjs）
+export const SCORE_METRICS = ['threeMarginsRising', 'piotroskiFScore', 'altmanZScore', 'altmanZDoublePrimeScore', 'ohlsonOScore', 'zmijewskiScore', 'beneishMScore', 'chowderNumber', 'sue', 'sus']
+export const PICKER_UNLISTED_METRICS = ['holdingDividendGrowthRate3y', 'yieldOnCost3y', 'yieldOnCost5y', ...SCORE_METRICS]
 
 // 改名的欄位 id，整個 id 對（上面那張表是用指標對）：類股欄位 2026-11-16 從 sector.code 改叫 sector.name（詞彙檢核 X17 第 1 步，業務中台兩個都收，
 // 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的

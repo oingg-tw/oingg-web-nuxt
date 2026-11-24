@@ -1,7 +1,7 @@
 // 被藏起來的指標 → 留下來的那一支（app/utils/replaced-metrics.ts）要對得上型錄：兩邊都還在、單位一樣（條件的數字照搬才有意義）。
 // 上游改名（例如等著要改名的那 9 支）時這支會先紅。Run: 本機 dev（:3000）開著，node scripts/check-replaced-metrics.mjs
 import assert from 'node:assert/strict'
-import { PICKER_UNLISTED_METRICS, REPLACED_METRICS, replacedField, replacedFields } from '../app/utils/replaced-metrics.ts'
+import { PICKER_UNLISTED_METRICS, REPLACED_METRICS, SCORE_METRICS, replacedField, replacedFields } from '../app/utils/replaced-metrics.ts'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
 const catalog = await (await fetch(`${base}/api/hub/filter-schema`)).json()
@@ -25,7 +25,14 @@ for (const { key, fields } of templates) assert.deepEqual(replacedFields(fields)
 const unlisted = field => PICKER_UNLISTED_METRICS.includes(field.split('.')[0])
 for (const { key, fields } of templates) assert.ok(!fields.some(unlisted), `官方欄位範本 ${key} 用到藏起來的指標：${fields.filter(unlisted).join('、')}`)
 const { templates: screenerTemplates } = await (await fetch(`${base}/api/core/screener/templates`)).json()
-for (const { name, filters } of screenerTemplates) assert.ok(!filters.some(filter => unlisted(filter.field)), `官方篩選範本「${name}」用到藏起來的指標：${filters.map(filter => filter.field).filter(unlisted).join('、')}`)
+// 篩選範本 2026-11-24 起可以用分數（SCORE_METRICS，使用者「開放分數型指標給新範本用」）；其他藏起來的、以及會被換成另一支的（例如
+// pbRatio 會換成即時股價淨值比，範本的條件就跟說明對不上）照舊不行
+const notForScreenerTemplates = field => unlisted(field) && !SCORE_METRICS.includes(field.split('.')[0])
+const replaced = field => field.split('.')[0] in REPLACED_METRICS
+for (const { name, filters } of screenerTemplates) {
+  assert.ok(!filters.some(filter => notForScreenerTemplates(filter.field)), `官方篩選範本「${name}」用到藏起來的指標：${filters.map(filter => filter.field).filter(notForScreenerTemplates).join('、')}`)
+  assert.ok(!filters.some(filter => replaced(filter.field)), `官方篩選範本「${name}」用到會被換掉的指標（請改用留下來的那一支）：${filters.map(filter => filter.field).filter(replaced).join('、')}`)
+}
 // 換完去掉重複、留前面那一個位置；不在表上的照舊
 assert.deepEqual(replacedFields(['stock.price', 'pegRatio.TTM', 'roe.TTM', 'livePegRatio.EOD', 'peRatioRiverBand.1Y_1D']), ['stock.price', 'livePegRatio.EOD', 'roe.TTM', 'peRatioRiverBand.1Y_1D'])
 // 改名的欄位 id 整個換（類股 sector.code → sector.name，2026-11-16）：存檔與舊連結裡的類股欄位照樣畫得出來
