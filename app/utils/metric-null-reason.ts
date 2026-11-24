@@ -39,9 +39,10 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 上市的三大法人、借券賣出（數據中台 2026-11-24，讀者先行）：證交所只放在舊網站、開放資料沒有，要不要用是使用者的決定。
   // 不是不適用（之後可能有來源），格子寫尚無資料
   not_in_open_data: '交易所有公布這項數字，但不在開放資料裡，本站目前還不能使用',
-  // REIT 的近一年分配率（數據中台 2026-11-24，GET /reits/{代號}/distribution-yield-spread，讀者先行）：往前 12 個月查不到任何分配紀錄，
-  // 目前是 01001T 2006-03～2008-04、01004T 2008-10～2009-09 兩段（使用者：「讓用戶知道這段不在 MOPS 範圍」）。格子寫尚無資料
-  no_distribution_records: '這段期間查不到分配紀錄（公開資訊觀測站沒有收錄）',
+  // REIT 的近一年分配率（數據中台 2026-11-24，GET /reits/{代號}/distribution-yield-spread，讀者先行）：往前 13 個月查不到任何分配紀錄
+  //（多一個月給年配的除息日誤差）。使用者要「讓用戶知道這段不在 MOPS 範圍」，但同一個代碼也包含掛牌後還沒開始分配的月份，分不出是哪一種，
+  // 所以兩種都寫。目前是 01001T 2006-03～2008-04、01004T 2007-04～2007-09 與 2008-11～2009-09、01007T 2007-10。格子寫尚無資料
+  no_distribution_records: '這段期間查不到分配紀錄（可能還沒開始分配，或公開資訊觀測站沒有收錄）',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
