@@ -140,6 +140,8 @@ export interface MetricPageDefinition {
   rightMetricBar?: boolean
   // 定義段接在定義後面的一句：圖上容易讀錯的地方（2026-11-19，流通股數換算到今天的股數基準，舊的季度跟當年財報不同）
   chartNote?: string
+  // 歷年表後面加「有沒有減資？」一段（2026-11-24，數據中台盤點三，StockCapitalReductionsSection）：只有股本變化年增率頁
+  capitalReductions?: boolean
   // 拆不出來的時候寫這裡（2026-09-28）：有 partMetricCodes 就畫組成，只有這一欄就用一段話回答「為什麼只有一個數字」，同一個位置、
   // 同一個問句。存在的理由是營業成本：它比營業費用大一個量級（6505 是 53.8 倍），而站上只拆得出小的那一邊。措辭是「看不到，
   // 而且不是暫時的」：mops 掃 55 份 115Q2 文件 0/55 標記那些元素，而 TIFRS taxonomy 的一般業與保險業根本沒有「員工福利費用」
@@ -201,7 +203,7 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 單季、分類是股東政策。接著讀：股本那一塊本身（淨值組成）、買回庫藏股花了多少（股東回饋組成）、股數變了每股盈餘跟不跟得上
   // 2026-11-19 加流通股數的柱子（數據中台的 outstandingCommonShares，就是這支年增率的分母，換算到今天的股數基準：柱子本季 ÷ 去年同季
   // 正好等於折線）。不用資產負債表的股本金額：它含庫藏股與特別股，買回時會變成柱子不動、折線往下
-  { slug: 'share-count-growth', metricCode: 'shareCountChangeRate', timeframe: 'Q', topic: '股本變化年增率', titleKeywords: '股本變化年增率流通股數逐季變化', rightMetricCode: 'outstandingCommonShares', rightMetricBar: true, chartNote: '柱子是每季的流通股數（已發行減特別股、庫藏股），歷年都換算成今天的股數基準：配股、分割與減資都先還原，所以舊的季度會跟當年財報上的股數不同，跟去年同季相比才會等於年增率。', related: ['equity-composition', 'shareholder-yield-composition', 'eps'] },
+  { slug: 'share-count-growth', metricCode: 'shareCountChangeRate', timeframe: 'Q', topic: '股本變化年增率', titleKeywords: '股本變化年增率流通股數逐季變化', rightMetricCode: 'outstandingCommonShares', rightMetricBar: true, capitalReductions: true, chartNote: '柱子是每季的流通股數（已發行減特別股、庫藏股），歷年都換算成今天的股數基準：配股、分割與減資都先還原，所以舊的季度會跟當年財報上的股數不同，跟去年同季相比才會等於年增率。', related: ['equity-composition', 'shareholder-yield-composition', 'eps'] },
   // ── 三個換分母的報酬率（2026-09-26）── 使用者問「ROIC 不見了？」，答案是從來沒開過：沒有文案就開不了頁。三支一起要（獲利能力
   // 原本只有 ROE 一個報酬率，看不到「換分母看到不同東西」）；croic 刻意不要（複合運算，見 stock-page-nav.ts 的「更忠於財報」）。
   // roic 的覆蓋率與深度比另外兩支低（抽 41 家：roa 41、roic 32，期數中位 19 vs 13），analysis-ts 查過是結構性的：有效稅率要
