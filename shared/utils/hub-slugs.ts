@@ -251,9 +251,10 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'etf-net-flow', universe: 'etf', category: 'etf-size', field: 'netFlow', direction: 'desc', label: '淨申購', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '淨申購是投信投顧公會基金月報公布的當月申購金額減去贖回金額，每月更新一次；贖回多於申購時是負數。' },
   // 近 5 日平均成交量（2026-11-23，排行指南的「五日均量」，數據中台 averageVolume5dLots，兩所日行情）：張取整數，日期是最後一個交易日
   { slug: 'etf-volume-5d', universe: 'etf', category: 'etf-size', field: 'averageVolume5dLots', direction: 'desc', label: '近5日平均成交量', short: '五日均量', unit: '張', valueDigits: 0, dateField: 'tradeDate', note: '近 5 日平均成交量是最近 5 個交易日成交股數的平均，換算成張（1 張是 1,000 個受益權單位），每個交易日更新；成交少的 ETF，想買賣的張數不一定能在當天、用想要的價格成交完。' },
-  // 定期定額金額 11-23 藏起來；11-24 使用者「金額與戶數都恢復」（FundClear 也有公布）。數據中台把 dcaAmount 加回 API、上游有值以後再拿掉註解，
-  // 放回 RANK_NAV 的 ETF 那組；每檔定期定額戶數到了再加一頁
-  // { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
+  // 定期定額 11-23 藏起來；11-24 使用者「金額與戶數都恢復」（FundClear 也有公布，數據中台 3309622）。側欄放戶數那一頁：常見的定期定額排行
+  // 是照扣款人數排（證交所前 20 名也是），金額那一頁照舊從排行總覽的卡片進去
+  { slug: 'etf-dca-accounts', universe: 'etf', category: 'etf-size', field: 'dcaAccountCount', direction: 'desc', label: '定期定額戶數', short: '定期定額戶數', unit: '戶', monthlyReport: true, note: '定期定額戶數是投信投顧公會基金月報公布的當月定期定額扣款人數，每月更新一次。' },
+  { slug: 'etf-dca', universe: 'etf', category: 'etf-size', field: 'dcaAmount', direction: 'desc', label: '定期定額金額', short: '定期定額金額', unit: '億元', valueScale: 1e8, valueDigits: 2, monthlyReport: true, note: '定期定額金額是投信投顧公會基金月報公布的當月數字，每月更新一次。' },
   { slug: 'etf-distribution-yield', universe: 'etf', category: 'etf-return', short: '配息率', field: 'trailing12MonthDistributionYieldPct', direction: 'desc', label: '近12個月配息率', unit: '%', note: '近 12 個月配息率以過去 12 個月實際配出的每單位配息計算，跟每檔 ETF「配息」頁的配息率是同一個數字；配息裡可能含收益平準金或資本利得，組成看各檔的「配息組成」頁。' },
   { slug: 'etf-return-1y', universe: 'etf', category: 'etf-return', short: '近1年報酬', field: 'return1y', direction: 'desc', label: '近1年報酬率', unit: '%', monthlyReport: true, note: '近 1 年報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
   { slug: 'etf-return-ytd', universe: 'etf', category: 'etf-return', field: 'returnYtd', direction: 'desc', label: '今年以來報酬率', short: '今年以來', unit: '%', monthlyReport: true, note: '今年以來報酬率是投信投顧公會基金月報公布的數字。槓桿型與反向型 ETF 追蹤的是指數報酬的倍數或反向，跟一般 ETF 的報酬不能直接比較。' },
@@ -267,7 +268,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
 // 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
 export const RANK_NAV: Record<'common' | 'etf', string[]> = {
   common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w', 'custody-over-1000-lots'],
-  etf: ['etf-holders', 'etf-custody-growth', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low']
+  etf: ['etf-holders', 'etf-custody-growth', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low', 'etf-dca-accounts']
 }
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
@@ -357,7 +358,14 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   低波動: 'low-volatility',
   // 鍵是範本的名稱，上游改名會靜默少一個連結（股利穩健→股利連續性 2026-09-20、財務韌性→安全韌性 2026-09-21 都是
   // check-hub-pages 抓到 /screener 少一個範本連結才發現的）；slug 刻意不跟著改——那是已上線、在 sitemap 裡的網址，頁面主題沒變。
-  股利連續性: 'dividend-stability'
+  股利連續性: 'dividend-stability',
+  // 2026-11-24 新範本（使用者在業務中台「採用新範本組，並開放分數型指標給新範本用」，照數據中台回測第三輪；名稱與 slug 業務中台給，「＋」是全形）。
+  // 先放進來：範本上架前這幾個網址是 404，上架後頁面與 sitemap 自己出現。第一批 11-25 晚上，第二批約 11-27 後、看定版結果
+  成長突破: 'growth-breakout',
+  '低淨值比＋財務體質': 'low-pb-financial-strength',
+  '營收意外＋成長': 'revenue-surprise-growth',
+  強勢創高: 'near-52w-high',
+  營收加速: 'revenue-acceleration'
   // 安全韌性、獲利品質、轉機股、成長動能 2026-11-10 拿掉（使用者：「普查類似這種分數決定的 都從篩選指標中移除」，四個範本都是用分數篩的，
   // 請業務中台拿掉範本）：說明頁的網址在 nuxt.config 的 routeRules 301 到 /screener/common
 }

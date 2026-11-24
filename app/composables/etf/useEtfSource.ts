@@ -107,7 +107,7 @@ const COLUMN_TEMPLATES: ColumnPresetTemplate[] = [
   // 說明只寫看得到的欄位（近 2 年、定期定額、近 12 個月估算先藏）
   // 年化報酬率（2026-11-23，使用者：「etf 欄位要加上不同持續時間的年化報酬率」）接在累積報酬後面；集保戶數與月增率接在受益人數後面
   { key: 'performance', name: '績效表現', description: '近 3 月到近 10 年的累積報酬率，以及近 3、5、10 年的年化報酬率', fieldKeys: shown(['return3m', 'return6m', 'returnYtd', 'return1y', 'return2y', 'return3y', 'return5y', 'return10y', 'annualizedReturn3y', 'annualizedReturn5y', 'annualizedReturn10y']) },
-  { key: 'size', name: '規模與資金', description: '規模、受益人數、集保戶數與月增率、淨申購與市占率', fieldKeys: shown(['aum', 'holders', 'custodyAccountCount', 'custodyAccountCountMonthlyChangeRate', 'netFlow', 'dcaAmount', 'marketShareRate']) },
+  { key: 'size', name: '規模與資金', description: '規模、受益人數、集保戶數與月增率、淨申購、定期定額與市占率', fieldKeys: shown(['aum', 'holders', 'custodyAccountCount', 'custodyAccountCountMonthlyChangeRate', 'netFlow', 'dcaAmount', 'dcaAccountCount', 'marketShareRate']) },
   { key: 'cost', name: '費用歷史', description: `${LAST_FULL_YEAR} 年到 ${LAST_FULL_YEAR - 24} 年每一年的總費用率`, fieldKeys: shown([...TRAILING_EXPENSE, ...EXPENSE_RATIO_YEARS.map(year => `expenseRatio${year}`)]) }
 ]
 

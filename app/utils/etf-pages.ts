@@ -32,7 +32,7 @@ export const etfFacetPath = (code: string, key: EtfFacetKey) => `${etfPath(code)
 // ETF 篩選結果表的一格連到這檔那個面向的頁（2026-10-30，使用者要篩選每一格都能點進對應的頁）。基本資料那幾欄（成立年數、市場、基金類型…）
 // 不在這裡：整列本來就連到速覽
 const FIELD_FACETS: [RegExp, EtfFacetKey][] = [
-  [/^(aum|holders|custodyAccountCount|custodyAccountCountMonthlyChangeRate|netFlow|dcaAmount|marketShareRate|statutoryAumThreshold|belowStatutoryThreshold)$/, 'size'],
+  [/^(aum|holders|custodyAccountCount|custodyAccountCountMonthlyChangeRate|netFlow|dcaAmount|dcaAccountCount|marketShareRate|statutoryAumThreshold|belowStatutoryThreshold)$/, 'size'],
   [/^(nav|navDate|close|premiumDiscountPct|tradeDate)$/, 'premium'],
   // 風險等級（2026-11-21）連到基本資料，日期與其他集保欄位都在那一頁
   [/^riskLevel$/, 'profile'],
