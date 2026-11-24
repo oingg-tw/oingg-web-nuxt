@@ -321,8 +321,15 @@ export async function useDividendSourceChain(code: Ref<string>, stockShortName: 
     // 兩個來源欄位可能是 null（上游改版空窗期實測過整批消失），null 時不宣稱拆得出來。
     const surplus = fiscal?.cashDividendFromLegalReserveAndCapitalSurplus ?? 0
     const fromEarnings = fiscal?.cashDividendFromEarnings ?? null
+    // 2026-11-24 起兩種公積分得開（數據中台 a917c22）：有拆就各寫各的（是 0 的不寫），資本公積才是股東繳進來的錢、法定盈餘公積是以前的盈餘；
+    // 101～108 年度上游沒拆（null），照舊合寫「來自公積」
+    const legalReserve = fiscal?.cashDividendFromLegalReserve ?? null
+    const capitalSurplus = fiscal?.cashDividendFromCapitalSurplus ?? null
+    const surplusText = legalReserve !== null && capitalSurplus !== null
+      ? [legalReserve > 0 ? `${amount(legalReserve)}來自法定盈餘公積` : null, capitalSurplus > 0 ? `${amount(capitalSurplus)}來自資本公積` : null].filter(Boolean).join('、')
+      : `${amount(surplus)}來自公積`
     const split = fiscal !== null && fromEarnings !== null && surplus > 0
-      ? `，其中 ${amount(fromEarnings)}來自盈餘、${amount(surplus)}來自公積；盈餘那塊`
+      ? `，其中 ${amount(fromEarnings)}來自盈餘、${surplusText}；盈餘那塊`
       : '，'
     const lead = fiscal !== null
       ? `${stockShortName.value} ${fiscal.fiscalYear} 年度每股賺 ${amount(fiscal.eps)}，配發現金股利 ${amount(fiscal.cashDividend)}，分 ${fiscal.distributionCount} 次發出${split}等於那一年賺到的 ${percent(fiscal.payoutRatio)}。`

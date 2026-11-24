@@ -14,6 +14,18 @@ export const ZERO_YIELD_TEXT = '目前沒有可計入殖利率的現金股利'
 
 // 配息月曆的日期都是台北日期 YYYY-MM-DD：星期與加減天數用 UTC 算，不受瀏覽器時區影響
 const weekdayOf = (day: string) => new Date(`${day}T00:00:00Z`).getUTCDay()
+// 股利期間怎麼讀（2026-11-24，董事會已通過的股利）：一整年是「2025 年度」，三個月是「2026 年第 2 季」，半年是「2026 年上半年／下半年」，
+// 其他照起訖寫；沒有起訖就只寫年度
+export function dividendPeriodLabel(fiscalYear: number, start: string | null, end: string | null): string {
+  if (!start || !end) return `${fiscalYear} 年度`
+  const [startYear, startMonth] = [Number(start.slice(0, 4)), Number(start.slice(5, 7))]
+  const months = (Number(end.slice(0, 4)) - startYear) * 12 + Number(end.slice(5, 7)) - startMonth + 1
+  if (months === 12 && startMonth === 1) return `${startYear} 年度`
+  if (months === 3 && (startMonth - 1) % 3 === 0) return `${startYear} 年第 ${(startMonth + 2) / 3} 季`
+  if (months === 6 && (startMonth === 1 || startMonth === 7)) return `${startYear} 年${startMonth === 1 ? '上' : '下'}半年`
+  return `${start}～${end}`
+}
+
 export const addDays = (day: string, n: number): string => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 // 「11/8」與「11/8（日）」
 export const monthDay = (day: string): string => `${Number(day.slice(5, 7))}/${Number(day.slice(8))}`

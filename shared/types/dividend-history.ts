@@ -55,17 +55,40 @@ export interface DividendHistoryEntry {
   //   null  上游沒送這個欄位
   // 不要假設是數字。也不要拿兩者相加去驗證 cashDividend——各自四捨五入，合計才是權威值。
   cashDividendFromEarnings: number | null
-  // 法定盈餘公積「加」資本公積，合在一欄拆不開。所以這一塊不能整體說成「退還股本」：資本公積才是
-  // 退還股東繳進來的錢，法定盈餘公積是以前年度盈餘提存的，那是保留獲利。文案只能說「來自公積」。
+  // 法定盈餘公積「加」資本公積的合計。這一塊不能整體說成「退還股本」：資本公積才是股東繳進來的錢，法定盈餘公積是以前年度盈餘
+  // 提存的。2026-11-24 起拆開的在下面兩欄；它們是 null（101～108 年度）時文案只能說「來自公積」。
   cashDividendFromLegalReserveAndCapitalSurplus: number | null
+  // 上面那一欄拆開（2026-11-24，數據中台 a917c22：照決議裡兩種公積的比例拆分派公告的合計）。101～108 年度 MOPS 沒拆是 null（合計那欄照舊有）。
+  // 資本公積的現金股利稅務處理跟盈餘配發的不同，所以分開寫；股票股利同樣拆
+  cashDividendFromLegalReserve?: number | null
+  cashDividendFromCapitalSurplus?: number | null
+  stockDividendFromLegalReserve?: number | null
+  stockDividendFromCapitalSurplus?: number | null
   yieldOnPreviousClose?: number | null
   knowledgeDate: string | null
   events: DividendHistoryEvent[]
 }
 
+// 董事會（或股東會）已經通過、還沒發放的股利（2026-11-24，數據中台 a917c22 的 resolvedNotYetDistributed）：期間的起訖決定是哪一季或哪一年，
+// 金額是每股（元），來源跟年度列一樣拆
+export interface ResolvedDividend {
+  fiscalYear: number
+  dividendPeriodStartDate: string | null
+  dividendPeriodEndDate: string | null
+  boardResolutionDate: string | null
+  shareholderMeetingDate: string | null
+  cashDividend: number | null
+  cashDividendFromEarnings: number | null
+  cashDividendFromLegalReserve: number | null
+  cashDividendFromCapitalSurplus: number | null
+  stockDividend: number | null
+}
+
 export interface DividendHistoryResponse {
   symbol: string
   entries: DividendHistoryEntry[]
+  // 沒有是空陣列；數據中台 PRD 上線前、或業務中台還沒轉時沒有這個鍵
+  resolvedNotYetDistributed?: ResolvedDividend[] | null
 }
 
 // 填息 — one row per cash-dividend event, computed on the SERVER from the daily close series

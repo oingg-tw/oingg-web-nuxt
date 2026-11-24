@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
+import type { ResolvedDividend } from '#shared/types/dividend-history'
 // 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
 // /api/stock/:code/series?page=dividend（useStockPageDigest）。
@@ -42,6 +43,27 @@ const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: '配股配息', titleKeywords: '股利、殖利率與配息紀錄', pathSuffix: '/dividend', stock, summary, description, sectorCode })
 
 const history = computed(() => series.value?.dividendHistory?.entries ?? [])
+// 董事會（或股東會）已經通過、還沒發放的股利（2026-11-24，數據中台 resolvedNotYetDistributed；使用者 11-23 核准「董事會通過的股利」）：
+// 除權息預告要等公司訂了除息日才有，這一段補上更早的那一步。依決議日新到舊
+// shortcut: 數據中台 2026-11-24 的清單裡混著已經除息的（2330 2026Q2、2454 2025 下半年、3008 兩筆），這裡先拿掉同一年度、決議之後已經
+// 除息、現金股利一樣的那幾筆；數據中台修好篩選後拿掉這段
+const alreadyPaid = (item: ResolvedDividend) => history.value.some(entry => entry.fiscalYear === item.fiscalYear && (entry.events ?? []).some(event =>
+  !!event.exDividendDate && event.exDividendDate >= (item.boardResolutionDate ?? '') && Math.abs((event.cashDividend ?? 0) - (item.cashDividend ?? 0)) < 1e-6))
+const resolved = computed(() => (series.value?.dividendHistory?.resolvedNotYetDistributed ?? [])
+  .filter(item => !alreadyPaid(item))
+  .sort((a, b) => (b.boardResolutionDate ?? '').localeCompare(a.boardResolutionDate ?? '')))
+const resolvedText = (value: number | null) => (value === null ? '－' : value.toFixed(2))
+const resolvedAnswer = computed(() => {
+  const latest = resolved.value[0]
+  if (!latest) return null
+  const resolution = latest.shareholderMeetingDate ? `股東會 ${latest.shareholderMeetingDate} 通過` : latest.boardResolutionDate ? `董事會 ${latest.boardResolutionDate} 通過` : '已經通過'
+  const amounts = joinClauses([
+    latest.cashDividend ? `現金股利 ${latest.cashDividend.toFixed(2)} 元${latest.cashDividendFromCapitalSurplus ? `（其中 ${latest.cashDividendFromCapitalSurplus.toFixed(2)} 元來自資本公積）` : ''}` : null,
+    latest.stockDividend ? `股票股利 ${latest.stockDividend.toFixed(2)} 元` : null
+  ], '')
+  const more = resolved.value.length > 1 ? `，另外還有 ${resolved.value.length - 1} 筆` : ''
+  return `${resolution} ${dividendPeriodLabel(latest.fiscalYear, latest.dividendPeriodStartDate, latest.dividendPeriodEndDate)}的股利：${amounts || '金額待公告'}，除息日還沒公布${more}。`
+})
 
 // 一頁一張表（2026-10-15，使用者：「為什麼又有 每季配息歷年變化 又有 年度股利歷年變化? 我們沒有統一說一個指標只能留一個表嗎?」→
 // 留年度股利）：原本的「每季配息」表（近四季每股股利、盈餘發放率、現金流量股利保障倍數）拿掉，後兩支有自己的指標頁，連結在頁尾。
@@ -130,6 +152,29 @@ const exDividendAnswer = computed(() => {
 
     <StockQuestionSection v-if="history.length" id="stock-dividend-history" :question="historyText.question" :answer="historyAnswer">
       <StockDividendHistoryTable :entries="history" :label="historyText.label" />
+    </StockQuestionSection>
+
+    <StockQuestionSection v-if="resolved.length" id="stock-dividend-resolved" :question="`${stockShortName}已經通過、還沒發放的股利有哪些？`" :answer="resolvedAnswer">
+      <SharedTable :label="`${stockShortName}已經通過、還沒發放的股利`" :caption="`${stockShortName} ${code} 董事會或股東會已經通過、還沒發放的股利（新的在上）`">
+        <thead>
+          <tr>
+            <th scope="col">股利期間</th>
+            <th scope="col">決議日</th>
+            <th scope="col" class="seo-table__num">現金股利（元）</th>
+            <th scope="col" class="seo-table__num">其中資本公積（元）</th>
+            <th scope="col" class="seo-table__num">股票股利（元）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in resolved" :key="`${item.fiscalYear}-${item.dividendPeriodStartDate}`">
+            <th scope="row">{{ dividendPeriodLabel(item.fiscalYear, item.dividendPeriodStartDate, item.dividendPeriodEndDate) }}</th>
+            <td>{{ item.shareholderMeetingDate ? `股東會 ${item.shareholderMeetingDate}` : item.boardResolutionDate ? `董事會 ${item.boardResolutionDate}` : '－' }}</td>
+            <td class="seo-table__num">{{ resolvedText(item.cashDividend) }}</td>
+            <td class="seo-table__num">{{ resolvedText(item.cashDividendFromCapitalSurplus) }}</td>
+            <td class="seo-table__num">{{ resolvedText(item.stockDividend) }}</td>
+          </tr>
+        </tbody>
+      </SharedTable>
     </StockQuestionSection>
 
     <StockQuestionSection id="stock-dividend-ex-date" question="下次除權息是什麼時候？" :answer="exDividendAnswer">

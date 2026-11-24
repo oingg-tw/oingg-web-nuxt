@@ -21,6 +21,9 @@ const showYield = computed(() => rows.value.some(row => row.yieldOnPreviousClose
 const showStock = computed(() => rows.value.some(row => row.stockDividend !== null && row.stockDividend !== 0))
 // 配股發放日（2026-10-20 起才有、不回補）：有一列有值才多一欄，「發放日」那一欄同時改叫「現金發放日」——paymentDate 只代表現金
 const showStockDistribution = computed(() => rows.value.some(row => row.stockDividendDistributionDate))
+// 現金股利來自公積的部分（2026-11-24，數據中台拆開法定盈餘公積與資本公積）：有一年不是 0 才多一欄。101～108 年度上游沒拆（null）寫「－」
+const showLegalReserve = computed(() => rows.value.some(row => (row.cashDividendFromLegalReserve ?? 0) > 0))
+const showCapitalSurplus = computed(() => rows.value.some(row => (row.cashDividendFromCapitalSurplus ?? 0) > 0))
 
 function money(value: number | null): string {
   return value === null ? '－' : value.toFixed(2)
@@ -43,6 +46,8 @@ function resolutionText(resolution: NonNullable<DividendHistoryEntry['noDistribu
       <tr>
         <th scope="col">股利所屬年度</th>
         <th scope="col" class="seo-table__num">現金股利（元）</th>
+        <th v-if="showLegalReserve" scope="col" class="seo-table__num">其中法定盈餘公積（元）</th>
+        <th v-if="showCapitalSurplus" scope="col" class="seo-table__num">其中資本公積（元）</th>
         <th v-if="showStock" scope="col" class="seo-table__num">股票股利（元）</th>
         <!-- 沒有股票股利時「合計」逐列等於「現金股利」，是一模一樣的一欄（2026-09-28「dividend 這一頁
              表格的資訊太多，請刪減」）。用的是既有的 showStock，不是新旗標——它本來就在管股票股利與除權日
@@ -64,6 +69,8 @@ function resolutionText(resolution: NonNullable<DividendHistoryEntry['noDistribu
           <span v-if="row.noDistributionResolution" class="dividend-history-table__note" :title="resolutionText(row.noDistributionResolution)">決議不分派</span>
         </th>
         <td class="seo-table__num">{{ money(row.cashDividend) }}</td>
+        <td v-if="showLegalReserve" class="seo-table__num">{{ money(row.cashDividendFromLegalReserve ?? null) }}</td>
+        <td v-if="showCapitalSurplus" class="seo-table__num">{{ money(row.cashDividendFromCapitalSurplus ?? null) }}</td>
         <td v-if="showStock" class="seo-table__num">{{ money(row.stockDividend) }}</td>
         <td v-if="showStock" class="seo-table__num">{{ money(row.totalDividend) }}</td>
         <td class="seo-table__num">{{ money(row.payoutRatio) }}</td>
