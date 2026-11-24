@@ -3,19 +3,21 @@ import type { AttentionStock, DisposedStock } from '~/utils/market-alerts'
 
 // 注意與處置股票（2026-11-24，使用者選「做一頁」）：全市場目前處置中、即將處置的股票，與最近被列為注意股票的。個股摘要卡的狀態標籤是
 // 單一公司的；這一頁是全市場一覽。依交易所的資料來源規定，兩張表底下各寫一行出處（CLAUDE.md 的 Exchange data credit）
-const [disposed, attention] = await Promise.all([
-  useFetch<{ items: DisposedStock[] }>('/api/cached/market/disposed-stocks', { query: { limit: MARKET_LIST_LIMIT }, key: 'market-disposed-stocks' }),
-  useFetch<{ items: AttentionStock[] }>('/api/cached/market/attention-stocks', { query: { limit: MARKET_LIST_LIMIT }, key: 'market-attention-stocks' })
-])
+// 上市、上櫃各讀一份（見 mergeMarkets）
+const readMarkets = <T>(path: string) => useAsyncData(`market-${path}`, () => Promise.all(ALERT_MARKETS.map(async market => ({
+  market,
+  items: (await $fetch<{ items: T[] }>(`/api/cached/market/${path}`, { query: { limit: MARKET_LIST_LIMIT, market } })).items
+}))))
+const [disposed, attention] = await Promise.all([readMarkets<DisposedStock>('disposed-stocks'), readMarkets<AttentionStock>('attention-stocks')])
 watchLoadFailure('market-disposed-stocks', () => disposed.error.value, disposed.refresh)
 watchLoadFailure('market-attention-stocks', () => attention.error.value, attention.refresh)
 
 // 伺服器算的「今天」帶到瀏覽器，處置中與將處置在 hydration 時不會不一樣
 const today = useState('taipei-today', () => holdingsTaipeiDate())
-const live = computed(() => liveDispositions(disposed.data.value?.items ?? [], today.value))
-const notices = computed(() => attention.data.value?.items ?? [])
+const live = computed(() => liveDispositions(mergeMarkets(disposed.data.value ?? [], item => item.announcementDate), today.value))
+const notices = computed(() => mergeMarkets(attention.data.value ?? [], item => item.tradeDate))
 const disposedAnswer = computed(() => (disposed.data.value ? dispositionAnswer(live.value) : ''))
-const attentionText = computed(() => (attention.data.value ? attentionAnswer(notices.value) : ''))
+const attentionText = computed(() => (attention.data.value ? attentionAnswer(attention.data.value) : ''))
 const nameOf = (item: { symbol: string; companyName: string | null }) => [item.companyName, item.symbol].filter(Boolean).join(' ')
 const pct = (value: number | null) => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(2)}%`))
 
@@ -32,7 +34,7 @@ useHubPageSeo({
 const GUIDE = [
   '注意股票：一檔股票的漲跌幅、成交量、周轉率等在短期內異常，達到交易所「公布注意交易資訊」的標準時，交易所在收盤後公布，提醒投資人注意。被列為注意股票不代表公司本身有問題。',
   '處置股票：短期內多次達到注意標準（例如連續三個營業日），交易所會在一段期間內處置：改成人工管制撮合、每隔一段時間才撮合一次，投資人買賣達一定數量要先收足款券，信用交易要收足自備款或保證金。措施依處置次數加重，詳細內容以交易所的公告為準。',
-  '處置表列的是最近 50 則處置公告裡處置期間還沒結束的；注意表是最近 50 則注意股票公告，上市、上櫃合在一起，新的在上。上櫃的處置公告沒有「第幾次處置」。'
+  '處置表列的是上市、上櫃各自最近 50 則處置公告裡，處置期間還沒結束的；注意表是上市、上櫃各自最近 50 則注意股票公告，合在一起，新的在上。上櫃的處置公告沒有「第幾次處置」。'
 ]
 </script>
 
