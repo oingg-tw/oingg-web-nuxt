@@ -18,7 +18,7 @@ import type { StockPageFooterLink } from '~/components/stock/StockPageFooter.vue
 // 上下的距離也在這裡（2026-10-23，使用者看 /stock/5314/metrics：「間距甚麼的似是隨意」）：原本每一頁自己挑 app-page（24px）、
 // app-page--compact（16px）或什麼都不給（只靠各元素的 margin），同一個骨架在不同頁距離不一樣。現在：摘要卡、導覽、麵包屑一組，
 // 之間 16px；之後每一段（各問句段落、定義區、頁尾）之間 40px（手機 32px）。段落裡面的節奏在 main.css 的 .stock-page-section
-defineProps<{
+const props = defineProps<{
   code: string
   stock: Stock | null | undefined
   pending: boolean
@@ -30,6 +30,12 @@ defineProps<{
   // 找不到時的「找不到這檔{subject}」，預設「股票」
   subject?: string
 }>()
+
+// 摘要卡名稱旁有全額交割、處置、可能達處置、注意股的標籤時，頁尾的資料來源加一行（證交所 2026-11-21 的要求，CLAUDE.md 的 Exchange data
+// credit）：卡片底下不再多一行字（使用者：「因為底下多出一兩行文字實在破壞排版」），標籤點開也有同一句
+const footerProps = computed(() => (tradingStatusItems(props.stock?.tradingStatuses).length
+  ? { ...props.footer, sources: [...props.footer.sources, '臺灣證券交易所、證券櫃檯買賣中心（注意股票、處置、全額交割、可能達處置）'] }
+  : props.footer))
 </script>
 
 <template>
@@ -66,7 +72,7 @@ defineProps<{
       </div>
       <slot />
       <slot name="guide" />
-      <StockPageFooter v-bind="footer" />
+      <StockPageFooter v-bind="footerProps" />
     </template>
   </div>
 </template>

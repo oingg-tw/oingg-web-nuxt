@@ -1,6 +1,6 @@
 // 摘要卡的停止買賣那一句（app/utils/trading-halt.ts）。前三例是 2026-10-22 業務中台 GET /stocks 的真實資料。Run: node scripts/check-trading-halt.mjs
 import assert from 'node:assert/strict'
-import { delistingText, tradingHaltText, tradingStatusTexts } from '../app/utils/trading-halt.ts'
+import { delistingText, tradingHaltText, tradingStatusItems, tradingStatusTexts } from '../app/utils/trading-halt.ts'
 
 // 1516 川飛：減資換發中
 assert.equal(tradingHaltText({ status: 'active', reason: 'capital_reduction', haltStartDate: '2026-10-15', haltEndDate: '2026-10-23', resumeDate: '2026-10-27' }), '停止買賣中（減資換發，10/15～10/23），預計 10/27 恢復')
@@ -43,5 +43,15 @@ assert.deepEqual(tradingStatusTexts({ alteredTradingMethod: { listedDate: '2026-
 // 沒見過的狀態、空的 clauses、沒有資料都不寫
 assert.deepEqual(tradingStatusTexts({ disposition: { status: 'ended', startDate: '2026-11-01', endDate: '2026-11-10' }, nearDispositionThreshold: { announcedDate: '2026-11-23', clauses: [] } }), [])
 assert.deepEqual(tradingStatusTexts(null), [])
+
+// 名稱旁的短標籤（2026-11-24）：跟長句同一個順序與規則
+assert.deepEqual(tradingStatusItems({
+  attention: { tradeDate: '2026-11-23' },
+  nearDispositionThreshold: { announcedDate: '2026-11-23', clauses: [{ noticeCount: 2, windowTradingDays: null, startDate: '2026-11-20', endDate: '2026-11-23' }] },
+  disposition: { status: 'active', startDate: '2026-11-20', endDate: '2026-11-26' },
+  alteredTradingMethod: { listedDate: '2026-11-23' }
+}).map(item => item.label), ['全額交割', '處置中', '可能達處置'])
+assert.deepEqual(tradingStatusItems({ attention: { tradeDate: '2026-11-23' } }).map(item => item.label), ['注意股'])
+assert.deepEqual(tradingStatusItems({ disposition: { status: 'upcoming', startDate: '2026-11-25', endDate: '2026-12-08' } }).map(item => item.label), ['將處置'])
 
 console.log('PASS: trading halt')

@@ -41,7 +41,7 @@ const logo = computed(() => logoData.value?.logo ?? null)
 
 const haltText = computed(() => tradingHaltText(props.stock.tradingHalt))
 const delistText = computed(() => delistingText(props.stock.delisting))
-const statusTexts = computed(() => tradingStatusTexts(props.stock.tradingStatuses))
+const statusItems = computed(() => tradingStatusItems(props.stock.tradingStatuses))
 const auditText = computed(() => auditorWarningText(props.stock.auditOpinions))
 
 // 加入觀察清單（2026-10-19 多組觀察清單）：星號按下去跳出勾選選單（WatchlistPickerPanel），這張卡就是唯一的負責者——原本 25 個頁面
@@ -195,7 +195,17 @@ const qrDialogVisible = ref(false)
            deliberate overlap between a navigational trail and a page heading, not duplication to
            clean up (see useStockPageSeo.ts's own comment). -->
       <h1 class="summary-card__title">
-        <span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
+        <span class="summary-card__code">{{ stock.code }}</span>{{ ' ' }}<span class="summary-card__name">{{ shortName }}</span>{{ ' ' }}<!--
+          全額交割、處置、可能達處置、注意股（2026-11-24，使用者選「名稱旁加小標籤」：「因為底下多出一兩行文字實在破壞排版」）：簡稱後面的短標籤，
+          同一列、不多一行（手機的主題本來就自己一行）。顏色只是加強（琥珀色框，跟漲跌色無關；只靠顏色色盲與朗讀器看不出、紅色在台股是漲），
+          字才是內容，所以標籤在 h1 裡、朗讀時跟名稱一起念。點開是帶日期的那一句與證交所要求的資料來源，頁尾的資料來源也有一行（StockPageShell）
+        --><el-popover v-for="item in statusItems" :key="item.label" trigger="click" placement="bottom-start" :width="280" :teleported="true">
+          <template #reference>
+            <button type="button" class="summary-card__flag">{{ item.label }}</button>
+          </template>
+          <p class="summary-card__flag-text">{{ item.text }}</p>
+          <p class="summary-card__flag-source">資料來源：臺灣證券交易所、證券櫃檯買賣中心</p>
+        </el-popover>{{ ' ' }}<span class="summary-card__topic">{{ topic }}</span>
       </h1>
       <p v-if="stock.name !== shortName" class="summary-card__legal-name">{{ stock.name }}</p>
       <!-- Price stacked above change/percent at mobile width (2026-09-16, "股價變動放在股價下面"),
@@ -211,11 +221,6 @@ const qrDialogVisible = ref(false)
       <!-- 停止買賣、下市（2026-10-22，使用者：「做吧」「好」）：期間股價與逐日指標都停住，不說的話讀者會以為資料壞了。是帶日期的狀態，不是說明 -->
       <p v-if="haltText" class="summary-card__status">{{ haltText }}</p>
       <p v-if="delistText" class="summary-card__status">{{ delistText }}</p>
-      <!-- 全額交割、處置、可能達處置、注意股票（2026-11-24，使用者 11-23 核准）：同上，帶日期的狀態，跟報價同一次讀到，不會晚一步推動下面 -->
-      <p v-for="line in statusTexts" :key="line" class="summary-card__status">{{ line }}</p>
-      <!-- 證交所 2026-11-21 的要求（網站條款第八條，數據中台轉達）：顯示注意股票的地方註明資料來源，同篩選表格的 sourceNote；
-           四種狀態都來自兩所的名單，有任何一種就寫，兩所都寫（同表格，上櫃的來自櫃買） -->
-      <p v-if="statusTexts.length" class="summary-card__status summary-card__source">資料來源：<span>臺灣證券交易所</span>、<span>證券櫃檯買賣中心</span></p>
       <!-- 會計師示警（2026-11-22，使用者「按照建議執行」）：最近一期是繼續經營疑慮、無法表示意見或年報保留意見，帶期別的狀態 -->
       <p v-if="auditText" class="summary-card__status">{{ auditText }}</p>
     </div>
@@ -525,13 +530,37 @@ html.dark .summary-card__favorite-btn.is-plain {
   color: var(--el-text-color-secondary);
 }
 
-.summary-card__source {
+/* 名稱旁的狀態標籤：字是一般文字色（對比照文字標準），琥珀色框與淡底只是加強；高度不撐高標題那一列 */
+.summary-card__flag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0 8px;
+  border: 1px solid var(--el-color-warning);
+  border-radius: 999px;
+  background: var(--el-color-warning-light-9);
+  color: var(--el-text-color-primary);
+  font: inherit;
   font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.2;
+  cursor: pointer;
+  align-self: center;
 }
 
-/* 窄的時候只在頓號後面換行，機構名不拆開（375 寬會剩一個「心」掉到下一行） */
-.summary-card__source span {
-  white-space: nowrap;
+.summary-card__flag:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+
+.summary-card__flag-text {
+  margin: 0 0 8px;
+}
+
+.summary-card__flag-source {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--el-text-color-secondary);
 }
 
 .summary-card__legal-name {

@@ -62,26 +62,30 @@ export interface TradingStatuses {
   alteredTradingMethod?: { listedDate: string; startDate?: string | null; status?: string } | null
 }
 
-// 一行一個狀態，重的在前。注意股票只在沒有處置、可能達處置時寫：可能達處置那句的次數已經算進這一次的注意
-export function tradingStatusTexts(statuses: TradingStatuses | null | undefined): string[] {
+// 一個狀態一筆，重的在前：label 是名稱旁的短標籤（2026-11-24，使用者：「注意股票 可以不用文字而是用顏色的方式呈現」→ 選「名稱旁加小標籤」，
+// 「因為底下多出一兩行文字實在破壞排版」），text 是點標籤看到的那一句（帶日期）。注意股票只在沒有處置、可能達處置時寫：可能達處置那句的次數
+// 已經算進這一次的注意
+export function tradingStatusItems(statuses: TradingStatuses | null | undefined): { label: string; text: string }[] {
   if (!statuses) return []
-  const lines: string[] = []
+  const items: { label: string; text: string }[] = []
   const altered = statuses.alteredTradingMethod
   if (altered) {
     const since = altered.startDate ? `（${monthDay(altered.startDate, true)} 起）` : ''
-    if (!altered.status || altered.status === 'active') lines.push(`全額交割中${since}`)
-    else if (altered.status === 'upcoming' && since) lines.push(`將全額交割${since}`)
+    if (!altered.status || altered.status === 'active') items.push({ label: '全額交割', text: `全額交割中${since}` })
+    else if (altered.status === 'upcoming' && since) items.push({ label: '將全額交割', text: `將全額交割${since}` })
   }
   const disposition = statuses.disposition
   const disposed = disposition && (disposition.status === 'active' || disposition.status === 'upcoming')
-  if (disposed) lines.push(`${disposition.status === 'active' ? '處置中' : '將處置'}（${dateSpan(disposition.startDate, disposition.endDate)}）`)
+  if (disposed) items.push({ label: disposition.status === 'active' ? '處置中' : '將處置', text: `${disposition.status === 'active' ? '處置中' : '將處置'}（${dateSpan(disposition.startDate, disposition.endDate)}）` })
   // 每條的起訖跟「近 N 個營業日」「連續 N 次」說的是同一段，只寫公告日（手機上兩條各帶起訖會折成三行）
   const near = statuses.nearDispositionThreshold
   const clauses = near?.clauses ?? []
   if (near && clauses.length) {
     const clauseText = (clause: (typeof clauses)[number]) => `${clause.windowTradingDays === null ? '連續' : `近 ${clause.windowTradingDays} 個營業日`} ${clause.noticeCount} 次`
-    lines.push(`可能達處置標準：${clauses.map(clauseText).join('、')}注意（${monthDay(near.announcedDate, false)} 公布）`)
+    items.push({ label: '可能達處置', text: `可能達處置標準：${clauses.map(clauseText).join('、')}注意（${monthDay(near.announcedDate, false)} 公布）` })
   }
-  if (statuses.attention && !disposed && !clauses.length) lines.push(`注意股票（${monthDay(statuses.attention.tradeDate, false)} 公布）`)
-  return lines
+  if (statuses.attention && !disposed && !clauses.length) items.push({ label: '注意股', text: `注意股票（${monthDay(statuses.attention.tradeDate, false)} 公布）` })
+  return items
 }
+
+export const tradingStatusTexts = (statuses: TradingStatuses | null | undefined): string[] => tradingStatusItems(statuses).map(item => item.text)
