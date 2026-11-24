@@ -26,6 +26,31 @@ export function dividendPeriodLabel(fiscalYear: number, start: string | null, en
   return `${start}～${end}`
 }
 
+// 董事會決議的股利怎麼寫（2026-11-24，配息月曆）：金額、股利期間、股東會、已知的除權息日，同一天就寫「除權息日」。不寫「還沒除息」：
+// 決議裡的除權息日是數據中台對分派公告接出來的，興櫃與少數上市櫃公司除過息也接不到（2025 年 1,785 筆有 109 筆看起來沒除息）
+export interface DividendResolutionText {
+  fiscalYear: number
+  dividendPeriodStartDate: string | null
+  dividendPeriodEndDate: string | null
+  shareholderMeetingDate: string | null
+  cashDividend: number | null
+  stockDividend: number | null
+  exDividendDate: string | null
+  exRightsDate: string | null
+}
+export const resolutionAmounts = (item: DividendResolutionText): string[] =>
+  [item.cashDividend ? `現金股利 ${item.cashDividend} 元` : '', item.stockDividend ? `股票股利 ${item.stockDividend} 元` : ''].filter(Boolean)
+export function resolutionMeta(item: DividendResolutionText): string[] {
+  const { exDividendDate: cash, exRightsDate: stock } = item
+  const exDays = cash && cash === stock ? [`除權息日 ${cash}`] : [cash ? `除息日 ${cash}` : '', stock ? `除權日 ${stock}` : '']
+  return [
+    ...resolutionAmounts(item),
+    dividendPeriodLabel(item.fiscalYear, item.dividendPeriodStartDate, item.dividendPeriodEndDate),
+    item.shareholderMeetingDate ? `股東會 ${item.shareholderMeetingDate}` : '',
+    ...exDays
+  ].filter(Boolean)
+}
+
 export const addDays = (day: string, n: number): string => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 // 「11/8」與「11/8（日）」
 export const monthDay = (day: string): string => `${Number(day.slice(5, 7))}/${Number(day.slice(8))}`

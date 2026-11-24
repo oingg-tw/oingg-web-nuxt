@@ -1,7 +1,7 @@
 // 配息月曆的日期（app/utils/dividend-event.ts）：手機週檢視的那一週、週末判斷、日期標籤
 // Run: node scripts/check-dividend-event.mjs
 import assert from 'node:assert/strict'
-import { addDays, dividendPeriodLabel, hasWeekendDate, monthDay, shortDayLabel, tradingWeekOf } from '../app/utils/dividend-event.ts'
+import { addDays, dividendPeriodLabel, hasWeekendDate, monthDay, resolutionAmounts, resolutionMeta, shortDayLabel, tradingWeekOf } from '../app/utils/dividend-event.ts'
 
 const week = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13']
 // 平日是當週；週六、週日打開時是下一週
@@ -29,4 +29,12 @@ assert.equal(dividendPeriodLabel(2026, '2026-10-01', '2026-12-31'), '2026 年第
 assert.equal(dividendPeriodLabel(2026, '2026-07-01', '2026-12-31'), '2026 年下半年')
 assert.equal(dividendPeriodLabel(2026, '2026-02-01', '2026-03-31'), '2026-02-01～2026-03-31')
 assert.equal(dividendPeriodLabel(2026, null, null), '2026 年度')
+// 董事會決議（配息月曆，2026-11-24）：金額、期間、股東會、除權息日；除息日與除權日同一天合成一個
+const resolution = { fiscalYear: 2024, dividendPeriodStartDate: '2024-01-01', dividendPeriodEndDate: '2024-12-31', shareholderMeetingDate: '2025-04-25', cashDividend: 0.17, stockDividend: 1.5, exDividendDate: '2025-07-02', exRightsDate: '2025-07-02' }
+assert.deepEqual(resolutionMeta(resolution), ['現金股利 0.17 元', '股票股利 1.5 元', '2024 年度', '股東會 2025-04-25', '除權息日 2025-07-02'])
+assert.deepEqual(resolutionMeta({ ...resolution, exRightsDate: '2025-08-21', exDividendDate: null }), ['現金股利 0.17 元', '股票股利 1.5 元', '2024 年度', '股東會 2025-04-25', '除權日 2025-08-21'])
+// 季配：沒有股東會、還沒有除息日、沒有配股
+const quarterly = { fiscalYear: 2026, dividendPeriodStartDate: '2026-07-01', dividendPeriodEndDate: '2026-09-30', shareholderMeetingDate: null, cashDividend: 6, stockDividend: 0, exDividendDate: null, exRightsDate: null }
+assert.deepEqual(resolutionMeta(quarterly), ['現金股利 6 元', '2026 年第 3 季'])
+assert.deepEqual(resolutionAmounts(quarterly), ['現金股利 6 元'])
 console.log('PASS: dividend calendar dates')

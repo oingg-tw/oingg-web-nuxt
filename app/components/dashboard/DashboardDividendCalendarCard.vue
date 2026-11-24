@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
-import type { DividendCalendarEvent, DividendCalendarExType } from '~/composables/dashboard/useDividendCalendar'
+import type { DividendCalendarEvent, DividendCalendarExType, DividendResolution } from '~/composables/dashboard/useDividendCalendar'
 
 // 配息月曆——/calendar 的核心（「總覽 dashboard 我設計錯了，應該以配息月曆為核心才對」），涵蓋全市場而不只自選股（「擴大成全市場」）。
 // 用 el-calendar（本專案「鎖定 Element Plus」的慣例），不手刻月格。
@@ -21,15 +21,21 @@ const view = ref<'week' | 'month'>('week')
 const thisWeek = tradingWeekOf(today)
 const weekStart = ref(thisWeek[0]!)
 const week = computed(() => tradingWeekOf(weekStart.value))
+// 週末有事件才畫（董事會偶爾週六開會，2025 年 2 筆、2026 年 1 筆；除權息日都在交易日）
+const weekend = computed(() => [1, 2].map(n => addDays(week.value[4]!, n)))
 
-const { events, pending, failed } = useDividendCalendar(() => [monthKey.value, ...week.value.map(day => day.slice(0, 7))])
+const { events, resolutions, pending, failed } = useDividendCalendar(() => [monthKey.value, ...[...week.value, ...weekend.value].map(day => day.slice(0, 7))])
 
-const EX_TYPE_OPTIONS: { value: DividendCalendarExType; label: string }[] = [
+// 第四種是董事會決議（2026-11-24）：放在決議那天，除權息排在前面
+type DayKind = DividendCalendarExType | '決議'
+const KIND_OPTIONS: { value: DayKind; label: string }[] = [
   { value: '息', label: '除息' },
   { value: '權', label: '除權' },
-  { value: '權息', label: '除權息' }
+  { value: '權息', label: '除權息' },
+  { value: '決議', label: '董事會決議' }
 ]
-const activeExTypes = ref<DividendCalendarExType[]>(['息', '權', '權息'])
+const KIND_LABELS: Record<DayKind, string> = { 息: '除息', 權: '除權', 權息: '除權息', 決議: '董事會決議' }
+const activeExTypes = ref<DayKind[]>(['息', '權', '權息', '決議'])
 
 // 只看普通股（2026-09-22,「能否限制顯示普通股的配息日期就好？」）, on by default.
 //
@@ -80,25 +86,40 @@ const coverageNote = (month: string) => (month < COVERAGE_FROM
   ? `${month} 的除權息紀錄不完整：完整的全市場紀錄自 ${COVERAGE_FROM} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。`
   : '')
 
-const eventsByDay = computed<Record<string, typeof events.value>>(() => {
-  const map: Record<string, typeof events.value> = {}
-  for (const event of events.value) {
-    if (!activeExTypes.value.includes(event.exType)) continue
-    if (commonStocksOnly.value && !COMMON_STOCK_SYMBOL.test(event.symbol)) continue
-    ;(map[event.exDate] ??= []).push(event)
-  }
+// 一天的一列：除權息與董事會決議畫法相同，只差標籤與說明（meta 是對話框的，short 是手機一週的一行）
+interface DayRow { key: string; symbol: string; name: string; kind: DayKind; meta: string[]; short: string[] }
+const dotted = (parts: string[]) => parts.map((part, index) => (index ? `・${part}` : part))
+const exRow = (event: DividendCalendarEvent): DayRow => ({ key: `${event.exType}-${event.symbol}`, symbol: event.symbol, name: eventName(event), kind: event.exType, meta: detailMeta(event), short: agendaMeta(event) })
+const boardRow = (item: DividendResolution): DayRow => ({
+  key: `決議-${item.symbol}-${item.dividendPeriodStartDate}`,
+  symbol: item.symbol,
+  name: eventName(item),
+  kind: '決議',
+  meta: resolutionMeta(item),
+  short: dotted(resolutionAmounts(item))
+})
+
+const rowsByDay = computed<Record<string, DayRow[]>>(() => {
+  const map: Record<string, DayRow[]> = {}
+  const shown = (kind: DayKind, symbol: string) => activeExTypes.value.includes(kind) && (!commonStocksOnly.value || COMMON_STOCK_SYMBOL.test(symbol))
+  for (const event of events.value) if (shown(event.exType, event.symbol)) (map[event.exDate] ??= []).push(exRow(event))
+  for (const item of resolutions.value) if (shown('決議', item.symbol)) (map[item.boardResolutionDate] ??= []).push(boardRow(item))
   return map
 })
 
 // el-calendar's own #date-cell slot data.day is already 'YYYY-MM-DD', matching exDate's format
 // directly — no reparsing needed.
-function eventsFor(day: string) {
-  return eventsByDay.value[day] ?? []
+function rowsFor(day: string) {
+  return rowsByDay.value[day] ?? []
 }
 
 // 月格只畫自己那個月的事件：一週跨月時另一個月也讀進來了，月格頭尾幾格原本就是空的
-const cellEvents = (data: { type: string; day: string }) => (data.type === 'current-month' ? eventsFor(data.day) : [])
-const monthDays = computed(() => events.value.map(event => event.exDate).filter(day => day.startsWith(monthKey.value)))
+const cellEvents = (data: { type: string; day: string }) => (data.type === 'current-month' ? rowsFor(data.day) : [])
+// 週末欄看全部事件、不看篩選：勾選類型時月格不換欄數
+const monthDays = computed(() => [...events.value.map(event => event.exDate), ...resolutions.value.map(item => item.boardResolutionDate)].filter(day => day.startsWith(monthKey.value)))
+// 「3 筆除權息、2 筆董事會決議」：格子的 aria-label；對話框標題只寫有的那幾種
+const boardCount = (rows: DayRow[]) => rows.filter(row => row.kind === '決議').length
+const countText = (rows: DayRow[]) => [rows.length - boardCount(rows) ? `${rows.length - boardCount(rows)} 筆除權息` : '', boardCount(rows) ? `${boardCount(rows)} 筆董事會決議` : ''].filter(Boolean).join('、')
 
 // 標頭自己畫（2026-11-08）：Element 預設的標頭只有月份與三顆按鈕，旁邊要寫今天是哪一天；三顆按鈕照預設
 function shiftMonth(months: number) {
@@ -106,11 +127,14 @@ function shiftMonth(months: number) {
   selectedMonth.value = new Date(current.getFullYear(), current.getMonth() + months, 1)
 }
 
-const EX_TYPE_TAG_KIND: Record<DividendCalendarExType, 'success' | 'warning' | 'info'> = {
+const TAG_KIND: Record<DayKind, 'success' | 'warning' | 'info' | 'primary'> = {
   息: 'success',
   權: 'warning',
-  權息: 'info'
+  權息: 'info',
+  決議: 'primary'
 }
+// 董事會決議是空心的：金色（primary）跟除權的琥珀色在格子裡幾乎分不出來，實心＝除權息、空心＝決議
+const tagEffect = (kind: DayKind) => (kind === '決議' ? 'plain' : 'light')
 
 // Detail popover state — clicking a day's "+N more" (or any chip, when there's room) opens the
 // full list for that day rather than trying to cram every symbol into the cell itself.
@@ -119,14 +143,18 @@ const EX_TYPE_TAG_KIND: Record<DividendCalendarExType, 'success' | 'warning' | '
 // closes, which is fine — nothing reads it while hidden).
 const detailDay = ref<string | null>(null)
 const detailVisible = ref(false)
-const detailEvents = computed(() => (detailDay.value ? eventsFor(detailDay.value) : []))
+const detailEvents = computed(() => (detailDay.value ? rowsFor(detailDay.value) : []))
+const detailTitle = computed(() => {
+  const board = boardCount(detailEvents.value)
+  return `${detailDay.value} ${board === detailEvents.value.length ? '董事會決議' : board ? '除權息與董事會決議' : '除權息事件'}`
+})
 function openDetail(day: string) {
   detailDay.value = day
   detailVisible.value = true
 }
 
 // 「00940 元大台灣價值高息」：原本寫成 {{ 代號 }}<template v-if> {{ 名稱 }}</template>，Vue 把 template 開頭只有空白的字拿掉，代號跟名稱黏在一起
-const eventName = (event: DividendCalendarEvent) => [event.symbol, event.companyName].filter(Boolean).join(' ')
+const eventName = (event: { symbol: string; companyName: string | null }) => [event.symbol, event.companyName].filter(Boolean).join(' ')
 
 // ETF 的金額在 distributionPerUnit、個股在 cashDividend；少數 ETF 兩邊都有（twse 的預告表也
 // 收了部分 ETF），所以取前者優先。詞也跟著換——ETF 分配的是「每受益權單位」不是「每股」。
@@ -157,14 +185,14 @@ function detailMeta(event: DividendCalendarEvent): string[] {
 // 年度與配股發放日留在月格的對話框
 const AGENDA_SHOWN = 3
 const expandedDays = ref(new Set<string>())
-const agenda = computed(() => week.value.map(day => ({ day, events: eventsFor(day), past: day < today, isToday: day === today })))
+const agenda = computed(() => [...week.value, ...weekend.value.filter(day => rowsFor(day).length)].map(day => ({ day, events: rowsFor(day), past: day < today, isToday: day === today })))
 // 「11/16～11/20」不寫星期：360 寬放不下「11/16（一）～11/20（五）」，每天的標題列已經寫了
 const weekLabel = computed(() => `${monthDay(week.value[0]!)}～${monthDay(week.value[4]!)}`)
 const weekNote = computed(() => coverageNote(week.value[0]!.slice(0, 7)))
 // 每一段各自不折（「公司預告」原本在 320 寬折成「公司預／告」），放不下就從「・」換行
 function agendaMeta(event: DividendCalendarEvent): string[] {
   const status = event.status === 'announced' ? '公司預告' : event.paymentDate ? `發放 ${monthDay(event.paymentDate)}` : null
-  return [amountText(event), status].filter((part): part is string => !!part).map((part, index) => (index ? `・${part}` : part))
+  return dotted([amountText(event), status].filter((part): part is string => !!part))
 }
 function toggleDay(day: string) {
   const next = new Set(expandedDays.value)
@@ -197,9 +225,9 @@ watch(view, current => {
        （rgb(255,255,255), identical to the card's）, so the月曆 keeps its surface against the page's
        beige. The 20px padding it also gave back is worth ~6px per day cell — not the reason. -->
   <section class="dividend-calendar-card">
-    <div class="dividend-calendar-card__filters" role="group" aria-label="除權息類型篩選">
+    <div class="dividend-calendar-card__filters" role="group" aria-label="事件類型篩選">
       <el-checkbox-group v-model="activeExTypes">
-        <el-checkbox-button v-for="option in EX_TYPE_OPTIONS" :key="option.value" :value="option.value">
+        <el-checkbox-button v-for="option in KIND_OPTIONS" :key="option.value" :value="option.value">
           {{ option.label }}
         </el-checkbox-button>
       </el-checkbox-group>
@@ -231,16 +259,16 @@ watch(view, current => {
               {{ shortDayLabel(item.day) }}
               <span v-if="item.isToday" class="dividend-calendar-agenda__pill">今天</span>
             </span>
-            <span class="dividend-calendar-agenda__count">{{ item.events.length ? `${item.events.length} 筆` : '沒有除權息' }}</span>
+            <span class="dividend-calendar-agenda__count">{{ item.events.length ? `${item.events.length} 筆` : '沒有除權息或決議' }}</span>
           </h3>
           <ul v-if="item.events.length" class="dividend-calendar-agenda__list">
-            <li v-for="event in expandedDays.has(item.day) ? item.events : item.events.slice(0, AGENDA_SHOWN)" :key="`${event.symbol}-${event.exType}`" class="dividend-calendar-agenda__row">
+            <li v-for="row in expandedDays.has(item.day) ? item.events : item.events.slice(0, AGENDA_SHOWN)" :key="row.key" class="dividend-calendar-agenda__row">
               <span class="dividend-calendar-agenda__row-head">
-                <NuxtLink :to="securityPath(event.symbol)" class="dividend-calendar-card__detail-link">{{ eventName(event) }}</NuxtLink>
-                <el-tag size="small" :type="EX_TYPE_TAG_KIND[event.exType]">{{ EX_TYPE_LABELS[event.exType] }}</el-tag>
+                <NuxtLink :to="securityPath(row.symbol)" class="dividend-calendar-card__detail-link">{{ row.name }}</NuxtLink>
+                <el-tag size="small" :type="TAG_KIND[row.kind]" :effect="tagEffect(row.kind)">{{ KIND_LABELS[row.kind] }}</el-tag>
               </span>
-              <span v-if="agendaMeta(event).length" class="dividend-calendar-card__detail-cash">
-                <span v-for="part in agendaMeta(event)" :key="part" class="dividend-calendar-agenda__meta-part">{{ part }}</span>
+              <span v-if="row.short.length" class="dividend-calendar-card__detail-cash">
+                <span v-for="part in row.short" :key="part" class="dividend-calendar-agenda__meta-part">{{ part }}</span>
               </span>
             </li>
           </ul>
@@ -294,7 +322,7 @@ watch(view, current => {
               'app-calendar-day--today': data.day === today,
               'app-calendar-day--past': data.day < today
             }"
-            :aria-label="cellEvents(data).length ? `${data.day} 有 ${cellEvents(data).length} 筆除權息事件${data.day === today ? '，今天' : ''}` : undefined"
+            :aria-label="cellEvents(data).length ? `${data.day} 有 ${countText(cellEvents(data))}${data.day === today ? '，今天' : ''}` : undefined"
             @click="cellEvents(data).length && openDetail(data.day)"
           >
             <span class="app-calendar-day__head">
@@ -305,14 +333,15 @@ watch(view, current => {
               <span class="dividend-calendar-card__cell-count">{{ cellEvents(data).length }} 筆</span>
               <span class="dividend-calendar-card__cell-chips">
                 <el-tag
-                  v-for="(event, index) in cellEvents(data).slice(0, 2)"
-                  :key="event.symbol"
+                  v-for="(row, index) in cellEvents(data).slice(0, 2)"
+                  :key="row.key"
                   size="small"
-                  :type="EX_TYPE_TAG_KIND[event.exType]"
+                  :type="TAG_KIND[row.kind]"
+                  :effect="tagEffect(row.kind)"
                   class="dividend-calendar-card__chip"
                   :class="{ 'dividend-calendar-card__chip--second': index === 1 }"
                 >
-                  {{ event.symbol }}
+                  {{ row.symbol }}
                 </el-tag>
                 <!-- 一顆時的「+N」與兩顆時的「+N」各一個，哪一個出現看格子寬（見樣式） -->
                 <span v-if="cellEvents(data).length > 1" class="dividend-calendar-card__cell-more dividend-calendar-card__cell-more--one">
@@ -328,13 +357,13 @@ watch(view, current => {
       </el-calendar>
     </div>
 
-    <el-dialog v-model="detailVisible" :title="detailDay ? `${detailDay} 除權息事件` : ''" width="min(360px, calc(100vw - 32px))" append-to-body>
+    <el-dialog v-model="detailVisible" :title="detailDay ? detailTitle : ''" width="min(360px, calc(100vw - 32px))" append-to-body>
       <ul class="dividend-calendar-card__detail-list">
-        <li v-for="event in detailEvents" :key="event.symbol" class="dividend-calendar-card__detail-row">
+        <li v-for="row in detailEvents" :key="row.key" class="dividend-calendar-card__detail-row">
           <!-- ETF、特別股各有自己的頁（securityPath）：原本一律連 /stock/{代號}，00931B 這類 ETF 點下去是「找不到這檔股票」 -->
-          <NuxtLink :to="securityPath(event.symbol)" class="dividend-calendar-card__detail-link">{{ eventName(event) }}</NuxtLink>
-          <el-tag size="small" :type="EX_TYPE_TAG_KIND[event.exType]">{{ EX_TYPE_LABELS[event.exType] }}</el-tag>
-          <span v-if="detailMeta(event).length" class="dividend-calendar-card__detail-cash">{{ detailMeta(event).join('・') }}</span>
+          <NuxtLink :to="securityPath(row.symbol)" class="dividend-calendar-card__detail-link">{{ row.name }}</NuxtLink>
+          <el-tag size="small" :type="TAG_KIND[row.kind]" :effect="tagEffect(row.kind)">{{ KIND_LABELS[row.kind] }}</el-tag>
+          <span v-if="row.meta.length" class="dividend-calendar-card__detail-cash">{{ row.meta.join('・') }}</span>
         </li>
       </ul>
     </el-dialog>

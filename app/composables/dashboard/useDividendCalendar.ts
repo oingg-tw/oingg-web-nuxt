@@ -93,11 +93,22 @@ export interface DividendCalendarEvent {
 //
 // 一次要幾個月（2026-11-08）：手機的週檢視一週可能跨兩個月（11/30～12/4），月格同時要它自己那個月。events 是這幾個月的全部，
 // 從快取算出來，所以使用者換月之後才回來的慢回應蓋不掉新狀態（原本的「最新的贏」）。
+// GET /market/dividend-resolutions?from&to（2026-11-24，數據中台 a917c22、業務中台轉發）：董事會決議日在區間內的股利決議，全市場。
+// 使用者選「董事會通過的股利」時說的是「配息月曆和個股配息頁提早列出董事會已經決議、還沒除息的股利」，月曆把它放在決議那天。
+// 區間最多一年；三月是決議季（2026-03 有 1,243 筆，一天最多 200 筆）
+export interface DividendResolution extends DividendResolutionText {
+  symbol: string
+  companyName: string | null
+  boardResolutionDate: string
+}
+
 export function useDividendCalendar(months: () => string[]) {
   const cache = useState<Record<string, DividendCalendarEvent[] | null>>('dividend-calendar-cache', () => ({}))
+  const resolutionCache = useState<Record<string, DividendResolution[] | null>>('dividend-resolution-cache', () => ({}))
   const keys = computed(() => [...new Set(months())])
   const loading = reactive(new Set<string>())
   const events = computed(() => keys.value.flatMap(key => cache.value[key] ?? []))
+  const resolutions = computed(() => keys.value.flatMap(key => resolutionCache.value[key] ?? []))
   const pending = computed(() => keys.value.some(key => loading.has(key)))
 // 讀取失敗（2026-10-11）：4xx 是這個請求的正常答案（例如欄位不能查），照舊快取成 null；其他失敗不寫快取、報給全站
 // 讀取失敗彈窗，重試＝重新 load()。原本一律快取 null，失敗之後整個 session 都當成「沒有資料」，重試也沒用。
@@ -114,12 +125,18 @@ export function useDividendCalendar(months: () => string[]) {
     loading.add(key)
     failures.delete(key)
     try {
-      const result = await apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: key } })
+      // 兩支一起才是這個月：一支失敗整個月重讀（同一個讀取失敗彈窗）
+      const [year, month] = key.split('-').map(Number)
+      const [result, decided] = await Promise.all([
+        apiFetch<{ entries: DividendCalendarEvent[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: key } }),
+        apiFetch<{ entries: DividendResolution[] }>('/market/dividend-resolutions', { query: { from: `${key}-01`, to: new Date(Date.UTC(year!, month!, 0)).toISOString().slice(0, 10) } })
+      ])
       // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
       cache.value[key] = result.entries.flatMap(withExType)
+      resolutionCache.value[key] = decided.entries
     } catch (error) {
-      devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar?yearMonth=${key} unavailable`, error)
-      if (classifyApiError(error).kind === 'client') cache.value[key] = null
+      devWarn('dividend-calendar', `GET ${BUSINESS_BASE}/stocks/ex-dividend-calendar or /market/dividend-resolutions for ${key} unavailable`, error)
+      if (classifyApiError(error).kind === 'client') cache.value[key] = resolutionCache.value[key] = null
       else failures.set(key, error)
     } finally {
       loading.delete(key)
@@ -131,5 +148,5 @@ export function useDividendCalendar(months: () => string[]) {
   // 讀不到的月份：手機的一週要分得出「沒有除權息」跟「沒讀到」
   const failed = computed(() => keys.value.some(key => failures.has(key)))
 
-  return { events, pending, failed }
+  return { events, resolutions, pending, failed }
 }
