@@ -39,6 +39,9 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // 上市的三大法人、借券賣出（數據中台 2026-11-24，讀者先行）：證交所只放在舊網站、開放資料沒有，要不要用是使用者的決定。
   // 不是不適用（之後可能有來源），格子寫尚無資料
   not_in_open_data: '交易所有公布這項數字，但不在開放資料裡，本站目前還不能使用',
+  // REIT 的近一年分配率（數據中台 2026-11-24，GET /reits/{代號}/distribution-yield-spread，讀者先行）：往前 12 個月查不到任何分配紀錄，
+  // 目前是 01001T 2006-03～2008-04、01004T 2008-10～2009-09 兩段（使用者：「讓用戶知道這段不在 MOPS 範圍」）。格子寫尚無資料
+  no_distribution_records: '這段期間查不到分配紀錄（公開資訊觀測站沒有收錄）',
   // Not a real analysis-ts value — a period with literally no computation record for this
   // metric (the whole chunk came back empty), distinct from a real null-with-reason.
   __no_record__: '這一期沒有數值'
@@ -106,10 +109,12 @@ export function reasonedCellText(point: NullablePoint | null | undefined, format
 // 10 檔樣本 108 個 null 徽章有 96 個被說成「我們沒有數字」，含 35 個 insufficient_history。業務中台 之後把同一個區分寫進契約（3a59133）。
 // 不適用＝結構性、不會恢復：模型不適用於這個產業，或興櫃本來就沒有這項數字（交易所不公布、只申報半年報）
 const NOT_APPLICABLE_REASONS = new Set(['not_applicable_industry', 'not_published_by_exchange', 'semiannual_only', 'not_listed'])
+// 我們手上沒有這筆紀錄（不是算不出來）：開放資料沒有、來源沒收錄，格子跟沒有原因一樣寫尚無資料
+const NO_RECORD_REASONS = new Set(['not_in_open_data', 'no_distribution_records'])
 export function nullReasonShortText(nullReason: string | null | undefined): string {
   if (nullReason === 'no_filing') return '未申報'
   if (nullReason && NOT_APPLICABLE_REASONS.has(nullReason)) return '不適用'
-  return nullReason && nullReason !== 'not_in_open_data' ? '無法計算' : '尚無資料'
+  return nullReason && !NO_RECORD_REASONS.has(nullReason) ? '無法計算' : '尚無資料'
 }
 
 // 每一期的說明（2026-11-21，使用者 11-12 說「好」）：數據中台給代碼與參數，句子在這裡寫，放在歷年表那一期底下與提示框。金額是千元。

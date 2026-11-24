@@ -83,6 +83,9 @@ assert.equal(nullReasonShortText('unsupported_format'), '無法計算')
 // 上市的三大法人（not_in_open_data）：我們拿不到，不是算不出來，也不是不適用
 assert.equal(nullReasonShortText('not_in_open_data'), '尚無資料')
 assert.ok(NULL_REASON_LABELS.not_in_open_data)
+// REIT 查不到分配紀錄的那兩段（no_distribution_records）：同樣是沒有紀錄，不是算不出來
+assert.equal(nullReasonShortText('no_distribution_records'), '尚無資料')
+assert.ok(NULL_REASON_LABELS.no_distribution_records.includes('公開資訊觀測站沒有收錄'))
 const cell = value => ({ value, nullReason: null, knowledgeDate: '2026-11-16', knowledgeDateIsFallback: false })
 const corrected = { code: 'financial_report_corrected', announcementDate: '2026-11-16' }
 const facts = withPeriodFacts(
