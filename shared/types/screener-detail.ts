@@ -214,9 +214,11 @@ export interface ReitDetail {
   nav: number | null
   navDate: string | null
   premiumDiscountPct: number | null
-  trailing12MonthDistributionPerUnit: number | null
-  trailing12MonthDistributionYieldPct: number | null
-  trailing12MonthDistributionCount: number | null
+  // 近一年分配與分配率（2026-11-24 起，數據中台 (b′)，使用者選的：以最近一次分配為準、往回 11 個月內的分配合計，次數就是那一年實際配的次數；
+  // 原本近 12 個月窗口會一個月擠進三次或一次都沒有）。12 個月內查不到分配時 PerUnit、YieldPct 是 null、Count 是 0
+  recentYearDistributionPerUnit: number | null
+  recentYearDistributionYieldPct: number | null
+  recentYearDistributionCount: number | null
   // 標的不動產（2026-10-30 數據中台 3a8fd18）
   properties: ReitProperty[]
 }
@@ -247,8 +249,22 @@ export interface ReitDistribution {
   yieldOnPreviousClose: number | null
 }
 
+// GET /reits/{symbol}/distribution-yield-spread 的一個月（2026-11-24）：分配率同快照的口徑（評價日是那個月最後一個有收盤的交易日），10 年期公債
+// 殖利率是中央銀行的月資料（晚 1～2 個月公布），利差是兩者相減（百分點）。nullReason：insufficient_history（掛牌未滿 12 個月）、
+// no_distribution_records（往前 13 個月查不到分配紀錄）、missing_input（殖利率還沒公布或當月沒有收盤；分配率算得出來時照給，原因指的是利差）
+export interface ReitSpreadPoint {
+  yearMonth: string
+  tradeDate: string | null
+  recentYearDistributionYieldPct: number | null
+  govBondYield10yPct: number | null
+  distributionYieldSpreadPct: number | null
+  nullReason: string | null
+}
+
 export interface ReitPageResponse {
   reit: ReitDetail
+  // 分配率與公債殖利率的利差，每月一點，由舊到新、從第一個算得出分配率的月份開始；讀不到是 null
+  spread: ReitSpreadPoint[] | null
   // 摘要卡的收盤價與漲跌（日線最後兩個有成交的交易日，同特別股）；讀不到用 reit.close、沒有漲跌
   quote: LatestClose | null
   // 讀不到是 null，不讓整頁失敗

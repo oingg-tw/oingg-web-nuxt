@@ -1,4 +1,4 @@
-import type { ReitDetail, ReitDistribution, ReitPageResponse } from '#shared/types/screener-detail'
+import type { ReitDetail, ReitDistribution, ReitPageResponse, ReitSpreadPoint } from '#shared/types/screener-detail'
 import type { ReitDailyNav, ReitDailyPrice } from '#shared/utils/reit-nav'
 
 // GET /api/reit/:code — REITs 個別頁（/reit/{代號} 底下每個面向共用，2026-10-30）在伺服器端要的一切，SSR 就有內容。代號大小寫都收（網址是
@@ -9,7 +9,7 @@ const REIT_SYMBOL = /^0\d{4}T$/
 export default defineEventHandler(async (event): Promise<ReitPageResponse> => {
   const code = (getRouterParam(event, 'code') ?? '').toUpperCase()
   if (!REIT_SYMBOL.test(code)) throw createError({ statusCode: 400, statusMessage: 'code must be a REIT symbol' })
-  const [reit, quote, navMonths, distributions, liquidity, holders] = await Promise.all([
+  const [reit, quote, navMonths, distributions, liquidity, holders, spread] = await Promise.all([
     cachedReit(code).catch((error: { statusCode?: number }) => {
       if (error?.statusCode === 404) throw createError({ statusCode: 404, statusMessage: 'unknown REIT' })
       throw error
@@ -18,10 +18,21 @@ export default defineEventHandler(async (event): Promise<ReitPageResponse> => {
     settle(cachedReitNavMonths(code)),
     settle(cachedReitDistributions(code)),
     settle(cachedReitLiquidityMonths(code)),
-    settle(cachedShareholdingDistribution(code))
+    settle(cachedShareholdingDistribution(code)),
+    settle(cachedReitSpread(code))
   ])
-  return { reit, quote, navMonths, distributions, liquidity: liquidity?.length ? liquidity : null, holders: holders?.weeks.length ? holders : null }
+  return { reit, quote, navMonths, distributions, liquidity: liquidity?.length ? liquidity : null, holders: holders?.weeks.length ? holders : null, spread: spread?.length ? spread : null }
 })
+
+// 分配率與公債殖利率的利差（2026-11-24，數據中台 (b′)）：掛牌第一年整段 insufficient_history，從第一個算得出分配率的月份開始
+const cachedReitSpread = defineCachedFunction(
+  async (symbol: string): Promise<ReitSpreadPoint[]> => {
+    const entries = (await businessFetch<{ entries: ReitSpreadPoint[] }>(`/reits/${symbol}/distribution-yield-spread`)).entries ?? []
+    const first = entries.findIndex(entry => entry.recentYearDistributionYieldPct !== null)
+    return first < 0 ? [] : entries.slice(first)
+  },
+  { name: 'reit-distribution-yield-spread', getKey: (symbol: string) => symbol, ...swrCache(HOUR, TTL_STATIC) }
+)
 
 // 收盤價、淨值、分配一天變一次（業務中台也回 max-age=3600）
 const cachedReit = defineCachedFunction(
