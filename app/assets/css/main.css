@@ -62,6 +62,76 @@ html {
   margin-left: 8px;
 }
 
+/* 面板（CLAUDE.md「篩選頁的面板」，2026-11-02）：手機是貼底的面板（全寬、最高 92dvh、可見的關閉鈕），768px 起是置中對話框，只靠 CSS。
+   el-dialog 掛 class="condition-panel"（窄的再加 condition-panel--narrow）、modal-class="condition-panel-overlay"。原本寫在
+   ScreenerConditionPanel.vue（篩選頁一定掛著）；2026-11-24 配息月曆一天的彈窗也用，搬來這裡，不掛那個元件的頁面也讀得到 */
+.condition-panel-overlay .el-overlay-dialog {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0;
+}
+
+.el-dialog.condition-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100% !important;
+  max-width: none;
+  max-height: 92dvh;
+  margin: 0;
+  /* 手機底部的安全區留在面板最下緣（設定範圍那一步最下面是按鈕列，不是內容區）；鍵盤打開時按鈕列在鍵盤上方，內容區變矮 */
+  padding-bottom: calc(var(--el-dialog-padding-primary, 16px) + var(--app-bottom-inset));
+  border-radius: 16px 16px 0 0;
+}
+
+/* 內距只留焦點框的位置：面板本身已有 16px，內容區再給 16px 就是兩層（2026-10-23，手機上內容被縮成兩邊各 32px）。那 4px 用負的
+   margin 退回去：內容跟標題、下面的按鈕對齊在 16px（原本內縮到 20px，2026-11-08 使用者：「篩選 UI 組合的間距跑掉了」），捲動框裡照樣
+   留得下焦點框 */
+.el-dialog.condition-panel .el-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px;
+  margin: -4px;
+}
+
+.el-dialog.condition-panel .el-dialog__headerbtn {
+  width: 44px;
+  height: 44px;
+}
+
+.condition-panel__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* html 前綴：Element 的 .el-button + .el-button（左邊 12px）載在這份之後、權重一樣，不加會變成 gap 8＋12＝20px（2026-11-24 搬過來時
+   check-screener-spacing 量到） */
+html .condition-panel__footer .el-button {
+  min-height: 44px;
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .condition-panel-overlay .el-overlay-dialog {
+    align-items: center;
+  }
+
+  .el-dialog.condition-panel {
+    width: min(960px, 92vw) !important;
+    max-height: 86vh;
+    margin: auto;
+    border-radius: var(--el-dialog-border-radius, 8px);
+  }
+
+  /* 設定範圍那一步不用那麼寬（2026-10-22，使用者：「設定範圍 這個彈窗 太寬了 請讓他寬度適中」）：兩個輸入框或三欄勾選就夠，
+     挑指標那一步照舊 960px。欄位清單、管理、新增篩選、新增欄位組合、配息月曆一天的彈窗也用這個寬度 */
+  .el-dialog.condition-panel.condition-panel--narrow {
+    width: min(600px, 92vw) !important;
+  }
+}
+
 /* Element Plus 只把 --el-font-family 套在自己的元件上，本站自己的標記要明寫；body 的 UA 預設 8px 邊距歸零（版面都從視窗邊算位移，
    2026-09-02 發現每個位移都差 8px）。tabular-nums 全站套（2026-09-04，全域設計 §3.2）：只影響數字字形寬度，CJK 不受影響。
    左右內距：viewport-fit=cover 之後 iPhone 橫拿時內容會進瀏海底下（固定在畫面上的頁首、導覽各自避開） */

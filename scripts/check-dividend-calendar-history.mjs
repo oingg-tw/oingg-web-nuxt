@@ -2,10 +2,11 @@
 //
 // Asserts the four things that break if the wiring is wrong, against the live dev server:
 //   1. 上個月 actually loads a past month's events (the endpoint used to return 0 rows for those)
-//   2. a realised day's dialog names its 發放日 / 年度, an announced one says 尚未除息
+//   2. a realised day's dialog has 發放日 dates, an announced one says 公司預告
 //   3. the coverage note appears only for months before 2026-03
 //   4. both statuses render in the same month (2026-09 is genuinely mixed: 97 + 10)
 // 2026-11-08 起也驗今天與手機的一週：標頭寫今天、桌機沒有一週、手機預設一週五天、「顯示其餘」展開、切到月格
+// 2026-11-24 起彈窗是方案 B 的分組表格：標題「11/10（二）」、組的那一列、超過 20 筆有搜尋框且照代號篩、手機是貼底的面板
 //
 // Run: node scripts/check-dividend-calendar-history.mjs   (dev server must be up)
 import { chromium } from 'playwright'
@@ -33,23 +34,29 @@ const prev = card.locator('.el-calendar__button-group button').first()
 const note = card.locator('.dividend-calendar-card__note')
 const chipDays = card.locator('.dividend-calendar-card__cell-chips')
 
+// 彈窗的資料列（不含組的那一列）；除權息那一張的最後一格是發放日
+const dataRows = dialog => dialog.locator('.dividend-calendar-day__table tbody tr:not(.dividend-calendar-day__group)')
+const payCells = dialog => dialog.locator('#dividend-day-ex').locator('xpath=ancestor::section[1]').locator('tbody tr:not(.dividend-calendar-day__group) td:last-child')
+const DATE = /\d+\/\d+/
+// 格子的 aria-label「11/17 有 53 筆除權息、2 筆董事會決議」加起來最多的那一天
+async function busiestCell() {
+  const cells = card.locator('.dividend-calendar-card__cell--events')
+  const labels = await cells.evaluateAll(list => list.map(cell => cell.getAttribute('aria-label') ?? ''))
+  const totals = labels.map(label => [...label.matchAll(/(\d+) 筆/g)].reduce((sum, match) => sum + Number(match[1]), 0))
+  return { cell: cells.nth(totals.indexOf(Math.max(...totals))), total: Math.max(...totals) }
+}
+
 // Open the busiest day in view and read its dialog rows back.
 async function readBusiestDay() {
-  const count = await chipDays.count()
-  if (!count) return []
-  let best = 0
-  let bestLen = 0
-  for (let i = 0; i < count; i++) {
-    const len = await chipDays.nth(i).locator('.dividend-calendar-card__chip').count()
-    if (len > bestLen) { bestLen = len; best = i }
-  }
-  await chipDays.nth(best).click()
+  if (!(await chipDays.count())) return { rows: [], pays: [] }
+  await (await busiestCell()).cell.click()
   const dialog = page.locator('.el-dialog:visible')
   await dialog.waitFor()
-  const rows = await dialog.locator('.dividend-calendar-card__detail-row').allInnerTexts()
+  const rows = await dataRows(dialog).allInnerTexts()
+  const pays = await payCells(dialog).allInnerTexts()
   await page.keyboard.press('Escape')
   await dialog.waitFor({ state: 'hidden' })
-  return rows
+  return { rows, pays }
 }
 
 // --- current month (2026-09): mixed announced + realized ---
@@ -61,19 +68,42 @@ check(await note.count() === 0, '本月不顯示涵蓋警語')
 // Scan every day this month for both status wordings.
 let sawPaid = false
 let sawAnnounced = false
+let sawTitle = ''
 for (let i = 0; i < dayCells; i++) {
   await chipDays.nth(i).click()
   const dialog = page.locator('.el-dialog:visible')
   await dialog.waitFor()
-  const text = await dialog.innerText()
-  if (text.includes('發放日')) sawPaid = true
-  if (text.includes('尚未除息')) sawAnnounced = true
+  sawTitle ||= await dialog.locator('.dividend-calendar-day__title').innerText()
+  if ((await payCells(dialog).allInnerTexts()).some(text => DATE.test(text))) sawPaid = true
+  if ((await dialog.innerText()).includes('公司預告')) sawAnnounced = true
   await page.keyboard.press('Escape')
   await dialog.waitFor({ state: 'hidden' })
   if (sawPaid && sawAnnounced) break
 }
-check(sawPaid, '已實現的列顯示發放日')
-check(sawAnnounced, '預告的列顯示「尚未除息」')
+check(/^\d+\/\d+（[日一二三四五六]）/.test(sawTitle), '彈窗標題寫「11/10（二）」', sawTitle)
+check(sawPaid, '已實現的列發放日有日期')
+check(sawAnnounced, '預告的列寫「公司預告」')
+
+// 這個月最多筆的那一天：組的那一列、超過 20 筆有搜尋框，搜第一列的代號只剩有那個代號的列
+{
+  const { cell, total } = await busiestCell()
+  await cell.click()
+  const dialog = page.locator('.el-dialog:visible')
+  await dialog.waitFor()
+  check(await dialog.locator('.dividend-calendar-day__group').count() > 0, '彈窗照類型或股利期間分組')
+  const search = dialog.getByRole('textbox', { name: /找代號或名稱/ })
+  check((await search.count() > 0) === (total > 20), `超過 20 筆才有搜尋框（${total} 筆）`)
+  if (await search.count()) {
+    const code = (await dialog.locator('.dividend-calendar-day__code').first().innerText()).split('・')[0]
+    await search.fill(code)
+    await page.waitForTimeout(300)
+    const rows = await dataRows(dialog).allInnerTexts()
+    check(rows.length > 0 && rows.every(row => row.includes(code)), `搜「${code}」只剩那一檔`, `${rows.length} 列`)
+    check((await dialog.getByRole('status').innerText()).startsWith('找到'), '搜尋結果寫「找到 N 筆」')
+  }
+  await page.keyboard.press('Escape')
+  await dialog.waitFor({ state: 'hidden' })
+}
 
 // --- one month back: all realized ---
 console.log('\n上個月（全部 realized）')
@@ -81,10 +111,10 @@ await prev.click()
 await page.waitForTimeout(1500)
 const augDays = await chipDays.count()
 check(augDays > 0, '往回翻一個月仍載入到事件', `有事件的日子 ${augDays} 天`)
-const augRows = await readBusiestDay()
-check(augRows.length > 0, '歷史月份的日期明細打得開', `${augRows.length} 列`)
-check(augRows.some((r) => r.includes('發放日')), '歷史月份顯示發放日', augRows[0])
-check(!augRows.some((r) => r.includes('尚未除息')), '歷史月份不應出現「尚未除息」')
+const aug = await readBusiestDay()
+check(aug.rows.length > 0, '歷史月份的日期明細打得開', `${aug.rows.length} 列`)
+check(aug.pays.some(text => DATE.test(text)), '歷史月份的發放日有日期', aug.pays[0])
+check(!aug.rows.some((r) => r.includes('公司預告')), '歷史月份不應出現「公司預告」')
 // 月份從今天算（2026-11-04 起；原本寫死「上個月是 2026-08、再退 6 個月到 2026-02」，到了 11 月就停在 2026-04）
 const now = new Date()
 const monthsFromFeb = (now.getFullYear() * 12 + now.getMonth()) - (2026 * 12 + 1)
@@ -131,6 +161,23 @@ if (await more.count()) {
 await phone.getByRole('radio', { name: '月' }).check({ force: true })
 check(await phone.locator('.dividend-calendar-card__month').isVisible(), '切到月格')
 check(await agenda.isHidden(), '月格時不畫一週')
+// 手機點一天：從下面升上來的面板，全寬貼底。用手機的 context：桌機的 Chromium 捲軸佔 15px，鎖捲動時面板會窄 15px，手機的捲軸不佔寬
+{
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true })
+  const mobile = await context.newPage()
+  await mobile.goto(BASE, { waitUntil: 'networkidle' })
+  await mobile.getByRole('radio', { name: '月' }).check({ force: true })
+  const cell = mobile.locator('.dividend-calendar-card__cell--events').first()
+  if (await cell.count()) {
+    await cell.click()
+    const sheet = mobile.locator('.el-dialog:visible')
+    await sheet.waitFor()
+    await mobile.waitForTimeout(400)
+    const box = await sheet.boundingBox()
+    check(box && Math.round(box.width) === 375 && Math.abs(box.y + box.height - 812) <= 1, '手機的彈窗全寬貼底', box && `${Math.round(box.width)}×${Math.round(box.height)} @${Math.round(box.y)}`)
+  } else check(false, '手機月格有可以點的一天')
+  await context.close()
+}
 
 await browser.close()
 console.log(failures.length ? `\nFAILED (${failures.length}): ${failures.join('; ')}` : '\nALL PASS')

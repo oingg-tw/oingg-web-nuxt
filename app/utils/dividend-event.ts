@@ -26,8 +26,8 @@ export function dividendPeriodLabel(fiscalYear: number, start: string | null, en
   return `${start}～${end}`
 }
 
-// 董事會決議的股利怎麼寫（2026-11-24，配息月曆）：金額、股利期間、股東會、已知的除權息日，同一天就寫「除權息日」。不寫「還沒除息」：
-// 決議裡的除權息日是數據中台對分派公告接出來的，興櫃與少數上市櫃公司除過息也接不到（2025 年 1,785 筆有 109 筆看起來沒除息）
+// 董事會決議的股利（2026-11-24，配息月曆）：金額、股利期間、股東會、已知的除權息日。不寫「還沒除息」：決議裡的除權息日是數據中台對
+// 分派公告接出來的，興櫃與少數上市櫃公司除過息也接不到（2025 年 1,785 筆有 109 筆看起來沒除息），沒有就是「－」
 export interface DividendResolutionText {
   fiscalYear: number
   dividendPeriodStartDate: string | null
@@ -40,15 +40,37 @@ export interface DividendResolutionText {
 }
 export const resolutionAmounts = (item: DividendResolutionText): string[] =>
   [item.cashDividend ? `現金股利 ${item.cashDividend} 元` : '', item.stockDividend ? `股票股利 ${item.stockDividend} 元` : ''].filter(Boolean)
-export function resolutionMeta(item: DividendResolutionText): string[] {
+
+// 一天的彈窗（2026-11-24 使用者選的方案 B：除權息、董事會決議各一張表，組裡再分）用的格子。
+// 每股金額最多 4 位小數（上游浮點數帶雜訊，2330 是 7.00000137；配股率傳 6，同持股的配息），0 跟沒有值都是「－」：
+// 除權列的現金是 0（3706 神達的現增），寫 0 像是配了 0 元
+export const perShareText = (value: number | null | undefined, digits = 4): string => (value ? String(Number(value.toFixed(digits))) : '－')
+// 日期：跟那一天同一年寫「12/1」，跨年寫「2027/1/20」，沒有是「－」
+export const dayInYear = (day: string | null | undefined, year: string): string => (!day ? '－' : day.startsWith(year) ? monthDay(day) : `${day.slice(0, 4)}/${monthDay(day)}`)
+// 除權息的發放日：現金的發放日，只配股的寫配股發放日；兩個不同天，配股那一行標明
+export function payLines(event: { paymentDate: string | null; stockDividendDistributionDate?: string | null }, year: string): string[] {
+  const { paymentDate: cash, stockDividendDistributionDate: stock = null } = event
+  return cash && stock && cash !== stock ? [dayInYear(cash, year), `配股 ${dayInYear(stock, year)}`] : [dayInYear(cash ?? stock, year)]
+}
+// 決議的除權息日：同一天或只有一個寫一個日期，兩個不同天各一行
+export function resolutionExLines(item: Pick<DividendResolutionText, 'exDividendDate' | 'exRightsDate'>, year: string): string[] {
   const { exDividendDate: cash, exRightsDate: stock } = item
-  const exDays = cash && cash === stock ? [`除權息日 ${cash}`] : [cash ? `除息日 ${cash}` : '', stock ? `除權日 ${stock}` : '']
-  return [
-    ...resolutionAmounts(item),
-    dividendPeriodLabel(item.fiscalYear, item.dividendPeriodStartDate, item.dividendPeriodEndDate),
-    item.shareholderMeetingDate ? `股東會 ${item.shareholderMeetingDate}` : '',
-    ...exDays
-  ].filter(Boolean)
+  return cash && stock && cash !== stock ? [`息 ${dayInYear(cash, year)}`, `權 ${dayInYear(stock, year)}`] : [dayInYear(cash ?? stock, year)]
+}
+const bySymbol = (a: { symbol: string }, b: { symbol: string }) => a.symbol.localeCompare(b.symbol)
+// 除權息照類型分組，順序同月曆的篩選（除息、除權、除權息），組裡照代號
+export function exTypeGroups<T extends { exType: string; symbol: string }>(events: T[]): { exType: string; rows: T[] }[] {
+  return ['息', '權', '權息'].map(exType => ({ exType, rows: events.filter(event => event.exType === exType).sort(bySymbol) })).filter(group => group.rows.length)
+}
+// 董事會決議照股利期間分組：期間結束晚的在前，同一天結束的長的在前（年度、下半年、第 4 季），組裡照代號
+export function resolutionGroups<T extends DividendResolutionText & { symbol: string }>(items: T[]): { label: string; rows: T[] }[] {
+  const groups = new Map<string, { label: string; start: string; end: string; rows: T[] }>()
+  for (const item of items) {
+    const label = dividendPeriodLabel(item.fiscalYear, item.dividendPeriodStartDate, item.dividendPeriodEndDate)
+    if (!groups.has(label)) groups.set(label, { label, start: item.dividendPeriodStartDate ?? `${item.fiscalYear}-01-01`, end: item.dividendPeriodEndDate ?? `${item.fiscalYear}-12-31`, rows: [] })
+    groups.get(label)!.rows.push(item)
+  }
+  return [...groups.values()].sort((a, b) => b.end.localeCompare(a.end) || a.start.localeCompare(b.start)).map(group => ({ label: group.label, rows: group.rows.sort(bySymbol) }))
 }
 
 export const addDays = (day: string, n: number): string => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)

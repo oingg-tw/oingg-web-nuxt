@@ -145,71 +145,8 @@ const formId = useId()
 </template>
 
 <style>
-/* Unscoped: el-dialog teleports to <body>. Mobile first — the base is a bottom sheet. */
-.condition-panel-overlay .el-overlay-dialog {
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 0;
-}
-
-.el-dialog.condition-panel {
-  display: flex;
-  flex-direction: column;
-  width: 100% !important;
-  max-width: none;
-  max-height: 92dvh;
-  margin: 0;
-  /* 手機底部的安全區留在面板最下緣（設定範圍那一步最下面是按鈕列，不是內容區）；鍵盤打開時按鈕列在鍵盤上方，內容區變矮 */
-  padding-bottom: calc(var(--el-dialog-padding-primary, 16px) + var(--app-bottom-inset));
-  border-radius: 16px 16px 0 0;
-}
-
-/* 內距只留焦點框的位置：面板本身已有 16px，內容區再給 16px 就是兩層（2026-10-23，手機上內容被縮成兩邊各 32px）。那 4px 用負的
-   margin 退回去：內容跟標題、下面的按鈕對齊在 16px（原本內縮到 20px，2026-11-08 使用者：「篩選 UI 組合的間距跑掉了」），捲動框裡照樣
-   留得下焦點框 */
-.el-dialog.condition-panel .el-dialog__body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px;
-  margin: -4px;
-}
-
-.el-dialog.condition-panel .el-dialog__headerbtn {
-  width: 44px;
-  height: 44px;
-}
-
-.condition-panel__footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.condition-panel__footer .el-button {
-  min-height: 44px;
-  margin: 0;
-}
-
+/* Unscoped: el-dialog teleports to <body>. 面板本身（貼底／置中）的樣式在 main.css 的 .condition-panel（2026-11-24 搬過去） */
 @media (min-width: 768px) {
-  .condition-panel-overlay .el-overlay-dialog {
-    align-items: center;
-  }
-
-  .el-dialog.condition-panel {
-    width: min(960px, 92vw) !important;
-    max-height: 86vh;
-    margin: auto;
-    border-radius: var(--el-dialog-border-radius, 8px);
-  }
-
-  /* 設定範圍那一步不用那麼寬（2026-10-22，使用者：「設定範圍 這個彈窗 太寬了 請讓他寬度適中」）：兩個輸入框或三欄勾選就夠，
-     挑指標那一步照舊 960px。欄位清單、管理、新增篩選、新增欄位組合也用這個寬度 */
-  .el-dialog.condition-panel.condition-panel--narrow {
-    width: min(600px, 92vw) !important;
-  }
-
   /* 選指標本體在大面板裡拿掉 720px 上限、每欄拉高（同 SharedMetricColumnPicker 的桌機大小） */
   .el-dialog.condition-panel .indicator-dialog {
     max-width: none;
