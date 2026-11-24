@@ -13,9 +13,8 @@ interface PublicWatchlistShare {
   kind: 'watchlist'
   name: string
   columns: ShareColumn[]
-  // watchlistItems：業務中台詞彙統一改的名（2026-11-24 讀者先行），舊名 items 業務中台看到網站換讀後拿掉
-  watchlistItems?: { symbol: string; note?: string | null }[]
-  items?: { symbol: string; note?: string | null }[]
+  // watchlistItems：業務中台詞彙統一改的名（2026-11-24；舊名 items 同日 13:37 拿掉）
+  watchlistItems: { symbol: string; note?: string | null }[]
 }
 interface PublicHoldingsShare {
   kind: 'holdings'
@@ -48,7 +47,7 @@ const hasHydrated = useHasHydrated()
 const sharedColumns = computed(() => (watchlist.value?.columns ?? []).filter(column => column.key !== 'note').map(column => ({ field: replacedField(column.key), label: column.label })))
 const fixedColumns = computed(() => sharedColumns.value.filter(({ field }) => WATCHLIST_FIXED_COLUMNS.some(column => column.field === field)))
 const columnsOfKind = (kind: WatchlistKind) => sharedColumns.value.flatMap(({ field }) => (belongsTo(kind, field) ? [columnOf(kind, field)] : []))
-const sharedItems = computed(() => watchlist.value?.watchlistItems ?? watchlist.value?.items ?? [])
+const sharedItems = computed(() => watchlist.value?.watchlistItems ?? [])
 const notes = computed(() => Object.fromEntries(sharedItems.value.flatMap(item => (item.note ? [[item.symbol, item.note]] : []))))
 const codes = computed(() => sharedItems.value.map(item => item.symbol))
 await useFilterSchema()

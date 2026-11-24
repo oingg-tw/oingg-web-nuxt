@@ -159,7 +159,7 @@ export function useAppTheme() {
         // A field can come back null/undefined if the account never set it (e.g.
         // marketColorConvention before this control existed) — never let that stomp the
         // local default with an invalid value.
-        // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊
+        // 列舉值：業務中台 2026-11-24 起輸出小寫（詞彙統一），網站裡一律用大寫（佈景的 cookie、比對都是大寫），在這裡換；送出照舊大寫，上游兩種都收
         if (remote.mode) mode.value = remote.mode.toUpperCase() as ThemeMode
         if (remote.accentColor) color.value = remote.accentColor.toUpperCase() as ThemeColor
         if (remote.marketColorConvention) market.value = remote.marketColorConvention.toUpperCase() as MarketConvention

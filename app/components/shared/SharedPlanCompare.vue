@@ -10,7 +10,7 @@ const TIERS = ['FREE', 'PRO'] as const
 const plans = useState<PlanQuotas[] | null | undefined>('billing-plans', () => undefined)
 onMounted(async () => {
   if (plans.value) return
-  // 列舉值改小寫（業務中台詞彙統一，使用者同意在正式上線前做完；2026-11-24 讀者先行）：大小寫都認，網站裡照舊用大寫，送出也照舊
+  // 列舉值：業務中台 2026-11-24 起輸出小寫（詞彙統一），網站裡一律用大寫（佈景的 cookie、比對都是大寫），在這裡換；送出照舊大寫，上游兩種都收
   plans.value = await apiFetch<{ plans: PlanQuotas[] }>('/billing/plans').then(response => response.plans.map(plan => ({ ...plan, tier: plan.tier.toUpperCase() as PlanQuotas['tier'] }))).catch(() => null)
 })
 const limitOf = (tier: PlanQuotas['tier'], row: (typeof QUOTA_ROWS)[number]) =>

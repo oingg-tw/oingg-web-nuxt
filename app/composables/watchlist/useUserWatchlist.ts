@@ -123,12 +123,12 @@ export function useUserWatchlist() {
   async function createWatchlistWithItems(name: string, symbols: string[], sourceShareToken: string): Promise<CreateWithItemsResult> {
     if (!currentUser.value) return { ok: false, reason: 'failed' }
     try {
-      // watchlistItems：業務中台詞彙統一改的名（使用者同意，2026-11-24 讀者先行），舊名 items 業務中台看到網站換讀後拿掉
-      const response = await authedFetch<{ watchlist: Watchlist; watchlistItems?: UserWatchlistItem[]; items?: UserWatchlistItem[]; skipped: string[]; created: boolean }>('/watchlists', {
+      // watchlistItems：業務中台詞彙統一改的名（2026-11-24；舊名 items 同日 13:37 拿掉）
+      const response = await authedFetch<{ watchlist: Watchlist; watchlistItems: UserWatchlistItem[]; skipped: string[]; created: boolean }>('/watchlists', {
         method: 'POST',
         body: { name, symbols, sourceShareToken }
       })
-      return { ok: true, watchlist: toWatchlist(response.watchlist), items: response.watchlistItems ?? response.items ?? [], skipped: response.skipped ?? [], created: response.created }
+      return { ok: true, watchlist: toWatchlist(response.watchlist), items: response.watchlistItems ?? [], skipped: response.skipped ?? [], created: response.created }
     } catch (error) {
       if (businessErrorStatus(error) === 409) return { ok: false, reason: 'duplicate' }
       if (businessErrorCode(error) === 'quota_exceeded') {
