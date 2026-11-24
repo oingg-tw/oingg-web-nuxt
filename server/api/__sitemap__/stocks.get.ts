@@ -39,7 +39,9 @@
 // /receivables-aging（應收帳款帳齡）joined 2026-11-22: 2,161 companies file the note; 金融保險業 has none and is noindex.
 // /guarantees（背書保證與資金貸與）and /investments（轉投資）joined 2026-11-23: every company with a quarterly report has the notes' period;
 // one whose notes list nothing is noindex on its page, and /guarantees is noindex for 金融保險業.
-const INDEXABLE_SUFFIXES = ['', '/profile', '/holders', '/announcements', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/receivables-aging', '/guarantees', '/investments', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/non-operating-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+// /margin-trading（信用交易）joined 2026-11-24: most listed companies are on the margin list; one with no record (興櫃, or taken off the list) is noindex.
+// /institutional-trades（三大法人）is not listed: only 上櫃 has a source, and every 上市 page is noindex.
+const INDEXABLE_SUFFIXES = ['', '/profile', '/holders', '/announcements', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/receivables-aging', '/guarantees', '/investments', '/margin-trading', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/non-operating-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
 // catalog `description` is null (StockMetricDetailPage.vue's own `noindex` computed), and listing

@@ -97,6 +97,15 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '重大訊息', to: code => `/stock/${code}/announcements`, hook: '公司自己發布的重大公告，點開看全文' }
     ]
   },
+  // 交易（2026-11-24，使用者 11-23 選的信用交易與三大法人買賣超）：看的是誰在買賣這檔股票，不是公司自己的數字，所以自成一組、排在公司後面
+  {
+    label: '交易',
+    answer: '融資融券用了多少、法人每天買賣多少：看的是誰在買賣這檔股票，不是公司自己的數字。',
+    children: [
+      { label: '信用交易', to: code => `/stock/${code}/margin-trading`, hook: '融資、融券餘額與使用率、券資比，借券賣出餘額' },
+      { label: '三大法人', to: code => `/stock/${code}/institutional-trades`, hook: '外資、投信、自營商每天買賣超多少（上櫃公司）' }
+    ]
+  },
   // 分子是**股價**不是財報科目，所以自成一組（它們共用型錄的 EOD-only 資料牆，見 METRIC_PAGES 為何指向 peRatio／pbRatio）。
   // 葛拉漢倍數與 PEG 2026-09-21 移出導覽（「更忠於財報，避免複合運算、徽章性質遠勝於指標性質的」）：PER×PBR 比 22.5、PER÷成長率
   // 比 1 都是「比率的比率、為了跟一條規則比而存在」；PER／PBR／PSR 是股價÷一個申報數字，離報表一步，留下。那兩頁連同 /f-score
