@@ -181,8 +181,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <MacroReferencePage v-if="!page.overlay" :page="page" :data="data" />
-  <div v-else class="app-page app-page--compact macro-page">
+  <MacroReferencePage v-if="!page.overlay && data" :page="page" :data="data" />
+  <div v-else-if="page.overlay" class="app-page app-page--compact macro-page">
     <h1 class="app-page__title macro-page__title">台股{{ page.topic }}與大盤對照</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
