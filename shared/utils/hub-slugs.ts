@@ -366,11 +366,10 @@ export function securityPath(code: string): string {
 // /screener/common/{slug} 條件說明頁（2026-10-15 前是 /screener/{slug}） — keyed by the template's NAME because GET /screener/templates ids
 // are seeded UUIDs (not URL material). A template whose name isn't listed here has no page.
 export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
-  價值型: 'value',
-  低波動: 'low-volatility',
   // 鍵是範本的名稱，上游改名會靜默少一個連結（股利穩健→股利連續性 2026-09-20、財務韌性→安全韌性 2026-09-21 都是
   // check-hub-pages 抓到 /screener 少一個範本連結才發現的）；slug 刻意不跟著改——那是已上線、在 sitemap 裡的網址，頁面主題沒變。
-  股利連續性: 'dividend-stability',
+  // 價值型、低波動、股利連續性 2026-11-24 拿掉（使用者：「上次景氣循環沒賺錢的篩選策略preset請幫我拿掉」，數據中台第三輪回測對母體等權
+  // 的年化超額 +0.9%、−0.2%、−0.1%，都不顯著）：說明頁的網址在 nuxt.config 的 routeRules 301 到 /screener/common
   // 2026-11-24 新範本（使用者在業務中台「採用新範本組，並開放分數型指標給新範本用」，照數據中台回測第三輪；名稱與 slug 業務中台給，「＋」是全形）。
   // 先放進來：範本上架前這幾個網址是 404，上架後頁面與 sitemap 自己出現。第一批 11-25 晚上，第二批約 11-27 後、看定版結果
   成長突破: 'growth-breakout',

@@ -12,7 +12,7 @@ import type { ScreenerTab, TabFilterSlot } from '~/composables/screener/screener
 //
 // 驗證覆蓋也不完整，實話說清楚：
 //   - **有覆蓋**：`buildLocalTab` / `addLocalTab` / `registerTab` ——
-//     /screener/common?template=value 的訪客頁籤走的就是這條路，check-screener-operations.mjs 與
+//     /screener/common?template=low-pb-financial-strength 的訪客頁籤走的就是這條路，check-screener-operations.mjs 與
 //     check-screener-consistency.mjs 會驗它長出結果列。
 //   - **沒覆蓋**：`addTab` / `addTemplateTab` / `addDefaultTab` / `saveTab` / `copyTab` / `reorderTabs` / `removeTab` ——
 //     每一個建立路徑都在登入閘門後面（openLogin()），而那需要一個登入的 session。

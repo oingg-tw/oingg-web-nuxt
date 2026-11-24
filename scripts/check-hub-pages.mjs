@@ -62,7 +62,7 @@ const ROUTES = [
   // The app page: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what is on the page）。
   // 篩選區首頁 /screener 2026-10-16 拿掉（301 到這一頁）。標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
   { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
-  { path: '/screener/common/value', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
+  { path: '/screener/common/low-pb-financial-strength', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   // 產業索引 2026-11-09 先隱藏（使用者：「把產業殖利率當作產業索引預設畫面，URL不變化」）：/industries 畫的是殖利率分析，要求同下一列
   { path: '/industries', canonicalPath: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0
@@ -248,7 +248,7 @@ const browser = await chromium.launch()
 // 選擇器（.el-table__body .el-table__row）數得到 20 列，所以失敗從來不是頁面的問題。
 //
 // 這不是把斷言放寬——逾時仍然是 FAIL、仍然印出等了多久。改的只是執行順序。
-// Deep link from a condition page: a guest landing on /screener/common?template=value gets that
+// Deep link from a condition page: a guest landing on /screener/common?template=low-pb-financial-strength gets that
 // template's tab（no onboarding dialog）, real result rows, the unsaved screen's 存成我的篩選, and a URL that then
 // carries the screen itself (?f=…) instead of ?template.
 {
@@ -257,7 +257,7 @@ const browser = await chromium.launch()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(String(error).slice(0, 160)))
   const screenerCalls = watchScreenerCalls(page)
-  await page.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'load', timeout: 180000 })
+  await page.goto(`${baseUrl}/screener/common?template=low-pb-financial-strength`, { waitUntil: 'load', timeout: 180000 })
   // 訪客那一組是「未儲存」的（2026-10-15 起取代訪客橫幅）：選單旁出現「存成我的篩選」
   await page.getByRole('button', { name: '存成我的篩選' }).waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
   // Was a flat 8s until 2026-09-22, when this check started failing intermittently on「result
@@ -315,7 +315,7 @@ const browser = await chromium.launch()
   let rowWaitRetried = false
   if (!await waitForFirstRow()) {
     rowWaitRetried = true
-    await page.goto(`${baseUrl}/screener/common?template=value`, { waitUntil: 'load', timeout: 180000 })
+    await page.goto(`${baseUrl}/screener/common?template=low-pb-financial-strength`, { waitUntil: 'load', timeout: 180000 })
     rowWaitTimedOut = !await waitForFirstRow()
   }
   const rowWaitMs = Date.now() - rowWaitStart
@@ -326,12 +326,12 @@ const browser = await chromium.launch()
     rows: document.querySelectorAll('.el-table__body .el-table__row').length,
     search: location.search
   }))
-  expect('/screener/common?template=value', 'guest tab from template', state.unsaved && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
-  expect('/screener/common?template=value', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
+  expect('/screener/common?template=low-pb-financial-strength', 'guest tab from template', state.unsaved && !state.dialogOpen, `${JSON.stringify(state)} ${screenerCallText(screenerCalls)}`)
+  expect('/screener/common?template=low-pb-financial-strength', 'result rows', state.rows > 0, rowWaitTimedOut ? `${state.rows}；重載一次後等第一列共 ${rowWaitMs}ms 仍逾時，${screenerCallText(screenerCalls)}` : `${state.rows}（第一列 ${rowWaitMs}ms${rowWaitRetried ? '，重載過一次' : ''}）`)
   // 2026-10-22 起網址帶著篩選本身（?f=…&c=…，書籤與分享用）：?template 用過就換成那組範本的條件
-  expect('/screener/common?template=value', 'template param replaced by the screen (?f=)', !state.search.includes('template=') && state.search.includes('f='), state.search)
-  expect('/screener/common?template=value', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
-  console.log(`/screener/common?template=value: ${failures.some(failure => failure.startsWith('/screener/common?template=value ')) ? 'FAIL' : 'ok'}`)
+  expect('/screener/common?template=low-pb-financial-strength', 'template param replaced by the screen (?f=)', !state.search.includes('template=') && state.search.includes('f='), state.search)
+  expect('/screener/common?template=low-pb-financial-strength', 'no page errors', pageErrors.length === 0, pageErrors.join(' | '))
+  console.log(`/screener/common?template=low-pb-financial-strength: ${failures.some(failure => failure.startsWith('/screener/common?template=low-pb-financial-strength ')) ? 'FAIL' : 'ok'}`)
   await context.close()
 }
 // Guest strategy picker (2026-09-19, replacing the old onboarding dialog — interface-complexity
@@ -354,9 +354,11 @@ const browser = await chromium.launch()
   const noDialogOnLoad = await page.evaluate(() => document.querySelector('.el-dialog[aria-modal="true"]') === null)
   expect('/screener/common (guest picker)', 'no dialog on load', noDialogOnLoad)
   const tileCount = await page.locator('.guest-picker__tile').count()
-  // 用分數篩的四個範本 2026-11-10 拿掉，剩價值型、低波動、股利連續性
-  expect('/screener/common (guest picker)', 'tiles ≥ 3', tileCount >= 3, `${tileCount}`)
-  await page.locator('.guest-picker__tile').first().click()
+  // 價值型、低波動、股利連續性 2026-11-24 拿掉，剩成長突破、低淨值比＋財務體質（現金股利類的預設與營收類第二批之後再加）
+  expect('/screener/common (guest picker)', 'tiles ≥ 2', tileCount >= 2, `${tileCount}`)
+  // 點低淨值比＋財務體質那一塊（目前約 70 檔）：成長突破條件嚴格，有些月份一檔都沒有，結果會是空的
+  const pickerTile = page.locator('.guest-picker__tile', { hasText: '低淨值比' })
+  await pickerTile.click()
   await page.locator('.guest-picker__confirm').click()
   await page.getByRole('button', { name: '存成我的篩選' }).waitFor({ state: 'visible', timeout: 60000 })
   // 2026-10-01：原本是固定等 8 秒再數列數——而那正是上面那個子測試 2026-09-22 就放棄的做法，
@@ -370,11 +372,11 @@ const browser = await chromium.launch()
   let pickerTimedOut = false
   if (!await pickerWait()) {
     pickerRetried = true
-    // 重載會回到還沒選策略的狀態，所以要重走一次「選第一塊 → 確認」。
+    // 重載會回到還沒選策略的狀態，所以要重走一次「選那一塊 → 確認」。
     await page.reload({ waitUntil: 'load', timeout: 180000 })
-    await page.locator('.guest-picker__tile').first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
+    await pickerTile.waitFor({ state: 'visible', timeout: 60000 }).catch(() => {})
     await hydrated().catch(() => {})
-    await page.locator('.guest-picker__tile').first().click().catch(() => {})
+    await pickerTile.click().catch(() => {})
     await page.locator('.guest-picker__confirm').click().catch(() => {})
     pickerTimedOut = !await pickerWait()
   }

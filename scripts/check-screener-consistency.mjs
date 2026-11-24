@@ -2,7 +2,7 @@
 // 一致性主要靠架構（三頁都只是 ScreenerPageShell 加一個資料來源），這一支是架構的安全網：同一組斷言跑三頁，任何一頁少一樣就失敗。
 //
 // 用 `node scripts/check-screener-consistency.mjs` 對著跑起來的 `pnpm run dev`（SCREENER_CHECK_URL 可覆寫）。
-// 全程以訪客身分跑：普通股的訪客要先選範本（使用者決定的進入方式），所以從 ?template=value 進；特別股與 ETF 一進來就列出全部。
+// 全程以訪客身分跑：普通股的訪客要先選範本（使用者決定的進入方式），所以從 ?template=low-pb-financial-strength 進；特別股與 ETF 一進來就列出全部。
 //
 // 每一頁斷言：
 //   1. 控制項：「我的篩選」「顯示欄位」兩組選單（各有下拉、＋新增、管理）、新增條件、篩選結果標題、念出檔數的 live region
@@ -22,7 +22,7 @@ const only = process.env.SCREENER_CHECK_ONLY?.split(',')
 // wide：欄位多到超出 1440 寬的網址（2026-10-22 表頭折行之後欄位窄了，預設欄位放得下，右緣淡出與橫向捲軸要另外開一頁測）。
 // 普通股的從型錄挑（見 wideQuery），特別股、ETF 用各自範本裡實際有的欄位
 const PAGES = [
-  { name: '普通股', universe: 'common', path: '/screener/common?template=value', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
+  { name: '普通股', universe: 'common', path: '/screener/common?template=low-pb-financial-strength', search: '股東權益報酬率', column: '負債比率', sortColumn: '殖利率' },
   { name: '特別股', universe: 'preferred', path: '/screener/preferred', search: '殖利率', column: '發行價', sortColumn: '殖利率', wide: 'c=latestClosePrice,issuePrice,premiumRatePct,nominalDividendRatePct,currentYieldPct,ytwPct,exDividendMonths,cumulativeDividend,participatingExcessDividend,liquidationPreference,votingRights,convertible,redeemable,marketType,issueDate' },
   // ETF 的預設順序就是規模由大到小（2026-10-31），排序改測淨值，第一列才會換
   { name: 'ETF', universe: 'etf', path: '/screener/etf', search: '規模', column: '受益人數', sortColumn: '淨值', wide: 'c=aum,return1y,expenseRatio,nav,market,fundType,return3m,return6m,returnYtd,return3y,return5y,holders,netFlow,marketShareRate,riskLevel,premiumDiscountPct,trailing12MonthDistributionYieldPct,close' }

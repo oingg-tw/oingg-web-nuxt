@@ -13,7 +13,7 @@ import AxeBuilder from '@axe-core/playwright'
 const base = process.env.SETUP_A11Y_URL ?? 'http://localhost:3000'
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 // 數字條件（普通股範本）、類別條件（ETF 市場別）、沒有條件（特別股「全部」）
-const routes = (process.env.ROUTES ?? '/screener/common?template=value|/screener/etf?f=market:sii|/screener/preferred').split('|')
+const routes = (process.env.ROUTES ?? '/screener/common?template=low-pb-financial-strength|/screener/etf?f=market:sii|/screener/preferred').split('|')
 const widths = (process.env.WIDTHS ?? '1440,375,320').split(',').map(Number)
 const modes = (process.env.MODES ?? 'light,dark').split(',')
 

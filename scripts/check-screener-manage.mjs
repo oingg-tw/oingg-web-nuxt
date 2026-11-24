@@ -211,7 +211,7 @@ check(!pageErrors.length, '沒有 page error', pageErrors.join(' | '))
 
 console.log('訪客')
 const guest = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage()
-await guest.goto(`${base}/screener/common?template=value`, { waitUntil: 'networkidle', timeout: 180000 })
+await guest.goto(`${base}/screener/common?template=low-pb-financial-strength`, { waitUntil: 'networkidle', timeout: 180000 })
 await guest.waitForFunction(() => window.useNuxtApp?.().isHydrating === false, null, { timeout: 60000 })
 await guest.getByRole('button', { name: '管理我的篩選' }).click()
 const guestDialog = guest.getByRole('dialog', { name: '管理我的篩選' })
