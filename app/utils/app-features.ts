@@ -133,7 +133,7 @@ export const SITE_MAP: SiteMapGroup[] = [
     label: '我想知道市場上發生什麼',
     links: [
       { label: '注意與處置股票', to: '/market/alerts', description: '交易所列為注意股票、處置股票的有哪些，處置期間與原因' },
-      { label: '最新重大訊息', to: '/market/announcements', description: '上市櫃公司最近發布的重大訊息，點開看公告全文' }
+      { label: '最新重大訊息', to: '/market/announcements', description: '上市櫃與興櫃公司最近發布的重大訊息，點開看公告全文' }
     ]
   },
   {

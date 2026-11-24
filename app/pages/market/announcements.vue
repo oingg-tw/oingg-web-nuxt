@@ -27,7 +27,7 @@ const breadcrumbs = [
   { label: '最新重大訊息', to: '/market/announcements' }
 ]
 useHubPageSeo({
-  title: '台股最新重大訊息：上市櫃公司公告',
+  title: '台股最新重大訊息：上市櫃與興櫃公司公告',
   description: () => clampDescription(`全市場上市、上櫃、興櫃公司最新的 ${count.value} 則重大訊息，依發言時間由新到舊，點開看公告全文。${answer.value}資料取自公開資訊觀測站。`),
   path: '/market/announcements',
   breadcrumbs
@@ -45,7 +45,7 @@ const GUIDE = [
     <StockBreadcrumb :items="breadcrumbs" />
 
     <section class="stock-page-section" aria-labelledby="market-announcements-heading">
-      <h2 id="market-announcements-heading" class="stock-page-section__title">上市櫃公司最近發布了哪些重大訊息？</h2>
+      <h2 id="market-announcements-heading" class="stock-page-section__title">上市櫃與興櫃公司最近發布了哪些重大訊息？</h2>
       <p class="hub-answer">{{ answer }}</p>
       <SharedAnnouncementList v-if="data" :groups="groups" :title="`最新重大訊息・${count} 則`" empty-text="最近沒有重大訊息" />
       <p class="hub-answer hub-sources">
