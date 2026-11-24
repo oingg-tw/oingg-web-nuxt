@@ -53,6 +53,8 @@ interface LogoManifest {
   basePath: string
   webpBasePath: string
   logos: Record<string, ManifestEntry>
+  // ETF 發行投信（2026-11-24 公開觀測站加的）：鍵是 MOPS 投信代號（A＋5 碼），檔名已經帶 issuers/，接同一個 basePath
+  issuerLogos?: Record<string, ManifestEntry>
 }
 
 export interface CompanyLogo {
@@ -165,9 +167,9 @@ function attributionOf(entry: ManifestEntry): { license: string; licensePage: st
 // 每次都從快取的 manifest 現查，不另外按代號再快取一層（2026-10-24 拿掉）：兩層各自「過期先回舊值、背景更新」疊起來，代號那層
 // 到期重算時拿到的常是還沒更新的 manifest，於是舊答案又存一小時——mops 換了圖要兩小時才出現（9911 櫻花換成方形版，DEV 80 分鐘
 // 後還是舊的）。查一筆只是在 manifest 的物件裡找一個鍵
-export async function getCompanyLogo(symbol: string): Promise<CompanyLogo | null> {
+export async function getCompanyLogo(symbol: string, section: 'logos' | 'issuerLogos' = 'logos'): Promise<CompanyLogo | null> {
   const manifest = await getLogoManifest()
-  const entry = manifest?.logos?.[symbol]
+  const entry = manifest?.[section]?.[symbol]
   if (!manifest || !entry?.origin) return null
 
   // Prefer the WebP, except never over an SVG original — a raster copy of vector art is a

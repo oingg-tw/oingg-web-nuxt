@@ -23,9 +23,11 @@ export interface Stock {
   tradingStatuses?: TradingStatuses | null
   // 會計師示警（摘要卡一句，app/utils/audit-opinion.ts）、基本資料頁那一段；同樣只有個股頁帶得到
   auditOpinions?: AuditOpinions | null
+  // ETF 的發行投信（2026-11-24）：摘要卡畫它的 logo，代號是 MOPS 投信代號（A＋5 碼）；只有 ETF 頁帶
+  issuer?: { code: string; name: string } | null
 }
 
-export type StockColumnKey = Exclude<keyof Stock, 'code' | 'name' | 'tradingHalt' | 'delisting' | 'tradingStatuses' | 'auditOpinions'>
+export type StockColumnKey = Exclude<keyof Stock, 'code' | 'name' | 'tradingHalt' | 'delisting' | 'tradingStatuses' | 'auditOpinions' | 'issuer'>
 
 // '－' 是全站缺值的寫法（同特別股表格的 __placeholder），不渲染假的 0.00
 export function formatStockValue(stock: Stock, key: StockColumnKey) {

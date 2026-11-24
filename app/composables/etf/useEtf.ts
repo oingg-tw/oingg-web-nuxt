@@ -20,7 +20,14 @@ export async function useEtf() {
   // 沒有簡稱（原本 ""、之後 null）就用代號
   const shortName = computed(() => etf.value?.companyName || code.value)
   const stock = computed<Stock | null>(() => (etf.value
-    ? { code: etf.value.symbol, name: shortName.value, price: data.value?.quote?.price ?? null, change: data.value?.quote?.change ?? null, changePercent: data.value?.quote?.changePercent ?? null }
+    ? {
+        code: etf.value.symbol,
+        name: shortName.value,
+        price: data.value?.quote?.price ?? null,
+        change: data.value?.quote?.change ?? null,
+        changePercent: data.value?.quote?.changePercent ?? null,
+        issuer: etf.value.issuerCode ? { code: etf.value.issuerCode, name: etf.value.issuerName } : null
+      }
     : null))
 
   await request
