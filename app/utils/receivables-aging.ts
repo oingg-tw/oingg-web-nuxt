@@ -1,11 +1,12 @@
 // 應收帳款帳齡（數據中台 B 批第 7 項，2026-11-22；設計 https://claude.ai/artifact/BffXAybhLkibJSNAcRTDkz 的 7）：財報附註把應收帳款依逾期多久
 // 分段。數據中台把申報的分段歸到五個標準段（group），跨好幾段的（2330「逾期 31 天以上」、2317「90 天內」）group 是 null，照它自己的分段畫。
-// 逾期占比＝逾期 ÷（未逾期＋逾期），個別評估兩邊都不算；發票日（立帳日）起算的公司寫「帳齡 N 天」、不算逾期占比。金額千元。
+// 逾期占比＝逾期 ÷（未逾期＋逾期），個別評估兩邊都不算；發票日（立帳日）起算的公司寫「帳齡 N 天」、不算逾期占比。照 IFRS 9 信用風險階段
+// 揭露的（2026-11-24 數據中台公式第 2 版：2201、9941、6958 的「12 個月預期信用損失」「信用風險已顯著增加」）也沒有逾期占比。金額千元。
 // 被 scripts/check-receivables-aging.mjs 直接 import，所以零 import（金額的格式由呼叫端傳進來）
 export interface AgingBucket {
   // 申報原文（「未 逾 期」「逾期30天內」）
   label: string
-  // not_overdue、overdue、invoice_age、individual、other、unknown
+  // not_overdue、overdue、invoice_age、credit_stage、individual、other、unknown
   kind: string
   fromDays: number | null
   // null＝以上
@@ -18,7 +19,7 @@ export interface AgingBucket {
 export interface AgingPeriod {
   fiscalYear: number
   fiscalQuarter: number | null
-  // overdue、overdue_only、invoice_age、unparsed
+  // overdue、overdue_only、invoice_age、credit_stage、unparsed
   agingBasis: string
   total: number | null
   overdueRatio: number | null
@@ -41,7 +42,7 @@ const GROUPS: Record<string, { name: string; from: number }> = {
   overdue_91_180: { name: '逾期 91～180 天', from: 91 },
   overdue_181_plus: { name: '逾期 181 天以上', from: 181 }
 }
-const KIND_ORDER: Record<string, number> = { not_overdue: 0, overdue: 1, invoice_age: 2, individual: 3, other: 4, unknown: 5 }
+const KIND_ORDER: Record<string, number> = { not_overdue: 0, overdue: 1, invoice_age: 2, credit_stage: 3, individual: 4, other: 5, unknown: 6 }
 
 // 表格照申報的分段列：拿掉原文裡的空白（台積電寫「未 逾 期」）；逾期的沒寫「逾期」、發票日口徑沒寫「帳齡」的補上，免得「90天內」讀不出是什麼
 export function agingRowLabel(bucket: AgingBucket): string {
@@ -55,9 +56,10 @@ export function agingRowLabel(bucket: AgingBucket): string {
 // 圖上的一層：落在標準段的用標準段的名字（同一段的幾列加總），跨段的照申報的分段
 export const agingLayerName = (bucket: AgingBucket) => GROUPS[bucket.group ?? '']?.name ?? agingRowLabel(bucket)
 
-const sortKey = (bucket: AgingBucket): [number, number] => [KIND_ORDER[bucket.kind] ?? 9, GROUPS[bucket.group ?? '']?.from ?? bucket.fromDays ?? -1]
+// 沒有天數的（只寫「逾期90天」，分不出以內還是以上；信用風險階段）排在同類的最後，同類之間照申報的順序
+const sortKey = (bucket: AgingBucket): [number, number] => [KIND_ORDER[bucket.kind] ?? 9, GROUPS[bucket.group ?? '']?.from ?? bucket.fromDays ?? Infinity]
 
-// 圖上各層的順序：未逾期、逾期（由短到長）、帳齡、個別評估、其他；順序固定，顏色跟著層走。kinds 只取那幾類（逾期圖只要 overdue）
+// 圖上各層的順序：未逾期、逾期（由短到長）、帳齡、信用風險階段、個別評估、其他；順序固定，顏色跟著層走。kinds 只取那幾類（逾期圖只要 overdue）
 export function agingLayerNames(periods: AgingPeriod[], kinds?: string[]): string[] {
   const keys = new Map<string, [number, number]>()
   for (const bucket of periods.flatMap(period => period.buckets).filter(bucket => !kinds || kinds.includes(bucket.kind))) {
@@ -80,8 +82,9 @@ export function agingShares(period: AgingPeriod): Record<string, number> {
 }
 
 // 圖只畫逾期的部分（2026-11-22，使用者選「只畫逾期部分」：九成以上是未逾期，100% 長條上逾期只剩一條細線）：各段占未逾期加逾期的 %，
-// 加起來就是逾期占比（個別評估兩邊都不算，同數據中台的算法）。整段期間都沒有逾期的列（發票日口徑）才畫 100% 的帳齡分布
-export const hasOverdueBuckets = (periods: AgingPeriod[]) => periods.some(period => period.buckets.some(bucket => bucket.kind === 'overdue'))
+// 加起來就是逾期占比（個別評估兩邊都不算，同數據中台的算法）。整段期間都沒有逾期占比（發票日、信用風險階段口徑）才畫 100% 的分布。
+// 看的是有沒有逾期占比、不是有沒有逾期的列（2026-11-24）：只列逾期、沒有未逾期的那幾季（overdue_only）照列算會畫成逾期 100%
+export const hasOverdueRatio = (periods: AgingPeriod[]) => periods.some(period => period.overdueRatio !== null)
 
 export function agingOverdueShares(period: AgingPeriod): Record<string, number> {
   const base = period.buckets.filter(bucket => bucket.kind === 'not_overdue' || bucket.kind === 'overdue').reduce((sum, bucket) => sum + (bucket.amount ?? 0), 0)

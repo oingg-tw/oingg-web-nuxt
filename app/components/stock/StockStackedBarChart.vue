@@ -19,8 +19,8 @@
 export interface StackedBarLayer {
   name: string
   // 已經換算成顯示單位的值，一個類別一個。負值會疊到零軸下面，這是刻意的（其他權益的匯率換算差額、
-  // 現金股利都是真的負數）。
-  values: number[]
+  // 現金股利都是真的負數）。null 是這一期沒有值：留白、提示框不列這一層（原因由 tooltipNote 寫）
+  values: (number | null)[]
 }
 
 const props = defineProps<{
@@ -70,7 +70,7 @@ const layerColors = computed(() => {
 })
 
 const totals = computed(() => props.categories.map((_, index) => drawn.value.reduce((sum, layer) => sum + (layer.values[index] ?? 0), 0)))
-const showTotal = computed(() => drawn.value.some(layer => layer.values.some(value => value < 0)))
+const showTotal = computed(() => drawn.value.some(layer => layer.values.some(value => (value ?? 0) < 0)))
 const totalColor = computed(() => getChartInk(resolvedMode.value).primary)
 
 // 日期類別（ETF 配息組成、持有人結構）寫短（2026-11-02 手機掃描：六根柱子只標得出兩個日期）：同一年只寫「月/日」，跨年時年份換行
@@ -101,6 +101,7 @@ const chartOption = computed(() => {
       formatter: (params: { dataIndex?: number }[]) => {
         const index = params[0]?.dataIndex ?? 0
         const rows = layers
+          .filter(layer => layer.values[index] !== null)
           // 千分位與有效位數（2026-10-12「不要出現 2446 而是要 2,446」「有效數字位元太少」）
           .map(layer => `<div>${layer.name}　${formatValue(layer.values[index] ?? 0)}</div>`)
           .join('')

@@ -56,6 +56,9 @@ const flow = foldSmallLayers([
   { name: '償還債務', values: [-39] }
 ], { 資本支出: '其他投資活動', 償還債務: '其他籌資活動' })
 assert.deepEqual(flow.map(layer => [layer.name, layer.values[0]]), [['營業活動', 100], ['其他投資活動（含資本支出）', -61], ['償還債務', -39]])
+// 沒有值的期別（null，應收帳款帳齡沒有逾期占比的那幾季）留著 null、大小照 0 判斷；全是 null 的層不畫
+const gaps = foldSmallLayers([{ name: '存貨', values: [null, 99] }, { name: '流動金融資產', values: [null, 1] }, { name: '其他流動資產', values: [null, 0] }, { name: '合約資產', values: [null, null] }], ASSET_OTHERS)
+assert.deepEqual(gaps.map(layer => [layer.name, layer.values]), [['存貨', [null, 99]], ['其他流動資產（含流動金融資產）', [null, 1]]])
 // 全是 0 的層不畫；指定的「其他」不在圖上就照畫
 assert.deepEqual(foldSmallLayers([{ name: '存貨', values: [99, 99] }, { name: '流動金融資產', values: [1, 1] }, { name: '合約資產', values: [0, 0] }], ASSET_OTHERS).map(layer => layer.name), ['存貨', '流動金融資產'])
 

@@ -42,7 +42,8 @@ export const SMALL_LAYER_SHARE = 0.02
 
 export interface StackLayer {
   name: string
-  values: number[]
+  // null：這一期沒有值（應收帳款帳齡沒有逾期占比的那幾季，2026-11-24），圖上留白、提示框不列；大小照 0 判斷
+  values: (number | null)[]
 }
 
 // 每一期都不到同方向合計（那一期正的層加總，或負的層加總）SMALL_LAYER_SHARE 的層，併進 others 指定的那一層；全是 0 的層不畫。
@@ -52,8 +53,8 @@ export function foldSmallLayers(layers: StackLayer[], others: Record<string, str
     const value = layer.values[index] ?? 0
     return Math.sign(value) === sign ? sum + Math.abs(value) : sum
   }, 0)
-  const small = (layer: StackLayer) => layer.values.some(value => value !== 0)
-    && layer.values.every((value, index) => value === 0 || Math.abs(value) < SMALL_LAYER_SHARE * side(index, Math.sign(value)))
+  const small = (layer: StackLayer) => layer.values.some(value => !!value)
+    && layer.values.every((value, index) => !value || Math.abs(value) < SMALL_LAYER_SHARE * side(index, Math.sign(value)))
   const names = new Set(layers.map(layer => layer.name))
   const folded = new Map<string, StackLayer[]>()
   for (const layer of layers) {
@@ -69,8 +70,8 @@ export function foldSmallLayers(layers: StackLayer[], others: Record<string, str
       if (!sources) return layer
       return {
         name: `${layer.name}（含${sources.map(source => source.name).join('、')}）`,
-        values: layer.values.map((value, index) => sources.reduce((sum, source) => sum + (source.values[index] ?? 0), value))
+        values: layer.values.map((value, index) => sources.reduce<number | null>((sum, source) => (source.values[index] == null ? sum : (sum ?? 0) + source.values[index]!), value))
       }
     })
-    .filter(layer => layer.values.some(value => value !== 0))
+    .filter(layer => layer.values.some(value => !!value))
 }

@@ -32,10 +32,12 @@ export const NULL_REASON_LABELS: Record<string, string> = {
   // unsupported_format 照舊「無法計算」。兩句也是那一期底下的說明（periodNotesText），手機沒有滑鼠移上去的 title
   no_filing: '沒有申報 XBRL 財報，所以沒有數字',
   unsupported_format: '財報格式還讀不到，所以算不出來',
-  // 逾期占比算不出來的三種（數據中台 B 批第 7 項，2026-11-22；應收帳款帳齡頁與篩選的 receivablesOverdueRatio）
+  // 逾期占比算不出來的原因（數據中台 B 批第 7 項，2026-11-22；應收帳款帳齡頁與篩選的 receivablesOverdueRatio）
   invoice_age_basis: '這家公司照發票日（立帳日）算帳齡，不分有沒有逾期',
   unparsed_rows: '帳齡附註裡有讀不懂的分段，例如只寫「逾期 365 天」，分不出是以內還是以上',
   no_not_overdue_row: '帳齡附註沒有列出未逾期的金額',
+  // 數據中台 2026-11-24（公式第 2 版，讀者先行）：附註照 IFRS 9 信用風險階段分，不是帳齡。原本是 unparsed_rows
+  credit_stage_basis: '這家公司照信用風險階段（12 個月預期信用損失、信用風險已顯著增加等）揭露，不分有沒有逾期',
   // 上市的三大法人、借券賣出（數據中台 2026-11-24，讀者先行）：證交所只放在舊網站、開放資料沒有，要不要用是使用者的決定。
   // 不是不適用（之後可能有來源），格子寫尚無資料
   not_in_open_data: '交易所有公布這項數字，但不在開放資料裡，本站目前還不能使用',
