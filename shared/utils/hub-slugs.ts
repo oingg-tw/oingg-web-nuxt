@@ -121,9 +121,12 @@ export interface RankPageDefinition {
   dateField?: string
   // 日期叫什麼，蓋過 rankDateLabel 依欄位推的（集保的週資料是「集保資料日」，不是交易日）
   dateLabel?: string
-  // 證交所的定期定額交易戶數排行（2026-11-24，GET /market/dca-ranking，證交所 OpenAPI ETFRank）：每月個股、ETF 各公布前 20 名，不是型錄欄位，名次照證交所的。population 是答句裡的母體
-  dcaRanking?: 'stock'
+  // 上游排好的清單（2026-11-24）：不是型錄欄位，名次照上游的。path 與 query 是業務中台的端點，列在 rowsKey、值在 valueKey、名稱在 nameKey、
+  // 資料日在頂層的 dateKey。定期定額戶數是證交所每月公布的前 20 名；券資比、成交量是數據中台每天排的。population 是答句裡的母體，
+  // listNote 是「要注意什麼」那段的第一句（取代「名次只反映…當天的數值排序」）
+  marketList?: { path: string; query?: Record<string, string>; rowsKey: 'entries' | 'rankings'; valueKey: string; nameKey: 'name' | 'companyName'; dateKey: 'yearMonth' | 'tradeDate'; minMarginBalanceLots?: number }
   population?: string
+  listNote?: string
   // ETF 的排行先篩母體（POST /etf-screener 的 filters），答句的母體也改寫（例：只排成立滿半年的，剛掛牌的月增率基期太小）
   etfFilters?: { field: string; min?: number | null; max?: number | null }[]
   etfPopulation?: string
@@ -186,13 +189,18 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // 前 50 會是台積電加 49 個代號最小的公司。原因是結構性的（analysis-ts）：指標讀現金流量表判斷有沒有配息，mops 的 XBRL 從
   // 109Q3 才有，所以「5」是「至少 5」。FY115 結算（約 2027 Q1）後上限變 6 才會開始拆開——還原前先重量分布，前 50 跨過一個以上
   // 的值才放回來；指標本身在個股頁與篩選器照常。
+  // 成交量（2026-11-24，使用者「做成排行頁」）：數據中台每天排的前 20 名，上市、上櫃都有，含 ETF；成交量是股數，換成張
+  { slug: 'volume', category: 'size', field: 'volume', marketList: { path: '/market/volume-top20', rowsKey: 'rankings', valueKey: 'volume', nameKey: 'companyName', dateKey: 'tradeDate' }, direction: 'desc', label: '成交量', unit: '張', valueScale: 1000, population: '上市櫃股票與 ETF ', listNote: '名次只反映交易日當天的成交量，不含任何評等；只列前 20 名。', note: '成交量是當天成交的張數（1 張是 1,000 股），上市、上櫃的股票與 ETF 一起排。股價低的股票同樣的金額能買比較多張，所以成交量大不一定代表成交金額大。' },
   { slug: 'market-cap', category: 'size', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap', unit: '億元', valueScale: 1e8 },
   // 52 週股價漲幅／跌幅：同一個欄位排兩頭。跌幅那頁排相反數（negate），數值寫成正的跌幅、由高到低；不寫「跌幅由低到高」，
   // 那會被讀成跌最少的排前面
   { slug: 'price-return-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', label: '52週股價漲幅', short: '52週漲幅', metricCode: 'priceReturn52w' },
   // 持股超過千張的比例（2026-11-23，使用者從排行指南選的「千張大戶持股比例」，數據中台 custodyRatioOver1000Lots，集保每週）：名稱照中性寫法，
   // 不用「大戶」；會受融資融券、借券與保管專戶影響，寫在型錄的說明裡。剛好 1,000 張的帳戶在第 14 級、不算在內
-  { slug: 'dca-accounts', category: 'holders', field: 'accountCount', dcaRanking: 'stock', direction: 'desc', label: '定期定額戶數', short: '定期定額', unit: '戶', monthlyReport: true, population: '證交所每月統計定期定額交易戶數的個股', note: '定期定額戶數是當月用定期定額買進這檔股票的投資人戶數，證交所每月公布一次，個股與 ETF 各列前 20 名，這裡是個股的那一份。' },
+  { slug: 'dca-accounts', category: 'holders', field: 'accountCount', marketList: { path: '/market/dca-ranking', query: { kind: 'stock' }, rowsKey: 'entries', valueKey: 'accountCount', nameKey: 'name', dateKey: 'yearMonth' }, direction: 'desc', label: '定期定額戶數', short: '定期定額', unit: '戶', monthlyReport: true, population: '證交所每月統計定期定額交易戶數的個股', listNote: '名次照證交所公布的排序，不含任何評等；證交所只公布前 20 名，第 21 名以後查不到。', note: '定期定額戶數是當月用定期定額買進這檔股票的投資人戶數，證交所每月公布一次，個股與 ETF 各列前 20 名，這裡是個股的那一份。' },
+  // 券資比（2026-11-24，使用者 11-23 選的信用交易排行；門檻是使用者選的「融資至少 100 張」）：上市、上櫃公司各自最新一天的融資融券餘額，
+  // ETF、特別股不在內，停止融資的照算（數據中台的回覆）
+  { slug: 'short-margin-ratio', category: 'holders', field: 'shortToMarginRatioPct', marketList: { path: '/market/margin-short-ratio-ranking', query: { limit: '100', minMarginBalanceLots: '100' }, rowsKey: 'rankings', valueKey: 'shortToMarginRatioPct', nameKey: 'companyName', dateKey: 'tradeDate', minMarginBalanceLots: 100 }, direction: 'desc', label: '券資比', unit: '%', valueDigits: 2, population: '融資餘額至少 100 張的上市櫃公司', listNote: '名次只反映交易日當天的券資比，不含任何評等；融資不到 100 張的不排，免得幾張的融資就排到最前面。上市的融資融券隔天早上才更新，常比上櫃晚一天。', note: '券資比是融券餘額除以融資餘額。融資是借錢買股票、融券是借股票來賣，券資比高代表融券賣出的部位相對多；停止融資或融券的股票照餘額計算。' },
   { slug: 'custody-over-1000-lots', category: 'holders', field: 'custodyRatioOver1000Lots.EOD', direction: 'desc', label: '持股超過千張的比例', short: '超過千張持股', metricCode: 'custodyRatioOver1000Lots', dateLabel: '集保資料日' },
   { slug: 'price-drop-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', negate: true, label: '52週股價跌幅', short: '52週跌幅', metricCode: 'priceReturn52w' },
   { slug: 'revenue-growth', category: 'growth', short: '營收年增率', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },

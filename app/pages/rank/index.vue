@@ -27,7 +27,7 @@ const cards = computed(() => RANK_CATEGORIES.map((category) => {
   const items = RANK_PAGES.filter(page => page.category === category.key).map((page) => {
     const preview = previews.value?.find(item => item.slug === page.slug)
     // 列上沒有日期時用的資料日期：基金月報寫月份、全年數字寫年度（同排行頁的標題）
-    const period = page.monthlyReport && preview?.asOf ? `${page.dcaRanking ? '證交所' : '基金月報'} ${preview.asOf}` : page.fullYear && preview?.valueYear ? `${preview.valueYear} 年全年` : ''
+    const period = page.monthlyReport && preview?.asOf ? `${page.marketList ? '證交所' : '基金月報'} ${preview.asOf}` : page.fullYear && preview?.valueYear ? `${preview.valueYear} 年全年` : ''
     return { page, rows: preview?.rows ?? [], count: preview?.count ?? 0, unit: preview?.unit ?? '', period }
   })
   return { ...category, group: items[0]?.page.universe === 'etf' ? 'ETF' : '普通股', items }
