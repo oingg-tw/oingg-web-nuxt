@@ -545,7 +545,7 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   }
 }
 
-// 上游排好的清單（2026-11-24：定期定額戶數、券資比、成交量）：名次照上游的，資料日寫在 asOf。有門檻的照門檻篩、名次重排
+// 上游排好的清單（2026-11-24：定期定額戶數、券資比、成交量）：名次照上游的（券資比的融資門檻由上游先濾再排），資料日寫在 asOf
 async function runMarketList(definition: RankPageDefinition): Promise<RankingPageData> {
   const spec = definition.marketList!
   type ListRow = Record<string, unknown> & { rank: number; symbol: string }
@@ -553,13 +553,11 @@ async function runMarketList(definition: RankPageDefinition): Promise<RankingPag
   const raw = (response[spec.rowsKey] as ListRow[] | undefined) ?? []
   // 每天排的清單：交易日當成每一列共用的日期（排行頁寫一次「交易日 …」）；每月的寫在 asOf（月份）
   const date = typeof response[spec.dateKey] === 'string' ? response[spec.dateKey] as string : null
-  // shortcut: 券資比的融資門檻在這裡也篩一次（取前 100 名再篩）：數據中台的 minMarginBalanceLots（f60b003）上 DEV 之前它會被忽略；上線後拿掉這段、limit 改回 50
-  const kept = spec.minMarginBalanceLots ? raw.filter(row => numericValue(row.marginTodayBalance) !== null && numericValue(row.marginTodayBalance)! >= spec.minMarginBalanceLots!) : raw
-  const rows: RankingRow[] = kept
+  const rows: RankingRow[] = raw
     .map(row => ({ row, value: numericValue(row[spec.valueKey]) }))
     .filter((entry): entry is { row: ListRow; value: number } => entry.value !== null)
     .slice(0, RANKING_LIMIT)
-    .map((entry, index) => ({ rank: spec.minMarginBalanceLots ? index + 1 : entry.row.rank, symbol: entry.row.symbol, name: (entry.row[spec.nameKey] as string | null) || entry.row.symbol, value: entry.value, knowledgeDate: spec.dateKey === 'tradeDate' ? date : null }))
+    .map(entry => ({ rank: entry.row.rank, symbol: entry.row.symbol, name: (entry.row[spec.nameKey] as string | null) || entry.row.symbol, value: entry.value, knowledgeDate: spec.dateKey === 'tradeDate' ? date : null }))
   return { direction: definition.direction, unit: definition.unit ?? null, rows, asOf: date }
 }
 

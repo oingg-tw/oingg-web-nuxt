@@ -124,7 +124,7 @@ export interface RankPageDefinition {
   // 上游排好的清單（2026-11-24）：不是型錄欄位，名次照上游的。path 與 query 是業務中台的端點，列在 rowsKey、值在 valueKey、名稱在 nameKey、
   // 資料日在頂層的 dateKey。定期定額戶數是證交所每月公布的前 20 名；券資比、成交量是數據中台每天排的。population 是答句裡的母體，
   // listNote 是「要注意什麼」那段的第一句（取代「名次只反映…當天的數值排序」）
-  marketList?: { path: string; query?: Record<string, string>; rowsKey: 'entries' | 'rankings'; valueKey: string; nameKey: 'name' | 'companyName'; dateKey: 'yearMonth' | 'tradeDate'; minMarginBalanceLots?: number }
+  marketList?: { path: string; query?: Record<string, string>; rowsKey: 'entries' | 'rankings'; valueKey: string; nameKey: 'name' | 'companyName'; dateKey: 'yearMonth' | 'tradeDate' }
   population?: string
   listNote?: string
   // ETF 的排行先篩母體（POST /etf-screener 的 filters），答句的母體也改寫（例：只排成立滿半年的，剛掛牌的月增率基期太小）
@@ -200,7 +200,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'dca-accounts', category: 'holders', field: 'accountCount', marketList: { path: '/market/dca-ranking', query: { kind: 'stock' }, rowsKey: 'entries', valueKey: 'accountCount', nameKey: 'name', dateKey: 'yearMonth' }, direction: 'desc', label: '定期定額戶數', short: '定期定額', unit: '戶', monthlyReport: true, population: '證交所每月統計定期定額交易戶數的個股', listNote: '名次照證交所公布的排序，不含任何評等；證交所只公布前 20 名，第 21 名以後查不到。', note: '定期定額戶數是當月用定期定額買進這檔股票的投資人戶數，證交所每月公布一次，個股與 ETF 各列前 20 名，這裡是個股的那一份。' },
   // 券資比（2026-11-24，使用者 11-23 選的信用交易排行；門檻是使用者選的「融資至少 100 張」）：上市、上櫃公司各自最新一天的融資融券餘額，
   // ETF、特別股不在內，停止融資的照算（數據中台的回覆）
-  { slug: 'short-margin-ratio', category: 'holders', field: 'shortToMarginRatioPct', marketList: { path: '/market/margin-short-ratio-ranking', query: { limit: '100', minMarginBalanceLots: '100' }, rowsKey: 'rankings', valueKey: 'shortToMarginRatioPct', nameKey: 'companyName', dateKey: 'tradeDate', minMarginBalanceLots: 100 }, direction: 'desc', label: '券資比', unit: '%', valueDigits: 2, population: '融資餘額至少 100 張的上市櫃公司', listNote: '名次只反映交易日當天的券資比，不含任何評等；融資不到 100 張的不排，免得幾張的融資就排到最前面。上市的融資融券隔天早上才更新，常比上櫃晚一天。', note: '券資比是融券餘額除以融資餘額。融資是借錢買股票、融券是借股票來賣，券資比高代表融券賣出的部位相對多；停止融資或融券的股票照餘額計算。' },
+  { slug: 'short-margin-ratio', category: 'holders', field: 'shortToMarginRatioPct', marketList: { path: '/market/margin-short-ratio-ranking', query: { limit: '50', minMarginBalanceLots: '100' }, rowsKey: 'rankings', valueKey: 'shortToMarginRatioPct', nameKey: 'companyName', dateKey: 'tradeDate' }, direction: 'desc', label: '券資比', unit: '%', valueDigits: 2, population: '融資餘額至少 100 張的上市櫃公司', listNote: '名次只反映交易日當天的券資比，不含任何評等；融資不到 100 張的不排，免得幾張的融資就排到最前面。上市的融資融券隔天早上才更新，常比上櫃晚一天。', note: '券資比是融券餘額除以融資餘額。融資是借錢買股票、融券是借股票來賣，券資比高代表融券賣出的部位相對多；停止融資或融券的股票照餘額計算。' },
   { slug: 'custody-over-1000-lots', category: 'holders', field: 'custodyRatioOver1000Lots.EOD', direction: 'desc', label: '持股超過千張的比例', short: '超過千張持股', metricCode: 'custodyRatioOver1000Lots', dateLabel: '集保資料日' },
   { slug: 'price-drop-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', negate: true, label: '52週股價跌幅', short: '52週跌幅', metricCode: 'priceReturn52w' },
   { slug: 'revenue-growth', category: 'growth', short: '營收年增率', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
