@@ -1,3 +1,4 @@
+import type { MacroPageDefinition } from '#shared/utils/macro-pages'
 import type { EquityRiskPremiumComponents, EquityRiskPremiumPageData, EquityRiskPremiumWindow, MacroPageData, MacroSeriesPoint, MarketEventDay, MarketEventMonth, MarketEventsPageData, TaiexPoint } from '#shared/types/hub'
 
 // 總經特區（/macro/*）的資料：股權風險溢酬、大事件年表、總經序列頁，2026-10-08 從 hub-data.ts 拆出（2026-10-11 精簡：
@@ -119,6 +120,50 @@ export const getMarketEvents = defineCachedFunction(
   { name: 'hub-market-events', ...swrCache(TTL_STATIC, TTL_STATIC) }
 )
 
+// 參考序列頁（2026-11-24）各自的讀法：上游的形狀不一樣，在這裡換成 { period, values }。月資料的 period 是 YYYY-MM，季資料是「2026 Q2」
+type LooseEntry = Record<string, unknown>
+const numberOf = (raw: unknown): number | null => (typeof raw === 'number' ? raw : null)
+const pick = (entry: LooseEntry, keys: string[]) => Object.fromEntries(keys.map(key => [key, numberOf(entry[key])]))
+const quarterOf = (entry: LooseEntry) => `${entry.year} Q${entry.quarter}`
+
+// 一支參考序列頁的資料：序列加上它自己的第二段
+async function referencePage(page: MacroPageDefinition): Promise<Omit<MacroPageData, 'slug' | 'taiex'>> {
+  const keys = page.series.map(spec => spec.key)
+  if (page.slug === 'policy-rate') {
+    const [events, callLoans] = await Promise.all([
+      businessFetch<{ entries: { effectiveDate: string; discountRate: number | null }[] }>(page.endpoint),
+      businessFetch<{ entries: { yearMonth: string; ratePct: number | null }[] }>('/macro/money-market-rates', { query: { category: 'interbank_call_loan' } })
+    ])
+    return { series: policyRateMonths(events.entries, callLoans.entries) }
+  }
+  if (page.slug === 'gdp-growth') {
+    const response = await businessFetch<{ items: { category: string; entries: LooseEntry[] }[] }>(page.endpoint)
+    const entriesOf = (category: string) => response.items.find(item => item.category === category)?.entries ?? []
+    return {
+      series: entriesOf('gdp').map(entry => ({ period: quarterOf(entry), values: pick(entry, keys) })),
+      gdpComponents: GDP_COMPONENTS.map(({ category }) => ({
+        category,
+        entries: entriesOf(category).slice(-GDP_COMPONENT_QUARTERS).map(entry => ({ period: quarterOf(entry), realYoyChangePct: numberOf(entry.realYoyChangePct) }))
+      }))
+    }
+  }
+  const source = await businessFetch<{ entries: LooseEntry[] }>(page.endpoint)
+  // 匯率的月資料帶 tradeDate（月底那天），其他帶 yearMonth
+  const series = source.entries
+    .map(entry => ({ period: typeof entry.yearMonth === 'string' ? entry.yearMonth : typeof entry.tradeDate === 'string' ? entry.tradeDate.slice(0, 7) : '', values: pick(entry, keys) }))
+    .filter(point => point.period.length > 0)
+  if (page.slug === 'money-supply') {
+    const components = await businessFetch<{ items: { category: string; entries: { yearMonth: string; amountMillionNtd: number | null }[] }[] }>('/macro/monetary-aggregate-components')
+    return { series, composition: m2Composition(components.items) }
+  }
+  if (page.slug === 'inflation') {
+    // 約 2.8 MB（81 項的完整歷史），只在這裡讀、快取一天，頁面只拿最新一期
+    const items = await businessFetch<{ items: { itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[] }>('/macro/cpi-items')
+    return { series, cpiItems: cpiTree(items.items) }
+  }
+  return { series }
+}
+
 // /macro/{slug} 的兩份資料 — 一支總經序列 + 同頻率的加權指數。
 //
 // The index is the monthly close, keyed by 'YYYY-MM' so it joins the series by period（2026-10-11 起只剩月頻頁，
@@ -130,10 +175,13 @@ export const getMacroPage = defineCachedFunction(
   async (slug: string): Promise<MacroPageData> => {
     const page = findMacroPage(slug)
     if (!page) throw createError({ statusCode: 404, statusMessage: 'unknown macro page' })
+    if (!page.overlay) return { slug, taiex: [], ...await referencePage(page) }
 
-    const [source, taiex] = await Promise.all([
+    const [source, taiex, spread] = await Promise.all([
       businessFetch<{ entries: Record<string, unknown>[] }>(page.endpoint),
-      cachedTaiexMonthly()
+      cachedTaiexMonthly(),
+      // 長短天期利差（2026-11-24）：只有十年期公債殖利率頁
+      slug === 'bond-yield' ? businessFetch<{ entries: { yearMonth: string; longRatePct: number | null; shortRatePct: number | null; spreadPct: number | null }[] }>('/macro/term-spread') : null
     ])
 
     const keys = page.series.map(spec => spec.key)
@@ -154,7 +202,8 @@ export const getMacroPage = defineCachedFunction(
     return {
       slug,
       series,
-      taiex: [...byPeriod.entries()].map(([period, close]) => ({ period, close })).sort((a, b) => a.period.localeCompare(b.period))
+      taiex: [...byPeriod.entries()].map(([period, close]) => ({ period, close })).sort((a, b) => a.period.localeCompare(b.period)),
+      ...(spread ? { termSpread: spread.entries.map(({ yearMonth, ...rates }) => ({ period: yearMonth, ...rates })) } : {})
     }
   },
   { name: 'hub-macro-page', getKey: slug => slug, ...swrCache(TTL_STATIC, TTL_STATIC) }

@@ -82,6 +82,13 @@ const ROUTES = [
   { path: '/macro/market-events', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // [slug] 模板上剩下的一頁（2026-10-11 精簡後）。
   { path: '/macro/bond-yield', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  // 2026-11-24 加回來的參考序列頁（不疊大盤）：每頁至少一張逐期表
+  { path: '/macro/policy-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/money-supply', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/exchange-rate', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/inflation', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/gdp-growth', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
+  { path: '/macro/unemployment', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1 },
   // 新手專區（2026-10-12，原本的 /metrics 併進來）：首頁一張主題表加每類一張指標表，每一支指標都連到教學頁
   { path: '/learn', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, metricLinksMin: 20 },
   // 六組的組頁（2026-10-12 結構重做）：先看的幾個＋每個 category 一張全部指標表
@@ -108,9 +115,8 @@ const ROUTES = [
 const STATUS_CASES = [
   { path: '/industry/24-wrong', status: 301, location: '/industry/24-semiconductor' },
   { path: '/industry/99-x', status: 404 },
-  // 2026-10-11 刪掉的總經頁直接 404（使用者選擇不轉址）：一個獨立 route file 的、一個 [slug] 模板的
-  { path: '/macro/policy-rate', status: 404 },
-  { path: '/macro/inflation', status: 404 },
+  // 不在總經註冊表裡的網址 404（2026-10-11 刪掉的頁 2026-11-24 加回來，用原本的網址）
+  { path: '/macro/nope', status: 404 },
   // A registered sector code with zero LISTED members — see the ROUTES comment above.
   { path: '/industry/13-electronics-legacy', status: 404 },
   { path: '/industry/19-conglomerate', status: 404 },

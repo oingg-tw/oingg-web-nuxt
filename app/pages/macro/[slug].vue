@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { MacroPageData } from '#shared/types/hub'
 import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
+import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChart.vue'
 // /macro/{slug} — 總經特區's shared template（2026-09-22,「Sidebar 就放不同指標跟大盤比較」）.
 //
 // One template driven by MACRO_PAGES in shared/utils/macro-pages.ts（this series, against the index,
-// over time）. 2026-10-11 精簡後只剩十年期公債殖利率一頁；其餘總經頁（大事件年表、股票風險溢酬、景氣時鐘）
+// over time）. 2026-10-11 精簡後只剩10 年期公債殖利率一頁；其餘總經頁（大事件年表、股票風險溢酬、景氣時鐘）
 // 各有自己的 route file，Nuxt 會先解析那些靜態路由。不在註冊表裡的 slug 一律 404。
 //
 // NO CAUSAL CLAIM, the standing rule this zone needs most. Every one of these pairings has a folk
@@ -64,7 +65,13 @@ const spanDescription = computed(() =>
   spanFacts.value ? `${page.topic}與加權股價指數的歷年對照，${spanFacts.value}。` : null
 )
 
-const { breadcrumbs } = useHubPageSeo({
+// 參考序列頁（2026-11-24，overlay 沒設）整頁交給 MacroReferencePage，SEO 也在那裡；下面這組只給對照大盤的頁
+const breadcrumbs = [
+  { label: '首頁', to: '/' },
+  { label: '總經特區', to: '/macro' },
+  { label: page.topic, to: macroPagePath(slug) }
+]
+if (page.overlay) useHubPageSeo({
   title: `台股${page.titleKeywords}`,
   // BOTH sentences, not just the latest reading: check-hub-pages holds every hub description to
   // 60–90 CJK-equivalent characters and the latest-value sentence alone measures 31–45 depending
@@ -72,11 +79,19 @@ const { breadcrumbs } = useHubPageSeo({
   // covered range, which is genuinely what a searcher wants to know about a historical series.
   description: () => clampDescription(joinSentences([latestAnswer.value, spanDescription.value]) ?? `${page.topic}與加權股價指數的歷年對照。`),
   path: macroPagePath(slug),
-  breadcrumbs: [
-    { label: '首頁', to: '/' },
-    { label: '總經特區', to: '/macro' },
-    { label: page.topic, to: macroPagePath(slug) }
-  ]
+  breadcrumbs
+})
+
+// 長短天期利差（2026-11-24，使用者 11-23 選的「只做利差」）：10 年期公債殖利率減商業本票 31～90 天利率，一條線加零基準線，提示框寫兩個利率
+const termSpread = computed(() => trimEmptyEnds(data.value?.termSpread ?? [], point => point.spreadPct !== null))
+const ratePoint = (value: number | null) => (value === null ? '－' : `${value.toFixed(2)}%`)
+const spreadText = (value: number | null) => (value === null ? '－' : minusSign(`${value.toFixed(2)} 個百分點`))
+const spreadEntries = computed(() => termSpread.value.map(point => ({ label: point.period, values: { spread: { value: point.spreadPct } }, remark: `10 年期公債 ${ratePoint(point.longRatePct)}、商業本票 ${ratePoint(point.shortRatePct)}` })))
+const SPREAD_SERIES: LineSeriesSpec[] = [{ code: 'spread', name: '長短天期利差', lineType: 'solid', symbol: 'circle', baseline: true, format: spreadText }]
+const { period: spreadPeriod, shown: spreadShown } = useChartPeriod({ all: spreadEntries, keyOf: entry => entry.label, perYear: 12 })
+const spreadAnswer = computed(() => {
+  const point = termSpread.value.at(-1)
+  return point ? `${point.period} 的長短天期利差是 ${spreadText(point.spreadPct)}：10 年期公債殖利率 ${ratePoint(point.longRatePct)}，商業本票 31～90 天利率 ${ratePoint(point.shortRatePct)}。` : ''
 })
 
 const { resolvedMode, color: accentColorName } = useAppTheme()
@@ -166,7 +181,8 @@ const chartOption = computed(() => {
 </script>
 
 <template>
-  <div class="app-page app-page--compact macro-page">
+  <MacroReferencePage v-if="!page.overlay" :page="page" :data="data" />
+  <div v-else class="app-page app-page--compact macro-page">
     <h1 class="app-page__title macro-page__title">台股{{ page.topic }}與大盤對照</h1>
     <StockBreadcrumb :items="breadcrumbs" />
     <MacroNav />
@@ -188,6 +204,15 @@ const chartOption = computed(() => {
       <p v-if="spanFacts" class="hub-answer">兩者起始時間不同，只畫兩邊都有資料的期間。</p>
     </section>
 
+    <section v-if="termSpread.length" class="stock-page-section" aria-labelledby="macro-spread-heading">
+      <h2 id="macro-spread-heading" class="stock-page-section__title">長短天期利差是多少？</h2>
+      <p class="hub-answer">{{ spreadAnswer }}</p>
+      <SharedChartCard :period="spreadPeriod">
+        <StockMultiSeriesLineChart :entries="spreadShown" :series="SPREAD_SERIES" palette="accent" unit="個百分點" :format="spreadText" />
+      </SharedChartCard>
+      <p class="hub-answer">利差是10 年期公債次級市場殖利率減商業本票 31～90 天次級市場利率，每月一點。利差是負的時候，短天期利率高過長天期，稱為殖利率曲線倒掛。</p>
+    </section>
+
     <section class="stock-page-section" aria-labelledby="macro-table-heading">
       <h2 id="macro-table-heading" class="stock-page-section__title">{{ page.topic }}的逐期數據是什麼？</h2>
       <SharedTable caption-visible :label="`${page.topic}與加權股價指數逐期數據`" :caption="`${page.topic}與加權股價指數（由新到舊，每月一期）`">
@@ -206,7 +231,7 @@ const chartOption = computed(() => {
           </tr>
         </tbody>
       </SharedTable>
-      <p class="hub-answer hub-sources macro-page__sources">資料來源：中央銀行、行政院主計總處、國家發展委員會、臺灣證券交易所加權股價指數。</p>
+      <p class="hub-answer hub-sources macro-page__sources">資料來源：{{ page.source }}。</p>
     </section>
   </div>
 </template>

@@ -16,7 +16,7 @@ export const ALL_ROUTES = [
   '/preferred/2881a', '/preferred/2881a/redemption', '/preferred/2881a/dividends', '/preferred/2881a/terms',
   '/reit/01001t', '/reit/01001t/nav', '/reit/01001t/liquidity', '/reit/01001t/holders', '/reit/01001t/distributions', '/reit/01001t/properties', '/reit/01001t/profile',
   '/screener/common', '/screener/common?template=value', '/screener/etf', '/screener/preferred', '/screener/reits',
-  '/macro', '/macro?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield',
+  '/macro', '/macro?cycle=15', '/macro/equity-risk-premium', '/macro/market-events', '/macro/bond-yield', '/macro/policy-rate', '/macro/money-supply', '/macro/exchange-rate', '/macro/inflation', '/macro/gdp-growth', '/macro/unemployment',
   '/industries', '/industries/cycle', '/industries/dividend', '/industries/growth', ...INDUSTRY_FACETS.map(facet => `/industry/24-semiconductor${facet.suffix}`),
   '/rank', '/rank/dividend-yield', '/learn', '/learn/dupont', '/learn/dividend-source/2330', '/blog', '/blog/low-pe-ratio-trap-cyclical-stocks',
   // /holdings/columns 2026-11-01 先隱藏（導回 /holdings），恢復時加回來；/industries/sensitivity 2026-11-04 同（導到 /industries/cycle）

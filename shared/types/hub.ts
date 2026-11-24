@@ -354,8 +354,16 @@ export interface MacroPageData {
   slug: string
   series: MacroSeriesPoint[]
   // The index at the same cadence, already reduced to one point per period so a page never has to
-  // align two different frequencies itself.
+  // align two different frequencies itself. 參考序列頁（2026-11-24，overlay 沒設）是空陣列
   taiex: { period: string; close: number }[]
+  // 十年期公債殖利率頁的第二段（2026-11-24，數據中台 /macro/term-spread）：十年期公債減商業本票 31～90 天
+  termSpread?: { period: string; longRatePct: number | null; shortRatePct: number | null; spreadPct: number | null }[]
+  // 貨幣供給頁的 M2 組成（同日，/macro/monetary-aggregate-components）：每月各層的餘額，單位億元，近 10 年
+  composition?: { period: string; values: Record<string, number | null> }[]
+  // 消費者物價頁的分項（同日，/macro/cpi-items）：總指數、七大類與各分項最新一期的年增率，照主計總處的順序，depth 0 是七大類
+  cpiItems?: { name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[]
+  // 經濟成長率頁的各需求項目（同日，/macro/gdp-expenditures）：近 8 季的實質年增率
+  gdpComponents?: { category: string; entries: { period: string; realYoyChangePct: number | null }[] }[]
 }
 // /macro/equity-risk-premium（股票風險溢酬, 2026-09-29）— analysis-ts 轉達的需求，上游端點是
 // GET /macro/equity-risk-premium。
