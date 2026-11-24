@@ -545,12 +545,23 @@ async function runEtfRanking(definition: RankPageDefinition): Promise<RankingPag
   }
 }
 
+// 證交所的定期定額交易戶數前 20 名（2026-11-24，業務中台 GET /market/dca-ranking）：名次照證交所的，資料月份寫在 asOf
+async function runDcaRanking(definition: RankPageDefinition): Promise<RankingPageData> {
+  type DcaEntry = { rank: number; symbol: string; name: string | null; accountCount: number | null }
+  const response = await businessFetch<{ yearMonth: string | null; entries: DcaEntry[] }>('/market/dca-ranking', { query: { kind: definition.dcaRanking } })
+  const rows: RankingRow[] = response.entries
+    .filter((entry): entry is DcaEntry & { accountCount: number } => entry.accountCount !== null)
+    .map(entry => ({ rank: entry.rank, symbol: entry.symbol, name: entry.name || entry.symbol, value: entry.accountCount, knowledgeDate: null }))
+  return { direction: definition.direction, unit: definition.unit ?? null, rows, asOf: response.yearMonth }
+}
+
 // GET /screener/ranking — the 50-row market-wide ordering behind one /rank/{slug} page.
 export const getRanking = defineCachedFunction(
   async (slug: string): Promise<RankingPageData> => {
     const definition = findRankPage(slug)
     if (!definition) throw new Error(`unknown rank page "${slug}"`)
     if (definition.universe === 'etf') return runEtfRanking(definition)
+    if (definition.dcaRanking) return runDcaRanking(definition)
     if (definition.screener) return runScreenerRanking(definition)
     const floor = definition.growthBaseFloor
     const response = await businessFetch<RankingResponse>('/screener/ranking', {

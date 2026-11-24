@@ -121,6 +121,9 @@ export interface RankPageDefinition {
   dateField?: string
   // 日期叫什麼，蓋過 rankDateLabel 依欄位推的（集保的週資料是「集保資料日」，不是交易日）
   dateLabel?: string
+  // 證交所的定期定額交易戶數排行（2026-11-24，GET /market/dca-ranking，證交所 OpenAPI ETFRank）：每月個股、ETF 各公布前 20 名，不是型錄欄位，名次照證交所的。population 是答句裡的母體
+  dcaRanking?: 'stock'
+  population?: string
   // ETF 的排行先篩母體（POST /etf-screener 的 filters），答句的母體也改寫（例：只排成立滿半年的，剛掛牌的月增率基期太小）
   etfFilters?: { field: string; min?: number | null; max?: number | null }[]
   etfPopulation?: string
@@ -189,6 +192,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
   { slug: 'price-return-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', label: '52週股價漲幅', short: '52週漲幅', metricCode: 'priceReturn52w' },
   // 持股超過千張的比例（2026-11-23，使用者從排行指南選的「千張大戶持股比例」，數據中台 custodyRatioOver1000Lots，集保每週）：名稱照中性寫法，
   // 不用「大戶」；會受融資融券、借券與保管專戶影響，寫在型錄的說明裡。剛好 1,000 張的帳戶在第 14 級、不算在內
+  { slug: 'dca-accounts', category: 'holders', field: 'accountCount', dcaRanking: 'stock', direction: 'desc', label: '定期定額戶數', short: '定期定額', unit: '戶', monthlyReport: true, population: '證交所每月統計定期定額交易戶數的個股', note: '定期定額戶數是當月用定期定額買進這檔股票的投資人戶數，證交所每月公布一次，個股與 ETF 各列前 20 名，這裡是個股的那一份。' },
   { slug: 'custody-over-1000-lots', category: 'holders', field: 'custodyRatioOver1000Lots.EOD', direction: 'desc', label: '持股超過千張的比例', short: '超過千張持股', metricCode: 'custodyRatioOver1000Lots', dateLabel: '集保資料日' },
   { slug: 'price-drop-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', negate: true, label: '52週股價跌幅', short: '52週跌幅', metricCode: 'priceReturn52w' },
   { slug: 'revenue-growth', category: 'growth', short: '營收年增率', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
@@ -267,7 +271,7 @@ export const RANK_PAGES: RankPageDefinition[] = [
 // 個股最常見的是本益比、殖利率、股價淨值比與成長動能；ETF 是受益人數、規模、配息率、含息年報酬率、折溢價與內扣費用（照文件列的順序）。
 // 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
 export const RANK_NAV: Record<'common' | 'etf', string[]> = {
-  common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w', 'custody-over-1000-lots'],
+  common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w', 'custody-over-1000-lots', 'dca-accounts'],
   etf: ['etf-holders', 'etf-custody-growth', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low', 'etf-dca-accounts']
 }
 

@@ -56,7 +56,7 @@ const floorNote = definition.growthBaseFloor
 // 資料的公司」就是錯的。
 const populationNote = definition.screener?.population ?? ''
 // 篩過族群時連那句開頭也要改：那些頁面不是「全市場有資料的公司」。
-const universeText = computed(() => (isEtf ? `${definition.etfPopulation ?? `有${label}資料的`}${fundType.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
+const universeText = computed(() => definition.population ?? (isEtf ? `${definition.etfPopulation ?? `有${label}資料的`}${fundType.value} ETF ` : definition.screener ? '符合條件的公司' : `全市場有${label}資料的公司`))
 
 // 單位與換算照 RANK_PAGES（市值、ETF 規模回來是元，換成億元才讀得進句子；受益人數是整數要千分位）；其他照上游的單位
 const unit = computed(() => definition.unit ?? data.value?.unit ?? '')
@@ -194,7 +194,8 @@ const { breadcrumbs } = useHubPageSeo({
         <p class="hub-answer">名次只反映數值排序，不含任何評等；同一數值並列時依代號排序；股票型、債券型、槓桿型／反向型 ETF 的{{ label }}水準本來就不同，要比較同一類時用排行表的「基金類型」篩選（投信投顧公會的分類）。</p>
       </template>
       <template v-else>
-        <p class="hub-answer">名次只反映{{ dateLabel }}當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
+        <p v-if="definition.dcaRanking" class="hub-answer">名次照證交所公布的排序，不含任何評等；證交所只公布前 20 名，第 21 名以後查不到。</p>
+        <p v-else class="hub-answer">名次只反映{{ dateLabel }}當天的數值排序，不含任何評等；同一數值並列時依代號排序；不同產業的{{ label }}水準本來就不同，跨產業比較時請一併看該公司所屬類股的中位數。</p>
         <p v-if="FIELD_NOTES[slug]" class="hub-answer">{{ FIELD_NOTES[slug] }}</p>
         <p v-if="definition.growthBaseFloor" class="hub-answer">排除基期數值過小的公司，是因為基期接近零時，年增率會被放大成不具意義的數字。</p>
         <p v-if="definition.screener?.populationNote" class="hub-answer">{{ definition.screener.populationNote }}</p>
