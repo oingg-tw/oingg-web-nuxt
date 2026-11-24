@@ -47,6 +47,38 @@ export function sliceToLookbackWindow<T>(ascending: T[], fitted: LookbackWindow 
   return fitted === null ? ascending : ascending.slice(-LOOKBACK_WINDOW_YEARS[fitted] * perYear)
 }
 
+// 近N年照日曆往回算（2026-11-24，使用者：「6498 杜邦分析有年但是淨值組成只有三年?」）：原本照期數切（近5年＝最後 20 期），興櫃時期
+// 只申報半年報的年份一年只有兩點，於是近5年畫出六、七年，而且每張圖多出來的年數不一樣。每一期的 key 換成日曆上的序號（季、月、年），
+// 跨度（最後一期減第一期）決定哪些近N年填得滿，切的時候留最後一期往回 N 年內的。key 是「2024Q1」「2024 Q1」「2024-01」「2024」；
+// 每年期數不是 1、4、12 的圖（週資料、一年配幾次的配息）或有一期讀不出來時回 null，照舊照期數切
+export function periodIndex(key: string, perYear: number): number | null {
+  const year = /^(\d{4})/.exec(key)?.[1]
+  if (!year) return null
+  if (perYear === 1) return Number(year)
+  if (perYear === 4) {
+    const quarter = /Q\s*([1-4])/.exec(key)?.[1]
+    return quarter ? Number(year) * 4 + Number(quarter) - 1 : null
+  }
+  if (perYear === 12) {
+    const month = /^\d{4}-(\d{2})/.exec(key)?.[1]
+    return month ? Number(year) * 12 + Number(month) - 1 : null
+  }
+  return null
+}
+
+export function calendarIndexes(keys: string[], perYear: number): number[] | null {
+  const indexes = keys.map(key => periodIndex(key, perYear))
+  return keys.length && indexes.every(index => index !== null) ? (indexes as number[]) : null
+}
+
+// 由舊到新的期別序號裡，最後一期往回 N 年內的那幾個的位置（第一個）。fitted 是 null 時從頭
+export function calendarWindowStart(indexes: number[], fitted: LookbackWindow | null, perYear: number): number {
+  if (fitted === null || !indexes.length) return 0
+  const cutoff = indexes.at(-1)! - LOOKBACK_WINDOW_YEARS[fitted] * perYear
+  const start = indexes.findIndex(index => index > cutoff)
+  return start < 0 ? indexes.length : start
+}
+
 // 連一年都沒有時取代圖表的那一句。不寫「資料不足」——那是站上的禁用詞，而且它沒有回答「差多少」。
 export function lessThanAYearText(total: number | null): string {
   return total === null || total <= 0 ? '這一檔還沒有可以畫圖的歷史。' : `這一檔目前只有 ${total} 季，未滿一年。`

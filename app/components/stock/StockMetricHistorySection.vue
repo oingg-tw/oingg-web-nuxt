@@ -21,7 +21,8 @@ const props = defineProps<{
 // 財報公布（knowledgeDate）在上市櫃日之前、又沒有數值的列不列——那時沒有股價，不管 nullReason 是缺材料還是期數不足（6498 的本益比
 // 兩種都有：興櫃時只有半年報，近四季湊不滿）都不可能有值。同日先試過寫「上市櫃前沒有股價」，使用者：「連 上市櫃前沒有股價 這個都
 // 別顯示 直接隱藏多餘的row」。這些列都在最舊的那一端，拿掉不會在中間留缺口（中間的缺期照留，2026-10-13）
-const points = computed(() => metricHistoryPoints(props.entries, props.metricCode).filter(entry =>
+// 列最新一期往回 5 年（historyTableRows 照日曆算，2026-11-24：伺服器給 20 期，半年報的公司 20 期是六、七年）
+const points = computed(() => metricHistoryPoints(historyTableRows(props.entries).reverse(), props.metricCode).filter(entry =>
   !(props.listedOn && entry.point?.value === null && (entry.point.knowledgeDate ?? '') < props.listedOn)))
 const text = computed(() => {
   const list = points.value

@@ -45,13 +45,21 @@ export function useChartPeriod<T>(options: {
 }) {
   const chosen = options.window ?? ref<LookbackWindow>('近5年')
   const perYear = () => toValue(options.perYear) ?? 4
-  const total = () => (options.total === undefined ? options.all.value.length : toValue(options.total))
+  // 日曆序號（calendarIndexes，2026-11-24）：讀得出來就照日曆切、跨度當總數；讀不出來（或端點只回一段、呼叫端給了 total）照舊照期數
+  const calendar = computed(() => (options.total === undefined ? calendarIndexes(options.all.value.map(options.keyOf), perYear()) : null))
+  const total = () => {
+    if (options.total !== undefined) return toValue(options.total)
+    const indexes = calendar.value
+    return indexes ? indexes.at(-1)! - indexes[0]! + 1 : options.all.value.length
+  }
   const labelOf = options.labelOf ?? ((key: string) => key)
 
   const insufficientYears = computed(() => insufficientLookbackYears(total(), perYear()))
   // null＝連一年都沒有，呼叫端改說「未滿一年」
   const fittedWindow = computed(() => fitLookbackWindow(chosen.value, total(), perYear()))
-  const windowed = computed(() => sliceToLookbackWindow(options.all.value, fittedWindow.value, perYear()))
+  const windowed = computed(() => (calendar.value
+    ? options.all.value.slice(calendarWindowStart(calendar.value, fittedWindow.value, perYear()))
+    : sliceToLookbackWindow(options.all.value, fittedWindow.value, perYear())))
 
   const from = ref<string | null>(null)
   const to = ref<string | null>(null)

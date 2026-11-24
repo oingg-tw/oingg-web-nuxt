@@ -7,9 +7,9 @@ import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 // 年跟季混一起」），也沒有圖表右上角的期別與近N年（「這些圖表右上角的選項呢？不能選單季 四季 近五年這種嗎」）。現在回逐季，
 // 圖表元件自己切年度（只留 Q4）或單季、再切近N年。資產負債表是存量快照，所以沒有「近四季」這種流量口徑。
 //
-// 深度：近N年的上限是 8 年（LOOKBACK_YEARS），抓 32 季。上游的資產負債表回得到 2021 Q1 附近，更早的回 found:false、直接略過。
-// 2026-11-20 起一次讀 32 季（cachedStatementHistory）；原本一季一次，冷的時候 32 次。
-const QUARTERS = 32
+// 深度：同全站的圖讀 40 季（STOCK_CHART_HISTORY_LIMIT，2026-11-24 補上：11-23 改成 40 季時這一支還是 32，6498 的淨值組成比杜邦短了兩年）。
+// 上游回 found:false 的季別（半年報的 Q1、Q3，或還沒有資料的）直接略過。2026-11-20 起一次讀完（cachedStatementHistory）
+const QUARTERS = STOCK_CHART_HISTORY_LIMIT
 // 銀行與金控（2026-11-21）：流動／非流動拆不開時，再讀數據中台的資產 9 支、負債 10 支（metrics-history 一次最多 10 支），掛在每一期的 bank
 const BANK_ASSET_CODES = [BANK_ASSETS_TOTAL_CODE, ...Object.keys(BANK_ASSET_PART_LABELS)]
 const BANK_LIABILITY_CODES = [BANK_LIABILITIES_TOTAL_CODE, ...Object.keys(BANK_LIABILITY_PART_LABELS)]

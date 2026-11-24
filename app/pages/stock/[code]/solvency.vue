@@ -57,7 +57,7 @@ watchLoadFailure(() => `stock-solvency:${code.value}`, () => solvencyError.value
 const ascending = computed<MetricsHistoryEntry[]>(() => trimEmptyEnds(solvencyData.value?.series?.entries ?? [], entry => SOLVENCY_LIQUIDITY_CODES.some(ratioCode => entry.values[ratioCode]?.value != null)))
 // 圖（三條線、區間選單）在 StockRatioLinesChart，指標速覽畫同一張
 
-const periods = computed(() => [...ascending.value].reverse().slice(0, HISTORY_TABLE_PERIODS))
+const periods = computed(() => historyTableRows(ascending.value))
 const latest = computed(() => periods.value[0] ?? null)
 
 const valueOf = (metricCode: string): number | null => latest.value?.values[metricCode]?.value ?? null
