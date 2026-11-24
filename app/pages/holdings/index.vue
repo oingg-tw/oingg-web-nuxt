@@ -315,10 +315,10 @@ const SHARE_COLUMNS = [
 ]
 const shareName = computed(() => (portfolios.value.length > 1 ? `${selectedPortfolio.value?.name ?? '全部帳戶'}的持股` : '我的持股'))
 
-const importIntoAccount = (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) =>
+const importIntoAccount = (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean, skipManualMatches: boolean) =>
   importAccountId.value
-    ? importTrades(importAccountId.value, source, trades, openings, dryRun)
-    : ensurePortfolio().then(id => (id ? importTrades(id, source, trades, openings, dryRun) : { kind: 'failed' as const, message: '請先選擇要匯入的帳戶' }))
+    ? importTrades(importAccountId.value, source, trades, openings, dryRun, skipManualMatches)
+    : ensurePortfolio().then(id => (id ? importTrades(id, source, trades, openings, dryRun, skipManualMatches) : { kind: 'failed' as const, message: '請先選擇要匯入的帳戶' }))
 
 // ---- 記一筆交易／編輯交易 ----
 
@@ -631,6 +631,9 @@ async function submit() {
             <summary><span v-if="loading || !namesReady" class="app-skeleton app-skeleton--flow">{{ excludedShortSample }}</span><template v-else>未計入：{{ excludedShort }}</template></summary>
             <p v-if="!(loading || !namesReady)">{{ excludedText }}</p>
           </details>
+
+          <!-- 可能重複的交易（2026-11-24）：手動記的跟匯入的對得上時出一行，按「檢查」刪掉手動那幾筆 -->
+          <HoldingsDuplicates :symbol-label="symbolLabel" :loading="loading" />
 
           <!-- 清除全部放在最後（2026-10-21，使用者：「底下的 "清除按鈕" 還有計算方式看起來就像是沒設計過」）：很少用、又會刪資料的動作，
                不擋在讀完表格的路上；分隔線下一顆文字按鈕，不再是一整塊粉紅底。按下去有 10 秒可以復原（clearAll 的 undoToast）。

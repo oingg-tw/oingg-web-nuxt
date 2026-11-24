@@ -16,7 +16,7 @@ import type { Acquisition, BrokerFormat, ImportedTrade, PreWindowLot, SkippedRow
 //
 // destroy-on-close（模板上）：檔案欄位要跟著清空，否則關掉再開、選同一個檔案時 change 事件不會觸發。
 const props = defineProps<{
-  importTrades: (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean) => Promise<ImportOutcome>
+  importTrades: (source: string, trades: ImportedTrade[], openings: OpeningPosition[], dryRun: boolean, skipManualMatches: boolean) => Promise<ImportOutcome>
   symbolLabel: (symbol: string) => string
   // 持股帳戶（2026-10-19）：匯入到哪一個。只有一個帳戶時不顯示選單。試算之後就鎖住（同券商）：去重與賣超都是依那個帳戶算的
   accounts: { id: string; name: string }[]
@@ -117,6 +117,7 @@ function reset() {
   acquisitions.value = []
   unknownCosts.value = {}
   preview.value = null
+  skipManualMatches.value = true
 }
 
 async function onFile(event: Event) {
@@ -144,6 +145,17 @@ async function onFile(event: Event) {
   await dryRun()
 }
 
+// 跟手動記的交易重複（2026-11-24，業務中台 b6a6990；使用者在業務中台定的：只做「兩筆都留」與「不寫匯入的」）。預設不匯入那幾筆：兩筆都留
+// 會讓股數加倍。換選項要重新試算，會新增的筆數與持股才對得上
+const skipManualMatches = ref(true)
+const manualMatches = computed(() => preview.value?.manualMatches ?? [])
+const matchedCount = computed(() => manualMatches.value.reduce((sum, match) => sum + match.externalRefs.length, 0))
+const matchText = (match: { symbol: string; tradeDate: string; action: string; manualTransactions: { quantity: number }[] }) =>
+  `${match.tradeDate} ${match.action.toUpperCase() === 'SELL' ? '賣出' : '買進'} ${props.symbolLabel(match.symbol)} ${groupThousands(match.manualTransactions.reduce((sum, row) => sum + row.quantity, 0))} 股`
+watch(skipManualMatches, () => {
+  if (preview.value) dryRun()
+})
+
 // 期初部位改成一般的買進列送出（一檔可能有好幾批不同成本），不再用 openingPositions（一檔只能一個成本）
 function openingPayload(): OpeningPosition[] {
   return []
@@ -169,7 +181,7 @@ async function dryRun(autoRetry = true) {
   busy.value = true
   error.value = ''
   preview.value = null
-  const outcome = await props.importTrades(broker.value.source, payloadTrades.value, openingPayload(), true)
+  const outcome = await props.importTrades(broker.value.source, payloadTrades.value, openingPayload(), true, skipManualMatches.value)
   busy.value = false
   if (outcome.kind === 'ok') preview.value = outcome.result
   else if (outcome.kind === 'shortfalls') {
@@ -184,7 +196,7 @@ async function dryRun(autoRetry = true) {
 async function commit() {
   busy.value = true
   error.value = ''
-  const outcome = await props.importTrades(broker.value.source, payloadTrades.value, openingPayload(), false)
+  const outcome = await props.importTrades(broker.value.source, payloadTrades.value, openingPayload(), false, skipManualMatches.value)
   busy.value = false
   if (outcome.kind === 'ok') {
     visible.value = false
@@ -261,6 +273,21 @@ async function commit() {
               <span class="import__hint">{{ unknownCosts[lot.symbol] == null ? '成本不明，損益不計入' : '以這個成本計入損益' }}</span>
             </label>
           </div>
+        </section>
+
+        <section v-if="manualMatches.length" aria-labelledby="import-matches-title">
+          <h3 id="import-matches-title" class="import__title">跟你手動記的交易重複</h3>
+          <p class="import__text">這個帳戶裡已經手動記過其中 {{ manualMatches.length }} 組交易（同一天、同一檔、買賣相同，股數相等、價格差不到 1%）。兩筆都留的話，這幾筆會算兩次。</p>
+          <el-radio-group v-model="skipManualMatches" class="import__choices" :disabled="busy">
+            <el-radio :value="true">不匯入這 {{ matchedCount }} 筆，保留手動記的（建議）</el-radio>
+            <el-radio :value="false">兩筆都留</el-radio>
+          </el-radio-group>
+          <details class="import__details">
+            <summary>重複的交易（{{ manualMatches.length }} 組）</summary>
+            <ul class="import__notes">
+              <li v-for="match in manualMatches" :key="`${match.symbol}-${match.tradeDate}-${match.action}`">{{ matchText(match) }}</li>
+            </ul>
+          </details>
         </section>
 
         <section v-if="preview" aria-labelledby="import-preview-title">
@@ -350,6 +377,20 @@ async function commit() {
 .import__facts dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* 重複時的兩個選項：一行一個，觸控目標 44px */
+.import__choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 4px 0 8px;
+}
+
+.import__choices :deep(.el-radio) {
+  min-height: 44px;
+  margin-right: 0;
+  white-space: normal;
 }
 
 .import__notes {

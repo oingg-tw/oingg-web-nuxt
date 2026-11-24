@@ -102,8 +102,21 @@ export interface ImportResult {
   importId: string | null
   insertedCount: number
   duplicateCount: number
+  // 跟這個帳戶既有的手動交易對上的列（業務中台 b6a6990，2026-11-24；使用者在業務中台定的規則：同代號、同成交日、同買賣別，兩邊加總的
+  // 股數相等、加權均價差 1% 以內）。試算、確認都回；之前匯入過的（duplicateCount）不在裡面。上線前的業務中台沒有這個鍵
+  manualMatches?: { symbol: string; tradeDate: string; action: string; manualTransactions: Transaction[]; externalRefs: string[] }[]
   openingPositions: { symbol: string; status: 'created' | 'skipped' }[]
   holdings: Holding[]
+}
+
+// GET /transactions/duplicates 的一組（同上的規則）：手動的與匯入的各自一串，只列候選、不刪。action 是 buy／sell
+export interface DuplicateGroup {
+  portfolioId: string
+  symbol: string
+  tradeDate: string
+  action: string
+  manualTransactions: Transaction[]
+  importedTransactions: Transaction[]
 }
 
 export type ImportOutcome =

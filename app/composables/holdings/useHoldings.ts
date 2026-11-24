@@ -1,6 +1,6 @@
 import { ElMessage } from 'element-plus'
 import type { ImportedTrade } from '~/utils/broker-trade-csv'
-import type { Holding, HoldingColumn, ImportOutcome, ImportResult, ImportShortfall, OpeningPosition, SaveColumnsResult, SaveResult, Transaction, TransactionInput } from '~/composables/holdings/holdings-model'
+import type { DuplicateGroup, Holding, HoldingColumn, ImportOutcome, ImportResult, ImportShortfall, OpeningPosition, SaveColumnsResult, SaveResult, Transaction, TransactionInput } from '~/composables/holdings/holdings-model'
 
 // 持股管理的帳本：業務中台 的 /holdings 與 /transactions（市場資料在 useHoldingsMarket、期間報表在 useHoldingsReports，2026-10-08 拆出）。
 // 彙總本身在 app/utils/holdings-summary.ts，這裡只負責「拿到」與「改」。
@@ -219,6 +219,35 @@ export function useHoldings() {
     }, () => sendRemoveHolding(holding.symbol), holding.symbol)
   }
 
+  // ---- 可能重複的交易（業務中台 b6a6990，2026-11-24，使用者「怎麼去重複」）----
+  // 讀不到回 null（頁面不畫那一行）；全部帳戶時不帶 portfolioId
+  async function fetchDuplicates(): Promise<DuplicateGroup[] | null> {
+    try {
+      return (await request<{ entries: DuplicateGroup[] }>('/transactions/duplicates', { query: scopeQuery.value })).entries ?? []
+    } catch (error) {
+      devWarn('holdings', 'GET /transactions/duplicates unavailable', error)
+      return null
+    }
+  }
+
+  // 一次刪好幾筆（POST /transactions/bulk-delete，全刪或全不刪）：同單筆刪除，先藏起來、10 秒後才送
+  async function sendBulkDelete(ids: string[]): Promise<string | null> {
+    try {
+      await request('/transactions/bulk-delete', { method: 'POST', body: { ids } })
+      await reloadLoadedTransactions()
+      return null
+    } catch (error) {
+      if (businessErrorStatus(error) === 422) return '刪掉這些交易會讓之後的賣出超過當時持有的股數，'
+      if (businessErrorStatus(error) === 404) return '有幾筆交易已經不在了，請重新整理後再試；'
+      devWarn('holdings', 'POST /transactions/bulk-delete failed', error)
+      return '暫時無法連線，'
+    }
+  }
+
+  function removeTransactions(ids: string[], label: string, hide: () => () => void) {
+    deferDelete(`transactions:${ids.join(',')}`, label, hide, () => sendBulkDelete(ids), '')
+  }
+
   // 刪除一筆交易。伺服器會重跑整段：刪掉一筆買進可能讓之後的賣出變成賣超，那時回 400、紀錄保留。
   function removeTransaction(transaction: Transaction, label: string) {
     deferDelete(`transaction:${transaction.id}`, label, () => {
@@ -236,7 +265,8 @@ export function useHoldings() {
   // 一次全寫或全不寫；以 (source, externalRef) 去重，所以重匯有重疊期間的檔案是安全的。dryRun 跑同一套
   // 驗證但不寫入，預覽畫面的持股就是它算的——前端不另寫一份 replay。
   // 去重、期初部位、賣超檢查都只看 portfolioId 那個帳戶（業務中台）：同一份檔案可以分別匯進兩個帳戶
-  async function importTrades(portfolioId: string, source: string, trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean): Promise<ImportOutcome> {
+  // skipManualMatches（2026-11-24）：true 時跟手動交易對上的列不寫（使用者選的「不匯入這幾筆」）；false 兩筆都留
+  async function importTrades(portfolioId: string, source: string, trades: ImportedTrade[], openingPositions: OpeningPosition[], dryRun: boolean, skipManualMatches = true): Promise<ImportOutcome> {
     try {
       // 同 saveTransaction；預覽也先送出，預覽的帳本才是匯入時那一份
       await commitUndoToasts('holdings')
@@ -246,6 +276,7 @@ export function useHoldings() {
           portfolioId,
           source,
           dryRun,
+          skipManualMatches,
           openingPositions,
           transactions: trades.map(({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax, costUnknown }) => ({ externalRef, tradeDate, symbol, action, quantity, price, fee, tax, ...(costUnknown ? { costUnknown } : {}) }))
         }
@@ -351,6 +382,6 @@ export function useHoldings() {
 
   return {
     holdings, pending, loadFailed, market, quotesFailed, etfWindow, transactions, marketYield, ledgerVersion,
-    load, reloadAfterWrite, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, importTrades, clearAll, fetchRealized, fetchDividends, fetchTraits, fetchPerformance, fetchRisk, fetchColumns, saveColumns
+    load, reloadAfterWrite, ensureLoaded, clear, loadQuotes, loadTransactions, saveTransaction, removeHolding, removeTransaction, removeTransactions, fetchDuplicates, importTrades, clearAll, fetchRealized, fetchDividends, fetchTraits, fetchPerformance, fetchRisk, fetchColumns, saveColumns
   }
 }
