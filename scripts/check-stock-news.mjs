@@ -1,7 +1,7 @@
 // app/utils/stock-news.ts：近期新聞依台北日期分組（今天／昨天）、台北時刻，24 小時內的「N 分鐘前／N 小時前」。
 // Run: node scripts/check-stock-news.mjs
 import assert from 'node:assert/strict'
-import { stockNewsAgo, stockNewsGroups, announcementGroups } from '../app/utils/stock-news.ts'
+import { stockNewsAgo, stockNewsGroups, announcementGroups, negativeEventLabel, NEGATIVE_EVENT_LABELS } from '../app/utils/stock-news.ts'
 
 const article = (publishedAt, title = publishedAt) => ({ title, source: '三立新聞網', link: `https://example.com/${title}`, publishedAt })
 const groups = stockNewsGroups([
@@ -35,4 +35,10 @@ const announced = announcementGroups([
   { market: 'sii', announcementDate: '2026-11-03', announcementTime: '09:00:00', announcedAt: null, factDate: null, generatedDate: null, subject: 'd', clauseNo: null, description: '' }
 ], '2026-11-12')
 assert.deepEqual(announced.map(group => [group.day, group.prefix, group.items.map(item => item.time)]), [['2026-11-12', '今天', ['21:01']], ['2026-11-11', '昨天', ['16:09', '']], ['2026-11-03', '', ['09:00']]])
+// 重大訊息的負面事件（2026-11-24）：八種都有中文、沒有或不認得的不標
+assert.equal(Object.keys(NEGATIVE_EVENT_LABELS).length, 8)
+assert.equal(negativeEventLabel('cybersecurity_incident'), '資安事件')
+assert.equal(negativeEventLabel('reorganization_or_bankruptcy'), '重整或破產')
+assert.equal(negativeEventLabel(null), null)
+assert.equal(negativeEventLabel('something_new'), null)
 console.log('PASS: stock news time and announcement groups')

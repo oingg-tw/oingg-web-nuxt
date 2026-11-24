@@ -43,6 +43,19 @@ export interface AnnouncementGroup {
   items: (MaterialAnnouncement & { time: string })[]
 }
 
+// 重大訊息的負面事件（2026-11-24，數據中台 negativeEvent，詞彙表：網站自己對中文）。不認得的代碼（上游之後新增的）不標
+export const NEGATIVE_EVENT_LABELS: Record<string, string> = {
+  auditor_change: '更換會計師',
+  litigation: '重大訴訟',
+  bounced_check: '退票',
+  production_halt: '停工',
+  reorganization_or_bankruptcy: '重整或破產',
+  searched: '遭搜索',
+  cybersecurity_incident: '資安事件',
+  sanction: '受處分'
+}
+export const negativeEventLabel = (code: string | null | undefined): string | null => (code ? NEGATIVE_EVENT_LABELS[code] ?? null : null)
+
 export function announcementGroups(entries: MaterialAnnouncement[], today: string): AnnouncementGroup[] {
   const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
   const groups: AnnouncementGroup[] = []
