@@ -69,21 +69,13 @@ const COMMON_STOCK_SYMBOL = /^\d{4}$/
 // despite being past the cliff, because May genuinely is a low season for Taiwanese ex-dates
 // (2024-05 and 2025-05 are both 0). So the note keys off the MONTH, not off the row count.
 //
-// PENDING（agreed with analysis-ts/業務中台/mops-ts 2026-09-22, NOT yet applied）: mops-ts is
-// backfilling 股利分派 for 1,985 companies over 民國 106~115（3–4 days）, after which this floor
-// drops to 2020-09. NOT 2020-01, which is what the fiscal-year range would suggest: fiscal_year is
-// the EARNINGS period, not the ex-dividend year, so fiscal 109's earliest ex-date is 2020-09-17 —
-// setting 2020-01 would claim eight empty months. 2020-09 also happens to meet the whole
-// ecosystem's 109Q3 financial-data floor, so no month claims ex-dividend events with no statements
-// behind them.
-//
-// This value stays at the conservative 2026-03 until the batch has actually landed and mops-ts
-// reports the real MIN(除息日): COVERAGE_FROM is a CLAIM TO THE READER about what we hold, so it
-// may only be widened after the rows exist, never in anticipation of them.
-const COVERAGE_FROM = '2026-03'
+// 2026-11-25 重新量過 DEV（上面那段是 09-22 的量測；公開觀測站的股利分派回補早就上了，2026-03 那條線過期，月曆把 2025 年也說成
+// 「只有零星幾筆」，2025-08 其實有 354 筆）：股票從 2013 年起完整（2012-07 0 筆 → 2013-07 523 筆，數據中台說股利分派是上市櫃 2013 起）；
+// 更早只有 ETF，2005-05 起（數據中台 16cbf9d 讀公開觀測站的收益分配公告）。COVERAGE_FROM 是對讀者的宣稱，只照量到的寫
+const COVERAGE_FROM = '2013-01'
 // 月格看它自己那個月，手機的一週看週一那個月
 const coverageNote = (month: string) => (month < COVERAGE_FROM
-  ? `${month} 的除權息紀錄不完整：完整的全市場紀錄自 ${COVERAGE_FROM} 起，更早的月份只有零星幾筆，不代表當月的全部除權息事件。`
+  ? `${month} 的除權息紀錄不完整：股票的紀錄自 2013 年起，更早的月份只有 ETF 的配息（2005 年 5 月起）。`
   : '')
 
 // 月格與手機一週的一列：除權息與董事會決議畫法相同，只差標籤與那一行說明（short）。點開一天的彈窗另外照表格排（見下面 detail）
