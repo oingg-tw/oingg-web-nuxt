@@ -12,6 +12,15 @@ export function searchKey(text: string): string {
   return key
 }
 
+// 指標挑選器（2026-11-25，使用者：「個股篩選搜尋 F-score 找不到F-score?」）：查詢裡打了空白或連字號時，兩邊都拿掉再比，「F score」
+// 對得到「F-Score」。查詢沒有這兩種符號就不在這裡比（交回原本的規則）：「per」這種短字整串比會對到一堆 Performing、Personnel
+const SEPARATORS = /[\s\-‐-―]+/g
+export function includesIgnoringSeparators(text: string, query: string): boolean {
+  if (!/[\s\-‐-―]/.test(query)) return false
+  const key = searchKey(query).replace(SEPARATORS, '')
+  return key.length > 0 && searchKey(text).replace(SEPARATORS, '').includes(key)
+}
+
 // 股票搜尋的比對與排序（2026-11-07，全市場 2,734 檔實測：打 878 找不到 00878、打 56 找不到 0056，打「中信」時中信金排在幾十檔 ETF 後面）。
 // 代號開頭的零可以不打。排序：代號完全相同 → 去掉開頭的零後相同（6201 不能輸給 006201）→ 代號開頭相同 → 名稱開頭相同 → 名稱裡有。
 // 代號也換小寫：特別股帶字母（1101B），打 1101b 要對得到

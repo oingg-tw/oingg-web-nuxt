@@ -1,7 +1,14 @@
 // 搜尋的比對鍵與股票搜尋的排序（app/utils/search-text.ts）：異體字、全形、大小寫、跟中文相鄰的空白；英文字之間的空白要留著
 // Run: node scripts/check-search-text.mjs
 import assert from 'node:assert/strict'
-import { searchKey, searchStocks } from '../app/utils/search-text.ts'
+import { includesIgnoringSeparators, searchKey, searchStocks } from '../app/utils/search-text.ts'
+
+// 指標挑選器：查詢打了空白或連字號，兩邊都拿掉再比（2026-11-25「F-score 找不到」）；沒打就交回原本的規則，短字不整串亂對
+assert.equal(includesIgnoringSeparators('Piotroski F-Score 財務體質評分', 'F score'), true)
+assert.equal(includesIgnoringSeparators('Piotroski F-Score', 'f - score'), true)
+assert.equal(includesIgnoringSeparators('Altman Z″-Score', 'z score'), false, 'Z″ 不是 Z')
+assert.equal(includesIgnoringSeparators('Non-Performing Loan Ratio', 'per'), false)
+assert.equal(includesIgnoringSeparators('Anything', ' - '), false)
 
 const found = (name, query) => searchKey(name).includes(searchKey(query))
 

@@ -226,7 +226,7 @@ function browseFieldsOf(metric: Metric): IndicatorEntry[] {
 // user knows it by, without the row itself needing to display every alternate name.
 function fieldMatchesQuery(metricKey: string, metricName: string, field: MetricField, query: string): boolean {
   const label = props.hidePeriod ? metricName : formatFieldLabel(metricName, field)
-  return searchKey(label).includes(query) || (fieldTextOf(metricKey, field)?.aliases?.some(alias => searchKey(alias).includes(query)) ?? false)
+  return searchKey(label).includes(query) || includesIgnoringSeparators(label, query) || (fieldTextOf(metricKey, field)?.aliases?.some(alias => searchKey(alias).includes(query) || includesIgnoringSeparators(alias, query)) ?? false)
 }
 
 // Whether a metric (中分類) counts as matching the current search — its own name, or any
@@ -262,8 +262,8 @@ const englishNames = (metric: Metric) => {
   return [text?.nameEn, ...(text?.searchAliases ?? []), ...(metric.searchAliases ?? [])].filter((name): name is string => !!name)
 }
 function metricNameMatches(metric: Metric, query: string): boolean {
-  const own = (target: Metric) => target.key.toLowerCase() === query || englishNames(target).some(name => nameEnMatches(name, query))
-  if (searchKey(metricDisplayName(metric)).includes(query) || own(metric)) return true
+  const own = (target: Metric) => target.key.toLowerCase() === query || englishNames(target).some(name => nameEnMatches(name, query) || includesIgnoringSeparators(name, query))
+  if (searchKey(metricDisplayName(metric)).includes(query) || includesIgnoringSeparators(metricDisplayName(metric), query) || own(metric)) return true
   return allMetrics.value.some(base => base.key !== metric.key && metric.key.startsWith(base.key) && /[A-Z]/.test(metric.key[base.key.length] ?? '') && own(base))
 }
 
