@@ -23,11 +23,12 @@ for (let year = 2018; year <= 2026; year++) {
 }
 const indexes = calendarIndexes(keys, 4)
 assert.equal(keys.length, 23)
-// 跨度 32 季＝8 年，近8年填得滿（照期數只有 23 期，近8年是灰的）
+// 跨度 32 季＝8 年：照日曆算近5年填得滿（照期數只有 23 期，近5年也是灰的）；近10年要 40 季，選了收斂成近5年
 const span = indexes.at(-1) - indexes[0] + 1
 assert.equal(span, 32)
-assert.deepEqual(insufficientLookbackYears(span, 4), [])
-assert.equal(fitLookbackWindow('近8年', span, 4), '近8年')
+assert.deepEqual(insufficientLookbackYears(span, 4), [10])
+assert.equal(fitLookbackWindow('近10年', span, 4), '近5年')
+assert.equal(fitLookbackWindow('近10年', 40, 4), '近10年', '40 季剛好是近10年')
 // 近5年從 2021 Q4 開始（照期數的最後 20 期是從 2020 Q2）；近3年從 2023 Q4
 assert.equal(keys[calendarWindowStart(indexes, '近5年', 4)], '2021 Q4')
 assert.equal(keys[calendarWindowStart(indexes, '近3年', 4)], '2023 Q4')

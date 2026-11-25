@@ -142,7 +142,7 @@ const availableTimeframes = computed<MetricsHistoryTimeframe[]>(() => {
 })
 
 // 這裡原本把伺服器抓的序列預熱進目前值圖表的快取（prewarmMetricHistoryChart），2026-10-21 刪掉：這一頁抓 20 期（STOCK_HISTORY_LIMIT，
-// 「任何指標的歷史，放五年就好」），圖表要 40 期（近8年要 32 季），預熱從來沒對上過。圖本來就是瀏覽器掛載後才畫（vue-echarts），
+// 「任何指標的歷史，放五年就好」），圖表要 40 期（近10年要 40 季），預熱從來沒對上過。圖本來就是瀏覽器掛載後才畫（vue-echarts），
 // 伺服器畫佔位；資料晚到的 hydration 不一致由 useMetricsHistory 擋（hydration 結束前拿到的資料先不套用）
 
 // 業務中台 returns oldest-first; newest-first is what both the lead sentence and the table want.

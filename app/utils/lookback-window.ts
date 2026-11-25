@@ -1,20 +1,19 @@
-// Unified 近1/2/3/5/8年 lookback-window scale for every stock-detail chart card, replacing the
-// former 近5年/近10年 two-option pattern — per direct request 2026-09-14 ("所有卡片的時間下拉選單
-// 統一 近 1 2 3 5 8年"). Auto-imported (app/utils convention, same as getChartInk/CHART_TOOLTIP
+// Unified 近N年 lookback-window scale for every chart card (近1/3/5/10年 since 2026-11-25; 1/2/3/5/8
+// from 2026-09-14 until then). Auto-imported (app/utils convention, same as getChartInk/CHART_TOOLTIP
 // etc.), so no explicit import needed at call sites.
 export const LOOKBACK_WINDOW_YEARS = {
   近1年: 1,
-  近2年: 2,
   近3年: 3,
   近5年: 5,
-  近8年: 8
+  近10年: 10
 }
 
-export type LookbackWindow = '近1年' | '近2年' | '近3年' | '近5年' | '近8年'
+export type LookbackWindow = '近1年' | '近3年' | '近5年' | '近10年'
 
-// 全站每張圖同一組（2026-10-15，使用者：「圖表右上年期選項請統一 1 年 2年 3年 5年 8年 自定義」）。月營收原本多一個近10年
-//（2026-10-11），一併拿掉；要看更長的一段用自訂區間（滑桿涵蓋這檔拿得到的全部期別）。
-export const LOOKBACK_YEARS: readonly number[] = [1, 2, 3, 5, 8]
+// 全站每張圖同一組（2026-10-15，使用者：「圖表右上年期選項請統一 1 年 2年 3年 5年 8年 自定義」）。2026-11-25 改成 1／3／5／10 年
+//（使用者在數據中台那邊定「前端的時間範圍選項全部統一成 1／3／5／10 年，2 年、8 年不要了」，這邊問過「全站都改」）：上游的河流圖、Beta、
+// 殖利率歷史也是這四個窗口。近10年要 40 季（上游一次最多給 40 季，剛好）、120 個月（月營收讀 132 個月）；更早的用自訂區間。
+export const LOOKBACK_YEARS: readonly number[] = [1, 3, 5, 10]
 
 // Which windows this symbol cannot fill.
 //

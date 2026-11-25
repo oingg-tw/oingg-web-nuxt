@@ -1,4 +1,4 @@
-// 每張有時間軸的圖，右上角的近N年 1、2、3、5、8 年都要選得到（2026-11-19，使用者：「要讓每個選項預設都有12358年喔」「底層用季計算也是同樣道理」）：
+// 每張有時間軸的圖，右上角的近N年都要選得到：1、3、5、10 年（2026-11-25 起；原本是 1、2、3、5、8 年，2026-11-19 使用者：「要讓每個選項預設都有12358年喔」「底層用季計算也是同樣道理」）：
 // 拿資料很長的公司（預設 2330）打開每一個有圖的個股頁，打開每張圖的近N年選單，沒有一個是灰的。起因是杜邦、財報三率、償債能力只抓 20 季、
 // 現金流量組成的年度只湊得出 7 年，近8年永遠灰掉。另外歷史表照舊只列 5 年（HISTORY_TABLE_PERIODS 20 列）。
 // 持有人結構不在這裡：集保的週資料從 2026-09 才開始收，灰掉是對的。
@@ -8,7 +8,7 @@ import { chromium } from 'playwright'
 
 const base = process.env.BASE ?? 'http://localhost:3000'
 const code = process.env.CODE ?? '2330'
-const YEARS = ['近1年', '近2年', '近3年', '近5年', '近8年']
+const YEARS = ['近1年', '近3年', '近5年', '近10年']
 // 有近N年的頁面；三張歷史表截在 20 列的頁面另外量表格
 const PAGES = ['', 'dupont', 'margins', 'solvency', 'guarantees', 'investments', 'dividend', 'monthly-revenue', 'monthly-revenue-growth', 'current-asset-composition', 'non-current-asset-composition', 'debt-composition', 'equity-composition', 'cash-flow-composition', 'operating-expense-composition', 'equity-source', 'roe', 'eps', 'gross-margin']
 const TABLE_PAGES = new Set(['dupont', 'margins', 'solvency'])
@@ -36,7 +36,7 @@ for (const slug of PAGES) {
     await items.first().waitFor({ timeout: 10000 })
     const options = await items.evaluateAll(list => list.map(item => ({ text: item.textContent.trim(), disabled: item.classList.contains('is-disabled') })))
     const grey = YEARS.filter(year => options.find(option => option.text === year)?.disabled !== false)
-    check(grey.length === 0, `圖 ${i + 1}：1、2、3、5、8 年都選得到${grey.length ? `（灰的或沒有：${grey.join('、')}）` : ''}`)
+    check(grey.length === 0, `圖 ${i + 1}：1、3、5、10 年都選得到${grey.length ? `（灰的或沒有：${grey.join('、')}）` : ''}`)
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
   }

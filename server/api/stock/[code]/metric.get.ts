@@ -11,7 +11,7 @@ import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 // this page specifically — the 目前值 card's own interactive chart defaults to 近5年 anyway
 // (useChartPeriod's per-chart default), so this server-side fetch and that default now match exactly
 // rather than fetching a superset the chart would have to project down from. A visitor who wants
-// more can still pick 近8年 in the chart's own selector — that's a live client fetch beyond this
+// more can still pick 近10年 in the chart's own selector — that's a live client fetch beyond this
 // page's own SSR depth, same as switching to 單季 already is.
 //
 // settle(): a history-endpoint hiccup must degrade the page, never 500 it. What "degrade" means

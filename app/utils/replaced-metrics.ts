@@ -46,7 +46,9 @@ export const REPLACED_METRICS: Record<string, string> = {
 // 能改範圍、能刪。挑選器：使用者同日改成「挑選器也可以，但是要請數據中臺研究是否有範圍選項可以選」，型錄裡帶 rangePresets 的那一支就放回挑選器
 //（ScreenerIndicatorPickerBody 的 hiddenInPicker），設定範圍那一步可以點選（ScreenerRangeEditor）。欄位範本照舊不能用（scripts/check-replaced-metrics.mjs）
 export const SCORE_METRICS = ['threeMarginsRising', 'piotroskiFScore', 'altmanZScore', 'altmanZDoublePrimeScore', 'ohlsonOScore', 'zmijewskiScore', 'beneishMScore', 'chowderNumber', 'sue', 'sus']
-export const PICKER_UNLISTED_METRICS = ['holdingDividendGrowthRate3y', 'yieldOnCost3y', 'yieldOnCost5y', ...SCORE_METRICS]
+// 2026-11-25 窗口全站統一成 1／3／5／10 年（數據中台加 1、10 年版），使用者選「成長率四個都列、成本殖利率不列」：持股股利 3 年成長率
+// 放回挑選器（1、10 年版加進型錄就會出現），成本殖利率照舊藏，數據中台給新的代號時把 1、10 年版也加進來
+export const PICKER_UNLISTED_METRICS = ['yieldOnCost3y', 'yieldOnCost5y', ...SCORE_METRICS]
 
 // 改名的欄位 id，整個 id 對（上面那張表是用指標對）：類股欄位 2026-11-16 從 sector.code 改叫 sector.name（詞彙檢核 X17 第 1 步，業務中台兩個都收，
 // 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的

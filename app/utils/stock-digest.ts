@@ -184,12 +184,12 @@ function buildFacts(input: StockDigestInput): StockDigestFact[] {
 }
 
 // Trailing window of the stock's own quarterly ratio history, truncated to the largest whole
-// lookback the data can honestly fill（20/12/8/4 quarters → 近5年/近3年/近2年/近1年）. A symbol
-// sitting on the market-wide 2022Q1 data floor gets「近3年」, never a padded「近5年」.
+// lookback the data can honestly fill（20/12/4 quarters → 近5年/近3年/近1年；近2年 went with the
+// site-wide 1／3／5／10 年 on 2026-11-25）. A symbol sitting on the market-wide 2022Q1 data floor
+// gets「近3年」, never a padded「近5年」.
 const WINDOW_QUARTERS: [number, string][] = [
   [20, '近5年'],
   [12, '近3年'],
-  [8, '近2年'],
   [4, '近1年']
 ]
 

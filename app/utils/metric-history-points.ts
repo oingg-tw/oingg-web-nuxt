@@ -55,7 +55,7 @@ export function metricCellText(point: { value: number | null; nullReason: string
   return nullReasonShortText(point.nullReason)
 }
 
-// 歷史表最多列幾期：近 5 年（2026-09-21，使用者：「任何指標的歷史，放五年就好，足夠了」）。圖表的資料抓到 10 年（40 期，近8年選得到、起點跟指標頁同一年）
+// 歷史表最多列幾期：近 5 年（2026-09-21，使用者：「任何指標的歷史，放五年就好，足夠了」）。圖表的資料抓到 10 年（40 期，近10年選得到、起點跟指標頁同一年）
 //（STOCK_CHART_HISTORY_LIMIT，2026-11-19），表格不跟著變長：杜邦、財報三率、償債能力頁的表截在這裡
 export const HISTORY_TABLE_PERIODS = 20
 

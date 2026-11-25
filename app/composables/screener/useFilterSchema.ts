@@ -266,9 +266,11 @@ const PERIOD_SORT_ORDER: Record<string, number> = {
   '1Y_1D': 6,
   '2Y_1D': 7,
   '3Y_1D': 8,
-  '2Y_1W': 9,
-  '3Y_1W': 10,
-  '5Y_1M': 11
+  '10Y_1D': 9,
+  '2Y_1W': 10,
+  '3Y_1W': 11,
+  '5Y_1M': 12,
+  '10Y_1M': 13
 }
 
 export function periodSortRank(period: string): number {

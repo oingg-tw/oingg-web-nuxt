@@ -46,10 +46,10 @@ interface MetricsHistoryResponse {
 export const STOCK_HISTORY_LIMIT = 20
 
 // 拿伺服器這份資料切近N年的圖（杜邦、財報三率、償債能力）要抓到 8 年：圖表右上的近N年最長是 8 年（2026-10-15「1 年 2年 3年 5年 8年」），
-// 只抓 20 期的話這幾張圖的近8年永遠是灰的（2026-11-19，使用者：「要讓每個選項預設都有12358年喔」「底層用季計算也是同樣道理」）。
+// 只抓 20 期的話這幾張圖的長窗口永遠是灰的（2026-11-19，使用者：「要讓每個選項預設都有12358年喔」「底層用季計算也是同樣道理」）。
 // 表格照舊只列 5 年：頁面截在 HISTORY_TABLE_PERIODS（app/utils/metric-history-points.ts）
 // 40 期（10 年）而不是剛好 8 年的 32 期（2026-11-23，使用者：「1615 EPS 從 2016開始 但是杜邦分析只從 2018開始?」）：指標頁的圖自己抓 40 期，
-// 這幾頁也抓 40 期，每一頁的圖都從同一年開始；近8年照舊是最長的選項，更早的用自訂區間看
+// 這幾頁也抓 40 期，每一頁的圖都從同一年開始；近10年（2026-11-25 起，剛好 40 季）是最長的選項，更早的用自訂區間看
 export const STOCK_CHART_HISTORY_LIMIT = 40
 
 // metrics-history 一次最多 10 支（業務中台）。超過的（業外損益組成的母項＋12 項，2026-11-22）分批同時打、依期別合併，存成同一份快取：
@@ -263,10 +263,11 @@ export const cachedFinancialStatement = defineCachedFunction(
 // GET /stocks/:symbol/financial-statement-history（2026-11-20，數據中台 0d7362c、業務中台照轉）：同一張報表最近 limit 季（上限 40），一次讀完。
 // 逐季組成的兩支（資產負債 32 季、現金流量 35 季）原本冷的時候一季一次 /financial-statement，11-20 抽樣時兩波共 12,600 次撞到業務中台每台
 // 每分鐘 6,000 次的上限。不帶終點季時從這家公司自己申報到的最新一季往回數，所以 limit 季都是真的資料，中間缺的季才是 found:false
+// last：讀到哪一季為止（業務中台的 fiscalYear＋fiscalQuarter，不給是最新一季）。一次最多 40 季，要更早的就從最舊那一季的前一季再讀一段
 export const cachedStatementHistory = defineCachedFunction(
-  (symbol: string, statementType: StatementType, limit: number) =>
-    businessFetch<FinancialStatementHistoryResponse>(`/stocks/${symbol}/financial-statement-history`, { query: { statementType, limit } }),
-  { name: 'stock-financial-statement-history', getKey: (symbol, statementType, limit) => `${symbol}:${statementType}:${limit}`, ...swrCache(TTL_STATEMENTS, TTL_STATIC) }
+  (symbol: string, statementType: StatementType, limit: number, last: { fiscalYear: number; fiscalQuarter: number } | null = null) =>
+    businessFetch<FinancialStatementHistoryResponse>(`/stocks/${symbol}/financial-statement-history`, { query: { statementType, limit, ...last } }),
+  { name: 'stock-financial-statement-history', getKey: (symbol: string, statementType: StatementType, limit: number, last: { fiscalYear: number; fiscalQuarter: number } | null = null) => `${symbol}:${statementType}:${limit}${last ? `:${last.fiscalYear}Q${last.fiscalQuarter}` : ''}`, ...swrCache(TTL_STATEMENTS, TTL_STATIC) }
 )
 
 // GET /stocks/:symbol/book-value-breakdown — 每股淨值的逐年變動拆解（業務中台 2026-09-27 上線）。

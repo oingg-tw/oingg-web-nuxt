@@ -9,7 +9,7 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 // useMetricHistoryChartOption。
 // 單季／近四季切換只在指標真的兩種都有時出現——`availableTimeframes` 來自型錄（GET /metrics 的 `fields`），不從 metricCode 的
 // 名字猜；只有一種期別的指標不顯示只有一個選項的切換。
-// 資料走 useMetricsHistory（全站回溯窗卡片共用的 composable），在瀏覽器抓 40 期（近8年要 32 季）。伺服器畫同樣高度的讀取中佔位，
+// 資料走 useMetricsHistory（全站回溯窗卡片共用的 composable），在瀏覽器抓 40 期（近10年要 40 季）。伺服器畫同樣高度的讀取中佔位，
 // 圖本來就是掛載後才畫（vue-echarts）。
 const props = defineProps<{
   symbol: string
@@ -152,7 +152,7 @@ const allPoints = computed(() => {
 //
 // total 是**真的有值的期數**，不是端點回報的總期數（2026-10-18，使用者：「stock/7711 ROE 圖表 兩年 只看到半截的線」）。7711 上市前只交
 // 半年報，近四季 ROE 有 11 期、只有 6 期有值（2024Q3～2025Q1 湊不滿四季）；用 11 判斷「近2年夠」，切出來的 8 季前 3 季是空的。
-// 用有值的期數，近2年就停用、落到填得滿的近1年。FULL_HISTORY_LIMIT 40 期已涵蓋最長的近8年，不需要知道 limit 之外還有多少
+// 用有值的期數，近2年就停用、落到填得滿的近1年。FULL_HISTORY_LIMIT 40 期剛好是最長的近10年，不需要知道 limit 之外還有多少
 const periodKey = (entry: { fiscalYear: number; fiscalQuarter: number | null }) => `${entry.fiscalYear}Q${entry.fiscalQuarter}`
 // 年度只寫年（FY 的期別在資料裡是 Q4，照寫會變成「2025 Q4」），同 useMetricHistoryChartOption
 const periodLabel = (key: string) => (timeframe.value === 'FY' ? key.split('Q')[0]! : key.replace('Q', ' Q'))

@@ -12,7 +12,7 @@ import { DUPONT_METRIC_CODES, type StockDupontPageResponse } from '#shared/types
 // each basis is cached under its own key, so a visitor who never touches the toggle still costs
 // exactly what they did before once both are warm.
 //
-// 40 periods (10 years, STOCK_CHART_HISTORY_LIMIT): 近8年 can be picked since 2026-11-19, and since 2026-11-23 the start year matches the metric pages; the table still lists 5 years.
+// 40 periods (10 years, STOCK_CHART_HISTORY_LIMIT): 近10年 (exactly 40 quarters) can be picked since 2026-11-25, and since 2026-11-23 the start year matches the metric pages; the table still lists 5 years.
 
 export default defineEventHandler(async (event): Promise<StockDupontPageResponse> => {
   const code = requireListedSymbol(event)
