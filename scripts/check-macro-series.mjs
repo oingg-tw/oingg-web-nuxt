@@ -40,4 +40,11 @@ const tree = cpiTree([
 assert.deepEqual(tree.map(item => `${item.name}:${item.depth}:${item.yearMonth}:${item.yoyChangePct}`), ['總指數:-1:2026-10:2.33', '食物類:0:2026-10:2.05', '肉類:1:2026-10:3.1', '生鮮家畜:2:2026-09:4'])
 // 鍵是細項代碼（2026-11-25）；代碼是 null 或業務中台還沒轉出這個欄位時用名稱
 assert.deepEqual(tree.map(item => item.code), ['total', '食物類', 'meat', '生鮮家畜'])
+// 上層代碼優先（46b516b）：上層改了名字，照代碼還是對得到
+const coded = cpiTree([
+  { itemCode: 'total', itemName: '總指數', parentItemCode: null, parentItemName: null, itemOrder: 1, entries: [entry('2026-10', 2.33)] },
+  { itemCode: 'food', itemName: '食物類（新名）', parentItemCode: 'total', parentItemName: '總指數', itemOrder: 2, entries: [entry('2026-10', 2.05)] },
+  { itemCode: 'meat', itemName: '肉類', parentItemCode: 'food', parentItemName: '食物類', itemOrder: 3, entries: [entry('2026-10', 3.1)] }
+])
+assert.deepEqual(coded.map(item => item.depth), [-1, 0, 1])
 console.log('PASS: macro series')

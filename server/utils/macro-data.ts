@@ -158,7 +158,7 @@ async function referencePage(page: MacroPageDefinition): Promise<Omit<MacroPageD
   }
   if (page.slug === 'inflation') {
     // 約 2.8 MB（81 項的完整歷史），只在這裡讀、快取一天，頁面只拿最新一期
-    const items = await businessFetch<{ items: { itemCode?: string | null; itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[] }>('/macro/cpi-items')
+    const items = await businessFetch<{ items: { itemCode?: string | null; itemName: string; parentItemCode?: string | null; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[] }>('/macro/cpi-items')
     return { series, cpiItems: cpiTree(items.items) }
   }
   return { series }

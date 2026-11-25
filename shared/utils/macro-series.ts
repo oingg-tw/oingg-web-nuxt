@@ -45,18 +45,21 @@ export function m2Composition(items: { category: string; entries: { yearMonth: s
   })
 }
 
-// CPI 分項：七大類與各分項最新一期的年增率。depth 由上層的名字往上數（七大類是 0；回應裡上層只有名字）。code 是主計總處的細項代碼
-//（2026-11-25 數據中台 c85130b：名稱可能改字、代碼不變，拿它當鍵），萬一缺就用名稱
-export function cpiTree(items: { itemCode?: string | null; itemName: string; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[]): { code: string; name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[] {
-  const parentOf = new Map(items.map(item => [item.itemName, item.parentItemName]))
-  const depthOf = (name: string): number => {
+// CPI 分項：七大類與各分項最新一期的年增率。depth 由上層往上數（七大類是 0）。code 是主計總處的細項代碼（2026-11-25 數據中台 c85130b：
+// 名稱可能改字、代碼不變，拿它當鍵），上層也用代碼對（parentItemCode，同日 46b516b，總指數是 null）。沒有上層代碼時（業務中台還沒轉出、
+// 或 gov 缺）用上層名稱先找到那一項的鍵，所以代碼與名稱混著也對得上
+export function cpiTree(items: { itemCode?: string | null; itemName: string; parentItemCode?: string | null; parentItemName: string | null; itemOrder: number; entries: { yearMonth: string; yoyChangePct: number | null }[] }[]): { code: string; name: string; parent: string | null; depth: number; yearMonth: string | null; yoyChangePct: number | null }[] {
+  const keyOf = (item: (typeof items)[number]) => item.itemCode ?? item.itemName
+  const keyByName = new Map(items.map(item => [item.itemName, keyOf(item)]))
+  const parentOf = new Map(items.map(item => [keyOf(item), item.parentItemCode ?? (item.parentItemName === null ? null : keyByName.get(item.parentItemName) ?? item.parentItemName)]))
+  const depthOf = (key: string): number => {
     let depth = -1
-    for (let parent = parentOf.get(name) ?? null; parent; parent = parentOf.get(parent) ?? null) depth += 1
+    for (let parent = parentOf.get(key) ?? null; parent; parent = parentOf.get(parent) ?? null) depth += 1
     return depth
   }
   return [...items].sort((a, b) => a.itemOrder - b.itemOrder).map((item) => {
     const last = item.entries.findLast(entry => entry.yoyChangePct !== null) ?? null
-    return { code: item.itemCode ?? item.itemName, name: item.itemName, parent: item.parentItemName, depth: depthOf(item.itemName), yearMonth: last?.yearMonth ?? null, yoyChangePct: last?.yoyChangePct ?? null }
+    return { code: keyOf(item), name: item.itemName, parent: item.parentItemName, depth: depthOf(keyOf(item)), yearMonth: last?.yearMonth ?? null, yoyChangePct: last?.yoyChangePct ?? null }
   })
 }
 
