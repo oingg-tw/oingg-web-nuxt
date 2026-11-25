@@ -130,8 +130,6 @@ export interface RankPageDefinition {
   // ETF 的排行先篩母體（POST /etf-screener 的 filters），答句的母體也改寫（例：只排成立滿半年的，剛掛牌的月增率基期太小）
   etfFilters?: { field: string; min?: number | null; max?: number | null }[]
   etfPopulation?: string
-  // 排的是欄位的相反數（52 週股價跌幅：漲跌幅由低到高取前 50，數值轉成正的跌幅、由高到低寫）。direction 是畫面上的方向
-  negate?: true
   // 這個欄位的說明（「是什麼？怎麼算？」與「要注意什麼」）。普通股的排行讀 /metrics 型錄自己的說明，ETF 的型錄沒有，寫在這裡
   note?: string
   // 年增率排行的基期門檻（2026-10-01，使用者選加門檻而不是撤頁）：/rank/revenue-growth 前 50 名全部 ≥100%、榜首 24852%，
@@ -192,9 +190,8 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // 成交量（2026-11-24，使用者「做成排行頁」）：數據中台每天排的前 20 名，上市、上櫃都有，含 ETF；成交量是股數，換成張
   { slug: 'volume', category: 'size', field: 'volume', marketList: { path: '/market/volume-top20', rowsKey: 'rankings', valueKey: 'volume', nameKey: 'companyName', dateKey: 'tradeDate' }, direction: 'desc', label: '成交量', unit: '張', valueScale: 1000, population: '上市櫃股票與 ETF ', listNote: '名次只反映交易日當天的成交量，不含任何評等；只列前 20 名。', note: '成交量是當天成交的張數（1 張是 1,000 股），上市、上櫃的股票與 ETF 一起排。股價低的股票同樣的金額能買比較多張，所以成交量大不一定代表成交金額大。' },
   { slug: 'market-cap', category: 'size', field: 'liveMarketCap.EOD', direction: 'desc', label: '市值', metricCode: 'liveMarketCap', unit: '億元', valueScale: 1e8 },
-  // 52 週股價漲幅／跌幅：同一個欄位排兩頭。跌幅那頁排相反數（negate），數值寫成正的跌幅、由高到低；不寫「跌幅由低到高」，
-  // 那會被讀成跌最少的排前面
-  { slug: 'price-return-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', label: '52週股價漲幅', short: '52週漲幅', metricCode: 'priceReturn52w' },
+  // 52 週股價漲幅、跌幅 2026-11-25 拿掉（使用者：「上網競品分析…把沒人要的排行拿掉」：比對的 13 家網站沒有一家做，又是短線動能清單，
+  // 不合存股的讀者；跌幅前 50 還容易被讀成撿便宜的名單）。兩個網址在 nuxt.config 的 routeRules 301 到 /rank
   // 持股超過千張的比例（2026-11-23，使用者從排行指南選的「千張大戶持股比例」，數據中台 custodyRatioOver1000Lots，集保每週）：名稱照中性寫法，
   // 不用「大戶」；會受融資融券、借券與保管專戶影響，寫在型錄的說明裡。剛好 1,000 張的帳戶在第 14 級、不算在內
   { slug: 'dca-accounts', category: 'holders', field: 'accountCount', marketList: { path: '/market/dca-ranking', query: { kind: 'stock' }, rowsKey: 'entries', valueKey: 'accountCount', nameKey: 'name', dateKey: 'yearMonth' }, direction: 'desc', label: '定期定額戶數', short: '定期定額', unit: '戶', monthlyReport: true, population: '證交所每月統計定期定額交易戶數的個股', listNote: '名次照證交所公布的排序，不含任何評等；證交所只公布前 20 名，第 21 名以後查不到。', note: '定期定額戶數是當月用定期定額買進這檔股票的投資人戶數，證交所每月公布一次，個股與 ETF 各列前 20 名，這裡是個股的那一份。' },
@@ -202,7 +199,6 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // ETF、特別股不在內，停止融資的照算（數據中台的回覆）
   { slug: 'short-margin-ratio', category: 'holders', field: 'shortToMarginRatioPct', marketList: { path: '/market/margin-short-ratio-ranking', query: { limit: '50', minMarginBalanceLots: '100' }, rowsKey: 'rankings', valueKey: 'shortToMarginRatioPct', nameKey: 'companyName', dateKey: 'tradeDate' }, direction: 'desc', label: '券資比', unit: '%', valueDigits: 2, population: '融資餘額至少 100 張的上市櫃公司', listNote: '名次只反映交易日當天的券資比，不含任何評等；融資不到 100 張的不排，免得幾張的融資就排到最前面。上市的融資融券隔天早上才更新，常比上櫃晚一天。', note: '券資比是融券餘額除以融資餘額。融資是借錢買股票、融券是借股票來賣，券資比高代表融券賣出的部位相對多；停止融資或融券的股票照餘額計算。' },
   { slug: 'custody-over-1000-lots', category: 'holders', field: 'custodyRatioOver1000Lots.EOD', direction: 'desc', label: '持股超過千張的比例', short: '超過千張持股', metricCode: 'custodyRatioOver1000Lots', dateLabel: '集保資料日' },
-  { slug: 'price-drop-52w', category: 'size', field: 'priceReturn52w.1Y_1D', direction: 'desc', negate: true, label: '52週股價跌幅', short: '52週跌幅', metricCode: 'priceReturn52w' },
   { slug: 'revenue-growth', category: 'growth', short: '營收年增率', field: 'revenueGrowthRate.Q', direction: 'desc', label: '單季營收成長年增率', metricCode: 'revenueGrowthRate', growthBaseFloor: { valueField: 'revenuePerShare.Q', minBase: 0.5 } },
   // EPS 的兩頁（2026-10-01）。使用者：「eps 可以分成兩個版本阿 一個說明成長 一個說明由虧轉盈的
   // 幅度就好了」——而那個拆法解掉的正是 /rank/eps 被撤掉之後剩下的那個數學問題。
@@ -274,14 +270,6 @@ export const RANK_PAGES: RankPageDefinition[] = [
   // 由低到高（2026-11-07，使用者：「應該是哪個對用戶有利要放前面吧」）：同總費用率，對買進的人有利的排前面。原本由高到低，前 50 名全是溢價，折價的看不到
   { slug: 'etf-premium', universe: 'etf', category: 'etf-return', field: 'premiumDiscountPct', direction: 'asc', label: '折溢價率', short: '折溢價', unit: '%', dateField: 'tradeDate', note: '折溢價率是收盤價相對每單位淨值高或低多少：負數是折價（買進比淨值便宜），正數是溢價（買進比淨值貴）；以各檔最近一個交易日為準，每個交易日更新。' }
 ]
-
-// 側欄與手機膠囊列只列熱門的排行（2026-11-23，使用者選「只列熱門的」）。依據 oingg-conductor-ts/docs/1_raw/選股與選 ETF 常見排行機制與評估標準全解析.md：
-// 個股最常見的是本益比、殖利率、股價淨值比與成長動能；ETF 是受益人數、規模、配息率、含息年報酬率、折溢價與內扣費用（照文件列的順序）。
-// 其餘的排行頁照常存在，從排行總覽的卡片進去。名稱用 short（同卡片的分段鈕）。scripts/check-rank-nav.mjs
-export const RANK_NAV: Record<'common' | 'etf', string[]> = {
-  common: ['dividend-yield', 'pe-ratio-low', 'pb-ratio-low', 'revenue-growth', 'eps-growth', 'roe', 'market-cap', 'price-return-52w', 'custody-over-1000-lots', 'dca-accounts'],
-  etf: ['etf-holders', 'etf-custody-growth', 'etf-aum', 'etf-volume-5d', 'etf-distribution-yield', 'etf-return-1y', 'etf-premium', 'etf-expense-ratio-low', 'etf-dca-accounts']
-}
 
 // 排行的數值怎麼寫（排行頁與排行首頁共用，2026-10-21）：有 valueScale 就換算後取整數加千分位（市值、ETF 規模的億元），整數加千分位
 //（受益人數），其他兩位小數。單位另外由呼叫端接（表頭寫單位、句子裡接在數字後面）。千分位的寫法同 number-format.ts 的 groupThousands

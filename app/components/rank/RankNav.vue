@@ -1,30 +1,109 @@
 <script setup lang="ts">
-// 排行的側欄（2026-10-21，使用者：「rank 希望 sidebar 區分 普通股與 etf」）。同日改成只列一組（使用者：「rank sidebar 項目請減少」，選
-//「只列目前這一組」），「類別」切換另一組（SharedScopeSwitch）。切換只換側欄的清單、不換頁；換頁或重新整理回到這一頁所屬的那一組。
-// 排行總覽（/rank）先列普通股。類別放在清單上面（使用者：「類別放上是否更合理」）：它決定下面列哪一組，先選再看；持股的帳戶切換在下面，
-// 因為換帳戶時頁面清單不變。
-// 只列熱門的排行（2026-11-23，使用者選「只列熱門的」，清單在 RANK_NAV），最後一列「全部排行」連到總覽；從總覽卡片進來、不在清單上的
-// 排行頁標在「全部排行」底下（SharedSectionNav 的 activeTo）。手機的膠囊列用同一份清單（pages/rank/[slug].vue）。
-// 手機底部條「目前：」後面接是哪一組（兩組都有「殖利率」這類名字）。版面與兩份 DOM 的理由在 SharedSectionNav.vue
-const props = defineProps<{ etf?: boolean }>()
-const route = useRoute()
+import { ArrowRight } from '@element-plus/icons-vue'
 
-const GROUPS = [{ id: 'common', name: '普通股' }, { id: 'etf', name: 'ETF' }]
-const group = ref<'common' | 'etf'>(props.etf ? 'etf' : 'common')
-const items = computed(() => {
-  const total = RANK_PAGES.filter(page => (page.universe === 'etf') === (group.value === 'etf')).length
-  return [
-    ...RANK_NAV[group.value].flatMap(slug => findRankPage(slug) ?? []).map(page => ({ label: page.short ?? page.label, to: rankPath(page.slug) })),
-    { label: `全部排行（${total} 種）`, to: '/rank', divided: true }
-  ]
+// 排行的側欄（2026-11-25，使用者在方案頁選 C：https://claude.ai/artifact/9JJaUodgKjP5kQhFG8G94L ，原因是「從menu點進來看不太出來使用流程」）：
+// 側欄就是總覽的目錄。排行總覽在最上面，下面是普通股與 ETF 的分類，跟總覽的卡片同名同順序（RANK_CATEGORIES）；點分類在原地展開它的
+// 排行，排行頁打開時那一類自己展開、目前那一個標起來。取代 10-21 的「類別」切換與 11-23 的熱門清單：普通股與 ETF 用組標題分開，
+// 每一種排行都在兩下之內。手機的「其他頁面」是同一份目錄，兩份 DOM 的理由在 SharedSectionNav.vue。收起來的排行用 v-show，連結照樣在
+// 伺服器的 HTML 裡（check-click-depth 走連結證明每一頁都到得了）
+const route = useRoute()
+const GROUPS = [{ name: '普通股', etf: false }, { name: 'ETF', etf: true }].map(group => ({
+  name: group.name,
+  categories: RANK_CATEGORIES
+    .map(category => ({ ...category, pages: RANK_PAGES.filter(page => page.category === category.key && (page.universe === 'etf') === group.etf) }))
+    .filter(category => category.pages.length)
+}))
+const currentPage = computed(() => RANK_PAGES.find(page => rankPath(page.slug) === route.path) ?? null)
+const open = ref(new Set<string>(currentPage.value ? [currentPage.value.category] : []))
+// 從一類換到另一類的排行（膠囊列、卡片）時，新的那一類也展開；使用者自己打開的照舊
+watch(currentPage, (page) => {
+  if (page && !open.value.has(page.category)) open.value = new Set([...open.value, page.category])
 })
-const activeTo = computed(() => (items.value.some(item => item.to === route.path) ? undefined : '/rank'))
+function toggle(key: string) {
+  const next = new Set(open.value)
+  if (!next.delete(key)) next.add(key)
+  open.value = next
+}
+const categoryTitle = (key: string) => RANK_CATEGORIES.find(category => category.key === key)?.title ?? ''
+// 手機底部條「目前：獲利・五年平均 ROE」
+const current = computed(() => (currentPage.value ? `${categoryTitle(currentPage.value.category)}・${currentPage.value.short ?? currentPage.value.label}` : '排行總覽'))
 </script>
 
 <template>
-  <SharedSectionNav label="排行" :items="items" :active-to="activeTo" :current-detail="etf ? 'ETF' : null">
-    <template #before>
-      <SharedScopeSwitch class="rail-group--lead" heading="類別" :items="GROUPS" :active-id="group" @select="(id) => { if (id === 'common' || id === 'etf') group = id }" />
-    </template>
-  </SharedSectionNav>
+  <!-- 窄螢幕：底部條打開的「其他頁面」。清單在下面再寫一次（理由同 SharedSectionNav：兩份都要在 DOM 裡），id 加前綴分開 -->
+  <AppBottomNav :current="current" label="排行清單">
+    <nav aria-label="排行">
+      <ul class="rail-list">
+        <li><NuxtLink to="/rank" class="rail-item">排行總覽</NuxtLink></li>
+        <template v-for="group in GROUPS" :key="group.name">
+          <li class="rail-heading">{{ group.name }}</li>
+          <li v-for="category in group.categories" :key="category.key">
+            <button type="button" class="rail-item rank-nav__toggle" :aria-expanded="open.has(category.key)" :aria-controls="`rank-nav-sheet-${category.key}`" @click="toggle(category.key)">
+              <el-icon class="rank-nav__chevron" aria-hidden="true"><ArrowRight /></el-icon>{{ category.title }}<span class="rank-nav__count">{{ category.pages.length }}</span>
+            </button>
+            <ul v-show="open.has(category.key)" :id="`rank-nav-sheet-${category.key}`" class="rank-nav__pages">
+              <li v-for="page in category.pages" :key="page.slug">
+                <NuxtLink :to="rankPath(page.slug)" class="rail-item rank-nav__page">{{ page.short ?? page.label }}</NuxtLink>
+              </li>
+            </ul>
+          </li>
+        </template>
+      </ul>
+    </nav>
+  </AppBottomNav>
+
+  <AppNavRail label="排行導覽（釘選）">
+    <nav aria-label="排行">
+      <ul class="rail-list">
+        <li><NuxtLink to="/rank" class="rail-item">排行總覽</NuxtLink></li>
+        <template v-for="group in GROUPS" :key="group.name">
+          <li class="rail-heading">{{ group.name }}</li>
+          <li v-for="category in group.categories" :key="category.key">
+            <button type="button" class="rail-item rank-nav__toggle" :aria-expanded="open.has(category.key)" :aria-controls="`rank-nav-rail-${category.key}`" @click="toggle(category.key)">
+              <el-icon class="rank-nav__chevron" aria-hidden="true"><ArrowRight /></el-icon>{{ category.title }}<span class="rank-nav__count">{{ category.pages.length }}</span>
+            </button>
+            <ul v-show="open.has(category.key)" :id="`rank-nav-rail-${category.key}`" class="rank-nav__pages">
+              <li v-for="page in category.pages" :key="page.slug">
+                <NuxtLink :to="rankPath(page.slug)" class="rail-item rank-nav__page">{{ page.short ?? page.label }}</NuxtLink>
+              </li>
+            </ul>
+          </li>
+        </template>
+      </ul>
+    </nav>
+  </AppNavRail>
 </template>
+
+<style scoped>
+.rank-nav__chevron {
+  flex: none;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.15s;
+}
+
+.rank-nav__toggle[aria-expanded='true'] {
+  font-weight: 600;
+}
+
+.rank-nav__toggle[aria-expanded='true'] .rank-nav__chevron {
+  transform: rotate(90deg);
+}
+
+/* 這一類有幾種排行：靠右、次要字色，不跟名稱擠 */
+.rank-nav__count {
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.rank-nav__pages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 展開的排行跟分類名稱的字對齊（箭頭 16px＋間距 8px＋列的左邊 20px） */
+.rank-nav__page {
+  padding-left: 44px;
+}
+</style>

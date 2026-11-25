@@ -140,6 +140,9 @@ export default defineNuxtConfig({
     '/screener/common/value': { redirect: { to: '/screener/common', statusCode: 301 } },
     '/screener/common/low-volatility': { redirect: { to: '/screener/common', statusCode: 301 } },
     '/screener/common/dividend-stability': { redirect: { to: '/screener/common', statusCode: 301 } },
+    // 52 週股價漲幅、跌幅的排行 2026-11-25 拿掉（競品都沒有，shared/utils/hub-slugs.ts 的 RANK_PAGES）
+    '/rank/price-return-52w': { redirect: { to: '/rank', statusCode: 301 } },
+    '/rank/price-drop-52w': { redirect: { to: '/rank', statusCode: 301 } },
     // public/images 原本沒有 Cache-Control（2026-10-16 PSI：首頁主圖 95 KB、logo 7 KB 每次造訪都重新驗證或重新下載；/_nuxt 有一年
     // immutable）。檔名沒有雜湊，所以不用 immutable：換了圖最多一天就換新
     '/images/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },

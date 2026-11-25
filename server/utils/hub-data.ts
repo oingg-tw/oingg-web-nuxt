@@ -572,8 +572,7 @@ export const getRanking = defineCachedFunction(
     const floor = definition.growthBaseFloor
     const response = await businessFetch<RankingResponse>('/screener/ranking', {
       // `columns` 讓同一次呼叫多帶一個欄位（實測 2026-10-01 可用），所以基期門檻不需要第二次往返。
-      // negate 排的是相反數，向上游要反方向（52 週股價跌幅：漲跌幅由低到高）
-      query: { field: definition.field, order: definition.negate ? (definition.direction === 'desc' ? 'asc' : 'desc') : definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
+      query: { field: definition.field, order: definition.direction, limit: RANKING_LIMIT, ...(floor ? { columns: floor.valueField } : {}) }
     })
     const column = response.columns.find(item => item.field === definition.field) ?? response.columns[0]
     // 基期太小的列剔掉（見 RANK_PAGES 的 growthBaseFloor 註解）。**`limit` 上限是 50**（實測，送 120
@@ -604,7 +603,7 @@ export const getRanking = defineCachedFunction(
     const rows: RankingRow[] = kept.map((result, index) => {
       const cell = result.values[definition.field] ?? null
       const value = numericValue(cell?.value)
-      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value: definition.negate && value !== null ? -value : value, knowledgeDate: cell?.knowledgeDate ?? null }
+      return { rank: index + 1, symbol: result.symbol, name: companyNameOf(result), value, knowledgeDate: cell?.knowledgeDate ?? null }
     })
     return {
       direction: definition.direction,

@@ -32,10 +32,9 @@ const orderWord = definition.direction === 'desc' ? '由高到低' : '由低到�
 const label = definition.label
 // ETF 的排行（2026-10-21，使用者：「rank 希望 sidebar 區分 普通股與 etf」）：標題寫「台股 ETF 規模排行」，母體是 ETF，說明用 RANK_PAGES 的 note
 const isEtf = definition.universe === 'etf'
-// 手機的膠囊列只列這一組，同側欄 RankNav（2026-11-06，使用者：「排行的膠囊 是不是把個股與ETF 分開比較好」）；另一組在「其他頁面」的類別。
-// 2026-11-23 起跟側欄同一份熱門清單（RANK_NAV）：從總覽卡片進來的其他排行接在最後，看得到自己在哪一頁；最後一顆是「全部排行」
-const navSlugs = RANK_NAV[isEtf ? 'etf' : 'common']
-const rankChips = [...navSlugs, ...(navSlugs.includes(slug) ? [] : [slug])].flatMap(item => findRankPage(item) ?? [])
+// 手機的膠囊列是這一類的排行（2026-11-25，側欄方案 C：側欄展開的就是這一組，同總覽卡片的分段鈕）；整份目錄在「其他頁面」
+const rankChips = RANK_PAGES.filter(page => page.category === definition.category)
+const categoryName = RANK_CATEGORIES.find(category => category.key === definition.category)?.title ?? ''
 const subject = isEtf ? ` ETF ${label}` : label
 // 篩過的表寫「債券型 ETF 總費用率」
 const tableSubject = computed(() => (fundType.value ? `${fundType.value} ETF ${label}` : subject))
@@ -105,15 +104,14 @@ const { breadcrumbs } = useHubPageSeo({
   <div class="app-page rank-page">
     <h1 class="app-page__title rank-page__title">台股{{ subject }}排行：{{ orderWord }}前 {{ allRows.length }} 檔<template v-if="asOf">（{{ asOf }}）</template></h1>
     <StockBreadcrumb :items="breadcrumbs" />
-    <RankNav :etf="isEtf" />
+    <RankNav />
 
     <!-- 手機（2026-11-02，排行手機版方案 C）：指標膠囊列可以直接換排行，名次清單排在答句前面，第一屏就看得到名單；電腦版照舊是側欄＋
          下面的表格（這兩塊在電腦版不畫） -->
-    <nav ref="chipStrip" class="rank-chips" :aria-label="isEtf ? '其他 ETF 排行' : '其他普通股排行'">
+    <nav ref="chipStrip" class="rank-chips" :aria-label="`${isEtf ? 'ETF ' : ''}${categoryName}的排行`">
       <NuxtLink v-for="page in rankChips" :key="page.slug" :to="rankPath(page.slug)" class="hub-chip rank-chips__chip" :aria-current="page.slug === slug ? 'page' : undefined">
         {{ page.short ?? page.label }}
       </NuxtLink>
-      <NuxtLink to="/rank" class="hub-chip rank-chips__chip">全部排行</NuxtLink>
     </nav>
     <div v-if="allRows.length" class="rank-list-block">
       <div v-if="groups.length > 1" class="rank-page__filter">
