@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Personal page (2026-09-19): nothing here is content for a crawler — keep it out of the index, and
 // out of the sitemap via nuxt.config's own sitemap.exclude.
-useSeoMeta({ title: '配息月曆', robots: 'noindex, nofollow' })
+useSeoMeta({ title: '股東月曆', robots: 'noindex, nofollow' })
 
 // 登入後的首頁：只有配息月曆（2026-09-10「應該以配息月曆為核心才對」）。原本是儀表板卡片格，2026-09-16 依
 // 「總覽 除了配息月曆以外的卡片都先拿掉」關閉、2026-10-08 連程式碼一起刪（git 找得回來）；同日由 dashboard.vue
@@ -11,8 +11,8 @@ useSeoMeta({ title: '配息月曆', robots: 'noindex, nofollow' })
 <template>
   <div class="calendar-page">
     <div class="calendar-page__header">
-      <h1 class="app-page__title app-page__title--app calendar-page__title">配息月曆</h1>
-      <p class="calendar-page__subtitle">追蹤股利決議、除權息與發放時程</p>
+      <h1 class="app-page__title app-page__title--app calendar-page__title">股東月曆</h1>
+      <p class="calendar-page__subtitle">每一天有哪些股票除權息、哪天發放</p>
     </div>
     <CalendarNav />
 

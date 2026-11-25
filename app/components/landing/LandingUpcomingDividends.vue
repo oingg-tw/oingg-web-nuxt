@@ -35,7 +35,7 @@ const hasPending = computed(() => tracks.value.some(track => track.days.some(day
     <div class="upcoming__head">
       <el-icon class="upcoming__icon" aria-hidden="true"><Calendar /></el-icon>
       <h2 id="upcoming-title" class="upcoming__title">接下來的除權息與發放</h2>
-      <NuxtLink to="/calendar" class="upcoming__more">看配息月曆 ›</NuxtLink>
+      <NuxtLink to="/calendar" class="upcoming__more">看股東月曆 ›</NuxtLink>
     </div>
 
     <div class="upcoming__switch" role="group" aria-label="看哪一種日子">

@@ -40,8 +40,9 @@ export interface AppNavGroup {
 
 // 全站的第一層功能，頁首（AppNavMenu）與手機選單的圖示格（AppFeatureMenu）讀同一份（2026-10-21，使用者：「app-header-menu 我懷疑 這邊的樣式
 // 也是不一致的 請重新設計」）。原本兩份各自維護：桌機有排行、手機沒有；手機有總經特區、大師徽章，順序也不同。
-// 配息月曆：2026-09-16 由 dashboard 改名；2026-07 的 620 筆除息全是普通股、2026-10 的 17 筆有 8 筆是 ETF，月配型 ETF 是讀者最常追的
-const CALENDAR: AppFeature = { key: 'calendar', label: '配息月曆', icon: Calendar, to: '/calendar' }
+// 股東月曆：2026-09-16 由 dashboard 改名配息月曆；2026-11-25 改名股東月曆（使用者：「配息月曆改名股東月曆，這樣就可以把現金增資放到
+// sidebar」），底下是配息的月曆、全年除權息，之後加現金增資。2026-07 的 620 筆除息全是普通股、2026-10 的 17 筆有 8 筆是 ETF
+const CALENDAR: AppFeature = { key: 'calendar', label: '股東月曆', icon: Calendar, to: '/calendar' }
 // 網站導覽：/sitemap 是給人看的 HTML 網站地圖（不是 sitemap.xml）。2026-09-20 放回第一位（「導覽順位要在Logo後面 也就是第一位」）
 const SITEMAP: AppFeature = { key: 'sitemap', label: '網站導覽', icon: Compass, to: '/sitemap' }
 // 股票篩選：普通股／特別股／ETF 三組篩選的入口（2026-10-15 起 ETF、特別股都收在 /screener 底下）

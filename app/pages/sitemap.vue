@@ -11,7 +11,7 @@ useSeoMeta({ title: '網站導覽' })
 const START_POINTS = [
   { label: '新手專區', to: '/learn', note: '先看懂營收、獲利、股利這些數字怎麼來的' },
   { label: '普通股篩選', to: SCREENER_PATHS.common, note: '從現成的條件範本開始，不用自己想條件' },
-  { label: '配息月曆', to: '/calendar', note: '看每一天有哪些股票除權息、哪天發放' }
+  { label: '股東月曆', to: '/calendar', note: '看每一天有哪些股票除權息、哪天發放' }
 ]
 
 const ACCESS_KEYS = [
