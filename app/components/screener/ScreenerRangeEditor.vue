@@ -65,14 +65,15 @@ const MODE_OPTIONS: { value: RangeMode; label: string; symbol?: string; icon?: C
   { value: 'equal', label: '等於', symbol: '=' }
 ]
 
-function deriveMode(): RangeMode {
-  if (min.value !== null && max.value !== null) {
-    if (min.value === max.value) return 'equal'
-    return exclude.value ? 'outside' : 'between'
+function modeOf(lower: number | null, upper: number | null, excluded: boolean): RangeMode {
+  if (lower !== null && upper !== null) {
+    if (lower === upper) return 'equal'
+    return excluded ? 'outside' : 'between'
   }
-  if (max.value !== null) return 'below'
+  if (upper !== null) return 'below'
   return 'above'
 }
+const deriveMode = (): RangeMode => modeOf(min.value, max.value, exclude.value)
 
 const mode = ref<RangeMode>(deriveMode())
 const activeOption = computed(() => MODE_OPTIONS.find(option => option.value === mode.value))
@@ -125,11 +126,13 @@ const equalValue = computed<number | null>({
 
 // 點常用範圍：填上下限、條件跟著換（只有下限是大於、只有上限是小於、兩邊都有是之間）。目前的上下限剛好是某一個，那一顆就是按下的，
 // 底下寫它的出處（數據中台的出處與補充；只寫按下的那一個，不然一排選項底下會是一整段出處）
+// 條件照選項本身的上下限定：min、max 是 defineModel，寫進去之後要等父層下一輪才讀得回來，這時讀它們會拿到舊值（2026-11-25 DEV 量到：
+// 按「8～9 分」條件停在「大於」，上限 9 存著卻沒有欄位顯示）
 function applyPreset(preset: RangePreset) {
   exclude.value = false
   min.value = preset.min
   max.value = preset.max
-  mode.value = deriveMode()
+  mode.value = modeOf(preset.min, preset.max, false)
 }
 const activePreset = computed(() => (exclude.value ? null : props.presets?.find(preset => preset.min === min.value && preset.max === max.value) ?? null))
 
@@ -153,7 +156,7 @@ watch(() => props.presets, () => {
   }
   min.value = null
   max.value = null
-  mode.value = deriveMode()
+  mode.value = modeOf(null, null, false)
   applyDefaultPreset()
 })
 

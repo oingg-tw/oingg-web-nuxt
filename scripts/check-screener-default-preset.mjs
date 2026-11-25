@@ -17,8 +17,10 @@ await page.route('**/api/hub/filter-schema*', async (route) => {
   for (const category of json.categories) for (const metric of category.metrics) {
     if (metric.key !== 'altmanZScore') continue
     const timeframes = metric.fields.map(field => field.key)
+    // 預設用兩邊都有的：2026-11-25 量到按了「8～9 分」條件停在「大於」，上限存著卻沒有欄位（applyPreset 讀到 defineModel 的舊值）
     metric.rangePresets = [
-      { label: '2.99 以上', min: 2.99, max: null, timeframes, source: 'Altman (1968)', note: null, isDefault: true },
+      { label: '1.81～2.99', min: 1.81, max: 2.99, timeframes, source: 'Altman (1968)', note: null, isDefault: true },
+      { label: '2.99 以上', min: 2.99, max: null, timeframes, source: 'Altman (1968)', note: null, isDefault: false },
       { label: '1.81 以下', min: null, max: 1.81, timeframes, source: 'Altman (1968)', note: null, isDefault: false }
     ]
   }
@@ -43,14 +45,15 @@ await hit.click()
 await page.waitForTimeout(800)
 const field = page.locator('.indicator-dialog__field:visible').first()
 if (await field.count()) { await field.click(); await page.waitForTimeout(800) }
-const inputs = await page.locator('.range-editor__input input').evaluateAll(list => list.map(input => input.value))
+const fields = () => page.locator('.range-editor .range-editor__field').evaluateAll(list => list.map(field => `${field.querySelector('.range-editor__label')?.textContent}=${field.querySelector('input')?.value}`).join('、'))
 const pressed = await page.locator('.range-editor .hub-chip[aria-pressed="true"]').allInnerTexts()
-check(pressed.length === 1 && pressed[0] === '2.99 以上', '新增條件先按下預設', pressed.join('、'))
-check(inputs.length === 1 && inputs[0] === '2.99', '下限填好預設的數字', inputs.join('、'))
-// 自己點另一個就換，預設不會再蓋回來
+check(pressed.length === 1 && pressed[0] === '1.81～2.99', '新增條件先按下預設', pressed.join('、'))
+check(await fields() === '下限=1.81、上限=2.99', '條件是「之間」，上下限兩格都填好', await fields())
+// 自己點另一個就換，預設不會再蓋回來；只有上限的選項只留上限那一格
 await page.locator('.range-editor .hub-chip', { hasText: '1.81 以下' }).click()
 await page.waitForTimeout(300)
 check((await page.locator('.range-editor .hub-chip[aria-pressed="true"]').allInnerTexts()).join() === '1.81 以下', '點另一個選項就換成它')
+check(await fields() === '上限=1.81', '只有上限的選項只留上限那一格', await fields())
 await page.keyboard.press('Escape')
 await page.waitForTimeout(500)
 check(await firstPill.innerText() === pillBefore, '範本原本的條件沒被動到', pillBefore)
