@@ -20,8 +20,9 @@ export interface GuestSelection {
   name: string
 }
 
+// 預設那組排第一（2026-11-25，使用者：「訪客打開篩選頁時 把預設的「高殖利率＋財務體質」」排第一，同首頁的 HOME_TEMPLATES）；其餘照業務中台的順序
 export function guestSelectableTemplates(templates: ScreenerTemplate[]): ScreenerTemplate[] {
-  return templates.filter(template => template.status === 'AVAILABLE')
+  return templates.filter(template => template.status === 'AVAILABLE').sort((a, b) => Number(b.isDefault) - Number(a.isDefault))
 }
 
 export function useGuestScreener() {
