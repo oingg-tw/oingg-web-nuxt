@@ -70,13 +70,15 @@ const COMMON_STOCK_SYMBOL = /^\d{4}$/
 // (2024-05 and 2025-05 are both 0). So the note keys off the MONTH, not off the row count.
 //
 // 2026-11-25 重新量過 DEV（上面那段是 09-22 的量測；公開觀測站的股利分派回補早就上了，2026-03 那條線過期，月曆把 2025 年也說成
-// 「只有零星幾筆」，2025-08 其實有 354 筆）：股票從 2013 年起完整（2012-07 0 筆 → 2013-07 523 筆，數據中台說股利分派是上市櫃 2013 起）；
-// 更早只有 ETF，2005-05 起（數據中台 16cbf9d 讀公開觀測站的收益分配公告）。COVERAGE_FROM 是對讀者的宣稱，只照量到的寫
-const COVERAGE_FROM = '2013-01'
+// 「只有零星幾筆」，2025-08 其實有 354 筆）。數據中台：股票（上市櫃、興櫃）從除權息日 2013-06-01 起完整，股利分派回補到公告年 102，
+// 2013 年 1～5 月屬公告年 101、沒回補；2013～2015 年間下市的公司不在裡面。更早只有 ETF，2005-05 起（16cbf9d 讀公開觀測站的收益分配
+// 公告）。COVERAGE_FROM 是對讀者的宣稱，只照量到、上游說的寫
+const COVERAGE_FROM = '2013-06'
+const DELISTED_GAP_UNTIL = '2016-01'
 // 月格看它自己那個月，手機的一週看週一那個月
 const coverageNote = (month: string) => (month < COVERAGE_FROM
-  ? `${month} 的除權息紀錄不完整：股票的紀錄自 2013 年起，更早的月份只有 ETF 的配息（2005 年 5 月起）。`
-  : '')
+  ? `${month} 的除權息紀錄不完整：股票的紀錄自 2013 年 6 月起，更早的月份只有 ETF 的配息（2005 年 5 月起）。`
+  : month < DELISTED_GAP_UNTIL ? `${month} 的紀錄不含 2013～2015 年間下市的公司。` : '')
 
 // 月格與手機一週的一列：除權息與董事會決議畫法相同，只差標籤與那一行說明（short）。點開一天的彈窗另外照表格排（見下面 detail）
 interface DayRow { key: string; symbol: string; name: string; kind: DayKind; short: string[] }

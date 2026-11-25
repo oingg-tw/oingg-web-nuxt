@@ -3,7 +3,7 @@
 // Asserts the four things that break if the wiring is wrong, against the live dev server:
 //   1. 上個月 actually loads a past month's events (the endpoint used to return 0 rows for those)
 //   2. a realised day's dialog has 發放日 dates, an announced one says 公司預告
-//   3. the coverage note stays away from covered months (2013 起；更早的月份要往回翻一百多個月，不在這裡跑)
+//   3. the coverage note stays away from covered months (2013-06 起；更早的月份要往回翻一百多個月，不在這裡跑)
 //   4. both statuses render in the same month (2026-09 is genuinely mixed: 97 + 10)
 // 2026-11-08 起也驗今天與手機的一週：標頭寫今天、桌機沒有一週、手機預設一週五天、「顯示其餘」展開、切到月格
 // 2026-11-24 起彈窗是方案 B 的分組表格：標題「11/10（二）」、組的那一列、超過 20 筆有搜尋框且照代號篩、手機是貼底的面板
@@ -121,7 +121,7 @@ const monthsFromFeb = (now.getFullYear() * 12 + now.getMonth()) - (2026 * 12 + 1
 const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
 check(await note.count() === 0, `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')} 不顯示涵蓋警語`)
 
-// --- 2026-02：舊的涵蓋線（2026-03）之前，2026-11-25 起股票從 2013 年起完整，不該再有警語 ---
+// --- 2026-02：舊的涵蓋線（2026-03）之前，2026-11-25 起股票從 2013-06 起完整，不該再有警語 ---
 console.log('\n舊的涵蓋線之前（2026-02）')
 for (let i = 1; i < monthsFromFeb; i++) { await prev.click(); await page.waitForTimeout(400) }
 await page.waitForTimeout(1500)
