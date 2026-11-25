@@ -38,7 +38,7 @@ const chipDays = card.locator('.dividend-calendar-card__cell-chips')
 const dataRows = dialog => dialog.locator('.dividend-calendar-day__table tbody tr:not(.dividend-calendar-day__group)')
 const payCells = dialog => dialog.locator('#dividend-day-ex').locator('xpath=ancestor::section[1]').locator('tbody tr:not(.dividend-calendar-day__group) td:last-child')
 const DATE = /\d+\/\d+/
-// 格子的 aria-label「11/17 有 53 筆除權息、2 筆董事會決議」加起來最多的那一天
+// 格子的 aria-label「11/17 有 53 筆除權息」最多的那一天
 async function busiestCell() {
   const cells = card.locator('.dividend-calendar-card__cell--events')
   const labels = await cells.evaluateAll(list => list.map(cell => cell.getAttribute('aria-label') ?? ''))
@@ -64,6 +64,8 @@ console.log('\n本月（混合 announced/realized）')
 const dayCells = await chipDays.count()
 check(dayCells > 0, '本月有事件', `有事件的日子 ${dayCells} 天`)
 check(await note.count() === 0, '本月不顯示涵蓋警語')
+// 董事會決議不放月曆（2026-11-25，使用者：「這邊是給用戶看自己甚麼時候可以拿到多少用的」）
+check(!(await card.innerText()).includes('董事會決議'), '月曆沒有董事會決議')
 
 // Scan every day this month for both status wordings.
 let sawPaid = false
@@ -90,7 +92,7 @@ check(sawAnnounced, '預告的列寫「公司預告」')
   await cell.click()
   const dialog = page.locator('.el-dialog:visible')
   await dialog.waitFor()
-  check(await dialog.locator('.dividend-calendar-day__group').count() > 0, '彈窗照類型或股利期間分組')
+  check(await dialog.locator('.dividend-calendar-day__group').count() > 0, '彈窗照類型分組')
   const search = dialog.getByRole('textbox', { name: /找代號或名稱/ })
   check((await search.count() > 0) === (total > 20), `超過 20 筆才有搜尋框（${total} 筆）`)
   if (await search.count()) {
