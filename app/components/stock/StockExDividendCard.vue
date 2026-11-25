@@ -14,25 +14,19 @@ const nextNotice = computed<ExDividendNotice | null>(() => {
   return [...props.notices].sort((a, b) => a.exDate.localeCompare(b.exDate))[0]!
 })
 
-// Raw-value display for the four subscription-group fields — their exact meaning is
-// analysis-ts's own best-guess translation of twse-ts's raw columns, not confirmed against
-// twse-ts directly (see useExDividendNotices.ts's own comment). No unit conversion (e.g. *100,
-// *1000) is applied since guessing the wrong one would show a confidently-wrong number, which
-// is worse than an honestly plain one.
+// 0 跟沒有值一樣不寫：櫃買預告表沒有現增的列填 0、現增列的現金是 0（月曆 2026-11-24 同一條）。現增三欄的意思見 useExDividendNotices
+// 的型別註解（2026-11-25 詞彙表確認，原本的「認購比例」「持股比例」是原值照列、名字也不對）
 interface FieldDef {
   label: string
   format: (notice: ExDividendNotice) => string | null
 }
 
 const FIELD_DEFS: FieldDef[] = [
-  { label: '現金股利', format: n => (n.cashDividend === null ? null : `${n.cashDividend.toFixed(2)} 元`) },
-  { label: '股票股利比例', format: n => (n.stockDividendRatio === null ? null : String(n.stockDividendRatio)) },
-  { label: '認購比例', format: n => (n.subscriptionRatio === null ? null : String(n.subscriptionRatio)) },
-  { label: '認購價', format: n => (n.subscriptionPricePerShare === null ? null : `${n.subscriptionPricePerShare} 元`) },
-  { label: '提撥股數', format: n => (n.sharesOffered === null ? null : n.sharesOffered.toLocaleString('zh-TW')) },
-  { label: '員工認購股數', format: n => (n.sharesEmpOwner === null ? null : n.sharesEmpOwner.toLocaleString('zh-TW')) },
-  { label: '股東認購股數', format: n => (n.sharesholderOwner === null ? null : n.sharesholderOwner.toLocaleString('zh-TW')) },
-  { label: '持股比例', format: n => (n.stockHoldingRatio === null ? null : String(n.stockHoldingRatio)) }
+  { label: '現金股利', format: n => (n.cashDividend ? `${n.cashDividend.toFixed(2)} 元` : null) },
+  { label: '股票股利比例', format: n => (n.stockDividendRatio ? String(n.stockDividendRatio) : null) },
+  { label: '每仟股認購', format: n => (n.stockHoldingRatio ? `${perShareText(n.stockHoldingRatio)} 股` : null) },
+  { label: '認購價', format: n => (n.subscriptionPricePerShare ? `${perShareText(n.subscriptionPricePerShare)} 元` : null) },
+  { label: '現增股數', format: n => (n.capitalIncreaseShares ? `${n.capitalIncreaseShares.toLocaleString('zh-TW')} 股` : null) }
 ]
 
 const visibleFields = computed(() => {
@@ -52,7 +46,7 @@ const visibleFields = computed(() => {
     <template v-else>
       <div class="ex-dividend-card__headline">
         <span class="ex-dividend-card__date">{{ nextNotice.exDate }}</span>
-        <el-tag size="small" type="warning">{{ nextNotice.exType }}</el-tag>
+        <el-tag size="small" type="warning">{{ isCapitalIncreaseOnly(nextNotice) ? '現增' : nextNotice.exType }}</el-tag>
       </div>
       <div class="ex-dividend-card__grid">
         <div v-for="field in visibleFields" :key="field.label" class="ex-dividend-card__field">
@@ -60,12 +54,6 @@ const visibleFields = computed(() => {
           <span class="ex-dividend-card__value">{{ field.value }}</span>
         </div>
       </div>
-      <!-- 認購比例/提撥股數/員工認購股數/股東認購股數/持股比例 field names are analysis-ts's own
-           best-guess translation of twse-ts's raw columns, not yet confirmed directly against
-           twse-ts (see useExDividendNotices.ts) — shown as plain raw numbers, no % or per-
-           thousand-shares conversion applied, since guessing the wrong unit would be worse
-           than an honestly plain number. -->
-      <p v-if="nextNotice.exType !== '息'" class="ex-dividend-card__note">認購相關欄位照公告原值列出，未換算單位</p>
     </template>
   </el-card>
 </template>
@@ -108,12 +96,5 @@ const visibleFields = computed(() => {
 .ex-dividend-card__value {
   font-size: 1rem;
   font-weight: 600;
-}
-
-.ex-dividend-card__note {
-  margin: 16px 0 0;
-  font-size: 1rem;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
 }
 </style>

@@ -120,7 +120,7 @@ const exDividendAnswer = computed(() => {
   const notices = exDividendNotices.value?.[code.value] ?? []
   if (!notices.length) return exDividendNotices.value ? '目前查無排定的除權息。' : null
   const next = [...notices].sort((a, b) => a.exDate.localeCompare(b.exDate))[0]!
-  return joinClauses([`下次除${next.exType}日 ${next.exDate}`, next.cashDividend !== null ? `現金股利 ${next.cashDividend.toFixed(2)} 元` : null, next.stockDividendRatio !== null ? `股票股利比例 ${next.stockDividendRatio}` : null])
+  return joinClauses([`下次除${next.exType}日 ${next.exDate}`, next.cashDividend ? `現金股利 ${next.cashDividend.toFixed(2)} 元` : null, next.stockDividendRatio ? `股票股利比例 ${next.stockDividendRatio}` : null, capitalIncreaseText(next)])
 })
 </script>
 

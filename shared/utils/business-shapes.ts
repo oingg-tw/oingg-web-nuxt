@@ -9,10 +9,23 @@ interface ExDateFields { exDividendDate?: string | null; exRightsDate?: string |
 // 除權日被吃掉）：除息日那筆是「息」、沒有配股的欄位，除權日那筆是「權」、沒有現金的欄位，各頁照 exType 寫的字才不會把配股寫在除息日
 const CASH_FIELDS = ['cashDividend', 'distributionPerUnit', 'cashAmount', 'paymentDate']
 const STOCK_FIELDS = ['stockDividendRatio', 'stockShares', 'fractionalShares', 'stockDividendDistributionDate', 'subscriptionRatio',
-  'subscriptionPricePerShare', 'sharesOffered', 'sharesEmpOwner', 'sharesholderOwner', 'stockHoldingRatio']
+  'subscriptionPricePerShare', 'sharesOffered', 'sharesEmpOwner', 'sharesholderOwner', 'stockHoldingRatio', 'exRightsComponents', 'capitalIncreaseShares']
 const without = <T extends object>(raw: T, fields: string[]): T => ({ ...raw, ...Object.fromEntries(fields.filter(field => field in raw).map(field => [field, null])) })
 
+// 現金增資不是股利（2026-11-25，使用者「明明就是配息月曆，為什麼要放現金增資？股東會拿到甚麼嗎？」→「照建議」）：除權只有現增
+// （數據中台 46b516b 的 exRightsComponents 只有 cashCapitalIncrease）就當沒有除權日，同一天的現金股利留成一筆「息」。配股又現增的照舊是權，
+// 看不出來的（null）也照舊列，免得漏掉配股。月曆、首頁、觀察清單、持股都用這個；個股配息頁的「下次除權息」要看現增，用 withRightsIssues
+export const isCapitalIncreaseOnly = (raw: object) => {
+  const parts = (raw as { exRightsComponents?: string[] | null }).exRightsComponents
+  return parts?.length === 1 && parts[0] === 'cashCapitalIncrease'
+}
+
 export function withExType<T extends object>(raw: T): T[] {
+  if (!isCapitalIncreaseOnly(raw)) return withRightsIssues(raw)
+  return (raw as ExDateFields).exDividendDate ? withRightsIssues({ ...without(raw, STOCK_FIELDS), exRightsDate: null }) : []
+}
+
+export function withRightsIssues<T extends object>(raw: T): T[] {
   const row = raw as ExDateFields
   if (!row.exDividendDate && !row.exRightsDate) return [raw]
   if (row.exDividendDate && row.exRightsDate && row.exDividendDate !== row.exRightsDate) {

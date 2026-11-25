@@ -457,7 +457,6 @@ export interface ExDividendRow {
   cash: number | null
   // 每股配幾股
   stockPerShare: number | null
-  rightsOffering: boolean
   paymentDate: string | null
   announced: boolean
 }

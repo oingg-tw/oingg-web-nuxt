@@ -1,6 +1,6 @@
 // 業務中台回應 → 站內形狀（shared/utils/business-shapes.ts）。Run: node scripts/check-business-shapes.mjs（selfcheck 也會跑）
 import assert from 'node:assert/strict'
-import { metricsCatalogFromBusiness, withExType } from '../shared/utils/business-shapes.ts'
+import { metricsCatalogFromBusiness, withExType, withRightsIssues } from '../shared/utils/business-shapes.ts'
 import { businessErrorDetail, describeBusinessError } from '../app/utils/bff-error.ts'
 
 // 除權息：息／權／權息各一筆；兩個日期都沒有就原樣
@@ -16,6 +16,20 @@ assert.deepEqual(split.map(row => [row.exDate, row.exType, row.cashDividend, row
   ['2026-08-05', '權', null, null, 0.05, '2026-09-01']
 ])
 assert.equal('stockShares' in split[0], false, '沒有的欄位不加')
+
+// 純現增不是股利（2026-11-25）：只有除權日的整筆拿掉；同一天有現金股利的留成一筆息，現增欄位清掉
+const rights = { symbol: '2414', exRightsDate: '2026-11-06', exRightsComponents: ['cashCapitalIncrease'], subscriptionPricePerShare: 46, stockHoldingRatio: 98.927, capitalIncreaseShares: 20000000 }
+assert.deepEqual(withExType(rights), [])
+const cashAndRights = withExType({ ...rights, symbol: '7899', exDividendDate: '2026-11-06', cashDividend: 0.94 })
+assert.deepEqual(cashAndRights.map(row => [row.exDate, row.exType, row.cashDividend, row.exRightsDate, row.stockHoldingRatio, row.exRightsComponents]), [['2026-11-06', '息', 0.94, null, null, null]])
+const cashThenRights = withExType({ ...rights, exDividendDate: '2026-10-01', cashDividend: 0.4 })
+assert.deepEqual(cashThenRights.map(row => [row.exDate, row.exType]), [['2026-10-01', '息']])
+// 配股又現增、看不出來的照舊是權
+assert.equal(withExType({ ...rights, exRightsComponents: ['stockDividend', 'cashCapitalIncrease'], stockDividendRatio: 0.08 })[0].exType, '權')
+assert.equal(withExType({ ...rights, exRightsComponents: null }).length, 1)
+// 個股配息頁的「下次除權息」看得到現增；拆開的息那筆不帶現增欄位
+assert.deepEqual(withRightsIssues(rights).map(row => [row.exType, row.stockHoldingRatio]), [['權', 98.927]])
+assert.deepEqual(withRightsIssues({ ...rights, exDividendDate: '2026-10-01', cashDividend: 0.4 }).map(row => [row.exType, row.exRightsComponents, row.capitalIncreaseShares]), [['息', null, null], ['權', ['cashCapitalIncrease'], 20000000]])
 
 // 型錄：業務中台的名字換成篩選器用的那組
 const catalog = { categories: [{ categoryKey: 'profitability', categoryDisplayName: '獲利能力', sort: 1, metrics: [{ metricCode: 'roe', name: 'ROE', unit: '%', fields: [{ timeframe: 'TTM', unit: '%' }] }] }] }

@@ -244,8 +244,11 @@ function yieldClause(summary: StockSummary | null): string | null {
 function exDividendClause(notice: ExDividendNotice | null): string | null {
   if (!notice) return null
   const parts: string[] = []
-  if (notice.cashDividend !== null) parts.push(`現金股利 ${notice.cashDividend.toFixed(2)} 元`)
-  if (notice.stockDividendRatio !== null) parts.push(`股票股利比例 ${notice.stockDividendRatio}`)
+  // 0 不寫（現增列的現金是 0）
+  if (notice.cashDividend) parts.push(`現金股利 ${notice.cashDividend.toFixed(2)} 元`)
+  if (notice.stockDividendRatio) parts.push(`股票股利比例 ${notice.stockDividendRatio}`)
+  const capitalIncrease = capitalIncreaseText(notice)
+  if (capitalIncrease) parts.push(capitalIncrease)
   // exType is '息' | '權' | '權息' (useExDividendNotices.ts) → 除息日／除權日／除權息日.
   return `除${notice.exType}日 ${notice.exDate}${parts.length ? `，${parts.join('、')}` : ''}`
 }

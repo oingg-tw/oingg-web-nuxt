@@ -762,7 +762,6 @@ interface ExDividendCalendarEntry {
   cashDividend: number | null
   distributionPerUnit: number | null
   stockDividendRatio: number | null
-  subscriptionRatio: number | null
   paymentDate: string | null
 }
 
@@ -776,7 +775,7 @@ const kindOf = (type: string | null | undefined): ExDividendKind | null => EX_DI
 export const getExDividendMonth = defineCachedFunction(
   async (month: string): Promise<ExDividendRow[]> => {
     const response = await businessFetch<{ entries: ExDividendCalendarEntry[] }>('/stocks/ex-dividend-calendar', { query: { yearMonth: month } })
-    // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）
+    // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）；純現增不列（2026-11-25，快取名 v2 讓舊的現增列馬上消失）
     return response.entries
       .flatMap(withExType)
       .map(entry => ({
@@ -788,13 +787,12 @@ export const getExDividendMonth = defineCachedFunction(
         exType: entry.exType,
         cash: entry.distributionPerUnit ?? entry.cashDividend,
         stockPerShare: entry.stockDividendRatio,
-        rightsOffering: !!entry.subscriptionRatio,
         paymentDate: entry.paymentDate,
         announced: entry.status === 'announced'
       }))
       .sort((a, b) => a.exDate.localeCompare(b.exDate) || a.symbol.localeCompare(b.symbol))
   },
-  { name: 'hub-ex-dividend-month', getKey: (month: string) => month, ...swrCache(TTL_DAILY, TTL_STATIC) }
+  { name: 'hub-ex-dividend-month-v2', getKey: (month: string) => month, ...swrCache(TTL_DAILY, TTL_STATIC) }
 )
 
 // 每個月有幾檔除權息（業務中台 00329e4 轉發 analysis-ts GET /stocks/ex-dividend-calendar/monthly-counts，跟行事曆同一批列、同一個分類；

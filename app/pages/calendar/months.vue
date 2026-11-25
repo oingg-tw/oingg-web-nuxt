@@ -117,7 +117,7 @@ const screenerLinks = computed(() => (Object.keys(SCREENER_LABEL) as ExDividendK
   .map(key => ({ key, label: SCREENER_LABEL[key], to: exDividendMonthScreenerPath(key, monthNumber(selected.value.month)) })))
 
 const cashText = (cash: number) => String(Number(cash.toFixed(4)))
-const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Number((row.stockPerShare * 1000).toFixed(2))} 股` : row.rightsOffering ? '現金增資' : '－')
+const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Number((row.stockPerShare * 1000).toFixed(2))} 股` : '－')
 </script>
 
 <template>
@@ -211,7 +211,7 @@ const stockText = (row: ExDividendRow) => (row.stockPerShare ? `每千股 ${Numb
                     <template v-if="row.cash !== null">{{ cashText(row.cash) }}<span class="ex-month-table__unit"> 元</span></template>
                     <template v-else>－</template>
                   </td>
-                  <td class="ex-month-table__meta" :class="{ 'is-empty': !row.stockPerShare && !row.rightsOffering }"><span v-if="row.stockPerShare" class="ex-month-table__label">配股 </span>{{ stockText(row) }}</td>
+                  <td class="ex-month-table__meta" :class="{ 'is-empty': !row.stockPerShare }"><span v-if="row.stockPerShare" class="ex-month-table__label">配股 </span>{{ stockText(row) }}</td>
                   <td class="ex-month-table__meta" :class="{ 'is-empty': !row.paymentDate }"><span v-if="row.paymentDate" class="ex-month-table__label">發放 </span>{{ row.paymentDate ? row.paymentDate.slice(5).replace('-', '/') : '－' }}</td>
                 </tr>
               </tbody>
