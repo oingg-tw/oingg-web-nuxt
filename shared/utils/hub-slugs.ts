@@ -362,6 +362,9 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   // 先放進來：範本上架前這幾個網址是 404，上架後頁面與 sitemap 自己出現。第一批 11-25 晚上，第二批約 11-27 後、看定版結果
   成長突破: 'growth-breakout',
   '低淨值比＋財務體質': 'low-pb-financial-strength',
+  // 預設範本（2026-11-25，使用者：「請數據中台研究出現金股利/現金殖利率為核心的選股策略，選擇含息報酬率賺最多的或是虧損最少的作為預設」；
+  // 數據中台回測第四輪，14 個股利類候選裡含息報酬最高；業務中台建範本並設成預設）
+  '高殖利率＋財務體質': 'high-yield-financial-strength',
   '營收意外＋成長': 'revenue-surprise-growth',
   強勢創高: 'near-52w-high',
   營收加速: 'revenue-acceleration'

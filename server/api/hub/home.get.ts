@@ -4,8 +4,9 @@ import { homeMonths, upcomingDays } from '#shared/utils/home-agenda'
 // GET /api/hub/home — 首頁（2026-11-02 改版 B-3「接下來的除權息與發放」）：從今天起有除權息、有發放的前四天，今年每月的除權息
 // 檔數，三個篩選範本的符合檔數，資料涵蓋。全是已經快取的讀取組起來的，這裡不另外快取；每一塊讀不到就是 null，首頁不畫那一塊，
 // 不讓整頁 500。「今天」以台北時間為準，由這裡決定：瀏覽器自己算的話，伺服器與瀏覽器的日期不同就 hydration 不一致
-// 價值型、低波動、股利連續性 2026-11-24 拿掉（上一輪景氣循環沒有超額），換成新範本。數據中台研究的現金股利類預設範本、營收類第二批上架後再看要不要放
-const HOME_TEMPLATES = ['low-pb-financial-strength', 'growth-breakout']
+// 價值型、低波動、股利連續性 2026-11-24 拿掉（上一輪景氣循環沒有超額），換成新範本；預設範本「高殖利率＋財務體質」（2026-11-25）排第一。
+// 還沒上架的範本會被略過（下面照 slug 找），所以可以先列
+const HOME_TEMPLATES = ['high-yield-financial-strength', 'low-pb-financial-strength', 'growth-breakout']
 const UPCOMING_DAYS = 4
 
 async function upcoming(today: string) {
