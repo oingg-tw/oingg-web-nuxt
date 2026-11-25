@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 站內信（2026-11-16，使用者：「站內信用作重大變更，等等全站的通知」→「站內信按照建議實作」；設計 https://claude.ai/artifact/EG27Jgn2v1TYyWvymRztqX）：
-// 管理站發更新紀錄時選「站內信」的那幾則（GET /release-notes 的 channel 是 inbox），一般更新只放更新紀錄。只給登入的人，近 12 個月，
-// 更早的在更新紀錄。打開就算看過（POST /users/me/inbox/seen）：這一次還標「未讀」，下次不標。未讀的就是最新的那幾則（上次看過之後才
+// 管理站發更新紀錄時選「站內信」的那幾則（GET /release-notes 的 channel 是 inbox）；一般更新（channel null）在更新紀錄頁 2026-11-25
+// 拿掉後哪裡都不放。只給登入的人，近 12 個月。打開就算看過（POST /users/me/inbox/seen）：這一次還標「未讀」，下次不標。未讀的就是最新的那幾則（上次看過之後才
 // 發布的），幾則用 GET /users/me 的 unseenInboxCount——這一頁自己再問一次，不等開站那一支回來。不寄 email（使用者：「不佔用戶email這種
 // 私人空間」）。設定頁：不給搜尋引擎收錄，也不進 sitemap
 useSeoMeta({ title: '站內信', robots: 'noindex, nofollow' })
@@ -60,7 +60,7 @@ watch(currentUser, async (user) => {
       </li>
     </ol>
     <p v-else class="inbox-page__empty">目前沒有站內信。網站有重大變更時會寄到這裡。</p>
-    <p class="inbox-page__footnote">只列近 12 個月；更早的在<NuxtLink to="/changelog" class="inbox-page__link">更新紀錄</NuxtLink>。</p>
+    <p class="inbox-page__footnote">只列近 12 個月。</p>
   </AccountPageShell>
 </template>
 

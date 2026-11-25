@@ -67,7 +67,7 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily
   { pattern: /^screener\/column-preset-templates$/, ttl: 'hourly' },
   { pattern: /^stocks\/preferred-stocks$/, ttl: 'hourly' },
   { pattern: /^securities$/, ttl: 'hourly', query: { limit: COUNT, offset: COUNT } },
-  // 更新紀錄（2026-10-29，/changelog）：管理站寫、業務中台存。
+  // 更新紀錄（2026-10-29）：管理站寫、業務中台存，給站內信與全站橫幅（/changelog 頁 2026-11-25 拿掉）。
   // 2026-11-16 起全站橫幅與站內信也讀它（AppNoticeBanner、/account/notices）：最多舊 1 分鐘加 4 分鐘，維護的橫幅才跟得上
   { pattern: /^release-notes$/, ttl: 'minute' },
   // 部落格（2026-11-20，文章從網站 repo 搬到業務中台）：同更新紀錄一分鐘，下架的文章 5 分鐘內從列表與文章頁消失。網址代號照業務中台的格式
