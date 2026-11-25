@@ -161,6 +161,8 @@ const answerSkeleton = computed(() => (badgePending.value ? `${stockShortName.va
 const valueAnswer = computed(() => {
   if (!entry.value) return null
   const lead = entry.value.timeframe === 'EOD' ? `${stockShortName.value}目前的` : `${stockShortName.value}的`
+  // 整個產業不適用：說「X不適用於此產業」，不寫成「為 不適用於此產業、…本期無法判定」（同指標頁，2026-11-25）
+  if (entry.value.value === null && entry.value.nullReason === 'not_applicable_industry') return `${lead}${badgePage.topic}${NULL_REASON_SHORT_LABELS.not_applicable_industry}。`
   // The rank clause only appears on a percentileRank badge, where the threshold is relative（「前
   // 20%」）and the verdict means nothing without it. Both fields are checked rather than assumed —
   // an absolute-threshold badge sends neither.

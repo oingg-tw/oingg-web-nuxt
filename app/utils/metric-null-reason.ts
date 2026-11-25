@@ -1,13 +1,14 @@
 import type { MetricsHistoryEntry, MetricsHistoryPoint, PeriodNote } from '#shared/types/metrics-history'
 import { formatMoney, minusSign } from '../../shared/utils/number-format.ts'
 // 指標為什麼是 null，用讀者的話說。nullReason 的完整列舉由 analysis-ts 確認（2026-09-13，metricNullReasonSchema 當時 4 個值；
-// 2026-10-20 加 low_base）：只有 not_applicable_industry 是「這個指標的模型在觀念上不適用於這家公司」（五個危機預警模型排除金融保險股、
-// 營收年增率的兩支衍生指標排除營建業），其餘都是「真的有數字，只是這一期算不出來或不採用」。2026-09-19 從 StockHistoricalStatisticsTable
-// 搬出來，SSR 的數列表格說同樣的話。
+// 2026-10-20 加 low_base）：只有 not_applicable_industry 是「這個指標在觀念上不適用於這家公司」（五個危機預警模型排除金融保險股、
+// 營收年增率的兩支衍生指標排除營建業、2026-11-25 起合約負債占股本比排除金融業），其餘都是「真的有數字，只是這一期算不出來或不採用」。
+// 2026-09-19 從 StockHistoricalStatisticsTable 搬出來，SSR 的數列表格說同樣的話。
 export const NULL_REASON_LABELS: Record<string, string> = {
   missing_input: '計算所需的原始申報欄位缺值',
   zero_or_negative_denominator: '分母為零或負值，比率無意義',
-  not_applicable_industry: '依產業別，此指標的模型前提不適用於本公司',
+  // 不只模型：合約負債占股本比這種比率也用它（2026-11-25），原本的「模型前提」放在比率上不對
+  not_applicable_industry: '依產業別，這個指標不適用於本公司',
   insufficient_history: '可比較的歷史資料深度不足',
   // 營收年增率的兩支衍生指標（業務中台 2026-10-20 formulaVersion 2）：年增率主要來自去年同期異常低的月份不採用
   low_base: '去年同期基數異常低，這個月的年增率主要反映去年的低點，不採用',

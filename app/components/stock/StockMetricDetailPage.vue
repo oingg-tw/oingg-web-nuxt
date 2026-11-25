@@ -290,9 +290,14 @@ const titleKeywords = computed(() => {
 // 讀取中的答句骨架：跟真的答句差不多長（單季、近四季、資料時間），字是透明的，只用來佔同樣的行數
 const answerSkeleton = computed(() => (metricPending.value ? `${stockShortName.value}2026年第2季（單季）${valueTopic.value}為 00.00、近四季${valueTopic.value}為 00.00、財報公告日 2026-08-11。` : null))
 
+// 整個產業不適用（金融保險業的危機預警模型；2026-11-25 數據中台起，金融業的合約負債占股本比）：跟組成頁、河流圖一樣說「X不適用於此產業」，
+// 不寫成「為 不適用、期別…」
+const notApplicableAnswer = computed(() => (latest.value?.point?.nullReason === 'not_applicable_industry' ? `${stockShortName.value}的${valueTopic.value}${NULL_REASON_SHORT_LABELS.not_applicable_industry}。` : null))
+
 const valueAnswer = computed(() => {
   if (riverLead.value) return joinClauses([riverLead.value])
   if (!latest.value || bankless.value) return null
+  if (notApplicableAnswer.value) return notApplicableAnswer.value
   // 財報狗's own shape when a real 單季 figure exists: 單季值 → 年增（財報狗原句是季增，這個目錄
   // 沒有季增率可用，改用年增，見 METRIC_PAGES 裡 eps 這筆自己的註解）→ 近四季值. Falls back to the
   // original TTM-only sentence for any metric page with no quarterlyGrowthMetricCode declared —
@@ -330,6 +335,8 @@ const description = computed(() => {
   // rather than being dropped: the two together are what the 財報狗 shape states.
   const lead = riverLead.value
     ? joinClauses([riverLead.value])
+    : notApplicableAnswer.value
+    ? notApplicableAnswer.value
     : quarterlyLead.value
     ? joinClauses([quarterlyLead.value, hasTrailingFigure.value ? `近四季${valueTopic.value}為 ${latestValueText.value}` : null])
     : joinClauses([
