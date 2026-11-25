@@ -365,6 +365,10 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   // 預設範本（2026-11-25，使用者：「請數據中台研究出現金股利/現金殖利率為核心的選股策略，選擇含息報酬率賺最多的或是虧損最少的作為預設」；
   // 數據中台回測第四輪，14 個股利類候選裡含息報酬最高；業務中台建範本並設成預設）
   '高殖利率＋財務體質': 'high-yield-financial-strength',
+  // 數據中台第六輪（2026-11-26，使用者在業務中台確認，當晚 21:13 上）：預設範本多一條股價淨值比 0～1.5、改名，使用者選「換新的」網址代稱；
+  // 上線後舊的那一條拿掉、舊網址在 nuxt.config 301 過來。新增「財務體質＋接近高點」（量化因子）
+  '高殖利率＋財務體質＋低淨值比': 'high-yield-financial-strength-low-pb',
+  '財務體質＋接近高點': 'financial-strength-near-high',
   '營收意外＋成長': 'revenue-surprise-growth',
   強勢創高: 'near-52w-high',
   營收加速: 'revenue-acceleration'
