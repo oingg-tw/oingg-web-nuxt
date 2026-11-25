@@ -68,7 +68,7 @@ const yearEnds = computed(() => {
         <tbody>
           <tr v-for="event in events" :key="event.exDividendDate">
             <th scope="row">{{ event.exDividendDate }}</th>
-            <td class="seo-table__num">{{ event.distributionPerUnit === null ? '金額待公告' : etfYuan(event.distributionPerUnit) }}</td>
+            <td class="seo-table__num">{{ etfDistributionText(event) }}</td>
             <td>{{ event.paymentDate ?? '－' }}</td>
           </tr>
         </tbody>
@@ -81,7 +81,7 @@ const yearEnds = computed(() => {
       topic="近 12 個月配息率"
       :definition="[
         '近 12 個月配息率是每個月最後一個有成交的交易日，往前 12 個月除息的每單位配息合計，除以那天的收盤價。除息日剛好是那天的也算進去，因為那天的收盤價已經扣掉配息。',
-        '配息金額來自集保基金資訊觀測站（FundClear），從 2019 年起，所以配息率從 2020 年起才算得出來；成立未滿 12 個月的月份也算不出來。分割前的配息換算成那天的單位，圖上的柱子則是當時配的金額。',
+        '配息金額 2019 年起來自集保基金資訊觀測站（FundClear），更早的來自公開資訊觀測站的收益分配公告（2005 年 5 月起），所以配息率最早從 2006 年 5 月算得出來，圖上畫近 10 年；成立未滿 12 個月的月份也算不出來。少數幾次公開資訊觀測站只有參考匯率換算的金額、沒有實際配發的金額，表上寫「金額不在公開資訊觀測站範圍」，含那一次的配息率也不算。分割前的配息換算成那天的單位，圖上的柱子則是當時配的金額。',
         '配息率是配息除以價格：價格跌了，配息率也會變高。'
       ]"
     />

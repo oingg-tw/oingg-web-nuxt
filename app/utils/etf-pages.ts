@@ -83,4 +83,8 @@ export const ETF_FEE_FIELDS = [
 ] as const
 
 export const etfYuan = (value: number | null | undefined) => (value === null || value === undefined ? '－' : `${formatSignificantDigits(value, 4)} 元`)
+// 一次配息的金額（2026-11-25 數據中台 16cbf9d：2019 年以前讀公開資訊觀測站）。2019 年以前沒有金額的是 0080、0081 2015-12-10 與 008201
+// 2017-12-28：公開資訊觀測站只有參考匯率換算的台幣金額，不拿來頂（數據中台建議的寫法）；之後沒有金額的是還沒公告
+export const etfDistributionText = (event: { exDividendDate: string; distributionPerUnit: number | null }) =>
+  event.distributionPerUnit !== null ? etfYuan(event.distributionPerUnit) : event.exDividendDate < '2019-01-01' ? '金額不在公開資訊觀測站範圍' : '金額待公告'
 export const etfPct = (value: number | null | undefined) => (value === null || value === undefined ? '－' : minusSign(`${value.toFixed(2)}%`))

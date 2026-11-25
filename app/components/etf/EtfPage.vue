@@ -42,7 +42,8 @@ const navLabel = computed(() => `${shortName.value} ${code.value}`)
 const reportMonth = computed(() => etf.value?.yearMonth ?? null)
 const footer = computed(() => ({
   // 集保的基金資訊觀測站（2026-11-21）：基本資料那一頁與速覽卡片的經理人、保管機構、收益分配、風險等級
-  sources: ['證交所、櫃買中心（股價、成交量）', '投信投顧公會基金月報', '投信公告的配息與配息組成', '集保基金資訊觀測站（經理人、保管機構、風險等級）', '臺灣集中保管結算所：集保戶股權分散表'],
+  // 公開資訊觀測站（2026-11-25）：2019 年以前的配息（ETF 收益分配公告，2005 年 5 月起）
+  sources: ['證交所、櫃買中心（股價、成交量）', '投信投顧公會基金月報', '投信公告的配息與配息組成', '集保基金資訊觀測站（經理人、保管機構、風險等級）', '公開資訊觀測站（2019 年以前的配息）', '臺灣集中保管結算所：集保戶股權分散表'],
   freshness: reportMonth.value ? `基金月報 ${reportMonth.value.slice(0, 4)} 年 ${Number(reportMonth.value.slice(5))} 月` : null,
   links: [{ to: SCREENER_PATHS.etf, label: 'ETF 篩選' }]
 }))

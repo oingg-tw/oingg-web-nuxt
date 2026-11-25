@@ -24,7 +24,8 @@ export const cachedEtfMonthlyHistory = defineCachedFunction(
 )
 
 // ETF 歷年配息率（2026-11-24，使用者「etf 個別瀏覽要加上 歷年 殖利率」；數據中台 a917c22、業務中台轉發）：每月最後一個有成交的交易日
-// 一點，形狀同個股的殖利率歷史。FundClear 的配息 2019 年起，開頭整段 null（insufficient_history）拿掉，圖與答句從第一個有值的月開始，同個股
+// 一點，形狀同個股的殖利率歷史。配息 2005-05 起（2019 以前是公開資訊觀測站，2026-11-25），讀近 10 年；開頭整段 null（insufficient_history）
+// 拿掉，圖與答句從第一個有值的月開始，同個股
 export const cachedEtfDistributionYieldHistory = defineCachedFunction(
   async (symbol: string): Promise<DividendYieldPoint[]> => {
     const { entries } = await businessFetch<{ entries: DividendYieldPoint[] | null }>(`/etfs/${symbol}/distribution-yield-history`, { query: { lookbackYears: 10 } })
