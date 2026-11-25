@@ -68,20 +68,19 @@ export interface NullablePoint {
 }
 
 // 近四季算不出來，是因為窗口跨到前一年只申報半年報的期間（2026-11-11，使用者對 3158 杜邦缺 2024Q1 選了 B：空白照留，滑過去寫原因）。
-// 數據中台 11-12 起給 semiannual_window；11/21 全歷史重算之前，還沒重算的期別是 insufficient_history，從同一份回應的單季序列認。
-// 哪半年也從單季序列讀：前一年第二季標 semiannual_only 是上半年、第四季是下半年；第三季的近四季只用到前一年下半年。只有用到損益表
-// 或現金流量表的單季指標會標（數據中台 11-11：權益乘數這種只看資產負債表的照樣有值），所以 codes 裡有一支標了就算。
-// shortcut: 只有兩種序列一起到的圖（杜邦、財報三率）寫得出年份，11/21 之後全是新原因碼，insufficient_history 那條就拿掉
+// 原因是數據中台的 semiannual_window（11-12 起；11/21 全歷史重算後每一期都是它，網站原本從 insufficient_history 加單季序列推的那條
+// 2026-11-25 拿掉，3158、6498 在 DEV 都改成新原因碼）。哪半年從單季序列讀：前一年第二季標 semiannual_only 是上半年、第四季是下半年；
+// 第三季的近四季只用到前一年下半年。只有用到損益表或現金流量表的單季指標會標（數據中台 11-11：權益乘數這種只看資產負債表的照樣有值），
+// 所以 codes 裡有一支標了就算。只有兩種序列一起到的圖（杜邦、財報三率）寫得出年份，其他照原因碼的那一句
 export function semiannualWindowNote(entry: MetricsHistoryEntry, quarterly: readonly MetricsHistoryEntry[], codes: readonly string[]): string | undefined {
   const { fiscalYear, fiscalQuarter } = entry
   if (fiscalQuarter !== 1 && fiscalQuarter !== 3) return undefined
   const points = codes.map(code => entry.values[code])
   if (points.some(point => point?.value != null)) return undefined
-  // 有一支是新原因碼就算（其他幾支可能是別的原因）；全是 insufficient_history 的要靠單季序列認
-  const flagged = points.some(point => point?.nullReason === 'semiannual_window')
-  if (!flagged && !points.every(point => point?.nullReason === 'insufficient_history')) return undefined
+  // 有一支是這個原因碼就算（其他幾支可能是別的原因）
+  if (!points.some(point => point?.nullReason === 'semiannual_window')) return undefined
   const halves = [2, 4].filter(quarter => quarterly.some(other => other.fiscalYear === fiscalYear - 1 && other.fiscalQuarter === quarter && codes.some(code => other.values[code]?.nullReason === 'semiannual_only')))
-  if (fiscalQuarter === 1 ? !halves.length : !halves.includes(4)) return flagged ? NULL_REASON_LABELS.semiannual_window : undefined
+  if (fiscalQuarter === 1 ? !halves.length : !halves.includes(4)) return NULL_REASON_LABELS.semiannual_window
   const period = `${fiscalYear - 1} 年${halves.length === 2 ? '' : halves[0] === 2 ? '上半年' : '下半年'}`
   const single = quarterly.find(other => other.fiscalYear === fiscalYear && other.fiscalQuarter === fiscalQuarter)
   return `${period}只申報半年報，這一季的近四季算不出來${codes.some(code => single?.values[code]?.value != null) ? '（單季看得到）' : ''}`
