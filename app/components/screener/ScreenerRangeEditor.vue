@@ -133,6 +133,30 @@ function applyPreset(preset: RangePreset) {
 }
 const activePreset = computed(() => (exclude.value ? null : props.presets?.find(preset => preset.min === min.value && preset.max === max.value) ?? null))
 
+// 預設值（2026-11-25，使用者要篩選有三種選法：預設範圍＝上面的按鈕、預設值＝這段、自定義＝輸入框）：新增條件（上下限都空）一打開設定範圍，
+// 就按下這個期別 isDefault 的那個（數據中台定，同一個期別最多一個）。還沒動過就換期別，換成那個期別的預設，沒有預設就清空；動過就不再碰。
+// 既有的條件、存檔的篩選、官方範本打開時都有值，不會套到
+let autoFilled: RangePreset | null = null
+function applyDefaultPreset() {
+  const preset = categorical.value ? null : props.presets?.find(candidate => candidate.isDefault) ?? null
+  if (preset) applyPreset(preset)
+  autoFilled = preset
+}
+onMounted(() => {
+  if (min.value === null && max.value === null && !exclude.value) applyDefaultPreset()
+})
+watch(() => props.presets, () => {
+  const filled = autoFilled
+  if (!filled || exclude.value || min.value !== filled.min || max.value !== filled.max) {
+    autoFilled = null
+    return
+  }
+  min.value = null
+  max.value = null
+  mode.value = deriveMode()
+  applyDefaultPreset()
+})
+
 function reset() {
   min.value = null
   max.value = null

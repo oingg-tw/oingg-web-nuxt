@@ -36,6 +36,8 @@ export interface RangePreset {
   timeframes: string[]
   source: string
   note: string | null
+  // 預設值（2026-11-25，使用者要的三種選法之一）：同一支指標、同一個期別最多一個 true，新增條件時先按下它（ScreenerRangeEditor）。舊型錄沒有這個鍵
+  isDefault?: boolean
 }
 
 export interface Metric {
