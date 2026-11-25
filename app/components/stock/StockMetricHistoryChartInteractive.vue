@@ -207,8 +207,12 @@ const shortfall = computed(() => {
 // 堆疊模式（partCodes 有值時）。層的順序由**最新一期拆得開的那一筆**的大小決定，圖與下面的組成表
 // 共用同一個順序——兩邊各自排序的話，讀者在圖上找到的第一層在表上會是第三欄。
 const UNSPLIT = '未拆解'
-// 成分的值：要變號的乘 −1（null 照舊）。併進其他的對照換成層的名字，給 StockStackedBarChart 的 others
-const signedPart = (code: string, value: number | null) => (value !== null && props.negatedPartCodes?.includes(code) ? -value : value)
+// 成分的值：要變號的乘 −1（null 照舊）。用 function 宣告（會提升）：上面 allPoints 的 immediate watch 在快取裡已經有資料時
+//（指標速覽切走再切回來）會在 setup 當下算 allPoints，const 寫在這裡會丟「Cannot access 'signedPart' before initialization」
+//（2026-11-25 使用者回報，股東殖利率卡片）。併進其他的對照換成層的名字，給 StockStackedBarChart 的 others
+function signedPart(code: string, value: number | null) {
+  return value !== null && props.negatedPartCodes?.includes(code) ? -value : value
+}
 const partOthersByName = computed(() => {
   const codes = props.partCodes ?? []
   const names = props.partNames ?? []
