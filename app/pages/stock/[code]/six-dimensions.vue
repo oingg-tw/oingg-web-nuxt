@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RadarBreakdown, SixDimensionAxis } from '~/utils/six-dimensions'
+import type { RadarBreakdown } from '~/utils/six-dimensions'
 
 // 六面向（2026-11-27，使用者：「設計一個個股 卡片 / 頁面 應用到雷達圖。跟數據中台核對計算方式。」；設計圖
 // https://claude.ai/artifact/FWP3mJfa44md4csrM31MAb）：一家公司在成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋六件事上，各排在
@@ -31,37 +31,40 @@ const answer = computed(() => {
   return sixDimensionsAnswer(axes.value, asOf.value) ?? `${stockShortName.value}的六個面向都算不出來：每個面向的組成指標都不到一半有值。`
 })
 
-// 第二段：每個面向的組成指標。名稱、單位、選項（均線排列）照型錄；有好幾種期別的才寫期別（只有一種的寫了也沒有資訊）
+// 第二段：每個面向的組成指標。名稱、單位、選項（均線排列）照型錄；有好幾種期別的才寫期別（只有一種的寫了也沒有資訊）。
+// 型錄還不認得的指標不畫那一列（明細比型錄早到的那段時間會這樣，2026-11-27 本機就是）：畫面不印欄位代號
 const categories = computed(() => filterSchema.value?.categories ?? [])
-const located = (fieldId: string) => locateFieldInSchema(categories.value, fieldId)
-const componentName = (fieldId: string) => {
-  const found = located(fieldId)
-  return found ? metricDisplayName(found.metric) : fieldId
-}
-function componentRows(axis: SixDimensionAxis) {
-  return axis.components.map((component) => {
-    const found = located(component.fieldId)
-    return {
+const groups = computed(() => axes.value.map(axis => ({
+  axis,
+  scope: sixDimensionScopeText(axis),
+  rows: axis.components.flatMap((component) => {
+    const found = locateFieldInSchema(categories.value, component.fieldId)
+    if (!found) return []
+    return [{
       key: component.fieldId,
-      name: componentName(component.fieldId),
-      period: found && found.metric.fields.length > 1 ? formatPeriodLabel(found.field.period) : null,
+      name: metricDisplayName(found.metric),
+      period: found.metric.fields.length > 1 ? formatPeriodLabel(found.field.period) : null,
       to: stockMetricPath(code.value, component.fieldId),
-      value: component.value === null ? nullReasonShortText(component.nullReason) : formatScreenerValue(component.value, found?.metric.unit, component.fieldId, found?.metric.options),
-      percentile: percentileText(component.percentile)
-    }
+      value: component.value === null ? nullReasonShortText(component.nullReason) : formatScreenerValue(component.value, found.metric.unit, component.fieldId, found.metric.options),
+      percentile: percentileText(component.percentile),
+      lowerIsHigher: component.order === 'asc'
+    }]
   })
-}
-const sectorScoped = (axis: SixDimensionAxis) => axis.components.length > 0 && axis.components.every(component => component.scope === 'sector')
-// 段落最後一句：哪些指標是數字越低、百分位越高（照 order），哪個面向跟同產業比（照 scope）。都從資料來，組成改了這一句跟著改
-const closingNote = computed(() => {
-  const all = axes.value.flatMap(axis => axis.components)
-  const lowerIsHigher = [...new Set(all.filter(component => component.order === 'asc').map(component => componentName(component.fieldId)))]
-  const sectorAxes = axes.value.filter(sectorScoped).map(axis => axis.label)
-  return [
-    lowerIsHigher.length ? `${lowerIsHigher.join('、')}是數字越低、百分位越高。` : '',
-    sectorAxes.length ? `${sectorAxes.join('、')}的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比），其餘跟全部上市櫃公司比。` : ''
-  ].join('')
+})))
+// 每個面向有幾個指標照資料寫（不是照畫出來的列數：型錄晚到時少畫的那幾列還是算）：金融保險業的財務安全是自己那一類的組成，
+// 銀行、金控有 5 個，保險、證券只有 2 個
+const componentsAnswer = computed(() => {
+  const counts = axes.value.map(axis => axis.components.length).filter(Boolean)
+  const [min, max] = [Math.min(...counts), Math.max(...counts)]
+  const count = !counts.length ? '幾' : min === max ? ` ${min} ` : ` ${min} 到 ${max} `
+  return `每個面向由${count}個指標組成。下表是${stockShortName.value}這些指標的數字，以及每個數字在比較對象裡的位置。`
 })
+// 段落最後一句：哪些指標是數字越低、百分位越高（照 order），每個面向跟誰比（照 scope）。都從資料來，組成改了這一句跟著改
+const closingNote = computed(() => {
+  const lowerIsHigher = [...new Set(groups.value.flatMap(group => group.rows.filter(row => row.lowerIsHigher).map(row => row.name)))]
+  return `${lowerIsHigher.length ? `${lowerIsHigher.join('、')}是數字越低、百分位越高。` : ''}${sixDimensionScopeNote(axes.value)}`
+})
+const populationNote = computed(() => sixDimensionPopulationNote(axes.value))
 
 const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的六面向：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋各自在上市櫃公司裡的百分位，以及每個面向由哪些指標組成。`))
 
@@ -83,12 +86,14 @@ const footer = computed(() => ({
   freshness: asOf.value ? `資料日期 ${asOf.value}` : null,
   disclaimer: '百分位是統計上的位置，不代表本站對此個股之評等或投資建議。'
 }))
-const GUIDE = [
-  '六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋。每個面向取 2 到 4 個指標，各自換成百分位之後平均，再換成全體的百分位。',
+// 金融保險業的那一段只有這家公司的財務安全是分類算的時候才寫：其他公司用不到
+const guide = computed(() => [
+  '六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。',
   '百分位是位置，不是分數：0 是最低、100 是最高，同分的公司排在同一個位置。六個數字各自獨立，不能相加當成總分。',
   '一個面向的組成指標不到一半有值，或者都不適用於這個產業時，這個面向算不出來，圖上那一個軸不連線。興櫃公司不在比較範圍裡。',
+  ...axes.value.filter(axis => axis.financialType).map(axis => `金融保險業的${axis.label}分銀行、金控、保險業、證券業、其他金融業五類，各用自己的指標：每個指標只跟同一類比，面向的百分位只跟上市櫃的金融保險業比。類別看公司在財報申報的產業別。`),
   '百分位只跟同一天的上市櫃公司相比，不代表股價之後的漲跌。'
-]
+])
 </script>
 
 <template>
@@ -130,12 +135,13 @@ const GUIDE = [
           </SharedTable>
         </div>
       </div>
+      <p v-if="populationNote" class="hub-answer">{{ populationNote }}</p>
     </StockQuestionSection>
     <StockQuestionSection
       v-if="data"
       id="stock-six-dimensions-components"
       question="每個面向看的是哪些數字？"
-      :answer="`每個面向由 2 到 4 個指標組成。下表是${stockShortName}這些指標的數字，以及每個數字在比較對象裡的位置。`"
+      :answer="componentsAnswer"
     >
       <SharedTable :label="`六個面向的組成指標、${stockShortName}的數字與百分位`" table-class="stock-six-dimensions-page__components">
         <thead>
@@ -145,14 +151,14 @@ const GUIDE = [
             <th scope="col" class="seo-table__num">百分位</th>
           </tr>
         </thead>
-        <tbody v-for="axis in axes" :key="axis.code">
+        <tbody v-for="{ axis, scope, rows } in groups" :key="axis.code">
           <tr class="stock-six-dimensions-page__group">
             <th colspan="3" scope="rowgroup">
-              {{ axis.label }}<template v-if="sectorScoped(axis)">（跟同產業比）</template>
+              {{ axis.label }}<template v-if="scope">（{{ scope }}）</template>
               <span class="stock-six-dimensions-page__group-value">{{ axis.value === null ? `無法計算${sixDimensionNullText(axis.nullReason) ? `：${sixDimensionNullText(axis.nullReason)}` : ''}` : percentileText(axis.value) }}</span>
             </th>
           </tr>
-          <tr v-for="row in componentRows(axis)" :key="row.key">
+          <tr v-for="row in rows" :key="row.key">
             <th scope="row" class="stock-six-dimensions-page__name">
               <NuxtLink v-if="row.to" :to="row.to" class="seo-table__link">{{ row.name }}</NuxtLink><template v-else>{{ row.name }}</template><template v-if="row.period">（{{ row.period }}）</template>
             </th>
@@ -164,7 +170,7 @@ const GUIDE = [
       <p v-if="closingNote" class="hub-answer">{{ closingNote }}</p>
     </StockQuestionSection>
     <template #guide>
-      <StockMetricGuide id-prefix="stock-six-dimensions" :topic="TOPIC" definition-question="六面向是什麼？" :definition="GUIDE" />
+      <StockMetricGuide id-prefix="stock-six-dimensions" :topic="TOPIC" definition-question="六面向是什麼？" :definition="guide" />
     </template>
   </StockPageShell>
 </template>

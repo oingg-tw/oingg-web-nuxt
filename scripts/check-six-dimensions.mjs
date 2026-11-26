@@ -1,7 +1,7 @@
 // 六面向（app/utils/six-dimensions.ts）：固定的軸序、雷達圖的座標（缺值的軸不連線）、答句。
 // Run: node scripts/check-six-dimensions.mjs（pnpm selfcheck 會跑）
 import assert from 'node:assert/strict'
-import { SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, sixDimensionAxes, sixDimensionNullText, sixDimensionsAnswer, sixDimensionsAriaLabel } from '../app/utils/six-dimensions.ts'
+import { SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, sixDimensionAxes, sixDimensionNullText, sixDimensionPopulationNote, sixDimensionScopeNote, sixDimensionScopeText, sixDimensionsAnswer, sixDimensionsAriaLabel } from '../app/utils/six-dimensions.ts'
 
 const axis = (metricCode, value, nullReason = null) => ({ metricCode, value, nullReason, components: [] })
 // 上游的順序亂掉、多給一支、少給一支：照固定的六個軸排，沒有的當沒有值
@@ -25,6 +25,33 @@ assert.equal(sixDimensionNullText('not_applicable_industry'), '組成指標不�
 assert.equal(sixDimensionNullText('missing_input'), '組成指標不到一半有值')
 assert.equal(sixDimensionNullText('something_new'), '')
 assert.equal(sixDimensionNullText(null), '')
+
+// 比較對象：價值的三支跟同產業比；金融保險業的財務安全分五類（數據中台 2026-11-27），組成只跟同一類比、面向的百分位只跟金融保險業比
+const part = scope => ({ fieldId: 'x.Q', order: 'desc', negativeLast: false, scope, value: 1, knowledgeDate: null, percentile: 50, nullReason: null })
+const scoped = (label, scope, financialType = null, value = 50) => ({ label, value, financialType, components: [part(scope), part(scope)] })
+assert.equal(sixDimensionScopeText(scoped('價值', 'sector')), '跟同產業比')
+assert.equal(sixDimensionScopeText(scoped('成長動能', 'market')), '')
+assert.deepEqual(
+  ['bank', 'financialHolding', 'insurance', 'brokerDealer', 'other'].map(type => sixDimensionScopeText(scoped('財務安全', 'financialType', type))),
+  ['只跟銀行比', '只跟金控比', '只跟保險業比', '只跟證券業比', '只跟其他金融業比']
+)
+// 不認得的類別不猜（物件原型上的名字也不會被當成類別）；沒有組成、比較對象混在一起的不寫
+assert.equal(sixDimensionScopeText(scoped('財務安全', 'financialType', 'somethingNew')), '只跟同一類金融業比')
+assert.equal(sixDimensionScopeText(scoped('財務安全', 'financialType', 'constructor')), '只跟同一類金融業比')
+assert.equal(sixDimensionScopeText({ financialType: null, components: [] }), '')
+assert.equal(sixDimensionScopeText({ financialType: null, components: [part('sector'), part('market')] }), '')
+const general = [scoped('成長動能', 'market'), scoped('價值', 'sector'), scoped('財務安全', 'market')]
+const holding = [scoped('成長動能', 'market'), scoped('價值', 'sector'), scoped('財務安全', 'financialType', 'financialHolding', 78.95)]
+assert.equal(sixDimensionScopeNote(general), '價值的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。其餘跟全部上市櫃公司比。')
+assert.equal(sixDimensionScopeNote(holding), '價值的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。財務安全的指標只跟金控比；同類的家數少，名次之間的差距大。其餘跟全部上市櫃公司比。')
+assert.equal(sixDimensionScopeNote([scoped('成長動能', 'market')]), '')
+// 雷達圖之後那一句：金融保險業、而且財務安全算得出來才寫（華票那種算不出來的不寫）
+assert.equal(sixDimensionPopulationNote(holding), '財務安全是在上市櫃金融保險業裡的位置，其餘面向是在全部上市櫃公司裡的位置。')
+assert.equal(sixDimensionPopulationNote(general), '')
+assert.equal(sixDimensionPopulationNote([scoped('財務安全', 'financialType', 'bank', null)]), '')
+// 明細帶的類別跟著軸走；沒帶的（舊的回應）當沒有
+assert.equal(sixDimensionAxes({ axes: [{ ...axis('financialSafetyPercentile', 78.95), financialType: 'financialHolding' }] })[4].financialType, 'financialHolding')
+assert.equal(sixDimensionAxes({ axes: [axis('financialSafetyPercentile', 78.95)] })[4].financialType, null)
 
 // 座標：第一個軸正上方、順時針；100 落在最外圈、0 落在中心
 const full = radarGeometry([100, 100, 100, 100, 100, 100], 100)
