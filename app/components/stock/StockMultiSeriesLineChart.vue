@@ -69,7 +69,7 @@ export interface LineSeriesSpec {
   signColored?: boolean
   // 年增率畫成「是去年的幾倍」的對數（2026-10-21，5314 月營收的年增率 +49,675% 把其餘月份壓成細條，使用者在真資料方案頁選了 A）：
   // 這條所在的那一軸整條換成這種刻度，刻度標回百分比；營收 0（−100%）沒有倍數，畫到最底、灰色。提示框照舊寫原始的百分比。
-  // 換算與刻度在 app/utils/growth-log-scale.ts
+  // 換算與刻度在 app/utils/growth-log-scale.ts。離多數期別太遠的期別不決定軸，畫到邊上加箭頭（2026-11-26，8462 的 +42,329%）
   growthLog?: boolean
   // 利益率：這條所在的軸最多畫到 ±100%（2026-11-12，5314 的 −522% 把其餘期別壓成一條線，使用者選 B）。超出的點畫在邊上、換成箭頭，
   // 提示框照舊寫原數字；大多數期別都超出就照實撐開。規則在 app/utils/margin-cap.ts
@@ -206,6 +206,22 @@ const capBounds = computed(() => [0, 1].map((axisIndex) => {
   return fencedAxis(axisIndex) ? fenceBounds(values) : marginBounds(values)
 }))
 const capOf = (series: LineSeriesSpec, value: number | null) => (capsAxis(series) && value !== null ? cappedPoint(value, capBounds.value[axisIndexOf(series)]!) : null)
+// 截到邊上的點換成箭頭，往裡收半個箭頭，不被繪圖區切掉
+const arrowPoint = (cap: { value: number, up: boolean }) => ({ value: cap.value, symbol: 'arrow', symbolSize: 12, symbolRotate: cap.up ? 0 : 180, symbolOffset: [0, cap.up ? 6 : -6] })
+
+// 有 growthLog 序列的軸：刻度從這段畫得到的值算（左軸、右軸各自）；離多數期別太遠的不算進軸，畫到邊上（growthLogAxis、growthLogCap）
+const logAxis = computed(() => [0, 1].map((axisIndex) => {
+  const growth = props.series.filter(series => series.growthLog && axisIndexOf(series) === axisIndex)
+  return growth.length
+    ? growthLogAxis(props.entries.flatMap(entry => growth.flatMap((series) => {
+        const value = entry.values[series.code]?.value
+        return value == null ? [] : [value]
+      })))
+    : {}
+}))
+const logCapOf = (series: LineSeriesSpec, value: number | null) => (series.growthLog && value !== null ? growthLogCap(value, logAxis.value[axisIndexOf(series)]!) : null)
+const logCapped = computed(() => [0, 1].map(axisIndex => props.series.some(series => axisIndexOf(series) === axisIndex
+  && props.entries.some(entry => logCapOf(series, entry.values[series.code]?.value ?? null)))))
 
 // 圖例與單位畫在圖外（SharedChartLegend）：單軸一組；雙軸左右各一組，各帶自己那一軸的單位。截了的那一軸多一項箭頭的說明
 const legendGroups = computed<ChartLegendGroup[]>(() => {
@@ -215,7 +231,9 @@ const legendGroups = computed<ChartLegendGroup[]>(() => {
       ? { name: series.name, color: seriesColors.value[index]!, kind: 'band' }
       : { name: series.name, color: seriesColors.value[index]!, kind: 'line', dash: series.lineType, symbol: series.symbol })
   const periods: ChartLegendItem[] = periodNames.value.map(name => ({ name, color: periodFill.value.color, kind: 'band' }))
-  const cap = (axis: number): ChartLegendItem[] => (capBounds.value[axis] ? [{ name: fencedAxis(axis) ? FENCE_NOTE : MARGIN_CAP_NOTE, color: chartInk.value.muted, kind: 'arrow' }] : [])
+  const cap = (axis: number): ChartLegendItem[] => (capBounds.value[axis] || logCapped.value[axis]
+    ? [{ name: fencedAxis(axis) || logCapped.value[axis] ? FENCE_NOTE : MARGIN_CAP_NOTE, color: chartInk.value.muted, kind: 'arrow' }]
+    : [])
   const onAxis = (axis: number) => items.filter((_, index) => axisIndexOf(props.series[index]!) === axis)
   return props.unitRight
     ? [{ unit: props.unit, items: [...onAxis(0), ...periods, ...cap(0)] }, { unit: props.unitRight, items: [...onAxis(1), ...cap(1)], right: true }]
@@ -239,16 +257,6 @@ const axisNumber = (value: number) => (Math.abs(value) >= 1e6 ? formatSignifican
 
 const chartOption = computed(() => {
   const list = props.entries
-  // 有 growthLog 序列的軸：刻度從這段畫得到的值算（左軸、右軸各自）
-  const logAxis = [0, 1].map((axisIndex) => {
-    const growth = props.series.filter(series => series.growthLog && axisIndexOf(series) === axisIndex)
-    return growth.length
-      ? growthLogAxis(list.flatMap(entry => growth.flatMap((series) => {
-          const value = entry.values[series.code]?.value
-          return value == null ? [] : [value]
-        })))
-      : {}
-  })
   return {
     // 圖例和單位在圖外（legendGroups），上緣只留最上面那個刻度的半格。左右貼齊：刻度的邊緣跟上面那列單位對齊。單軸圖右邊留 24px：
     // X 軸標籤置中在每一期上，月資料一格只有 4～5px，倒數兩三期的標籤有半個凸出圖外（00679B 折溢價的「2026-09」切成「2026-0」，
@@ -289,7 +297,7 @@ const chartOption = computed(() => {
       {
         type: 'value',
         axisLabel: { formatter: axisNumber },
-        ...logAxis[0],
+        ...logAxis.value[0],
         ...capBounds.value[0]
       },
       ...(props.unitRight
@@ -297,7 +305,7 @@ const chartOption = computed(() => {
             type: 'value',
             splitLine: { show: false },
             axisLabel: { formatter: axisNumber },
-            ...logAxis[1],
+            ...logAxis.value[1],
             ...capBounds.value[1]
           }]
         : [])
@@ -374,15 +382,37 @@ const chartOption = computed(() => {
         : {}),
       data: list.map((entry) => {
         const value = entry.values[series.code]?.value ?? null
-        // 截到邊上的點換成箭頭，往裡收半個箭頭，不被繪圖區切掉
         const cap = capOf(series, value)
-        if (cap) return { value: cap.value, symbol: 'arrow', symbolSize: 12, symbolRotate: cap.up ? 0 : 180, symbolOffset: [0, cap.up ? 6 : -6] }
-        const plotted = value !== null && series.growthLog ? growthLogValue(value) : value
+        if (cap) return arrowPoint(cap)
+        // growthLog 超出軸的：線上的點同樣換成箭頭；柱子畫到邊上，箭頭由下面那一條補
+        const logCap = logCapOf(series, value)
+        if (logCap && series.type !== 'bar') return arrowPoint(logCap)
+        const plotted = logCap?.value ?? (value !== null && series.growthLog ? growthLogValue(value) : value)
         if (value === null || !(series.type === 'bar' && series.signColored)) return plotted
         const color = series.growthLog && value <= -100 ? chartInk.value.muted : value < 0 ? priceColors.value.down : priceColors.value.up
         return { value: plotted, itemStyle: { color } }
       })
-    }]), ...periodNames.value.map(name => ({
+    },
+    // 畫到邊上的柱子，邊上補一個箭頭：只有箭頭、沒有線的一條折線（同 useMetricHistoryChartOption）。不給名字：箭頭不是資料
+    ...(series.type === 'bar' && series.growthLog && logCapped.value[axisIndexOf(series)]
+      ? [{
+          name: '',
+          type: 'line',
+          yAxisIndex: axisIndexOf(series),
+          silent: true,
+          z: 4,
+          tooltip: { show: false },
+          emphasis: { disabled: true },
+          lineStyle: { opacity: 0 },
+          itemStyle: { color: chartInk.value.muted },
+          showAllSymbol: true,
+          connectNulls: false,
+          data: list.map((entry) => {
+            const logCap = logCapOf(series, entry.values[series.code]?.value ?? null)
+            return logCap ? arrowPoint(logCap) : null
+          })
+        }]
+      : [])]), ...periodNames.value.map(name => ({
       // 只承載區段的灰底（與圖例那一項），沒有資料、不進提示框；灰底跨整個繪圖區的高度，所以掛在哪一軸都一樣
       name,
       type: 'line',

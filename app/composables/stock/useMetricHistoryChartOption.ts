@@ -17,7 +17,8 @@ export function useMetricHistoryChartOption(
   topic: Ref<string>,
   unit: Ref<string>,
   timeframe: Ref<MetricsHistoryTimeframe>,
-  // 營收這類年增率畫成「是去年的幾倍」的對數（GROWTH_LOG_METRICS，app/utils/growth-log-scale.ts）；營收 0（−100%）畫到最底、灰色
+  // 營收這類年增率畫成「是去年的幾倍」的對數（GROWTH_LOG_METRICS，app/utils/growth-log-scale.ts）；營收 0（−100%）畫到最底、灰色；
+  // 離多數期別太遠的不決定軸，畫到邊上、邊上加箭頭
   growthLog = false,
   // 三率（MARGIN_CAP_METRICS，app/utils/margin-cap.ts）：柱子最多畫到 ±100%，超出的畫到邊上、邊上加箭頭，提示框照舊寫原數字
   marginCap = false
@@ -33,10 +34,12 @@ export function useMetricHistoryChartOption(
 
   interface BarTooltipParam { dataIndex?: number }
 
-  // 截不截、截哪一邊；呼叫端照 capped 在圖上方畫箭頭的說明（SharedChartLegend）
-  const bounds = computed(() => (marginCap ? marginBounds(points.value.flatMap(entry => (entry.value === null ? [] : [entry.value]))) : null))
-  const capped = computed(() => bounds.value !== null)
-  const capOf = (value: number | null) => (value === null ? null : cappedPoint(value, bounds.value))
+  // 截不截、截哪一邊；呼叫端照 capNote 在圖上方畫箭頭的說明（SharedChartLegend），沒截是 null
+  const values = computed(() => points.value.flatMap(entry => (entry.value === null ? [] : [entry.value])))
+  const bounds = computed(() => (marginCap ? marginBounds(values.value) : null))
+  const logAxis = computed(() => (growthLog ? growthLogAxis(values.value) : null))
+  const capOf = (value: number | null) => (value === null ? null : logAxis.value ? growthLogCap(value, logAxis.value) : cappedPoint(value, bounds.value))
+  const capNote = computed(() => (bounds.value ? MARGIN_CAP_NOTE : values.value.some(value => capOf(value)) ? FENCE_NOTE : null))
 
   const chartOption = computed(() => {
     const list = points.value
@@ -60,7 +63,7 @@ export function useMetricHistoryChartOption(
       yAxis: {
         type: 'value',
         name: unit.value,
-        ...(growthLog ? growthLogAxis(list.flatMap(entry => (entry.value === null ? [] : [entry.value]))) : {}),
+        ...logAxis.value,
         ...bounds.value
       },
       series: [
@@ -93,7 +96,7 @@ export function useMetricHistoryChartOption(
         },
         // 截到邊上的柱子，邊上畫一個箭頭：只有箭頭、沒有線的一條折線（不用多註冊 markPoint）。往裡收半個箭頭，不被繪圖區切掉。
         // 不給名字：SharedChart 用各 series 的名字組 aria-label，箭頭不是資料
-        ...(bounds.value
+        ...(capNote.value
           ? [{
               name: '',
               type: 'line',
@@ -114,5 +117,5 @@ export function useMetricHistoryChartOption(
     }
   })
 
-  return { chartOption, capped }
+  return { chartOption, capNote }
 }

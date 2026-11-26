@@ -291,8 +291,8 @@ const stackedTooltipHeader = (index: number): string => {
 
 // 三率截到 ±100% 時，柱狀圖上方多一列箭頭的說明（同折線圖的圖例列）；那一列從圖的 20rem 裡分，整張卡片不變高
 const { resolvedMode } = useAppTheme()
-const capLegend = computed<ChartLegendGroup[]>(() => [{ items: [{ name: MARGIN_CAP_NOTE, color: getChartInk(resolvedMode.value).muted, kind: 'arrow' }] }])
-const { chartOption, capped } = useMetricHistoryChartOption(
+const capLegend = computed<ChartLegendGroup[]>(() => [{ items: [{ name: capNote.value ?? '', color: getChartInk(resolvedMode.value).muted, kind: 'arrow' }] }])
+const { chartOption, capNote } = useMetricHistoryChartOption(
   points,
   drawnTopic,
   computed(() => props.unit),
@@ -348,7 +348,7 @@ const { chartOption, capped } = useMetricHistoryChartOption(
       :tooltip-note="index => points[index]?.remark ?? ''"
     />
     <div v-else-if="points.length > 1" v-loading="pending" class="stock-metric-history-chart-interactive__chart stock-metric-history-chart-interactive__bars">
-      <SharedChartLegend v-if="capped" :groups="capLegend" />
+      <SharedChartLegend v-if="capNote" :groups="capLegend" />
       <SharedChart class="stock-metric-history-chart-interactive__plot" :option="chartOption" autoresize />
     </div>
     <div v-else-if="!pending" class="stock-metric-history-chart-interactive__empty"><SharedEmptyState description="這個期間沒有足夠的資料可以畫圖" /></div>

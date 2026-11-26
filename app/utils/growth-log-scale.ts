@@ -40,11 +40,42 @@ export function growthLogTicks(changes: number[]): number[] {
   return candidates.filter(tick => tick >= from - EPSILON && tick <= to + EPSILON)
 }
 
+// 離多數期別太遠的期別不決定軸（2026-11-26，使用者看 8462 柏文：「有一期 年增率破表 導致其他的期別視覺上無法識別」。前一年同月停業，
+// 2022-06 是 +42,329%，其餘多在 8%～35%，10 倍一格的軸上只有 1% 高）。同杜邦圖的做法（margin-cap.ts 的 fenceBounds，Tukey 的極端值界線），
+// 在倍數的對數上算：離四分位數超過 3 個四分位距、而且超過 2 倍的期別不算進軸，畫到邊上加箭頭（growthLogCap），提示框與表格照舊是原數字。
+// 「而且超過 2 倍」：很穩定的公司四分位距很小，+35% 不該算破表。月月大起大落的（5314，這套刻度當初就是為它選的）沒有離群的，照舊整段畫
+const FENCE_FLOOR = Math.log10(2)
+
+function inliers(changes: number[]): number[] {
+  if (changes.length < 4) return changes
+  const logs = changes.map(growthLogValue).sort((a, b) => a - b)
+  const quantile = (p: number) => {
+    const at = (logs.length - 1) * p
+    const low = Math.floor(at)
+    return logs[low]! + (logs[Math.ceil(at)]! - logs[low]!) * (at - low)
+  }
+  const q1 = quantile(0.25)
+  const q3 = quantile(0.75)
+  const reach = Math.max((q3 - q1) * 3, FENCE_FLOOR)
+  return changes.filter((change) => {
+    const log = growthLogValue(change)
+    return log >= q1 - reach && log <= q3 + reach
+  })
+}
+
 // ECharts 值軸的設定，兩支圖表共用（StockMultiSeriesLineChart、useMetricHistoryChartOption）：刻度就是上下限，刻度字標回百分比。
 // 格線不畫：customValues 不會帶到 splitLine，格線會跟刻度錯開
 export function growthLogAxis(changes: number[]) {
-  const ticks = growthLogTicks(changes)
+  const ticks = growthLogTicks(inliers(changes))
   return { min: ticks[0], max: ticks.at(-1), axisLabel: { customValues: ticks, formatter: growthLogLabel }, axisTick: { customValues: ticks }, splitLine: { show: false } }
+}
+
+// 超出軸的期別畫在邊上的哪裡、箭頭朝上還是朝下；在軸裡的回 null。axis 是 growthLogAxis 回的那一份（沒有這種刻度的軸給空物件）
+export function growthLogCap(change: number, axis: { min?: number, max?: number }): { value: number, up: boolean } | null {
+  const log = growthLogValue(change)
+  if (axis.max !== undefined && log > axis.max + EPSILON) return { value: axis.max, up: true }
+  if (axis.min !== undefined && log < axis.min - EPSILON) return { value: axis.min, up: false }
+  return null
 }
 
 export function growthLogLabel(tick: number): string {
