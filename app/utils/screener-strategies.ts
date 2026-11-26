@@ -20,12 +20,12 @@ export interface TemplateCondition {
 
 // 符號、數字、單位之間是不斷行空白：一行條件折行時「≥」「−15%」「倍」不會落單（2026-11-26 方案 D 的成長突破折成「≥」換行「−15%」）
 export function rangeText(filter: TemplateFilter, unit: string, options?: Parameters<typeof findScreenerOption>[0]): string {
-  const suffix = unit === '%' ? '%' : unit ? ` ${unit}` : ''
+  const suffix = unit === '%' ? '%' : unit ? `\u00A0${unit}` : ''
   // 類別條件寫選項的名稱，「包含／排除」同篩選頁的條件膠囊；對不到選項的照原值
   if (filter.values?.length) return `${filter.exclude ? '排除' : '包含'} ${filter.values.map(value => findScreenerOption(options, value)?.label ?? String(value)).join('、')}`
   // 兩端都有寫「0～1.5 倍」，同條件膠囊的「～」；負的界線用「−」（成長突破的「距 52 週高點 ≥ −15%」，2026-11-24）
   const { min, max } = filter
-  const text = minusSign(min !== null && max !== null ? `${min}～${max}${suffix}` : min !== null ? `≥ ${min}${suffix}` : max !== null ? `≤ ${max}${suffix}` : '有值即可')
+  const text = minusSign(min !== null && max !== null ? `${min}～${max}${suffix}` : min !== null ? `≥\u00A0${min}${suffix}` : max !== null ? `≤\u00A0${max}${suffix}` : '有值即可')
   return filter.exclude ? `排除：${text}` : text
 }
 

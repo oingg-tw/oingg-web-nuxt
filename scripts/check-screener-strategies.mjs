@@ -37,10 +37,10 @@ assert.equal(rangeText(picked([1, 2]), '', size), '包含 大型、中型')
 assert.equal(rangeText({ ...picked([3]), exclude: true }, '', size), '排除 小型')
 assert.equal(rangeText(picked([9]), '', size), '包含 9')
 assert.equal(rangeText(picked([1]), '', undefined), '包含 1')
-// 符號、數字、單位之間是不斷行空白（ ），折行時不會落單；兩端都有寫「0～1.5 倍」
-assert.equal(rangeText({ field: 'distanceFrom52wHigh.1Y', min: -15, max: null, exclude: false, values: null }, '%'), '≥ −15%')
-assert.equal(rangeText({ field: 'pbRatio.EOD', min: 0, max: 1.5, exclude: false }, '倍'), '0～1.5 倍')
-assert.equal(rangeText({ field: 'beta.1Y_1D', min: null, max: 0.8, exclude: false }, ''), '≤ 0.8')
+// 符號、數字、單位之間是不斷行空白（U+00A0），折行時不會落單；兩端都有寫「0～1.5 倍」
+assert.equal(rangeText({ field: 'distanceFrom52wHigh.1Y', min: -15, max: null, exclude: false, values: null }, '%'), '≥\u00A0−15%')
+assert.equal(rangeText({ field: 'pbRatio.EOD', min: 0, max: 1.5, exclude: false }, '倍'), '0～1.5\u00A0倍')
+assert.equal(rangeText({ field: 'beta.1Y_1D', min: null, max: 0.8, exclude: false }, ''), '≤\u00A00.8')
 assert.equal(rangeText({ field: 'distanceFrom52wHigh.1Y', min: -20, max: -5, exclude: false }, '%'), '−20～−5%')
 assert.equal(rangeText({ field: 'roe.TTM', min: null, max: null, exclude: true, values: [] }, '%'), '排除：有值即可')
 
