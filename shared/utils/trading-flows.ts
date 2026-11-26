@@ -12,6 +12,8 @@ export interface MarginDay {
   shortBalanceLots: number | null
   shortToMarginRatio: number | null
   sblShortBalanceLots: number | null
+  // 借券賣出上限（證交所 TWT96U，數據中台 dddb66f、業務中台 56a5d67）：那一天可以借券賣出的額度，上市、上櫃都有，2026-11-12 起，零股留小數
+  sblShortAvailableLots: number | null
 }
 
 export interface MarginHistory {

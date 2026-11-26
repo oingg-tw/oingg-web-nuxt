@@ -5,10 +5,10 @@ import { groupThousands } from '../shared/utils/number-format.ts'
 import { institutionalMonths, marginMonths } from '../shared/utils/trading-flows.ts'
 
 Object.assign(globalThis, { groupThousands })
-const { institutionalAnswer, marginAnswer, marginStatusText, netBuyText, shortAnswer, signedLots } = await import('../app/utils/trading-flows-text.ts')
+const { institutionalAnswer, marginAnswer, marginStatusText, netBuyText, sblLimitAnswer, shortAnswer, signedLots } = await import('../app/utils/trading-flows-text.ts')
 
 // 每月一列是月底那一天；順序亂的也照日期排
-const day = (tradeDate, marginBalanceLots, marginUtilizationRate) => ({ tradeDate, marginBalanceLots, marginLimitLots: 100000, marginUtilizationRate, shortBalanceLots: 50, shortToMarginRatio: 0.17, sblShortBalanceLots: null })
+const day = (tradeDate, marginBalanceLots, marginUtilizationRate) => ({ tradeDate, marginBalanceLots, marginLimitLots: 100000, marginUtilizationRate, shortBalanceLots: 50, shortToMarginRatio: 0.17, sblShortBalanceLots: null, sblShortAvailableLots: null })
 const months = marginMonths([day('2026-11-23', 30970, 0.48), day('2026-10-31', 28000, 0.43), day('2026-10-02', 25000, 0.39), day('2026-11-03', 29000, 0.45)])
 assert.deepEqual(months.map(month => `${month.month} ${month.tradeDate} ${month.marginBalanceLots}`), ['2026-10 2026-10-31 28000', '2026-11 2026-11-23 30970'])
 
@@ -19,6 +19,16 @@ assert.equal(shortAnswer(months.at(-1), '台積電'), '2026-11-23 融券餘額 5
 assert.equal(marginAnswer(undefined, { latest: null }, '甲'), '甲目前不能信用交易（不在融資融券的名單上）。')
 assert.equal(marginStatusText({ latest: { ...ok.latest, isShortSuspended: true } }, '甲'), '甲目前暫停融券（2026-11-23）。')
 assert.equal(marginAnswer({ ...months.at(-1), marginUtilizationRate: null }, { latest: { ...ok.latest, isMarginSuspended: true, isShortSuspended: true } }, '甲'), '2026-11-23 融資餘額 30,970 張。甲目前暫停融資與融券（2026-11-23）。')
+
+// 借券賣出上限：寫那一天的日期；張四捨五入，不到 1 張不寫成 0 張（0 是不能借券賣出）；沒有上限（收集之前、業務中台還沒轉發）不答
+const capped = cap => ({ ...months.at(-1), sblShortAvailableLots: cap })
+assert.equal(sblLimitAnswer(capped(428.771)), '2026-11-23 借券賣出的上限是 429 張。')
+assert.equal(sblLimitAnswer(capped(1146.2)), '2026-11-23 借券賣出的上限是 1,146 張。')
+assert.equal(sblLimitAnswer(capped(0.6)), '2026-11-23 借券賣出的上限不到 1 張。')
+assert.equal(sblLimitAnswer(capped(0)), '2026-11-23 借券賣出的上限是 0 張。')
+assert.equal(sblLimitAnswer(capped(null)), '')
+assert.equal(sblLimitAnswer({ ...months.at(-1), sblShortAvailableLots: undefined }), '')
+assert.equal(sblLimitAnswer(undefined), '')
 
 // 三大法人：每月加總，整個月沒有值是 null；張四捨五入、負數寫賣超
 const trade = (tradeDate, foreign, trust, dealer) => ({ tradeDate, foreignNetBuyLots: foreign, investmentTrustNetBuyLots: trust, dealerNetBuyLots: dealer, totalNetBuyLots: foreign === null ? null : foreign + trust + dealer })

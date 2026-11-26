@@ -1,4 +1,4 @@
-import type { InstitutionalDay, MarginHistory, MarginMonth } from '#shared/utils/trading-flows'
+import type { InstitutionalDay, MarginDay, MarginHistory, MarginMonth } from '#shared/utils/trading-flows'
 
 // 信用交易頁與三大法人頁的答句（2026-11-24）。張數取整數（法人的張帶零股的小數），比率到小數兩位；負數用「−」
 export const lotsNumber = (value: number | null): string => (value === null ? '－' : groupThousands(Math.round(value)))
@@ -37,6 +37,14 @@ export function shortAnswer(last: MarginMonth | undefined, name: string): string
   if (!last) return `目前沒有${name}的融券資料。`
   const ratio = last.shortToMarginRatio === null ? '' : `，券資比 ${ratePct(last.shortToMarginRatio)}`
   return `${last.tradeDate} 融券餘額 ${lotsNumber(last.shortBalanceLots)} 張${ratio}。`
+}
+
+// 「2026-11-25 借券賣出的上限是 429 張。」（使用者 11-24 的「收，只放信用交易頁」）：那一天可以借券賣出的額度，不是借券的庫存，也不是已經
+// 賣出的量。寫日期不寫「今天」，最新一天不一定是今天；不到 1 張不寫成 0 張，0 是不能借券賣出
+export function sblLimitAnswer(last: MarginDay | undefined): string {
+  const value = last?.sblShortAvailableLots ?? null
+  if (!last || value === null) return ''
+  return `${last.tradeDate} 借券賣出的上限${value > 0 && value < 1 ? '不到 1 張' : `是 ${lotsNumber(value)} 張`}。`
 }
 
 // 「2026-11-23 三大法人合計賣超 913 張：外資買超 371 張、投信賣超 324 張、自營商賣超 960 張。」
