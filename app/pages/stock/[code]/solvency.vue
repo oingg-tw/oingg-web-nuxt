@@ -68,8 +68,6 @@ const cashRatio = computed(() => valueOf('cashRatio'))
 const debtRatio = computed(() => valueOf('debtRatio'))
 const equityRatio = computed(() => valueOf('equityRatio'))
 
-const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
-
 // Where this page's numbers come from, per metric, from the catalog — see collectMetricSources.
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], SOLVENCY_METRIC_CODES))
 // 頁尾的相關頁面（2026-10-11 從兩個段落末移進 StockPageFooter）：各比率自己的頁，原始金額在資產負債表

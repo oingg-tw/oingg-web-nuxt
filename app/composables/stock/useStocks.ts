@@ -42,7 +42,7 @@ export function formatStockValue(stock: Stock, key: StockColumnKey) {
 
 
 // `watchlist` 只存代號（2026-09-14）：以前存整個 Stock 物件，每一筆都來自假資料或退回假資料，數字永遠不更新。真正的每檔數字由
-// useWatchlistStocks 在下游 reactive 地解析（watchlist.vue），不是加入當下抓一次就放到過期。addStock／removeStock 只動代號。
+// useWatchlistStocks 在下游 reactive 地解析（pages/watchlist/index.vue），不是加入當下抓一次就放到過期。addStock／removeStock 只動代號。
 
 export function useStocks() {
   // 只讀、不抓（useNuxtData）：這裡要目錄只是為了提示訊息裡的公司名稱，而 app.vue 的 useWatchlistSync 每一頁都會呼叫

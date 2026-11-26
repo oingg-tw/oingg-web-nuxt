@@ -25,6 +25,7 @@ import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '#shared/types
 // 教訓：`curl | grep` 數的是 payload，不是畫面。要主張「讀者看得到」就得量 innerText。
 // 期別標籤：shared/utils/timeframe-labels.ts 的 TIMEFRAME_LABELS（2026-10-11 起全站一份）。
 
-export function periodLabel(entry: Pick<MetricsHistoryEntry, 'fiscalYear' | 'fiscalQuarter'>, timeframe: MetricsHistoryTimeframe): string {
+// timeframe 不給（杜邦、財報三率、償債能力比率三頁）：照有沒有季別寫
+export function periodLabel(entry: Pick<MetricsHistoryEntry, 'fiscalYear' | 'fiscalQuarter'>, timeframe?: MetricsHistoryTimeframe): string {
   return timeframe === 'FY' ? `${entry.fiscalYear} 年` : (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 }

@@ -624,10 +624,6 @@ export function useUniverseScreener(source: UniverseSource) {
     if (!open) for (const trigger of pendingEdits.values()) trigger.flush()
   }, { flush: 'post' })
 
-  function handleRemoveColumn(_tab: UniverseTab, field: string) {
-    setActiveColumns((activeColumnSet.value?.fields ?? []).filter(item => item !== field))
-  }
-
   function handleReorderColumns(_tab: UniverseTab, fields: string[]) {
     setActiveColumns(fields)
   }
@@ -777,7 +773,6 @@ export function useUniverseScreener(source: UniverseSource) {
     loadMoreResults,
     changeSort,
     handleReorderColumns,
-    handleRemoveColumn,
     applyColumnChoices,
     newTabDialogVisible,
     templates: source.filterTemplates,

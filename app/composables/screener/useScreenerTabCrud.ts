@@ -319,7 +319,7 @@ export function useScreenerTabCrud(ctx: {
     }
 
     // Same optimistic-then-reconcile pattern as renameColumnPreset above, and for the same
-    // reason: PresetFolder.vue's rename input is already gone by the time this resolves, so
+    // reason: the rename UI (the 管理 dialog today) is already gone by the time this resolves, so
     // the tab needs to already be showing `name`, not the pre-rename one, for that gap.
     const previousName = tab.name
     tab.name = name

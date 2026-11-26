@@ -397,8 +397,8 @@ export function resolveRelatedPages(slugs: string[] | undefined): { slug: string
 
 // 指標速覽的圖與「能不能釘」讀同一份（2026-10-16「指標速覽沒有顯示所有的指標圖，為什麼？這邊不是統一模板了嗎」）：統一模板管的是
 // 骨架與圖卡，每一頁畫哪張圖原本是速覽自己手接——它只認得指標頁、徽章頁與手接的五頁，另外 8 頁有圖卻不能釘。現在 slug → 圖只在這裡，
-// quick-view.vue 照它畫、hasPinnableChart 照它放行；新頁宣告既有的 kind 就自動能釘也畫得出來。新增一種 kind 要接資料與畫法：
-// quick-view 的 PAGE_DATA 以 kind 為鍵，漏接 typecheck 會報。
+// 指標速覽（pages/stock/[code]/index.vue）照它畫、hasPinnableChart 照它放行；新頁宣告既有的 kind 就自動能釘也畫得出來。新增一種 kind 要接資料與畫法：
+// 那一頁的 PAGE_DATA 以 kind 為鍵，漏接 typecheck 會報。
 // 能釘＝畫得出圖（2026-10-07「加入指標的這些內容，每個都有圖表嗎? 沒有的請移出」）。放在這裡而不是 useStockPinnedMetrics：那一支在
 // app.vue 的初始化路徑上。
 export function quickViewChartOf(slug: string): QuickViewChart | null {

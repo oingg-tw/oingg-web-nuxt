@@ -64,7 +64,6 @@ const roa = computed(() => valueOf('roa'))
 
 const hasFactors = computed(() => latest.value !== null)
 
-const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
 const latestPeriodText = computed(() => (latest.value ? periodLabel(latest.value) : ''))
 
 const dataSources = computed(() => collectMetricSources(filterSchema.value?.categories ?? [], DUPONT_METRIC_CODES))

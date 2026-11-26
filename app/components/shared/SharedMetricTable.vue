@@ -205,7 +205,6 @@ function onRowClick(row: ScreenerResultRow, _column: unknown, event: MouseEvent)
 
 const emit = defineEmits<{
   reorder: [fields: string[]]
-  removeColumn: [field: string]
   rowClick: [symbol: string]
   loadMore: []
   // Only ever emitted for symbol/metric columns — see handleSortChange below. field is null
@@ -420,8 +419,8 @@ watch([orderedColumns, () => props.rows], () => nextTick(() => {
 // column.label already carries its period baked in as "名稱（期間）" (see formatFieldLabel
 // in useFilterSchema.ts, the one place that ever assembles this) — a global toggle rather
 // than fetching/storing period separately, since that exact suffix format is the only thing
-// that needs stripping, not a real second data field. The switch itself lives in screener.vue,
-// outside any column-preset tab — see useScreenerShowPeriod.ts for why.
+// that needs stripping, not a real second data field. The switch itself lives in
+// pages/screener/common/index.vue, outside any column-preset tab — see useScreenerShowPeriod.ts for why.
 const screenerShowPeriod = useScreenerShowPeriod()
 const showPeriod = computed(() => props.showPeriod ?? screenerShowPeriod.value)
 const showCellDates = computed(() => props.cellDates ?? showPeriod.value)
@@ -804,7 +803,7 @@ watch(() => props.loading, (loading, wasLoading) => {
            el-table rows are plain <tr>s with no native keyboard/AT semantics — this link is
            what actually makes "open a stock from this table" reachable without a mouse
            (same /stock/{code} path the parent's own row-click handler already navigates to,
-           see screener.vue). -->
+           see ScreenerPageShell.vue's openRow). -->
       <el-table-column prop="name" label="名稱" :width="nameWidth" fixed sortable>
         <template #header>
           <button type="button" class="screener-result-table__head screener-result-table__head--start" data-field="name" aria-haspopup="menu" :aria-expanded="menu.open && menu.field === 'name'">

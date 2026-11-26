@@ -1011,10 +1011,6 @@ async function submit() {
   color: var(--el-text-color-regular);
 }
 
-.holdings-page__quote-alert {
-  margin-top: 12px;
-}
-
 .holdings-page__method {
   margin-top: 16px;
   color: var(--el-text-color-regular);

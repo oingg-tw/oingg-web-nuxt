@@ -122,8 +122,7 @@ watch(focusRequest, async request => {
   // 2s, then fade back out via the transition on .statement-row--highlighted below — long enough
   // to register as "this is the row" without staying tinted indefinitely.
   highlightTimeout = setTimeout(() => { highlightedRowKey.value = null }, 2000)
-  // Reaching into el-table's own rendered DOM for a specific row — same established pattern as
-  // EtfResultTable.vue's own load-more sentinel (see that file's own comment), since el-table
+  // Reaching into el-table's own rendered DOM for a specific row, since el-table
   // exposes no "scroll to row by key" API of its own.
   // Real bug caught live 2026-09-10: calling scrollIntoView() here immediately (even after
   // nextTick, even with `behavior: 'instant'`) silently failed to move the scroll position —

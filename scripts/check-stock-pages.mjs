@@ -10,7 +10,7 @@
 // hydration bug useStockPageDigest/stock-digest.ts are built to avoid), that no page error fired,
 // and axe (wcag2a/wcag2aa/best-practice) reports nothing beyond the app-shell issues on record.
 // 公司健檢 (and its own anchor-nav / chart-figure checks) was removed 2026-09-19 when that page
-// was unpublished — see app/pages/stock/[code]/company-health.vue's own comment. /dividend gets
+// was unpublished (the page file is gone since; git history has it). /dividend gets
 // a slightly higher table floor (2, not 1) since it's the thickest of the remaining pages.
 import { BANNED_WORDS_PATTERN } from '../shared/utils/compliance-words.ts'
 import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'

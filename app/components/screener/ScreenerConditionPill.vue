@@ -7,8 +7,8 @@ import type { MetricCategory } from '~/composables/screener/useFilterSchema'
 //   field swapped for a different one — one dialog, one entry point, never two ways to reach
 //   the same outcome.
 // - Back half (the value) opens the shared range-editor popover (ScreenerRangeEditor,
-//   owned by screener.vue — no longer this component's own; see useScreenerTabs.ts's
-//   rangeEditorSlot for why it had to move up a level). Only shown once a field is set —
+//   inside ScreenerConditionPanel, owned by ScreenerPageShell — no longer this component's own; see
+//   rangeEditorSlot in useScreenerConditionEditor.ts for why it had to move up a level). Only shown once a field is set —
 //   there's nothing to edit a range against before that.
 // min/max/exclude are read-only here (display text only) — actually editing them happens in
 // the shared popover directly against the real slot object, not through this component.

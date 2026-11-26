@@ -84,7 +84,7 @@ export function projectMetricsHistory(source: Exclude<CachedHistory, null>, code
 const inFlight = new Map<string, Promise<CachedHistory>>()
 
 // 業務中台 caps this endpoint at 10 metricCodes per request ("metricCodes 最多 10 個") — a real
-// 400 discovered live 2026-09-13 once StockHistoricalStatisticsTable.vue started requesting
+// 400 discovered live 2026-09-13 once the since-removed StockHistoricalStatisticsTable.vue started requesting
 // every available indicator by default (60+ codes) instead of a small fixed set every existing
 // caller happened to stay under. Chunked transparently here (parallel requests, merged by
 // period) so every caller — the existing small ones and this new large one — gets one combined

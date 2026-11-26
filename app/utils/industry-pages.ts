@@ -8,7 +8,7 @@ import type { LineSeriesSpec } from '~/components/stock/StockMultiSeriesLineChar
 export const industryNum = (value: number | null, decimals = 2) => (value === null ? '－' : minusSign(value.toFixed(decimals)))
 export const industrySignedPct = (value: number | null) => (value === null ? '－' : minusSign(`${value > 0 ? '+' : ''}${value.toFixed(2)}%`))
 export const industryPct = (value: number | null | undefined) => (value == null ? '－' : minusSign(`${value.toFixed(2)}%`))
-// 股利成長率一位小數（同 /industries/dividend）
+// 股利成長率一位小數（/industries/dividend 與各類股頁共用）
 export const industryGrowthPct = (value: number | null) => (value === null ? '－' : minusSign(`${value.toFixed(1)}%`))
 export const industryStat = (value: number | null, unit: string) => (value === null ? '－' : minusSign(`${value.toFixed(2)}${unit === '倍' ? ' 倍' : '%'}`))
 

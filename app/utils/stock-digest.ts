@@ -16,8 +16,8 @@ import type { ExDividendNotice } from '~/composables/stock/useExDividendNotices'
 // site's coverage, not information about this stock. (The cards' own visible empty states cover
 // the human reader.)
 
-// 'company-health' dropped 2026-09-19 when that page was unpublished (see
-// app/pages/stock/[code]/company-health.vue's own comment) — StockSeriesPage (shared/types/
+// 'company-health' dropped 2026-09-19 when that page was unpublished (the page file is gone
+// since; git history has it) — StockSeriesPage (shared/types/
 // stock-series.ts) and the series plan behind it (server/utils/stock-data.ts) keep the wider set
 // for the eventual redesign; only the DIGEST TEXT side narrowed.
 export type StockDigestPage = 'index' | 'dividend' | 'dividend-source' | 'financial-statements'

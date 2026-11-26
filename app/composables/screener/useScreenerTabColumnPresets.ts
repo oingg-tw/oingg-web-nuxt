@@ -177,8 +177,8 @@ export function useScreenerTabColumnPresets(ctx: {
   // 要有預設值Preset = 總覽") — a brand-new custom filter tab used to leave columnPresetId at
   // whatever resolveDefaultColumnPresetId happened to resolve to (the user's own isDefault
   // preset, or arbitrarily options[0], or null for a genuinely fresh account) — 業務中台's own
-  // null-fallback DOES serve the 總覽 template's columns server-side in that last case (see
-  // ScreenerResultBody.vue's own comment), but with no matching entry in columnPresetOptions,
+  // null-fallback DOES serve the 總覽 template's columns server-side in that last case,
+  // but with no matching entry in columnPresetOptions,
   // the 欄位組合 tab strip itself renders nothing to represent it — the data was right, the UI
   // had no visible tab to show it came from 總覽. Idempotent: reuses the user's own "總覽"
   // ColumnPreset if they already have one (from a prior template apply) instead of cloning a
@@ -310,8 +310,8 @@ export function useScreenerTabColumnPresets(ctx: {
   }
 
   async function renameColumnPreset(id: string, name: string) {
-    // Applied optimistically before the request resolves — PresetFolder.vue already exits
-    // its inline-rename input the instant Enter is pressed, so without this the tab visibly
+    // Applied optimistically before the request resolves — the rename UI has already closed by
+    // then (an inline input when this was written, the 管理 dialog today), so without this the tab visibly
     // snapped back to the OLD name for the round-trip and only jumped to the new one once
     // the response landed. Reverted below if the request actually fails.
     const option = columnPresetOptions.value.find(item => item.id === id)
@@ -332,8 +332,8 @@ export function useScreenerTabColumnPresets(ctx: {
   // /screener/column-presets had no order field to persist against). 業務中台 shipped
   // POST /screener/column-presets/reorder (commit 02529cd) specifically for this — takes the
   // caller's FULL ordered set of their own column-preset ids, 400s on any mismatch (missing or
-  // extra), so `ids` here must already be exactly that set; PresetFolder.vue's own reorder emit
-  // already satisfies this (it reorders its full displayed item list, never a partial one).
+  // extra), so `ids` here must already be exactly that set; the 管理 dialog's reorder (runPresetChanges)
+  // already satisfies this (it sends its full list, never a partial one).
   // Applied optimistically (screen updates immediately on drop, matching every other
   // drag-reorder in this app) and reverted if the PATCH actually fails, rather than waiting on
   // the round-trip before showing the new order.
@@ -386,21 +386,6 @@ export function useScreenerTabColumnPresets(ctx: {
     if (wasActive) await switchColumnPreset(tab, fallbackId)
   }
 
-  async function handleRemoveColumn(tab: ScreenerTab, field: string) {
-    tab.columns = tab.columns.filter(column => column.field !== field)
-    tab.resultColumns = tab.resultColumns.filter(column => column.field !== field)
-    // 移除的是排序中的那一欄：清掉排序、從第一頁重查。上游只接受 symbol 或這次 columns 裡的欄位當 sortField，留著的話下一次查詢
-    // （往下捲載入下一頁、改條件）整個 400（2026-10-16，ETF 先回報，普通股同一條路）
-    const sortRemoved = tab.sortField === field
-    if (sortRemoved) {
-      tab.sortField = null
-      tab.sortOrder = null
-    }
-    ctx.cacheColumnView(tab)
-    await ctx.syncColumnPreset(tab)
-    if (sortRemoved) await ctx.runSearch(tab, 1)
-  }
-
   async function handleReorderColumns(tab: ScreenerTab, fields: string[]) {
     const byField = new Map(tab.columns.map(column => [column.field, column]))
     tab.columns = fields.map(field => byField.get(field)).filter((column): column is ResultColumnChoice => !!column)
@@ -408,8 +393,9 @@ export function useScreenerTabColumnPresets(ctx: {
     await ctx.syncColumnPreset(tab)
   }
 
-  // 欄位設定彈窗按「儲存」（2026-10-22）：整份換掉、存一次。移除的是排序中的那一欄就清掉排序（理由同 handleRemoveColumn）；
-  // 多了欄位要重查才有值。兩種都從第一頁重查
+  // 欄位設定彈窗按「儲存」（2026-10-22；表頭選單的「移除這一欄」也走這裡）：整份換掉、存一次。移除的是排序中的那一欄就清掉排序：
+  // 上游只接受 symbol 或這次 columns 裡的欄位當 sortField，留著的話下一次查詢（往下捲載入下一頁、改條件）整個 400（2026-10-16，
+  // ETF 先回報，普通股同一條路）。多了欄位要重查才有值。兩種都從第一頁重查
   async function applyColumnChoices(tab: ScreenerTab, choices: ResultColumnChoice[]) {
     const fields = new Set(choices.map(choice => choice.field))
     const added = choices.some(choice => !tab.columns.some(column => column.field === choice.field))
@@ -446,7 +432,6 @@ export function useScreenerTabColumnPresets(ctx: {
     reorderColumnPresets,
     copyColumnPreset,
     handleReorderColumns,
-    handleRemoveColumn,
     applyColumnChoices
   }
 }

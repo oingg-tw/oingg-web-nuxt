@@ -142,7 +142,6 @@ export interface ScreenerWorkspace {
   loadMoreResults(tab: WorkspaceTab): void
   changeSort(tab: WorkspaceTab, field: string | null, order: 'asc' | 'desc' | null): void
   handleReorderColumns(tab: WorkspaceTab, fields: string[]): void
-  handleRemoveColumn(tab: WorkspaceTab, field: string): void
 
   // 新增篩選／新增欄位組合的對話框
   newTabDialogVisible: boolean
@@ -233,8 +232,8 @@ export interface ScreenerTab extends WorkspaceTab {
   // 畫面上這些列是照哪個排序查到的：下一頁只接在同一個排序的列後面（loadMoreResults，2026-11-16）
   resultsSort?: string
   loading: boolean
-  // Separate from `loading` on purpose — `loading` drives ScreenerResultBody.vue's
-  // v-loading full-table overlay for a real search/reset; this drives only the small
+  // Separate from `loading` on purpose — `loading` drives SharedMetricTable.vue's
+  // full-table loading overlay for a real search/reset; this drives only the small
   // append-slot indicator for an infinite-scroll "load next batch" fetch, so scrolling
   // near the bottom doesn't flash the whole table under an opaque overlay every time.
   loadingMore: boolean

@@ -2,7 +2,7 @@
 import { use } from 'echarts/core'
 import { ScatterChart } from 'echarts/charts'
 import { LabelLayout } from 'echarts/features'
-import type { HubSector, SectorDividendSummaryPageData } from '#shared/types/hub'
+import type { SectorDividendSummaryPageData } from '#shared/types/hub'
 // 產業追蹤 — RETIRED the supply-chain tree 2026-09-20: analysis-ts hard-deleted GET
 // /industries/chain-tree (and chain-clusters, chain-classification) with no replacement (commit
 // a7489d65, a compliance call). What was left was a search box over the 36 sector names plus a
@@ -30,7 +30,6 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${requestUrl.origin}/industries/dividend` }] })
 
-const { data: sectors } = await useFetch<HubSector[]>('/api/hub/sectors', { key: 'hub-sectors', default: () => [] })
 const { data: summary, error: summaryError } = await useFetch<SectorDividendSummaryPageData | null>('/api/hub/sector-dividend-summary', {
   key: 'hub-sector-dividend-summary',
   default: () => null
@@ -48,8 +47,6 @@ if (summaryError.value) throw createError({ statusCode: 503, statusMessage: '類
 // 再寫「配息公司的平均」——實測 34 個類股裡有 31 個的殖利率 count 已經等於 companyCount，而造紙
 // 工業的中位數是 0（過半公司不配息），那個 0 是真的不是缺值。
 const MIN_SAMPLE = 5
-const yieldText = (value: number | null): string => (value === null ? '－' : `${value.toFixed(2)}%`)
-const growthText = (value: number | null): string => (value === null ? '－' : minusSign(`${value.toFixed(1)}%`))
 
 const rows = computed(() => summary.value?.sectors ?? [])
 
@@ -86,12 +83,12 @@ const quadrants = computed(() =>
     ['現金殖利率較高、股利沒有減少', '現金殖利率較高、股利減少', '現金殖利率較低、股利沒有減少', '現金殖利率較低、股利減少']
   ).map(group => ({
     title: `${group.title}（${group.rows.length} 個類股）`,
-    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: dividendPageOf(row.sectorCode), cells: [yieldText(row.liveCashDividendYield.median), growthText(row.holdingDividendGrowthRate5y.median)] }))
+    rows: group.rows.map(row => ({ key: row.sectorCode, name: row.sectorName, to: dividendPageOf(row.sectorCode), cells: [industryPct(row.liveCashDividendYield.median), industryGrowthPct(row.holdingDividendGrowthRate5y.median)] }))
   })))
 // 答句只講結果（2026-11-06，使用者：「卡片之前的文字描述過多了，會失焦」）：定義、算法與沒有列入的類股都在頁尾的注意事項。不提「圖」：手機上那個位置是四張表
 const latestAnswer = computed(() =>
   plotted.value.length
-    ? `列入的 ${plotted.value.length} 個類股以現金殖利率中位數 ${yieldText(yieldSplit.value)} 分高低，現金殖利率較高、股利沒有減少的有 ${quadrants.value[0]!.rows.length} 個。`
+    ? `列入的 ${plotted.value.length} 個類股以現金殖利率中位數 ${industryPct(yieldSplit.value)} 分高低，現金殖利率較高、股利沒有減少的有 ${quadrants.value[0]!.rows.length} 個。`
     : null)
 
 // 標籤只在寬畫面顯示。實測（2026-09-30，30 個點、圖高 640px）：1440px 有 8 組標籤互相重疊、
@@ -119,8 +116,8 @@ const chartOption = computed(() => {
         const row = param.data?.row
         if (!row) return ''
         return `<div style="font-size:1rem"><div style="font-weight:600;margin-bottom:4px">${row.sectorName}</div>`
-          + `<div>現金殖利率中位數 ${yieldText(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
-          + `<div>持股股利 5 年成長率中位數 ${growthText(row.holdingDividendGrowthRate5y.median)}（${row.holdingDividendGrowthRate5y.count} 家）</div>`
+          + `<div>現金殖利率中位數 ${industryPct(row.liveCashDividendYield.median)}（${row.liveCashDividendYield.count} 家）</div>`
+          + `<div>持股股利 5 年成長率中位數 ${industryGrowthPct(row.holdingDividendGrowthRate5y.median)}（${row.holdingDividendGrowthRate5y.count} 家）</div>`
           + `<div style="color:${CHART_TOOLTIP_INK.secondary}">類股共 ${row.companyCount} 家</div></div>`
       }
     },
@@ -267,7 +264,7 @@ const payoutLegend = computed(() => [{
         <li>{{ HOLDER_DIVIDEND_NOTE }}</li>
         <li>兩個數字各自只算有這個數字的公司，所以算進去的家數不一樣。持股股利 5 年成長率要有 5 年前的配息紀錄，上市不滿 5 年或 5 年前沒有配息的公司算不出來。</li>
         <li>兩個數字都用中位數，少數公司的極端數字不會把整個類股拉偏。</li>
-        <li>現金殖利率以列入類股的中位數 {{ yieldText(yieldSplit) }} 分高低，持股股利 5 年成長率以 0 分有沒有減少。</li>
+        <li>現金殖利率以列入類股的中位數 {{ industryPct(yieldSplit) }} 分高低，持股股利 5 年成長率以 0 分有沒有減少。</li>
         <!-- 2026-11-08 查過殖利率分析的做法後加的兩條：配息政策因產業而異（Michel 1979 起；台灣的公司也向同業看齊），殖利率要跟同業比；
              景氣循環股不適合用一年份的殖利率看（存股著作與研究都這樣提醒） -->
         <li>各產業的配息習慣本來就不同，類股之間殖利率的高低，多半反映的是這個差異。要看一家公司配得多不多，要跟同類股的公司比：每個類股都有自己的殖利率頁，把同類股的公司畫在一起。</li>

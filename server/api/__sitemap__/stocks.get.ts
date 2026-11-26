@@ -9,10 +9,9 @@
 // server-side `#imports` here (vue-tsc: "has no exported member") — so the plain form is both
 // simpler and the one that type-checks.
 //
-// Per symbol: the seven indexable sub-pages（/, dividend, metrics-history, financial-statements,
-// balance-sheet, income-statement, cash-flow-statement）, NOT etf/preferred symbols (no page
-// under /stock/ for them). company-health was dropped 2026-09-19 when that page was unpublished
-// (see app/pages/stock/[code]/company-health.vue's own comment). The three statement pages
+// Per symbol: the sub-pages in INDEXABLE_SUFFIXES below (seven when this started), NOT
+// etf/preferred symbols (no page under /stock/ for them). company-health was dropped 2026-09-19
+// when that page was unpublished (the page file is gone since; git history has it). The three statement pages
 // joined 2026-09-20 when financial-statements.vue's own latest-filing tables split out into their
 // own URLs (see balance-sheet.vue's own top comment). Every BADGE_PAGES slug (the
 // badge-page family, app/pages/stock/[code]/[slug].vue) only for the pilot batch — see

@@ -198,7 +198,6 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
             :total="tab.total"
             sticky
             @reorder="fields => screener.handleReorderColumns(tab!, fields)"
-            @remove-column="field => screener.handleRemoveColumn(tab!, field)"
             @save-columns="columns => screener.applyColumnChoices(tab!, columns)"
             @row-click="openRow"
             @load-more="screener.loadMoreResults(tab!)"

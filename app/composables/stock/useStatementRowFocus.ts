@@ -44,8 +44,8 @@ export function useStatementRowFocus() {
 // 表格/會計 were three branches of ONE shared page (stock/[code]/index.vue) switched by that ref.
 // Once 會計模式 was promoted to its own route (financial-statements.vue, see that page's own git
 // history: "卡片 表格 會計 做在sidebar上面"), flipping the ref alone no longer navigated anywhere —
-// this caller (StockHistoricalStatisticsTable.vue, now living on metrics-history.vue, a DIFFERENT
-// route) needs a real cross-page navigation instead. year/quarter/requestId are still plain shared
+// the callers (the provenance tables on the metric and badge pages, DIFFERENT routes) need a
+// real cross-page navigation instead. year/quarter/requestId are still plain shared
 // useState, so they already survive the navigation on their own; only the "which page" part needed
 // to change from a ref write to a route push.
 export async function jumpToStatementRow(target: { statementType: StatementType; rowKey: string; year: number; quarter: StockQuarter }) {

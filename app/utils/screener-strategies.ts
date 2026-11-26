@@ -11,7 +11,6 @@ interface TemplateFilter {
 }
 
 export interface TemplateCondition {
-  field: string
   label: string
   period: string
   range: string
@@ -39,7 +38,6 @@ export function templateConditions(filters: TemplateFilter[], categories: Parame
     const metricCode = filter.field.split('.')[0] ?? filter.field
     const period = located ? located.field.period : (filter.field.split('.')[1] ?? '')
     return {
-      field: filter.field,
       label: located ? metricDisplayName(located.metric) : metricCode,
       period: UNSTATED_PERIODS.has(period) ? '' : (located ? formatPeriodLabel(period) ?? period : period),
       range: rangeText(filter, located?.metric.unit ?? '', located?.metric.options),

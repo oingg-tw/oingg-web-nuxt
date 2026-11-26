@@ -48,8 +48,6 @@ const signedPct = (value: number | null | undefined): string => (value == null ?
 // 從 0.00 改成空白，使用者決定那之後的空白一律當 0，於是上市與上櫃的寫法一致了。所以文案**不能**
 // 再寫「配息公司的平均」——實測 34 個類股裡有 31 個的殖利率 count 已經等於 companyCount，而造紙
 // 工業的中位數是 0（過半公司不配息），那個 0 是真的不是缺值。
-const yieldText = (value: number | null): string => (value === null ? '－' : `${value.toFixed(2)}%`)
-const growthText = (value: number | null): string => (value === null ? '－' : minusSign(`${value.toFixed(1)}%`))
 const rows = computed(() => summary.value?.sectors ?? [])
 
 const coveredCount = computed(() => rows.value.reduce((total, row) => total + row.companyCount, 0).toLocaleString('en-US'))
@@ -81,7 +79,7 @@ const tileMetric = ref<(typeof TILE_METRICS)[number]['key']>('yield')
 const tileMetricLabel = computed(() => TILE_METRICS.find(metric => metric.key === tileMetric.value)!.label)
 function tileValue(row: SectorRow): string {
   const growthRow = growthByCode.value.get(row.sectorCode)
-  if (tileMetric.value === 'yield') return yieldText(row.liveCashDividendYield.median)
+  if (tileMetric.value === 'yield') return industryPct(row.liveCashDividendYield.median)
   if (tileMetric.value === 'dividendGrowth') return signedPct(row.holdingDividendGrowthRate5y.median)
   return signedPct(tileMetric.value === 'revenueGrowth' ? growthRow?.revenueGrowthRate.median : growthRow?.netIncomeGrowthRate.median)
 }
@@ -114,8 +112,8 @@ const tileGroups = computed(() => TILE_GROUPS.map(group => ({ ...group, rows: ro
           <template #row="{ row }">
             <th scope="row"><NuxtLink :to="pathFor(row.sectorCode)">{{ row.sectorName }}</NuxtLink></th>
             <td class="seo-table__num">{{ row.companyCount }}</td>
-            <td class="seo-table__num">{{ yieldText(row.liveCashDividendYield.median) }}</td>
-            <td class="seo-table__num">{{ growthText(row.holdingDividendGrowthRate5y.median) }}</td>
+            <td class="seo-table__num">{{ industryPct(row.liveCashDividendYield.median) }}</td>
+            <td class="seo-table__num">{{ industryGrowthPct(row.holdingDividendGrowthRate5y.median) }}</td>
             <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.revenueGrowthRate.median) }}</td>
             <td class="seo-table__num">{{ signedPct(growthByCode.get(row.sectorCode)?.netIncomeGrowthRate.median) }}</td>
           </template>

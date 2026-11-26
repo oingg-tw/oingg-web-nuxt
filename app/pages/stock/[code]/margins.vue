@@ -98,8 +98,6 @@ const netProfitMargin = computed(() => valueOf(latest.value, 'netProfitMargin'))
 const expenseRatio = computed(() => valueOf(latest.value, 'operatingExpenseRatio'))
 const rdIntensity = computed(() => valueOf(latest.value, 'rdIntensity'))
 
-const periodLabel = (entry: { fiscalYear: number; fiscalQuarter: number | null }): string => (entry.fiscalQuarter === null ? `${entry.fiscalYear} 年` : `${entry.fiscalYear} Q${entry.fiscalQuarter}`)
-
 // 數字一律固定兩位小數（rateText／signedText，shared/utils/number-format.ts）：拆解表要逐項加減對得起來
 
 // The three rates all divide by the SAME 營收, which is the only reason they can be subtracted from

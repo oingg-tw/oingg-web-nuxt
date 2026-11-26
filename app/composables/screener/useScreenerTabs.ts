@@ -165,7 +165,7 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
 
   // useState, not plain ref — this data needs to survive a client-side navigation away from
   // /screener and back (a plain ref resets to its initial value on every remount, since
-  // useScreenerTabs() itself reruns from scratch each time screener.vue mounts). Without
+  // useScreenerTabs() itself reruns from scratch each time the screener page mounts). Without
   // this, every return to the page re-triggered a full backend refetch and, worse, silently
   // lost every auto-search watcher registered on the previous mount (they're tied to that
   // mount's own effect scope, which Vue disposes on unmount) — auto-search would just stop
@@ -208,7 +208,6 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     reorderColumnPresets,
     copyColumnPreset,
     handleReorderColumns,
-    handleRemoveColumn,
     applyColumnChoices
   } = tabColumnPresets
   // Also useState, for the same reason as tabs above — a plain closure variable here
@@ -601,12 +600,12 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
   // tell "definitely signed out" apart from "haven't checked yet". Rendering the real
   // (empty) shell before that distinction is known would flash "no presets" for an instant
   // even for a signed-in user, before their actual tabs load — tabsReady (exposed below)
-  // lets screener.vue show a loading skeleton instead for that brief window.
+  // lets ScreenerPageShell.vue show a loading skeleton instead for that brief window.
   // Separate from authResolved on purpose — authResolved only means "we know who's signed
   // in", not "their tabs are actually loaded and assigned yet". Exposing authResolved
   // directly as tabsReady let the skeleton disappear the instant sign-in resolved, before the
   // Promise.all([list(), listColumnPresets()]) fetch below had actually populated tabs.value/
-  // activeTabId — screener.vue briefly rendered the real (empty) shell with no tabs and no
+  // activeTabId — the page briefly rendered the real (empty) shell with no tabs and no
   // results. tabsBootstrapped only flips once each branch has fully finished assigning what
   // it renders from.
   const tabsBootstrapped = useState('screener-tabs-bootstrapped', () => false)
@@ -740,7 +739,6 @@ export function useScreenerTabs(sectors: Readonly<Ref<HubSector[]>>) {
     loadMoreResults,
     changeSort,
     handleReorderColumns,
-    handleRemoveColumn,
     applyColumnChoices,
     newTabDialogVisible,
     templates,
