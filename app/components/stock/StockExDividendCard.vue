@@ -14,8 +14,8 @@ const nextNotice = computed<ExDividendNotice | null>(() => {
   return [...props.notices].sort((a, b) => a.exDate.localeCompare(b.exDate))[0]!
 })
 
-// 0 跟沒有值一樣不寫：櫃買預告表沒有現增的列填 0、現增列的現金是 0（月曆 2026-11-24 同一條）。現增三欄的意思見 useExDividendNotices
-// 的型別註解（2026-11-25 詞彙表確認，原本的「認購比例」「持股比例」是原值照列、名字也不對）
+// 0 跟沒有值一樣不寫：櫃買預告表沒有現增的列填 0（月曆 2026-11-24 同一條）。只寫股利（2026-11-26 現金增資頁上線，使用者 11-25「好 案照建議」）：
+// 純現增不會到這裡（useExDividendNotices 濾掉），配股又現增的那一筆也只寫配股，現增的認購價、繳款期間在現金增資頁
 interface FieldDef {
   label: string
   format: (notice: ExDividendNotice) => string | null
@@ -23,10 +23,7 @@ interface FieldDef {
 
 const FIELD_DEFS: FieldDef[] = [
   { label: '現金股利', format: n => (n.cashDividend ? `${n.cashDividend.toFixed(2)} 元` : null) },
-  { label: '股票股利比例', format: n => (n.stockDividendRatio ? String(n.stockDividendRatio) : null) },
-  { label: '每仟股認購', format: n => (n.stockHoldingRatio ? `${perShareText(n.stockHoldingRatio)} 股` : null) },
-  { label: '認購價', format: n => (n.subscriptionPricePerShare ? `${perShareText(n.subscriptionPricePerShare)} 元` : null) },
-  { label: '現增股數', format: n => (n.capitalIncreaseShares ? `${n.capitalIncreaseShares.toLocaleString('zh-TW')} 股` : null) }
+  { label: '股票股利比例', format: n => (n.stockDividendRatio ? String(n.stockDividendRatio) : null) }
 ]
 
 const visibleFields = computed(() => {
@@ -46,7 +43,7 @@ const visibleFields = computed(() => {
     <template v-else>
       <div class="ex-dividend-card__headline">
         <span class="ex-dividend-card__date">{{ nextNotice.exDate }}</span>
-        <el-tag size="small" type="warning">{{ isCapitalIncreaseOnly(nextNotice) ? '現增' : nextNotice.exType }}</el-tag>
+        <el-tag size="small" type="warning">{{ nextNotice.exType }}</el-tag>
       </div>
       <div class="ex-dividend-card__grid">
         <div v-for="field in visibleFields" :key="field.label" class="ex-dividend-card__field">

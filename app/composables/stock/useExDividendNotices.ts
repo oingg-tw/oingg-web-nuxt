@@ -1,9 +1,7 @@
 export type ExDividendType = '息' | '權' | '權息'
 
 // Confirmed by 業務中台/analysis-ts 2026-09-04: all 8 numeric fields are plain `number | null`, not bigint-serialized strings.
-// 現增欄位的意思 2026-11-25 寫進詞彙表（數據中台 46b516b 對過證交所預告）：stockHoldingRatio 是原股東每仟股可認購的股數，
-// subscriptionRatio 是現增總股數 ÷ 參與分配總股數，三種股數加起來是 capitalIncreaseShares。exRightsComponents 分開配股與現增；
-// 配股又現增的同一筆兩組都有
+// 現增欄位的意思 2026-11-25 寫進詞彙表（數據中台 46b516b 對過證交所預告）。純現增不在這裡（withExType 濾掉），現增的明細在現金增資頁
 export interface ExDividendNotice {
   exDate: string
   exType: ExDividendType
@@ -27,8 +25,6 @@ export interface ExDividendNotice {
   // （證交所預告的 cashDividend，analysis-ts 在 sitca 還沒有金額時拿它填 distributionPerUnit；DEV 量到 5 筆兩者相等，
   // 業務中台 2026-10-06）。證券類別 type（原 securityType）由數據中台從證券本身判定（fde1e48c），可以信，但這裡用不到它。
   distributionPerUnit?: number | null
-  exRightsComponents?: ('stockDividend' | 'cashCapitalIncrease')[] | null
-  capitalIncreaseShares?: number | null
 }
 
 // GET /stocks/ex-dividend-notices?symbols=<comma-separated, up to 100> — 業務中台 forwarding onto
@@ -60,8 +56,9 @@ export function useExDividendNotices(symbols: Ref<string[]>) {
         // composable 的每一個呼叫端（股利頁的「下一次除權息」、摘要句、除權息卡、儀表板）問的都是「下一次
         // 除權息是哪天」——把已除息的當成下一次，會顯示一個已經過去的日期（業務中台 提醒）。修在這裡一次，
         // 不在四個呼叫端各濾一次。要發放日的觀察清單自己另外打這支、讀 realized 那幾筆。
-        // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts）；現增也留著（個股配息頁的下次除權息寫認購價，2026-11-25）
-        return Object.fromEntries(Object.entries(raw.notices).map(([symbol, list]) => [symbol, list.filter(notice => notice.status !== 'realized').flatMap(withRightsIssues)]).filter(([, list]) => list!.length > 0))
+        // 除息日／除權日合成站內的 exDate＋exType（business-shapes.ts），純現增不列：個股配息頁的下次除權息只寫股利，現增在卡片下面
+        // 一行連到現金增資頁（2026-11-26 頁面上線，使用者 11-25「好 案照建議」）
+        return Object.fromEntries(Object.entries(raw.notices).map(([symbol, list]) => [symbol, list.filter(notice => notice.status !== 'realized').flatMap(withExType)]).filter(([, list]) => list!.length > 0))
       } catch (error) {
         devWarn('ex-dividend-notices', `GET /api/cached/stocks/ex-dividend-notices?symbols=${symbols.value.join(',')} unavailable`, error)
         throw error

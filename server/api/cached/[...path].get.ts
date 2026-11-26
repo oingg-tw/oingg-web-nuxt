@@ -58,6 +58,8 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily
   // 分開讀（market，見 market-alerts.ts 的 mergeMarkets）；重大訊息是單一來源、沒有這個參數
   { pattern: /^market\/(attention-stocks|disposed-stocks)$/, ttl: 'hourly', query: { limit: COUNT, market: /^(sii|otc)$/ } },
   { pattern: /^market\/material-announcements$/, ttl: 'hourly', query: { limit: COUNT } },
+  // 現金增資（2026-11-26，/calendar/capital-increases 與個股配息頁那一行）：數據中台三個陣列，全市場一份、個股照 symbols 查，一小時
+  { pattern: /^market\/capital-increases$/, ttl: 'hourly', query: { symbols: /^[0-9A-Z]{4,6}(,[0-9A-Z]{4,6}){0,99}$/ } },
   { pattern: /^stocks\/ex-dividend-notices$/, ttl: 'hourly', query: { symbols: /^[0-9A-Z]{4,6}(,[0-9A-Z]{4,6}){0,99}$/ } },
   // metrics 2026-10-16 拿掉：指標目錄改由 /api/hub/filter-schema（精簡版）與 /api/hub/metrics（完整版）提供，同一份快取
   // 公開、不分使用者的型錄與清單（2026-10-16）：原本走不快取的 /api/core，每位訪客打開篩選頁、搜尋框都各打一次上游（業務中台依 IP

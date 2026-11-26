@@ -1,7 +1,7 @@
 // 配息月曆的日期（app/utils/dividend-event.ts）：手機週檢視的那一週、週末判斷、日期標籤
 // Run: node scripts/check-dividend-event.mjs
 import assert from 'node:assert/strict'
-import { addDays, capitalIncreaseText, dayInYear, dividendPeriodLabel, exTypeGroups, hasWeekendDate, monthDay, payLines, perShareText, shortDayLabel, tradingWeekOf } from '../app/utils/dividend-event.ts'
+import { addDays, dayInYear, dividendPeriodLabel, exTypeGroups, hasWeekendDate, monthDay, payLines, perShareText, shortDayLabel, tradingWeekOf } from '../app/utils/dividend-event.ts'
 
 const week = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13']
 // 平日是當週；週六、週日打開時是下一週
@@ -33,11 +33,6 @@ assert.equal(dividendPeriodLabel(2026, null, null), '2026 年度')
 // 一天的彈窗（方案 B，2026-11-24）的格子：金額去掉浮點雜訊、0 與沒有值是「－」；日期同年不寫年
 assert.equal(perShareText(7.00000137), '7')
 assert.equal(perShareText(4.11119542), '4.1112')
-// 現增的一句（2026-11-25）：認購價還沒訂、0 都不寫；不是現增是 null
-assert.equal(capitalIncreaseText({ exRightsComponents: ['cashCapitalIncrease'], stockHoldingRatio: 98.92674, subscriptionPricePerShare: 46 }), '現金增資（每仟股認購 98.9267 股、認購價 46 元）')
-assert.equal(capitalIncreaseText({ exRightsComponents: ['stockDividend', 'cashCapitalIncrease'], stockHoldingRatio: 120.45708866, subscriptionPricePerShare: null }), '現金增資（每仟股認購 120.4571 股）')
-assert.equal(capitalIncreaseText({ exRightsComponents: ['cashCapitalIncrease'], stockHoldingRatio: 0, subscriptionPricePerShare: 0 }), '現金增資')
-assert.equal(capitalIncreaseText({ exRightsComponents: ['stockDividend'], stockHoldingRatio: null, subscriptionPricePerShare: null }), null)
 assert.equal(perShareText(0.05995515, 6), '0.059955')
 assert.equal(perShareText(0), '－', '除權列的現金 0 不是配了 0 元')
 assert.equal(perShareText(null), '－')

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { StockDividendYieldHistoryResponse } from '#shared/types/stock-dividend-yield-history'
+import type { CapitalIncreasesResponse } from '~/utils/capital-increases'
 // 配股配息（路由 2026-09-17）。2026-09-19 依「畫面髒亂」改成文件式：問句區段、短答句、一張表。四段——殖利率是多少（答句＋
 // 市場百分位量表）、近幾季的配息數字怎麼變化、歷年配了多少股利、下次除權息是什麼時候。資料全部在 SSR HTML 裡，來自
 // /api/stock/:code/series?page=dividend（useStockPageDigest）。
@@ -18,6 +19,14 @@ const { stock, profile, stockShortName, stockPending, summary } = useStockDetail
 // summary hadn't resolved when this ran), so the notices were never server-fetched and the
 // ex-date clause appeared only after hydration (found 2026-09-19).
 const { data: exDividendNotices } = useExDividendNotices(computed(() => [code.value]))
+// 現金增資不是股利，下次除權息不寫它；這家有現增在進行時，卡片下面一行連到現金增資頁（2026-11-26，使用者 11-25「好 案照建議」）。
+// 只是一行指引，讀不到就不畫、不跳讀取失敗；跟卡片一起出現，換頁時不會先畫卡片再被這一行推一次
+const { data: capitalIncreases, status: capitalIncreaseStatus } = useFetch<CapitalIncreasesResponse>('/api/cached/market/capital-increases', {
+  key: () => `capital-increases-${code.value}`,
+  query: { symbols: code }
+})
+const capitalIncreaseLine = computed(() => (capitalIncreases.value ? stockCapitalIncreaseLine(capitalIncreases.value, code.value) : null))
+const exDividendReady = computed(() => exDividendNotices.value && capitalIncreaseStatus.value !== 'pending' && capitalIncreaseStatus.value !== 'idle')
 
 // 型錄、摘要、殖利率歷史同時抓（2026-10-26，冷啟動）：三支互不相依，原本一個等一個，業務中台冷的時候是三波一波等一波。
 // 型錄仍在頁面頂層、卡片掛上之前 await 完（feedback_useasyncdata_shared_key_race memory），只是跟另外兩支一起等。
@@ -120,7 +129,7 @@ const exDividendAnswer = computed(() => {
   const notices = exDividendNotices.value?.[code.value] ?? []
   if (!notices.length) return exDividendNotices.value ? '目前查無排定的除權息。' : null
   const next = [...notices].sort((a, b) => a.exDate.localeCompare(b.exDate))[0]!
-  return joinClauses([`下次除${next.exType}日 ${next.exDate}`, next.cashDividend ? `現金股利 ${next.cashDividend.toFixed(2)} 元` : null, next.stockDividendRatio ? `股票股利比例 ${next.stockDividendRatio}` : null, capitalIncreaseText(next)])
+  return joinClauses([`下次除${next.exType}日 ${next.exDate}`, next.cashDividend ? `現金股利 ${next.cashDividend.toFixed(2)} 元` : null, next.stockDividendRatio ? `股票股利比例 ${next.stockDividendRatio}` : null])
 })
 </script>
 
@@ -174,7 +183,12 @@ const exDividendAnswer = computed(() => {
     </StockQuestionSection>
 
     <StockQuestionSection id="stock-dividend-ex-date" question="下次除權息是什麼時候？" :answer="exDividendAnswer">
-      <StockExDividendCard v-if="exDividendNotices" :notices="exDividendNotices[code] ?? []" />
+      <template v-if="exDividendReady">
+        <StockExDividendCard :notices="exDividendNotices?.[code] ?? []" />
+        <p v-if="capitalIncreaseLine" class="stock-dividend-page__capital-increase">
+          {{ capitalIncreaseLine }}。<NuxtLink :to="`/calendar/capital-increases#ci-${code}`" class="hub-inline-link stock-dividend-page__more">看現金增資明細 ›</NuxtLink>
+        </p>
+      </template>
       <StockExDividendCardShell v-else />
     </StockQuestionSection>
 
@@ -184,4 +198,15 @@ const exDividendAnswer = computed(() => {
     </template>
   </StockPageShell>
 </template>
+
+<style scoped>
+.stock-dividend-page__capital-increase {
+  margin: 0;
+}
+
+/* 連結整段一起折，「›」不會單獨掉到下一行 */
+.stock-dividend-page__more {
+  white-space: nowrap;
+}
+</style>
 

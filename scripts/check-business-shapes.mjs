@@ -1,6 +1,6 @@
 // 業務中台回應 → 站內形狀（shared/utils/business-shapes.ts）。Run: node scripts/check-business-shapes.mjs（selfcheck 也會跑）
 import assert from 'node:assert/strict'
-import { metricsCatalogFromBusiness, withExType, withRightsIssues } from '../shared/utils/business-shapes.ts'
+import { metricsCatalogFromBusiness, withExType } from '../shared/utils/business-shapes.ts'
 import { businessErrorDetail, describeBusinessError } from '../app/utils/bff-error.ts'
 
 // 除權息：息／權／權息各一筆；兩個日期都沒有就原樣
@@ -27,9 +27,6 @@ assert.deepEqual(cashThenRights.map(row => [row.exDate, row.exType]), [['2026-10
 // 配股又現增、看不出來的照舊是權
 assert.equal(withExType({ ...rights, exRightsComponents: ['stockDividend', 'cashCapitalIncrease'], stockDividendRatio: 0.08 })[0].exType, '權')
 assert.equal(withExType({ ...rights, exRightsComponents: null }).length, 1)
-// 個股配息頁的「下次除權息」看得到現增；拆開的息那筆不帶現增欄位
-assert.deepEqual(withRightsIssues(rights).map(row => [row.exType, row.stockHoldingRatio]), [['權', 98.927]])
-assert.deepEqual(withRightsIssues({ ...rights, exDividendDate: '2026-10-01', cashDividend: 0.4 }).map(row => [row.exType, row.exRightsComponents, row.capitalIncreaseShares]), [['息', null, null], ['權', ['cashCapitalIncrease'], 20000000]])
 
 // 型錄：業務中台的名字換成篩選器用的那組
 const catalog = { categories: [{ categoryKey: 'profitability', categoryDisplayName: '獲利能力', sort: 1, metrics: [{ metricCode: 'roe', name: 'ROE', unit: '%', fields: [{ timeframe: 'TTM', unit: '%' }] }] }] }

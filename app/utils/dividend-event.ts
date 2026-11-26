@@ -30,13 +30,6 @@ export function dividendPeriodLabel(fiscalYear: number, start: string | null, en
 // 每股金額最多 4 位小數（上游浮點數帶雜訊，2330 是 7.00000137；配股率傳 6，同持股的配息），0 跟沒有值都是「－」：
 // 除權列的現金是 0（3706 神達的現增），寫 0 像是配了 0 元
 export const perShareText = (value: number | null | undefined, digits = 4): string => (value ? String(Number(value.toFixed(digits))) : '－')
-// 現金增資的一句（2026-11-25）：只剩個股配息頁的「下次除權息」看得到現增（月曆、首頁、觀察清單不列，business-shapes 的 withExType）。
-// 每仟股是原股東每仟股可認購的股數（詞彙表 stockHoldingRatio）；認購價還沒訂、櫃買預告表的 0 都不寫
-export function capitalIncreaseText(notice: { exRightsComponents?: string[] | null; stockHoldingRatio: number | null; subscriptionPricePerShare: number | null }): string | null {
-  if (!notice.exRightsComponents?.includes('cashCapitalIncrease')) return null
-  const parts = [notice.stockHoldingRatio ? `每仟股認購 ${perShareText(notice.stockHoldingRatio)} 股` : '', notice.subscriptionPricePerShare ? `認購價 ${perShareText(notice.subscriptionPricePerShare)} 元` : ''].filter(Boolean)
-  return parts.length ? `現金增資（${parts.join('、')}）` : '現金增資'
-}
 // 日期：跟那一天同一年寫「12/1」，跨年寫「2027/1/20」，沒有是「－」
 export const dayInYear = (day: string | null | undefined, year: string): string => (!day ? '－' : day.startsWith(year) ? monthDay(day) : `${day.slice(0, 4)}/${monthDay(day)}`)
 // 除權息的發放日：現金的發放日，只配股的寫配股發放日；兩個不同天，配股那一行標明

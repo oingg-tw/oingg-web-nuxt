@@ -133,7 +133,9 @@ export const SITE_MAP: SiteMapGroup[] = [
     label: '我想知道市場上發生什麼',
     links: [
       { label: '注意與處置股票', to: '/market/alerts', description: '交易所列為注意股票、處置股票的有哪些，處置期間與原因' },
-      { label: '最新重大訊息', to: '/market/announcements', description: '上市櫃與興櫃公司最近發布的重大訊息，點開看公告全文' }
+      { label: '最新重大訊息', to: '/market/announcements', description: '上市櫃與興櫃公司最近發布的重大訊息，點開看公告全文' },
+      // 現金增資（2026-11-26）：側欄在股東月曆底下，網站導覽放這一組不放「什麼時候配息」——現增要自己付錢，不是股利（使用者 11-25）
+      { label: '現金增資', to: '/calendar/capital-increases', description: '接下來要現金增資除權的公司、繳款期間與認購價，以及初次上市櫃的公開申購' }
     ]
   },
   {
