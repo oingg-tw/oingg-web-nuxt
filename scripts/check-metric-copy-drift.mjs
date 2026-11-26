@@ -16,7 +16,7 @@
 // When it fails on drift: re-read the affected copy against the new formula, fix what the change
 // invalidated, THEN update the pin. Never update a pin without reading the prose — a pin refreshed
 // blind is worse than no pin, because it silences the one thing that would have caught it.
-import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
+import { METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { createHash } from 'node:crypto'
 import { METRIC_COPY } from '../shared/utils/metric-copy.ts'
 import { metricsCatalogFromBusiness } from '../shared/utils/business-shapes.ts'
@@ -61,7 +61,7 @@ const pinOf = (metric) => createHash('sha256').update([
 
 const pins = new Map(Object.entries(METRIC_COPY).map(([code, copy]) => [code, copy.pin]))
 
-const pages = [...METRIC_PAGES, ...BADGE_PAGES].map(page => ({ slug: page.slug, metricCode: page.metricCode, topic: page.topic, ownName: !page.valueTopic }))
+const pages = METRIC_PAGES.map(page => ({ slug: page.slug, metricCode: page.metricCode, topic: page.topic, ownName: !page.valueTopic }))
 
 const response = await fetch(`${API}/metrics`, { signal: AbortSignal.timeout(30_000) })
 if (!response.ok) {

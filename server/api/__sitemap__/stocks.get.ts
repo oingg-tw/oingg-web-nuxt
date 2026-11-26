@@ -13,10 +13,11 @@
 // etf/preferred symbols (no page under /stock/ for them). company-health was dropped 2026-09-19
 // when that page was unpublished (the page file is gone since; git history has it). The three statement pages
 // joined 2026-09-20 when financial-statements.vue's own latest-filing tables split out into their
-// own URLs (see balance-sheet.vue's own top comment). Every BADGE_PAGES slug (the
-// badge-page family, app/pages/stock/[code]/[slug].vue) only for the pilot batch — see
+// own URLs (see balance-sheet.vue's own top comment). Every METRIC_PAGES slug
+// (app/pages/stock/[code]/[slug].vue) only for the pilot batch — see
 // shared/utils/f-score-pilot.ts. The module is named after /f-score, which was deleted
-// 2026-09-28 — the gate itself outlived it and still governs every badge and metric page.
+// 2026-09-28 — the gate itself outlived it and still governs every metric page (the badge
+// pages joined METRIC_PAGES on 2026-11-26).
 //
 // Symbols = getMarketDirectory()'s sectors: four-digit codes with an exchange sector. GET /stocks
 // also carries 31 six-digit codes（e.g. 000601 牛牛牛亞, 000646 大昌證券 — public-but-unlisted
@@ -87,10 +88,7 @@ export default defineEventHandler(async () => {
     for (const suffix of INDEXABLE_SUFFIXES) urls.push({ loc: `/stock/${symbol}${suffix}` })
     // 配息從哪來 2026-10-12 搬到新手專區
     urls.push({ loc: `/learn/dividend-source/${symbol}` })
-    // separately because it wasn't in that registry, which is exactly how its entry point on the
-    // stock page ended up living somewhere different from the other three badges'.
-    if (isFScorePilotSymbol(symbol)) for (const badgePage of BADGE_PAGES) urls.push({ loc: `/stock/${symbol}/${badgePage.slug}` })
-    // METRIC_PAGES (the 指標專頁 family) joins on the SAME pilot gate, for the same reason: this
+    // METRIC_PAGES (the 指標專頁 family) sits behind the pilot gate: this
     // is a per-symbol × per-metric page family that could add thousands of URLs at once, and
     // 2026-09-19's call was to watch how the first batch indexes before widening. It was held out
     // entirely for a few hours on 2026-09-20 while `eps` still had a null `description` — those

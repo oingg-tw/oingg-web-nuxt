@@ -13,7 +13,7 @@
 // was unpublished (the page file is gone since; git history has it). /dividend gets
 // a slightly higher table floor (2, not 1) since it's the thickest of the remaining pages.
 import { BANNED_WORDS_PATTERN } from '../shared/utils/compliance-words.ts'
-import { BADGE_PAGES, METRIC_PAGES } from '../shared/utils/metric-pages.ts'
+import { METRIC_PAGES } from '../shared/utils/metric-pages.ts'
 import { isOneChartOneTable, pageShape } from './page-shape.mjs'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
@@ -29,9 +29,8 @@ const width = Number(process.env.STOCK_PAGES_WIDTH ?? 1440)
 // pointing at two routes that now 404, and the run died waiting for a nav that a 404 never renders.
 // Deriving it means a registry change can't leave this behind — the same「one registry decides what
 // exists」rule the sitemap, the page components and check-metric-copy-drift.mjs already follow.
-const registrySlugs = [...METRIC_PAGES, ...BADGE_PAGES].map(page => `/${page.slug}`)
-const METRIC_ROUTES = new Set(METRIC_PAGES.map(page => `/${page.slug}`))
-const BADGE_ROUTES = new Set(BADGE_PAGES.map(page => `/${page.slug}`))
+const registrySlugs = METRIC_PAGES.map(page => `/${page.slug}`)
+const METRIC_ROUTES = new Set(registrySlugs)
 
 // Routes with their own page file, which no registry knows about.
 const FIXED_ROUTES = ['', '/dividend', '/dividend-fill', '/margins', '/solvency', '/dupont', '/cash-cycle', '/guarantees', '/investments', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/monthly-revenue', '/monthly-revenue-growth', '/metrics', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
@@ -214,7 +213,7 @@ for (const route of ROUTES) {
     // 指標頁一圖一表（2026-10-15，使用者：「請加入測試 確保指標頁面 一圖 一表」）。圖＝SharedChartCard（個股頁的圖只能由它包，見 CLAUDE.md），
     // 表＝不是審計的 data-ssr-table（計算依據標 data-ssr-table="audit"，2026-10-14 決定保留，不算在內）。徽章頁沒有歷年表（「徽章頁不用歷史」）。
     // 至多各一；有歷年表就一定要有那張圖（資料不夠畫圖的公司兩者都不出現，不算失敗）。
-    oneChartOneTable: !(METRIC_ROUTES.has(route) || BADGE_ROUTES.has(route)) || isOneChartOneTable(pageShape(ssr), BADGE_ROUTES.has(route) ? 0 : 1),
+    oneChartOneTable: !METRIC_ROUTES.has(route) || isOneChartOneTable(pageShape(ssr), 1),
     noTabQuery: !ssr.includes('?tab='),
     description: /<meta name="description" content="[^"]{20,}"/.test(ssr)
   }

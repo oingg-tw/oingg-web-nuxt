@@ -5,8 +5,9 @@ import type { RiverTimeframe } from '#shared/utils/metric-pages'
 // Explicit, not auto-imported: a newly added file under shared/ isn't picked up until the dev
 // server restarts, which showed up here as a live「findMetricCopy is not defined」500. The rest of
 // this component's own helpers are imported explicitly too.
-// The METRIC half of /stock/{code}/{slug} (2026-09-20) — a metric that has NO badge, so there is
-// no threshold to judge against and no 符合/未符合 anywhere on the page. Built from the direct
+// The template for /stock/{code}/{slug} (2026-09-20): a metric's value, history, audit trail and
+// definition, with no threshold to judge against and no 符合/未符合 anywhere on the page (the
+// badge pages that had those joined METRIC_PAGES on 2026-11-26). Built from the direct
 // request「stock/2330/eps 這樣的，我希望造訪的人除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」,
 // with「未來月營收等等的指標也可以比照這個模板去做」as the stated goal: adding a metric page is
 // meant to be one entry in METRIC_PAGES (shared/utils/metric-pages.ts) and nothing else.
@@ -15,8 +16,8 @@ import type { RiverTimeframe } from '#shared/utils/metric-pages'
 // short number-led answer → one table): 目前值 → 逐期數據 → 怎麼看 → 是什麼. The 逐期數據 table is
 // this page's required SSR table (check-stock-pages.mjs wants ≥1 on every sub-page).
 //
-// This component reads the route itself rather than taking props, matching StockBadgeDetailPage —
-// the dispatcher ([slug].vue) decides WHICH template renders, not what it renders with.
+// This component reads the route itself rather than taking props — the dispatcher ([slug].vue)
+// only decides whether the slug is a page at all.
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 const slug = computed(() => String(route.params.slug))

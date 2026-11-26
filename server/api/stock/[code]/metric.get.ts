@@ -1,7 +1,7 @@
 import type { StockMetricPageResponse } from '#shared/types/stock-metric-page'
 
-// GET /api/stock/:code/metric?slug=eps — the 指標專頁 counterpart of badge.get.ts (2026-09-20).
-// `slug` is checked against the METRIC_PAGES registry (shared/utils/hub-slugs.ts) that the page
+// GET /api/stock/:code/metric?slug=eps — everything one 指標專頁 needs (2026-09-20).
+// `slug` is checked against the METRIC_PAGES registry (shared/utils/metric-pages.ts) that the page
 // component and the sitemap handler also read, so an unknown slug means here what it means
 // everywhere else: a real 404.
 //

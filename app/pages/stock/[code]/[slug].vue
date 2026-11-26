@@ -1,35 +1,12 @@
 <script setup lang="ts">
-// /stock/{code}/{slug} — the dispatcher for BOTH per-stock × per-metric page families
-// (2026-09-20). Nuxt allows one dynamic segment per directory, so this single file has to cover
-// them; what it deliberately does NOT do is render either page itself. The two templates live in
-// their own components and share nothing but this route:
-//
-//   BADGE_PAGES  → StockBadgeDetailPage.vue   目前值 → 計算依據 → 優點與限制 → 是什麼
-//   METRIC_PAGES → StockMetricDetailPage.vue  目前值 → 逐期數據 → 怎麼看 → 是什麼
-//
-// Split per direct decision（「我認為把徽章與指標頁面區分成兩個模板會比較容易些」）: a badge page's
-// spine is a published threshold and the audit trail behind one number, a metric page's is a
-// value and its history. One template covering both would be `v-if="isBadge"` in every section.
-//
-// A static sibling route (dividend.vue, balance-sheet.vue, …) always wins over this file, so those
-// slugs never arrive here. Anything else that matches neither registry throws a REAL 404 rather
-// than rendering an empty shell — a typo'd URL behaves the same whether it lands here or on a
-// named route.
+// /stock/{code}/{slug}：個股 × 指標專頁的分派（2026-09-20）。Nuxt 一個目錄只能有一個動態段，所以這個檔案接住所有登記在 METRIC_PAGES
+// 的 slug，自己不畫頁面，交給 StockMetricDetailPage（目前值 → 逐期數據 → 計算依據 → 是什麼）。原本還分派徽章頁（StockBadgeDetailPage），
+// 2026-11-26 那七頁搬進 METRIC_PAGES，徽章頁整套拿掉（見 shared/utils/metric-pages.ts 的檔頭）。
+// 有自己路由檔的兄弟頁（dividend.vue、balance-sheet.vue…）Nuxt 會先解析，不會到這裡；登記表裡沒有的 slug 是真的 404，不畫空殼。
 const route = useRoute()
-const slug = computed(() => String(route.params.slug))
-
-// Dev-only: a slug claimed by both registries would silently render whichever branch is tested
-// first and make the other page unreachable, with no error anywhere. Cheap to check, and it can
-// only ever fire on a registry edit, so it stays out of the production bundle's hot path.
-if (import.meta.dev) assertMetricPagesDisjoint()
-
-const metricPage = computed(() => findMetricPage(slug.value))
-const badgePage = computed(() => findBadgePage(slug.value))
-
-if (!metricPage.value && !badgePage.value) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page', fatal: true })
+if (!findMetricPage(String(route.params.slug))) throw createError({ statusCode: 404, statusMessage: 'unknown stock sub-page', fatal: true })
 </script>
 
 <template>
-  <StockMetricDetailPage v-if="metricPage" />
-  <StockBadgeDetailPage v-else />
+  <StockMetricDetailPage />
 </template>

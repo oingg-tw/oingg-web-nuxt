@@ -5,7 +5,7 @@ import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue
 
 
 // 指標頁的目前值圖表（2026-09-21，「卡片要可以切換單季或是近四季，期間要可以選1235年」；同日澄清「不是每個卡片都要用TTM，
-// 但是都要可以選擇1235年」）。徽章頁 2026-09-29 起也用這一張（StockBadgeDetailPage），靜態版已刪。選項組裝在
+// 但是都要可以選擇1235年」）。選項組裝在
 // useMetricHistoryChartOption。
 // 單季／近四季切換只在指標真的兩種都有時出現——`availableTimeframes` 來自型錄（GET /metrics 的 `fields`），不從 metricCode 的
 // 名字猜；只有一種期別的指標不顯示只有一個選項的切換。
@@ -34,7 +34,7 @@ const props = defineProps<{
   // 要變號的成分（業外損益組成的財務成本是正數、是支出），與小項併進哪一個其他（成分代碼對成分代碼），見 METRIC_PAGES
   negatedPartCodes?: string[]
   partOthers?: Record<string, string>
-  // 一起畫的第二支指標（METRIC_PAGES／BADGE_PAGES 的 compareMetricCode）。**由我們決定，沒有選單。**
+  // 一起畫的第二支指標（METRIC_PAGES 的 compareMetricCode）。**由我們決定，沒有選單。**
   // 2026-09-29 一度做成讓讀者自選的下拉：候選是型錄裡所有同單位的指標，於是毛利率頁列出 33 項、
   // 負債比率頁列出 41 項，裡面大半是這家公司根本沒有的（2330 也選得到銀行專用的資本適足率）。
   // 使用者的判斷是「很混淆難用，哪一支放在一起看有價值我們決定就好」，所以整個選單刪掉。

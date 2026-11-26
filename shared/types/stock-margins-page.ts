@@ -4,9 +4,9 @@ import type { StockBadgeEntry } from './stock-badges'
 // server/api/stock/[code]/margins.get.ts — everything /stock/:code/margins（財報三率, 2026-09-21）
 // needs in one same-origin round trip.
 //
-// A THIRD page shape alongside StockMetricPageResponse and StockBadgePageResponse, not a variant
-// of either, and for the reason those two are already separate: a metric page answers 現在多少/
-// 以前多少 about ONE metric, a badge page answers 符合/未符合 against one threshold, and this page
+// Its own page shape alongside StockMetricPageResponse, not a variant of it: a metric page
+// answers 現在多少/以前多少 about ONE metric (badge pages, which answered 符合/未符合 against one
+// threshold, went on 2026-11-26), and this page
 // answers neither — it answers how three rates RELATE to each other down one income statement.
 // That relationship is the page's whole content, and it needs five metricCodes read together per
 // period, which neither of the other two responses can carry. Built as its own route file rather
@@ -27,7 +27,7 @@ export interface StockMarginsPageResponse {
   // return no badge and an empty series）.
   //
   // That coverage is why this rides on the EXISTING 財報三率 page as one extra section instead of
-  // becoming a badge page of its own: a BADGE_PAGES entry would put ~2,600 URLs into the sitemap
+  // becoming a page of its own: a registry entry would put ~2,600 URLs into the sitemap
   // of which one has content, the same reason 月營收 is still held out of the nav. Here the
   // section simply doesn't render for a symbol with no reading, and lights up by itself as
   // analysis-ts's coverage grows — no code change waiting on it.

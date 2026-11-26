@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MetricProvenanceEntry, MetricProvenanceResponse } from '#shared/types/metric-provenance'
-// 「X 是怎麼算出來的？」那一張計算依據表，2026-10-01 從 StockBadgeDetailPage 抽出來共用
+// 「X 是怎麼算出來的？」那一張計算依據表，2026-10-01 從當時的徽章頁抽出來共用
 // （「eps 沒有怎麼算出來的稽核表格又是為什麼? 都補上好嗎?」）。
 //
 // 抽出來而不是在指標模板再寫一份：那張表的三個細節都是踩過坑才長成現在這樣的（見下面的註解），

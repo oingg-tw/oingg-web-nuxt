@@ -2,7 +2,7 @@
 // 「找不到這檔股票」的 soft-404 畫面，一份（2026-10-02）。
 //
 // 它原本在 18 個檔案裡各寫一份一模一樣的 markup——16 個 /stock/[code] 子頁面加兩個共用模板
-//（StockBadgeDetailPage／StockMetricDetailPage）。CSS 早就是共用的（main.css 的
+//（指標頁 StockMetricDetailPage，與 2026-11-26 拿掉的徽章頁）。CSS 早就是共用的（main.css 的
 // `.stock-not-found__title`），只有 markup 留在各處。
 //
 // 唯一的差異軸是「回首頁」怎麼導航：13 份用 `router.push('/')`、5 份用 `navigateTo('/')`，

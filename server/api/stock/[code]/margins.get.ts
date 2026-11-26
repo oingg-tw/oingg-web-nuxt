@@ -2,7 +2,7 @@ import { MARGIN_METRIC_CODES, THREE_MARGINS_RISING_CODE, type StockMarginsPageRe
 
 // GET /api/stock/:code/margins — the 財報三率 page's one data call (2026-09-21).
 //
-// Simpler than its two siblings (metric.get.ts / badge.get.ts) because it has no slug to resolve:
+// Simpler than its sibling metric.get.ts because it has no slug to resolve:
 // this route serves exactly one page, so the metricCode set is fixed and lives in the shared type
 // file the page component reads too. Six codes in ONE request（純益率 joined 2026-11-20 for banks and 金控） — metrics-history takes up to 10
 // per call, so the whole page costs a single 業務中台 round trip, cached like every other read here.

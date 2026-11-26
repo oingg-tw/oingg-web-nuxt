@@ -6,7 +6,7 @@ import type { MetricsHistoryEntry } from '#shared/types/metrics-history'
 //
 // 營運周轉那一組的關係頁，跟 /margins 之於三率、/solvency 之於償債能力、/dupont 之於 ROE 同一個位置。
 // 開在自己的 slug 而不是改寫 /operating-cycle：那一頁是單指標頁，在 METRIC_PAGES 裡，改寫它會讓同一個
-// slug 同時屬於兩種註冊表（assertMetricPagesDisjoint 就是在擋這件事）。
+// slug 既是登記表的指標頁、又有自己的路由檔（Nuxt 先解析路由檔，登記表那一頁就到不了）。
 //
 // 為什麼這一組值得一個關係頁：**它是一條可以自己驗算的恆等鏈**，跟損益表那條一樣。
 //

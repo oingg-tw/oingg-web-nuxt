@@ -1,7 +1,9 @@
-// 個股 × 徽章／指標專頁的登記表（/stock/{code}/{slug}，2026-09-20；2026-10-08 從 hub-slugs.ts 拆出來）。兩份登記表餵同一個
-// 萬用路由 app/pages/stock/[code]/[slug].vue（Nuxt 一個目錄只能有一個動態段），它只做分派：解析 slug、掛對應的模板。
-// 兩個 slug 空間必須不相交，assertMetricPagesDisjoint() 是可執行的檢查。
-// 每個專頁都列在這裡——sitemap 的列舉、徽章表格每列的連結、導覽都讀這一份，所以不在這裡的頁沒有連結也沒有網址；刪一頁＝刪一行。
+// 個股 × 指標專頁的登記表（/stock/{code}/{slug}，2026-09-20；2026-10-08 從 hub-slugs.ts 拆出來）。萬用路由
+// app/pages/stock/[code]/[slug].vue 只做分派：解析 slug、掛指標頁的模板。
+// 每個專頁都列在這裡——sitemap 的列舉、結果表每一格的連結、導覽都讀這一份，所以不在這裡的頁沒有連結也沒有網址；刪一頁＝刪一行。
+// 原本另有一份徽章頁的登記表（BADGE_PAGES）與它的模板、端點：主軸是徽章的門檻與逐家判定。2026-11-26 使用者在數據中台決定刪掉 27 個
+// 回測沒有效果的徽章，當時剩下的七個徽章頁全在裡面，於是搬到 METRIC_PAGES、整套徽章頁拿掉（git 找得回來）。更早的：f-score、
+// graham-number、peg 三頁 2026-09-28 刪（「徽章不要歷史，有歷史的只有指標」）；盈餘創新高比率 2026-09-22 隨徽章退役下架。
 // **這個檔案刻意不 import 任何東西**：scripts/check-*.mjs 用 Node 直接載入它（只剝型別），而 useStockPinnedMetrics 在 app.vue
 // 的初始化路徑上也讀它。
 
@@ -11,84 +13,10 @@ export type RiverKind = 'pe' | 'pb' | 'ps'
 export type RiverTimeframe = 'TTM' | 'Q'
 export const RIVER_TIMEFRAMES: Record<RiverKind, readonly RiverTimeframe[]> = { pe: ['TTM'], pb: ['TTM', 'Q'], ps: ['TTM'] }
 
-// 徽章頁：主軸是門檻（符合／未符合）與計算依據表。
-export interface BadgePageDefinition {
-  // URL 段。手寫而不是 metricSlug(metricCode)：那會把 liveGrahamNumber 變成無意義的 live-graham-number（EOD／TTM 的 live 前綴是
-  // 內部慣例）。跟 /metrics/{slug} 是兩個獨立的詞彙表，不要互相引用。
-  slug: string
-  // GET /metrics 的 key；徽章定義與 GET /stocks/:symbol/badges 的逐家判定都用它
-  metricCode: string
-  // 計算依據表用的 metric-provenance metricCode。通常等於 metricCode；liveGrahamNumber（hasProvenance false）用 grahamNumber 的季基準
-  // 溯源，頁面自己的註解說明因此產生的數字差（今日收盤 vs 最後知識日收盤）不能抹平
-  provenanceMetricCode?: string
-  // <h1> 第三段與麵包屑最後一層
-  topic: string
-  // <title> 的長尾片語：`{短名} {代碼} {titleKeywords}`＋品牌後綴要 ≤ 32 個 CJK 等效字（check-stock-pages 的 cjkLength），逐筆驗
-  titleKeywords: string
-  // 目前值卡片的歷史圖用哪個期別（2026-09-21「gross-margin 這邊也要用圖表，以後 EPS 營收 ROA 這種指標都要有」）。只有 EOD 的徽章
-  // 不設（快照值沒有期別可畫，metrics-history 也只接受 EOD）。不必等於 METRIC_PAGES 的 timeframe。2026-10-08 起有 TTM 的一律 TTM，
-  // 見 MetricPageDefinition.timeframe
-  chartTimeframe?: 'TTM' | 'Q' | 'FY'
-  // 改畫河流圖（2026-09-21「PSR 是不是也用河流圖比較適合?」）；只有「股價 ÷ 每股某值」的比率才做得出帶狀，設了就不用 chartTimeframe
-  riverKind?: RiverKind
-  // 一起畫在圖上的第二支指標，同 MetricPageDefinition 的同名欄位。配對由我們決定、讀者沒有選單（2026-09-29 做過自選版，使用者判斷
-  // 「很混淆難用」）；只在「單獨看會被誤讀、而某一支剛好能說明誤讀來源」時才設
-  compareMetricCode?: string
-  // 第三條線，畫在右軸（單位跟主指標不同）。2026-10-17「roe 這張圖 能多加一條權益乘數嗎?」：ROE ≈ ROA × 權益乘數，
-  // ROE 與 ROA 的差距就是這一條。只在有 compareMetricCode 的折線模式下畫
-  rightMetricCode?: string
-  // 接著讀的其他 /stock/{code}/… 頁，規則見 MetricPageDefinition.related
-  related?: string[]
-}
-
-export const BADGE_PAGES: BadgePageDefinition[] = [
-  // 三頁刪除 2026-09-28（「徽章不要歷史，有歷史的只有指標」）：f-score、graham-number、peg 是當時唯一只有徽章列連得到的頁；其餘七頁
-  // 同時是 STOCK_METRIC_INDEX 的目的地所以留著。刪掉的三支當時回到「徽章列開對話框」的處理（那個對話框 2026-10-18 隨「亮點與風險」
-  // 一起刪了）。連帶拿掉：ownRoute 欄位、[slug].vue 的 404 防線、SERIES_PLANS 的 'f-score' 與 cachedPiotroskiBreakdown、
-  // check-stock-pages 對 /f-score 的 ssrTables 豁免。
-  // chartTimeframe 跟徽章自己的 timeframe（GET /stocks/:symbol/badges 逐徽章回傳，實測 grossMargin／netProfitMargin／roe 是 TTM、
-  // piotroskiFScore 是 Q、liveGrahamNumber 是 EOD），不跟指標頁 2026-09-21 的「預設單季」走：門檻是在那個基準上判定的，
-  // 圖用別的基準會讓同一頁印出兩個「目前毛利率」（2330：64.23% TTM 對 67.72% Q），當天換過又換回。
-  // roe 預設對照 ROA（2026-09-29「roe 這一頁要怎麼跟借錢多搭在一起看?」）：分子相同、分母一個是自有資本一個是全部資產，差就是
-  // 「資產裡有多少不是股東出的」。抽 60 檔：負債比率最低 1/3 的 ROE−ROA 平均 1.9pp、最高 1/3 平均 10.3pp，78% 的公司 ROE ≥ ROA。
-  // 不選 debtRatio 本身：它只有單季，跟徽章釘住的 TTM 共不了軸。杜邦分析回答這個徽章只陳述的事（ROE 是五件事的乘積）。
-  { slug: 'roe', metricCode: 'roe', provenanceMetricCode: 'roe', compareMetricCode: 'roa', rightMetricCode: 'equityMultiplier', topic: 'ROE', titleKeywords: 'ROE 與門檻', chartTimeframe: 'TTM', related: ['dupont', 'roa', 'eps'] },
-  // 近 8 季中位數（2026-11-15，建材營造選股指南：「近八季毛利率中位數」看單季跳升是不是結案紅利，數據中台 d56f541）：型錄只有 Q，
-  // 所以只在切到單季時一起畫（compareTimeframes），近四季照舊。例：2546 2026Q2 單季 18.49%、中位數 8.73%，下一季 9.54%
-  { slug: 'gross-margin', metricCode: 'grossMargin', provenanceMetricCode: 'grossMargin', compareMetricCode: 'grossMarginMedian8q', topic: '毛利率', titleKeywords: '毛利率與護城河門檻', chartTimeframe: 'TTM' },
-  // 稅後淨利率 2026-09-21（「sidebar 獲利能力加上財報三率」）：三率裡唯一有徽章的（巴菲特淨利率，Mary Buffett & Clark 2008），
-  // 文案與 TTM＋Q 歷史都齊（2330 20 期、1101 10 期）；營業利益率沒有徽章，在 METRIC_PAGES
-  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', provenanceMetricCode: 'netProfitMargin', topic: '稅後淨利率', titleKeywords: '稅後淨利率與獲利門檻', chartTimeframe: 'TTM' },
-  // 市場估值 2026-09-21（「Sidebar 下面加開市場估值，放 PER PBR PSR」）。psr 文案與徽章都齊（2330 20/20 期）；金融股（2891）讀到 0 期
-  // 是對的——銀行沒有營業收入，那些頁自己 noindex
-  { slug: 'psr', metricCode: 'psr', provenanceMetricCode: 'psr', topic: '股價營收比', titleKeywords: 'PSR 股價營收比與門檻', riverKind: 'ps' },
-  // 安全韌性 2026-09-21（「sidebar 底下增加此分類，放流速動比、長債比例等等」）：有徽章的兩支。chartTimeframe 照各徽章自己的
-  // 基準（currentRatio 是 Q、interestCoverage 是 TTM，實測）
-  { slug: 'current-ratio', metricCode: 'currentRatio', provenanceMetricCode: 'currentRatio', topic: '流動比率', titleKeywords: '流動比率短期償債能力', chartTimeframe: 'Q' },
-  { slug: 'interest-coverage', metricCode: 'interestCoverage', provenanceMetricCode: 'interestCoverage', topic: '利息保障倍數', titleKeywords: '利息保障倍數與償債門檻', chartTimeframe: 'TTM' },
-  // 獲利品質 2026-09-21：有徽章的那一支（TTM，實測）
-  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', provenanceMetricCode: 'accrualsRatio', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質', chartTimeframe: 'TTM' },
-  // 盈餘創新高比率：2026-09-21 上線（第一個 percentileRank 徽章頁，門檻是相對的五分位），09-22 下架——analysis-ts 把徽章本身退役
-  // （354f590d），沒有徽章的徽章頁無事可做；指標仍在型錄，若要回來會是指標頁，但它只有 Q 的百分位序列、太薄。
-  // 留這段是因為它怎麼來的：hasProvenance 原本是 false，我寫成「做不到」，被更正「為什麼不能驗證？可以跟 analysis 提需求啊」，
-  // 當天就補上了（fd8d276e）。教訓成立，頁面不在了。
-]
-
-export function findBadgePage(slug: string): BadgePageDefinition | null {
-  return BADGE_PAGES.find(page => page.slug === slug) ?? null
-}
-
-// 目前值圖真正查的 metricCode：有 provenanceMetricCode 就用它（徽章自己的 metricCode 可能沒有常規歷史序列），兩個呼叫端
-// （badge.get.ts、StockBadgeDetailPage）共用這一支
-export function badgePageChartMetricCode(page: BadgePageDefinition): string {
-  return page.provenanceMetricCode ?? page.metricCode
-}
-
-// 指標專頁：沒有徽章的指標（2026-09-20「stock/2330/eps 這樣的，除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」「月營收等等
-// 也比照這個模板」）。跟徽章頁是兩份登記表、兩個模板（使用者：「把徽章與指標頁面區分成兩個模板會比較容易些」）：徽章頁的主軸是
-// 門檻與計算依據，EPS 沒有這兩樣——它有數值、歷史與定義。共用一個模板會讓每一段都掛 v-if="isBadge"。
+// 指標專頁（2026-09-20「stock/2330/eps 這樣的，除了看到 2330 EPS 多少，也可以知道甚麼是 EPS」「月營收等等也比照這個模板」）：
+// 數值、歷史、計算依據與定義。
 export interface MetricPageDefinition {
-  // 手寫 slug（同徽章頁），不能撞到徽章 slug 或具名的兄弟路由（dividend、balance-sheet…）：Nuxt 先解析靜態檔，撞到會被靜默遮蔽
+  // 手寫 slug，不能撞到具名的兄弟路由（dividend、balance-sheet…）：Nuxt 先解析靜態檔，撞到會被靜默遮蔽
   slug: string
   // GET /metrics 的 key，也是 GET /stocks/:symbol/metrics-history 吃的
   metricCode: string
@@ -100,7 +28,7 @@ export interface MetricPageDefinition {
   timeframe: 'TTM' | 'Q' | 'FY'
   // <h1> 第三段與麵包屑最後一層
   topic: string
-  // <title> 的長尾片語，同徽章頁 ≤ 32 CJK 等效字的預算
+  // <title> 的長尾片語：`{短名} {代碼} {titleKeywords}`＋品牌後綴要 ≤ 32 個 CJK 等效字（check-stock-pages 的 cjkLength），逐筆驗
   titleKeywords: string
   // 「本季比去年同季變多少」那一行字用的 metricCode，固定問 Q——因為這個欄位寫的就是那一句，不是因為其他期別的年增率沒意義
   // （2026-10-05 更正：TTM 對去年同期 TTM 是標準的成長衡量，上游也補了 TTM／FY）。只在型錄確認有這支年增率時才設。
@@ -134,7 +62,7 @@ export interface MetricPageDefinition {
   // equity-growth→bvpsGrowthRate、net-income-growth→epsGrowthRate（總額與每股成長率的差就是股數稀釋，21.5% 的期別差超過 1pp，
   // 最大 117.5pp）。頁面只陳述算術差，解釋留在 METRIC_COPY 的 compare：只是相關的配對會暗示一個關於公司的主張。
   compareMetricCode?: string
-  // 畫在右軸的第二支（單位跟主指標不同，同徽章頁的 rightMetricCode）。rightMetricBar：它畫成柱子、主指標畫成折線，不需要
+  // 畫在右軸的第二支（單位跟主指標不同；ROE 頁的權益乘數）。rightMetricBar：它畫成柱子、主指標畫成折線，不需要
   // compareMetricCode（2026-11-19，使用者：「股本變化可以做成純量柱狀圖與年增折線圖合併嗎」：流通股數的柱子配股本變化年增率的線）
   rightMetricCode?: string
   rightMetricBar?: boolean
@@ -209,23 +137,36 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // roic 的覆蓋率與深度比另外兩支低（抽 41 家：roa 41、roic 32，期數中位 19 vs 13），analysis-ts 查過是結構性的：有效稅率要
   // 「所得稅 ÷ 稅前淨利」，稅前虧損那一季算不出來、近四季一季虧整期就 null，已寫進它的 limitations。
   // roce 2026-09-30 整支刪除（analysis-ts 4c69d0ca）：跟 ROE 的全市場排名相關係數 0.971（2026Q2、1,847 家），幾乎沒有額外資訊。
+  // ROE 原本是徽章頁（2026-11-26 搬來，見檔頭）。預設對照 ROA（2026-09-29「roe 這一頁要怎麼跟借錢多搭在一起看?」）：分子相同、
+  // 分母一個是自有資本一個是全部資產，差就是「資產裡有多少不是股東出的」。抽 60 檔：負債比率最低 1/3 的 ROE−ROA 平均 1.9pp、最高 1/3
+  // 平均 10.3pp，78% 的公司 ROE ≥ ROA。不選 debtRatio 本身：它只有單季，跟近四季共不了軸。右軸的權益乘數（2026-10-17）：ROE ≈ ROA × 權益乘數
+  { slug: 'roe', metricCode: 'roe', compareMetricCode: 'roa', rightMetricCode: 'equityMultiplier', timeframe: 'TTM', topic: 'ROE', titleKeywords: 'ROE 股東權益報酬率逐季數據', related: ['dupont', 'roa', 'eps'] },
   { slug: 'roa', metricCode: 'roa', compareMetricCode: 'roe', timeframe: 'TTM', topic: '資產報酬率', titleKeywords: 'ROA 資產報酬率與資產運用效率', related: ['roe', 'dupont', 'roic'] },
   { slug: 'roic', metricCode: 'roic', compareMetricCode: 'roe', timeframe: 'TTM', topic: '投入資本報酬率', titleKeywords: 'ROIC 投入資本報酬率與閒置現金', related: ['roe', 'roa', 'dupont'] },
   // 營業利益率 2026-09-21：三率中間那一支，沒有徽章所以在這裡。上線時型錄三段文案是 null（資料本來就齊：20 期 TTM＋Q），頁面
   // 自己 noindex；analysis-ts 同日補了文案（face95d8），sitemap 依即時型錄的 description 過濾，所以頁面自己回到 sitemap
   // （0 → 176 條），這裡不用翻任何旗標——下次頁面先於文案就緒時照這個模式。
   { slug: 'operating-margin', metricCode: 'operatingMargin', timeframe: 'TTM', topic: '營業利益率', titleKeywords: '營業利益率本業獲利占比' },
+  // 三率的另外兩支原本是徽章頁（2026-11-26 搬來）。毛利率對照近 8 季中位數（2026-11-15，建材營造選股指南：看單季跳升是不是結案紅利，
+  // 數據中台 d56f541）：型錄只有 Q，所以只在切到單季時一起畫，近四季照舊。例：2546 2026Q2 單季 18.49%、中位數 8.73%，下一季 9.54%
+  { slug: 'gross-margin', metricCode: 'grossMargin', compareMetricCode: 'grossMarginMedian8q', timeframe: 'TTM', topic: '毛利率', titleKeywords: '毛利率逐季數據與歷年走勢' },
+  { slug: 'net-profit-margin', metricCode: 'netProfitMargin', timeframe: 'TTM', topic: '稅後淨利率', titleKeywords: '稅後淨利率逐季數據與歷年走勢' },
   // 市場估值的兩支沒有徽章的。metricCode 很重要：型錄每個比率有兩支，exchangePeRatio／exchangePbRatio 是交易所公布值、只有 EOD、
   // 沒有溯源，metrics-history 回不了東西；peRatio／pbRatio 是計算值，有序列（2330 20/20）與溯源。別因為名字看起來官方就改。
   { slug: 'pe-ratio', metricCode: 'peRatio', timeframe: 'TTM', topic: '本益比', titleKeywords: 'PER 本益比與歷年區間', riverKind: 'pe' },
   // 第一個只有 Q 的指標頁（pbRatio 的 fields 只有 Q）：latest 與單季數字是同一期，StockMetricDetailPage 的 hasTrailingFigure 守這個
   { slug: 'pb-ratio', metricCode: 'pbRatio', timeframe: 'Q', topic: '股價淨值比', titleKeywords: 'PBR 股價淨值比逐季數據', riverKind: 'pb' },
+  // 股價營收比原本是徽章頁（2026-11-26 搬來）：河流圖。金融股（2891）讀到 0 期是對的——銀行沒有營業收入，那些頁自己 noindex
+  { slug: 'psr', metricCode: 'psr', timeframe: 'TTM', topic: '股價營收比', titleKeywords: 'PSR 股價營收比與歷年區間', riverKind: 'ps' },
   { slug: 'bvps', metricCode: 'bvps', timeframe: 'Q', topic: '每股淨值', titleKeywords: '每股淨值逐季變化與帳面價值', related: ['pb-ratio', 'equity-source', 'equity-growth'] },
   // 安全韌性 2026-09-21：沒有徽章的三支，全部只有 Q。不在這裡的：長債比例（longTermDebtToNetCurrentAssets 當時 2330 8 期、其他
   // 1 期；totalDebtToCapital／equityRatio／debtToFcf 同樣只有 1 期，一列的歷史表是薄頁）→ 回填後加回（見下面那筆）；
   // altmanZScore／ohlsonOScore／zmijewskiScore 等多變數迴歸分數（「複合運算、徽章性質遠勝於指標性質」）；五支銀行比率
   //（約 95% 的公司讀 不適用）。
+  // 流動比率、利息保障倍數原本是徽章頁（2026-11-26 搬來）：流動比率是季末存量只有單季，利息保障倍數看近四季
+  { slug: 'current-ratio', metricCode: 'currentRatio', timeframe: 'Q', topic: '流動比率', titleKeywords: '流動比率短期償債能力' },
   { slug: 'quick-ratio', metricCode: 'quickRatio', timeframe: 'Q', topic: '速動比率', titleKeywords: '速動比率扣除存貨的償債力' },
+  { slug: 'interest-coverage', metricCode: 'interestCoverage', timeframe: 'TTM', topic: '利息保障倍數', titleKeywords: '利息保障倍數與利息負擔' },
   // 堆疊組成（2026-10-09，使用者「負債比率可以拆成流動負債、非流動負債、負債總計就好」）：analysis-ts 1e7c7d0f 新增兩支，分母同為期末
   // 總資產、相加＝debtRatio（排除金融保險後 108Q3～115Q2 不相等 0 筆），金融業 not_applicable_industry。全市場回填中：一期都拆不開時
   // 圖退回單色長條、組成段不顯示，所以先接上不會畫錯。
@@ -254,6 +195,8 @@ export const METRIC_PAGES: MetricPageDefinition[] = [
   // 所以對照畫營業現金流利潤率、接著讀這兩頁。
   // 連續獲利年數 2026-09-22 下架（「資料怪怪的」）：basis=FY 同一年回好幾列而且計數會動（2330 2024=5,5,5,6；1101 2025 年中歸零；
   // 2454 與 2891 序列相同），型錄 metadata 沒錯、是序列不按年；等 analysis-ts 確認一年一列且單調再加回。
+  // 應計項目比率原本是徽章頁（2026-11-26 搬來）
+  { slug: 'accruals-ratio', metricCode: 'accrualsRatio', timeframe: 'TTM', topic: '應計項目比率', titleKeywords: '應計項目比率與盈餘品質' },
   { slug: 'ocf-to-net-income', metricCode: 'ocfToNetIncome', timeframe: 'TTM', topic: '營業現金流對淨利比', titleKeywords: '營業現金流對淨利比' },
   { slug: 'fcf-conversion-rate', metricCode: 'fcfConversionRate', timeframe: 'TTM', topic: '自由現金流轉換率', titleKeywords: 'FCF 轉換率現金含金量' },
   { slug: 'ocf-margin', metricCode: 'ocfMargin', timeframe: 'TTM', topic: '營業現金流利潤率', titleKeywords: 'OCF 利潤率營收轉現金比率' },
@@ -332,7 +275,7 @@ export function findMetricPage(slug: string): MetricPageDefinition | null {
   return METRIC_PAGES.find(page => page.slug === slug) ?? null
 }
 
-// 指標速覽畫哪張圖。river／metric 由指標頁、徽章頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
+// 指標速覽畫哪張圖。river／metric 由指標頁的欄位推出來；其餘是有自己路由檔的頁，各自在 RELATIONSHIP_PAGES 宣告
 export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; holdingMetricCode?: string; bankOnly?: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
@@ -389,7 +332,7 @@ export function resolveRelatedPages(slugs: string[] | undefined): { slug: string
     .map(slug => {
       const relationship = RELATIONSHIP_PAGES[slug]
       if (relationship) return { slug, topic: relationship.topic }
-      const page = findMetricPage(slug) ?? findBadgePage(slug)
+      const page = findMetricPage(slug)
       return page ? { slug, topic: page.topic } : null
     })
     .filter((entry): entry is { slug: string; topic: string } => entry !== null)
@@ -406,9 +349,7 @@ export function quickViewChartOf(slug: string): QuickViewChart | null {
   if (relationship) return relationship.chart ?? null
   const page = findMetricPage(slug)
   if (page) return page.riverKind ? { kind: 'river', river: page.riverKind } : { kind: 'metric', metricCode: page.metricCode, holdingMetricCode: page.holdingMetricCode, bankOnly: page.bankOnly, topic: page.topic, timeframe: page.timeframe, compareMetricCode: page.compareMetricCode, rightMetricCode: page.rightMetricCode, rightMetricBar: page.rightMetricBar }
-  const badge = findBadgePage(slug)
-  if (badge?.riverKind) return { kind: 'river', river: badge.riverKind }
-  return badge?.chartTimeframe ? { kind: 'metric', metricCode: badgePageChartMetricCode(badge), topic: badge.topic, timeframe: badge.chartTimeframe, compareMetricCode: badge.compareMetricCode, rightMetricCode: badge.rightMetricCode } : null
+  return null
 }
 
 export function hasPinnableChart(slug: string): boolean {
@@ -438,17 +379,11 @@ export const METRIC_PAGE_ALIASES: Record<string, string> = {
 }
 
 export function metricPageSlug(metricCode: string): string | null {
-  return METRIC_PAGE_ALIASES[metricCode] ?? [...METRIC_PAGES, ...BADGE_PAGES].find(page => page.metricCode === metricCode)?.slug ?? null
+  return METRIC_PAGE_ALIASES[metricCode] ?? METRIC_PAGES.find(page => page.metricCode === metricCode)?.slug ?? null
 }
 
 // 普通股結果表的一格連到那家公司這支指標的頁（篩選與觀察清單共用）；這支指標沒有頁回 null，點了是整列
 export function stockMetricPath(symbol: string, field: string): string | null {
   const slug = metricPageSlug(field.split('.')[0] ?? '')
   return slug ? `/stock/${symbol}/${slug}` : null
-}
-
-// 唯一會靜默壞頁而不報錯的不變量：兩份登記表都認領的 slug 會渲染分派器先測到的那個模板，另一頁變成無法到達。開發時由分派器呼叫。
-export function assertMetricPagesDisjoint(): void {
-  const collision = METRIC_PAGES.find(page => BADGE_PAGES.some(badge => badge.slug === page.slug))
-  if (collision) throw new Error(`[metric-pages] slug "${collision.slug}" is in both METRIC_PAGES and BADGE_PAGES`)
 }

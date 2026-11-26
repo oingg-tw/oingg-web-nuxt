@@ -48,7 +48,6 @@ const profileDateText = computed(() => (profileDetail.value?.generatedDate ? `�
 
 // 釘選的是「頁面」（slug），不是指標欄位。對應成 /screener/values 的欄位：
 //   - 指標頁：METRIC_PAGES 的 metricCode＋timeframe
-//   - 徽章頁：BADGE_PAGES 的 metricCode＋chartTimeframe（沒寫就近四季）
 //   - 配股配息：自算的現金殖利率（那一頁回答的就是「領多少」；2026-10-25 從交易所公布值換過來，同篩選與排行）
 //   - 月營收年增率：近三個月累計營收年增率（型錄裡月頻率的那一支；單月年增率不在型錄）。月營收（金額）型錄沒有，只畫圖、不給數值
 //   - 杜邦分析：近四季 ROE（三項乘出來的那個數）
@@ -76,10 +75,7 @@ const SPECIAL_FIELDS: Record<string, string> = {
 function fieldOf(slug: string): string | null {
   if (SPECIAL_FIELDS[slug]) return SPECIAL_FIELDS[slug]!
   const metricPage = METRIC_PAGES.find(page => page.slug === slug)
-  if (metricPage) return `${metricPage.metricCode}.${metricPage.timeframe}`
-  const badgePage = BADGE_PAGES.find(page => page.slug === slug)
-  if (badgePage) return `${badgePage.metricCode}.${badgePage.chartTimeframe ?? 'TTM'}`
-  return null
+  return metricPage ? `${metricPage.metricCode}.${metricPage.timeframe}` : null
 }
 // 數值跟列名不是同一件事時，數值前面說清楚是什麼（「月營收 139.32%」會被讀成營收本身）
 // 依頁面（slug）而不是欄位：杜邦分析與 ROE 頁是同一個欄位 roe.TTM，只有杜邦那一列要說明它是 ROE

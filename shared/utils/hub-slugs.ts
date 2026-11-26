@@ -2,7 +2,7 @@
 // Nitro data layer and the sitemap handler all read, so a slug can't drift between the three
 // (same reason f-score-pilot.ts lives here). Rules (from the vault's URL guidance, adopted):
 // lowercase hyphenated English slugs, no query state, depth ≤ 3.
-// 個股 × 徽章／指標專頁的登記表（BADGE_PAGES／METRIC_PAGES）在 metric-pages.ts（2026-10-08 拆出）。
+// 個股 × 指標專頁的登記表（METRIC_PAGES）在 metric-pages.ts（2026-10-08 拆出）。
 
 // 證交所類股 — 業務中台's GET /industries/securities-sectors codes are the exchange's own stable
 // two-digit codes and the names are the exchange's official labels, so both are written down
@@ -424,7 +424,7 @@ export function metricPath(code: string): string {
 // 可索引的 /metrics/{code} 頁：從 Piotroski F-Score 一頁（2026-09-19「先來 f score 徽章作為示範就足夠」）長到三頁（09-20），每一頁
 // 都驗過三段文案齊全、meta description 經 clampDescription(text, 90) 後仍過 60 個 CJK 字的下限。liveGrahamNumber 文案齊但不在：
 // 原始描述混了太多 ASCII，90 字元的裁切只剩 56 個 CJK 等效字——那是共用模板的缺口，不在這裡繞過。其餘指標同一個模板、
-// noindex follow、不進 sitemap。跟 BADGE_PAGES 的 slug 是不同詞彙表，'roe'／'gross-margin' 同字是巧合不是互通。
+// noindex follow、不進 sitemap。跟個股頁 METRIC_PAGES 的 slug 是不同詞彙表，'roe'／'gross-margin' 同字是巧合不是互通。
 export const METRIC_PAGE_SLUGS: string[] = ['piotroski-f-score', 'roe', 'gross-margin']
 
 export function isIndexableMetricSlug(slug: string): boolean {

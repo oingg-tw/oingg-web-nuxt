@@ -344,7 +344,7 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
 // 比對整串，英文只比對全大寫的縮寫（CR、QR）的開頭，同上：英文寫法（Working Capital Ratio）的一般單字會讓打 per 撈出一串頁
 export function matchesStockNavKeyword(node: StockNavNode, query: string, aliasesOf?: (metricCode: string) => string[] | undefined): boolean {
   const slug = node.to?.('_').split('/').pop() ?? ''
-  const page = findMetricPage(slug) ?? findBadgePage(slug)
+  const page = findMetricPage(slug)
   const aliases = (page && aliasesOf?.(page.metricCode)) || []
   const words = [
     ...(slug.includes('-') ? [] : [slug]),

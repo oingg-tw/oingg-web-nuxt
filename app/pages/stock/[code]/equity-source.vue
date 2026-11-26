@@ -9,8 +9,8 @@ import type { StockBookValueBreakdownResponse } from '#shared/types/stock-equity
 // balance-sheet／income-statement／cash-flow-statement）現在是純還原，不放任何衍生分析。
 //
 // 這一頁是成長動能那一組的關係頁，跟 /dividend-source 之於配息、/cash-cycle 之於營運週轉同一個位置。
-// 開自己的 slug 而不是改寫 /equity-growth：那一頁在 METRIC_PAGES 裡，同一個 slug 不能同時屬於兩種
-// 註冊表（assertMetricPagesDisjoint 在擋這件事）。
+// 開自己的 slug 而不是改寫 /equity-growth：那一頁在 METRIC_PAGES 裡，同一個 slug 不能既是登記表的
+// 指標頁、又有自己的路由檔（Nuxt 先解析路由檔，登記表那一頁就到不了）。
 //
 // 2026-10-14 拆頁（使用者：「equity-source 這個交代太多東西 要先拆開，一樣慣例 一個圖 一個表格」）：原本三段——存量的淨值組成、
 // 流量的每股淨值逐年變動、淨值成長 vs 每股淨值成長。存量搬到 /equity-composition（跟資產、負債組成同一套元件）；成長率對照併進
