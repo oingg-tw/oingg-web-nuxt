@@ -363,14 +363,21 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   成長突破: 'growth-breakout',
   '低淨值比＋財務體質': 'low-pb-financial-strength',
   // 預設範本（2026-11-25，使用者：「請數據中台研究出現金股利/現金殖利率為核心的選股策略，選擇含息報酬率賺最多的或是虧損最少的作為預設」；
-  // 數據中台回測第四輪，14 個股利類候選裡含息報酬最高；業務中台建範本並設成預設）
-  '高殖利率＋財務體質': 'high-yield-financial-strength',
-  // 數據中台第六輪（2026-11-26，使用者在業務中台確認，當晚 21:13 上）：預設範本多一條股價淨值比 0～1.5、改名，使用者選「換新的」網址代稱；
-  // 上線後舊的那一條拿掉、舊網址在 nuxt.config 301 過來。新增「財務體質＋接近高點」（量化因子）
+  // 數據中台回測第四輪）。第六輪（2026-11-26 21:13 上）多一條股價淨值比 0～1.5、從「高殖利率＋財務體質」改名，使用者選「換新的」網址代稱，
+  // 舊代稱 high-yield-financial-strength 在 nuxt.config 301 過來。同批新增後面三組（數據中台第六、九、十輪）
   '高殖利率＋財務體質＋低淨值比': 'high-yield-financial-strength-low-pb',
   '財務體質＋接近高點': 'financial-strength-near-high',
-  // 數據中台的投資風格九宮格（2026-11-26，使用者核准做成篩選欄位）：規模＝大型，業務中台當晚 21:13 上，「規模」分類的第一個
-  大型權值股: 'large-cap',
+  '低企業價值營收比＋近一年上漲': 'low-ev-sales-uptrend',
+  '合理本益比＋獲利成長＋接近高點': 'reasonable-pe-growth-near-high',
+  // 投資風格的代表範本（數據中台第十一輪，2026-11-26 21:13 上，業務中台 0035）：價值、成長、股利、品質、趨勢、防禦各一組。「規模」那一類
+  //（大型權值股、小型股）同日拿掉，使用者：「希望規模拿掉 他呈現效果比我想像中更不明所以 是我的一個錯誤決策」
+  '低本益比＋低淨值比': 'low-pe-low-pb',
+  營收與獲利雙成長: 'revenue-eps-growth',
+  '高殖利率＋連續配息＋配得起': 'high-yield-consistent-dividend',
+  '財務體質好＋賺錢': 'financial-strength-profitable',
+  '接近 52 週高點': 'close-to-52w-high',
+  '低波動＋有配息': 'low-beta-dividend',
+  // 第二批（約 11-27 後）
   '營收意外＋成長': 'revenue-surprise-growth',
   強勢創高: 'near-52w-high',
   營收加速: 'revenue-acceleration'

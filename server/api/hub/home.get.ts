@@ -7,7 +7,7 @@ import { homeMonths, upcomingDays } from '#shared/utils/home-agenda'
 // 價值型、低波動、股利連續性 2026-11-24 拿掉（上一輪景氣循環沒有超額），換成新範本；預設範本「高殖利率＋財務體質」（2026-11-25）排第一。
 // 還沒上架的範本會被略過（下面照 slug 找），所以可以先列。2026-11-26 預設範本改名換 slug（高殖利率＋財務體質＋低淨值比），當晚上線前後
 // 新舊兩個只會有一個在，首頁照樣三張；上線後拿掉舊的
-const HOME_TEMPLATES = ['high-yield-financial-strength-low-pb', 'high-yield-financial-strength', 'low-pb-financial-strength', 'growth-breakout']
+const HOME_TEMPLATES = ['high-yield-financial-strength-low-pb', 'low-pb-financial-strength', 'growth-breakout']
 const UPCOMING_DAYS = 4
 
 async function upcoming(today: string) {

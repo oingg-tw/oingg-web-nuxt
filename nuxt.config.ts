@@ -140,6 +140,8 @@ export default defineNuxtConfig({
     '/screener/common/value': { redirect: { to: '/screener/common', statusCode: 301 } },
     '/screener/common/low-volatility': { redirect: { to: '/screener/common', statusCode: 301 } },
     '/screener/common/dividend-stability': { redirect: { to: '/screener/common', statusCode: 301 } },
+    // 預設範本 2026-11-26 改名、換代稱（使用者選「換新的」）：舊代稱轉到新那一組（選股策略頁的 #代稱 會自己展開）
+    '/screener/common/high-yield-financial-strength': { redirect: { to: '/screener/strategies#high-yield-financial-strength-low-pb', statusCode: 301 } },
     // 52 週股價漲幅、跌幅的排行 2026-11-25 拿掉（競品都沒有，shared/utils/hub-slugs.ts 的 RANK_PAGES）
     '/rank/price-return-52w': { redirect: { to: '/rank', statusCode: 301 } },
     '/rank/price-drop-52w': { redirect: { to: '/rank', statusCode: 301 } },

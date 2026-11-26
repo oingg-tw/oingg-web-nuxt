@@ -2,11 +2,11 @@
 import type { ScreenerTemplateWithSlug } from '#shared/types/hub'
 import type { MetricCatalog } from '~/composables/screener/useFilterSchema'
 
-// 選股策略（2026-11-26，使用者「有沒有畫面是可以集中看到所有選股策略介紹的？」；設計 https://claude.ai/artifact/VRVKmE64K6vRiLdeuBKJKE 方案 C）：
-// 官方篩選範本一頁看完，每一組攤開成一整段：名稱與類別、說明全文、條件表（指標連到指標頁）、今天符合幾檔與套用。方案 A 的卡片上了 DEV 之後
-// 使用者覺得「鳥鳥的」，也說條件說明頁「資訊量也沒有大到值得自己一頁」→「蓋成方案C」：條件說明頁 /screener/common/{代稱} 收進來，舊網址 301 到
-// #代稱。只寫檔數不列名單（名單讀起來就是推薦），也不放回測報酬。入口只有「新增篩選」彈窗與網站導覽（使用者：「這樣使用流程我認為比較合理」）：
-// 篩選側欄、首頁都不連過來，側欄亮在普通股篩選
+// 選股策略（2026-11-26，使用者「有沒有畫面是可以集中看到所有選股策略介紹的？」）：官方篩選範本一頁看完。方案 C（每一組攤開成一整段）上了
+// DEV 之後使用者覺得「看起來還是髒髒的」，同日看過設計圖（https://claude.ai/artifact/VRVKmE64K6vRiLdeuBKJKE 第二版）→「改成方案D」：
+// 一類一段、一類一張卡片、一組一列：名稱與條件一行、今天符合幾檔、「套用」；出處說明收在名稱底下，點名稱展開。條件說明頁 /screener/common/{代稱}
+// 收進來，舊網址 301 到 #代稱，那一組自己展開。只寫檔數不列名單（名單讀起來就是推薦），也不放回測報酬。入口只有「新增篩選」彈窗與網站導覽
+//（使用者：「這樣使用流程我認為比較合理」）：篩選側欄、首頁都不連過來，側欄亮在普通股篩選
 const { data: templates, error, refresh } = await useFetch<ScreenerTemplateWithSlug[]>('/api/hub/screener-templates', { key: 'hub-screener-templates', default: () => [] })
 watchLoadFailure('hub-screener-templates', () => error.value, refresh)
 // 有代稱的才列（#代稱 是舊網址轉過來的落點）：已上架、名稱在 SCREENER_TEMPLATE_SLUGS 裡
@@ -24,18 +24,40 @@ const [{ data: counts }, { data: catalog }] = await Promise.all([
 ])
 const countOf = (slug: string) => counts.value.find(item => item.slug === slug)?.count ?? null
 
-const strategies = computed(() => strategyGroups(available.value).flatMap(group => group.items).map(item => ({
-  ...item,
-  slug: item.slug!,
-  conditions: templateConditions(item.filters, catalog.value?.categories ?? []),
-  intro: strategyIntro(item.description),
-  count: countOf(item.slug!)
+const groups = computed(() => strategyGroups(available.value).map(group => ({
+  category: group.category,
+  line: STRATEGY_CATEGORY_LINES[group.category] ?? null,
+  items: group.items.map((item) => {
+    const conditions = templateConditions(item.filters, catalog.value?.categories ?? [])
+    return {
+      id: item.id,
+      name: item.name,
+      isDefault: item.isDefault,
+      slug: item.slug!,
+      conditions: conditions.map(conditionText).join('・'),
+      metricLinks: conditions.flatMap(row => (row.metricPage ? [{ to: row.metricPage, label: row.label }] : [])),
+      intro: strategyIntro(item.description),
+      count: countOf(item.slug!)
+    }
+  })
 })))
-const lead = computed(() => (strategies.value.length ? `${strategies.value.length} 組篩選條件，每組都寫明出處；看每個條件的意思，或直接套用到普通股篩選。` : null))
+const total = computed(() => groups.value.reduce((sum, group) => sum + group.items.length, 0))
+const lead = computed(() => (total.value ? `${total.value} 組篩選條件${groups.value.length > 1 ? `，分成 ${groups.value.length} 類` : ''}。點名稱看出處，點「套用」直接打開普通股篩選。` : null))
+
+// 舊的條件說明頁轉過來帶 #代稱：那一組展開。伺服器畫的是收起來的，掛上之後才打開；打開只往下長，不推動上面
+const openSlug = ref<string | null>(null)
+const syncHash = () => {
+  openSlug.value = location.hash.slice(1) || null
+}
+onMounted(() => {
+  syncHash()
+  window.addEventListener('hashchange', syncHash)
+})
+onBeforeUnmount(() => window.removeEventListener('hashchange', syncHash))
 
 const { breadcrumbs } = useHubPageSeo({
   title: '選股策略：每組篩選條件的出處與符合檔數',
-  description: () => clampDescription(`${lead.value ?? ''}${strategies.value.map(item => item.name).join('、')}，每組列出條件、出處與今天符合的檔數。`),
+  description: () => clampDescription(`${lead.value ?? ''}${groups.value.flatMap(group => group.items.map(item => item.name)).join('、')}，每組列出條件、出處與今天符合的檔數。`),
   path: STRATEGIES_PATH,
   breadcrumbs: [
     { label: '首頁', to: '/' },
@@ -45,9 +67,9 @@ const { breadcrumbs } = useHubPageSeo({
 })
 
 const GUIDE = [
-  '每一組都寫明出處。跟原研究或原作者不一樣的地方寫在說明裡，例如成長突破沒有納入原法的法人持股。',
+  '「符合」是最近一次計算的檔數。這裡只寫檔數、不列名單，名單在套用後的篩選結果裡。',
+  '每一組都寫明出處，點名稱展開。跟原研究或原作者不一樣的地方寫在說明裡，例如成長突破沒有納入原法的法人持股。',
   '條件只是把公開的財報與股價數字做區間過濾，不含任何評等；指標的定義與資料來源在各指標的頁面。',
-  '「今天符合」是最近一次計算的檔數。這裡只寫檔數、不列名單，名單在套用後的篩選結果裡。',
   '套用之後可以再改條件、改區間或限定類股；登入後能存成自己的篩選。'
 ]
 </script>
@@ -58,44 +80,30 @@ const GUIDE = [
     <StockBreadcrumb :items="breadcrumbs" />
     <ScreenerNav :active-to="SCREENER_PATHS.common" />
     <p v-if="lead" class="hub-answer">{{ lead }}</p>
-    <nav v-if="strategies.length > 1" class="strategies-page__jump" aria-label="跳到">
+    <nav v-if="groups.length > 1" class="strategies-page__jump" aria-label="跳到">
       <span class="strategies-page__muted" aria-hidden="true">跳到</span>
       <ul class="hub-chip-list">
-        <li v-for="item in strategies" :key="item.id"><a :href="`#${item.slug}`" class="hub-chip">{{ item.name }}</a></li>
+        <li v-for="group in groups" :key="group.category"><a :href="`#${group.category}`" class="hub-chip">{{ group.category }}</a></li>
       </ul>
     </nav>
 
-    <StockQuestionSection v-for="item in strategies" :id="item.slug" :key="item.id" :question="item.name" class="strategies-page__strategy">
-      <p class="strategies-page__tags">
-        <el-tag size="small" type="info" effect="plain">{{ item.category }}</el-tag>
-        <el-tag v-if="item.isDefault" size="small" effect="plain">篩選頁預設</el-tag>
-      </p>
-      <!-- 說明全文放在條件表那張卡片裡：卡片前的字最多 80 字（2026-11-06「卡片之前的文字描述過多了，會失焦」），說明是這一組的內容不是前言 -->
-      <SharedTable v-if="item.conditions.length" :label="`${item.name}的篩選條件`" :caption="`「${item.name}」的每一個篩選條件：指標、期間與條件`" table-class="strategies-page__table">
-        <template v-if="item.intro" #header>
-          <p class="strategies-page__intro">{{ item.intro }}</p>
-        </template>
-        <thead>
-          <tr>
-            <th scope="col">指標</th>
-            <th scope="col">期間</th>
-            <th scope="col">條件</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in item.conditions" :key="row.field">
-            <th scope="row">
-              <NuxtLink v-if="row.metricPage" :to="row.metricPage" class="seo-table__link">{{ row.label }}</NuxtLink>
-              <template v-else>{{ row.label }}</template>
-            </th>
-            <td>{{ row.period }}</td>
-            <td>{{ row.range }}</td>
-          </tr>
-        </tbody>
-      </SharedTable>
-      <div class="strategies-page__foot">
-        <p v-if="item.count !== null" class="hub-answer">今天符合 <b class="strategies-page__count">{{ groupThousands(item.count) }}</b> 檔</p>
-        <el-button type="primary" tag="a" :href="commonScreenerPath({ template: item.slug })">用這組條件篩選</el-button>
+    <StockQuestionSection v-for="group in groups" :id="group.category" :key="group.category" :question="group.category" :answer="group.line">
+      <div class="app-card strategies-page__card">
+        <div v-for="item in group.items" :id="item.slug" :key="item.id" class="strategies-row">
+          <details class="app-disclosure strategies-row__more" :open="openSlug === item.slug">
+            <summary>
+              <h3 class="strategies-row__name">{{ item.name }}</h3>
+              <el-tag v-if="item.isDefault" size="small" effect="light" disable-transitions>篩選頁預設</el-tag>
+              <span class="strategies-row__conditions">{{ item.conditions }}</span>
+            </summary>
+            <p v-if="item.intro" class="strategies-row__text">{{ item.intro }}</p>
+            <p v-if="item.metricLinks.length" class="strategies-row__text">
+              指標的定義：<template v-for="(link, index) in item.metricLinks" :key="link.to"><template v-if="index">、</template><NuxtLink :to="link.to">{{ link.label }}</NuxtLink></template>
+            </p>
+          </details>
+          <p v-if="item.count !== null" class="strategies-row__count">符合 <b>{{ groupThousands(item.count) }}</b> 檔</p>
+          <a :href="commonScreenerPath({ template: item.slug })" class="strategies-row__apply">套用<span class="visually-hidden">「{{ item.name }}」</span><span aria-hidden="true"> ›</span></a>
+        </div>
       </div>
     </StockQuestionSection>
 
@@ -116,45 +124,105 @@ const GUIDE = [
   color: var(--el-text-color-secondary);
 }
 
-/* 每一組之間一條線，跟上面那一組分開 */
-.strategies-page__strategy {
-  padding-top: 32px;
+/* 一組一列。窄的時候（手機的基本樣子）檔數與「套用」在名稱與條件下面一行；卡片寬 600px 起排成一列：名稱加預設標籤一行約 400px、
+   檔數「符合 1,290 檔」約 110px、套用約 56px，加上間距 */
+.strategies-page__card {
+  container-type: inline-size;
+}
+
+.strategies-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'more more' 'count apply';
+  column-gap: 16px;
+  padding: 2px 16px;
   border-top: 1px solid var(--app-divider);
+  scroll-margin-top: calc(var(--app-header-height) + var(--app-banner-height) + 16px);
 }
 
-.strategies-page__tags {
-  display: flex;
+.strategies-row:first-child {
+  border-top: 0;
+}
+
+.strategies-row__more {
+  grid-area: more;
+  min-width: 0;
+}
+
+/* 名稱一行、條件另起一行，跟名稱對齊（箭頭 7px＋左右 3px＋間距 10px＝23px） */
+.strategies-row__more > summary {
   flex-wrap: wrap;
-  gap: 8px;
-  margin: -8px 0 0;
+  row-gap: 2px;
 }
 
-.strategies-page__intro {
+.strategies-row__name {
   margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.strategies-row__conditions {
+  flex-basis: 100%;
+  padding-left: 23px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.strategies-row__text {
+  margin: 0 0 12px;
+  padding-left: 23px;
   line-height: 1.7;
   color: var(--el-text-color-regular);
 }
 
-/* 指標名稱很長（「Piotroski F-Score 財務體質評分」）：指標欄吃掉剩下的寬度、可以折行，期間與條件照內容寬，手機上三欄放得下 */
-.strategies-page__table tbody th {
-  width: 100%;
-  white-space: normal;
-}
-
-.strategies-page__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-}
-
-.strategies-page__foot .hub-answer {
+.strategies-row__count {
+  grid-area: count;
+  align-self: center;
   margin: 0;
+  padding-left: 23px;
+  white-space: nowrap;
+  color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.strategies-page__count {
-  font-size: 1.375rem;
+.strategies-row__count b {
+  font-size: 1.25rem;
   font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.strategies-row__apply {
+  grid-area: apply;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+
+.strategies-row__apply:hover,
+.strategies-row__apply:focus-visible {
+  text-decoration: underline;
+}
+
+@container (min-width: 600px) {
+  .strategies-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'more count apply';
+    align-items: start;
+    padding: 0 20px;
+  }
+
+  .strategies-row__count {
+    align-self: start;
+    padding-left: 0;
+    line-height: 44px;
+  }
 }
 </style>

@@ -51,8 +51,15 @@ export const SCORE_METRICS = ['threeMarginsRising', 'piotroskiFScore', 'altmanZS
 export const PICKER_UNLISTED_METRICS = ['yieldOnCost1y', 'yieldOnCost3y', 'yieldOnCost5y', 'yieldOnCost10y', ...SCORE_METRICS]
 
 // 改名的欄位 id，整個 id 對（上面那張表是用指標對）：類股欄位 2026-11-16 從 sector.code 改叫 sector.name（詞彙檢核 X17 第 1 步，業務中台兩個都收，
-// 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的
-export const RENAMED_FIELD_IDS: Record<string, string> = { 'sector.code': 'sector.name' }
+// 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的。
+// 2 年窗口 2026-11-26 換成 3 年（全站窗口統一成 1／3／5／10 年；業務中台 0033 改寫存檔，數據中台之後拿掉 2 年）：網址與舊快取裡的 2 年照這裡換
+export const RENAMED_FIELD_IDS: Record<string, string> = {
+  'sector.code': 'sector.name',
+  'beta.2Y_1W': 'beta.3Y_1W',
+  'peRatioRiverBand.2Y_1D': 'peRatioRiverBand.3Y_1D',
+  'pbRatioRiverBand.2Y_1D': 'pbRatioRiverBand.3Y_1D',
+  'psrRiverBand.2Y_1D': 'psrRiverBand.3Y_1D'
+}
 export const replacedField = (fieldId: string): string => RENAMED_FIELD_IDS[fieldId] ?? REPLACED_METRICS[fieldId.split('.')[0] ?? ''] ?? fieldId
 
 // 欄位清單換完去掉重複：舊的跟留下來的那支都在時，只留前面那一個位置
