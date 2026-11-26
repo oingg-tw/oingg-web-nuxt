@@ -204,6 +204,15 @@ console.log('損益（1440，預設）')
   const labels = await page.locator('.holdings-kind').evaluateAll(list => list.map(el => el.getAttribute('aria-label')))
   check(JSON.stringify(labels) === '["普通股","ETF","特別股"]', `三段依序：${labels}`)
   check(JSON.stringify(await page.locator('.holdings-kind__title').allInnerTexts()) === '["普通股1 檔","ETF2 檔","特別股1 檔"]', '每段的標題寫檔數')
+  // 顯示欄位那一組靠左，同篩選結果（2026-11-26，使用者：「持股管理 顯示欄位 UI Group請靠左 這樣才跟篩選那邊使用體感相近」）：
+  // 標題自己一排，下面那一排從卡片左緣 16px 排起，欄位設定接在後面 8px
+  const toolbars = await page.locator('.holdings-kind').evaluateAll(list => list.map((section) => {
+    const row = section.querySelector('.smt-toolbar__row')
+    const [title, group, settings] = [...row.children].map(el => el.getBoundingClientRect())
+    const card = section.querySelector('.watchlist-table__card').getBoundingClientRect()
+    return { titleAlone: title.bottom <= group.top, groupLeft: Math.round(group.left - card.left), settingsGap: Math.round(settings.left - group.right), sameRow: Math.abs(settings.top - group.top) < 4 }
+  }))
+  check(toolbars.every(item => item.titleAlone && item.groupLeft === 17 && item.settingsGap === 8 && item.sameRow), `顯示欄位那一組靠左、標題自己一排（${JSON.stringify(toolbars[0])}）`)
   const common = sectionOf(page, '普通股')
   const commonHeaders = await metricHeaders(common)
   check(commonHeaders[0] === '代號' && commonHeaders[1] === '名稱' && commonHeaders[2].startsWith('本益比') && commonHeaders[3].startsWith('毛利率') && commonHeaders.length === 4, `代號、名稱接那一類的欄位組合，沒有持股的欄：${commonHeaders.join(',')}`)

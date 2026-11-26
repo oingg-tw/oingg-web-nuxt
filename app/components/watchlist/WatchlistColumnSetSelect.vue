@@ -33,7 +33,6 @@ const applyChanges = (changes: PresetChanges) => runPresetChanges(changes, {
 
 <template>
   <ScreenerPresetSelect
-    class="watchlist-column-set"
     compact-label="欄位"
     label="顯示欄位"
     add-label="新增欄位組合"
@@ -52,11 +51,3 @@ const applyChanges = (changes: PresetChanges) => runPresetChanges(changes, {
     @template="(key: string) => columns.add(kind, key)"
   />
 </template>
-
-<style scoped>
-/* 靠右（連同後面表格自己的「欄位設定」）：分段標題在左邊，第一次造訪時資料到了才出現，靠左的話這一組會被往右推（2026-11-14
-   check-share-links 量到 CLS 0.0012）。手機上這一組照樣撐滿那一行（ScreenerPresetSelect 的 compact） */
-.watchlist-column-set {
-  margin-left: auto;
-}
-</style>

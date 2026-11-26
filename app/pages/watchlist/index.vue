@@ -259,7 +259,7 @@ async function submitNote() {
               <h2 v-if="sections.length > 1" class="watchlist-section__title">{{ section.label }}<span class="watchlist-section__count">{{ section.rows.length }} 檔</span></h2>
               <WatchlistColumnSetSelect v-if="member" :kind="section.kind" />
               <!-- 訪客沒有欄位組合，按了是登入 -->
-              <el-button v-else class="watchlist-toolbar__settings" :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openGuestColumnSettings">欄位設定</el-button>
+              <el-button v-else :aria-label="sections.length > 1 ? `${section.label}的欄位設定` : '欄位設定'" @click="openGuestColumnSettings">欄位設定</el-button>
             </template>
             <!-- 備註與移除收在「編輯」（2026-11-07 方案 A）：按了才有操作欄 -->
             <template v-if="member && editing" #actions="{ row }">
@@ -382,19 +382,14 @@ async function submitNote() {
   gap: 32px;
 }
 
-/* 分段標題：電腦版跟顯示欄位、欄位設定同一行；卡片版面（表格容器不到 720px）自己一排，下面才是欄位、新增、管理（2026-11-15，
-   使用者：「應該欄位 + 管理是自己一個row才對」，C 方案比照篩選結果的標題；同一排時 390 寬把組合名稱擠成「基本…」）。
+/* 分段標題自己一排，下面才是顯示欄位、新增、管理、欄位設定，靠左，同篩選結果的標題（卡片版面 2026-11-15，使用者：「應該欄位 + 管理
+   是自己一個row才對」；電腦版 2026-11-26 跟著改，見 WatchlistTable 的 .smt-toolbar__row）。
    骨架的段數照上次（useLayoutHint），重新整理不會跳；第一次造訪資料到了才知道有幾類，可能跳一次 */
 .watchlist-section__title {
+  flex-basis: 100%;
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-}
-
-@container not (min-width: 720px) {
-  .watchlist-section__title {
-    flex-basis: 100%;
-  }
 }
 
 .watchlist-section__count {
@@ -405,10 +400,6 @@ async function submitNote() {
 }
 
 /* 按鈕高照全站（滑鼠 32px、觸控 44px），跟同一列表格的「欄位設定」一樣高，同篩選的「顯示欄位」（2026-11-11 換成篩選的結果表） */
-.watchlist-toolbar__settings {
-  margin-left: auto;
-}
-
 .watchlist-note-dialog__label {
   display: block;
   margin-bottom: 8px;

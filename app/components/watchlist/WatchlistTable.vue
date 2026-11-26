@@ -113,6 +113,13 @@ defineExpose({ displayedSymbols: computed(() => metricTable.value?.displayedSymb
   container-type: inline-size;
 }
 
+/* 分段標題自己一排，下面才是顯示欄位、新增、管理、欄位設定，從卡片的左緣排起，同篩選結果（2026-11-26，使用者：「持股管理 顯示欄位
+   UI Group請靠左 這樣才跟篩選那邊使用體感相近」；原本電腦版標題跟這一組同一排、這一組靠右）。標題的 flex-basis: 100% 由頁面給；
+   這一排在這裡才折行，篩選頁的那一排照舊不折（「存成我的欄位組合」出現時是那一組自己折成兩行） */
+.watchlist-table :deep(.smt-toolbar__row) {
+  flex-wrap: wrap;
+}
+
 /* 同篩選結果的卡片（ScreenerPageShell 的 .screener-shell__results-card）：門檻 722＝表格換成卡片的 720 加左右框線 2px */
 @container not (min-width: 722px) {
   .watchlist-table__card {

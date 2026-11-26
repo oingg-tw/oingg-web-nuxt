@@ -1009,16 +1009,12 @@ async function submit() {
   margin-top: 4px;
 }
 
+/* 自己一排，下面才是顯示欄位那一組（靠左，同篩選結果；見 WatchlistTable 的 .smt-toolbar__row） */
 .holdings-kind__title {
+  flex-basis: 100%;
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-}
-
-@container not (min-width: 720px) {
-  .holdings-kind__title {
-    flex-basis: 100%;
-  }
 }
 
 .holdings-kind__count {
