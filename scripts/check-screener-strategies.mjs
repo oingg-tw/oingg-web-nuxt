@@ -1,6 +1,11 @@
 // 選股策略頁的分段與出處說明（app/utils/screener-strategies.ts）。Run: node scripts/check-screener-strategies.mjs
 import assert from 'node:assert/strict'
-import { strategyGroups, strategyIntro } from '../app/utils/screener-strategies.ts'
+import { rangeText, strategyGroups, strategyIntro } from '../app/utils/screener-strategies.ts'
+import { findScreenerOption } from '../app/utils/screener-value.ts'
+import { minusSign } from '../shared/utils/number-format.ts'
+
+// rangeText 在網站裡靠自動匯入
+Object.assign(globalThis, { findScreenerOption, minusSign })
 
 // 業務中台的順序：成長突破、低淨值比、高殖利率（預設）、接近高點。預設那組的類別排最前面，其餘照第一次出現的順序
 const templates = [
@@ -23,5 +28,17 @@ assert.deepEqual(strategyGroups([]), [])
 assert.equal(strategyIntro('股價淨值比 ≤ 1，且 Piotroski F 分數 ≥ 7——F 分數出自 Joseph Piotroski 2000 年的論文。'), 'F 分數出自 Joseph Piotroski 2000 年的論文。')
 assert.equal(strategyIntro('只有一句說明'), '只有一句說明')
 assert.equal(strategyIntro(null), '')
+
+// 條件欄：類別條件寫選項的名稱（大型權值股的規模，2026-11-26），對不到的照原值；數字條件照舊，負的界線用「−」
+const size = [{ value: 1, label: '大型' }, { value: 2, label: '中型' }, { value: 3, label: '小型' }]
+const picked = values => ({ field: 'styleBoxSize.EOD', min: null, max: null, exclude: false, values })
+assert.equal(rangeText(picked([1]), '', size), '大型')
+assert.equal(rangeText(picked([1, 2]), '', size), '大型、中型')
+assert.equal(rangeText({ ...picked([3]), exclude: true }, '', size), '排除：小型')
+assert.equal(rangeText(picked([9]), '', size), '9')
+assert.equal(rangeText(picked([1]), '', undefined), '1')
+assert.equal(rangeText({ field: 'distanceFrom52wHigh.1Y', min: -15, max: null, exclude: false, values: null }, '%'), '≥ −15%')
+assert.equal(rangeText({ field: 'pbRatio.EOD', min: 0, max: 1.5, exclude: false }, '倍'), '0 倍 到 1.5 倍')
+assert.equal(rangeText({ field: 'roe.TTM', min: null, max: null, exclude: true, values: [] }, '%'), '排除：有值即可')
 
 console.log('PASS: screener strategies')

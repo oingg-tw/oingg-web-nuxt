@@ -270,6 +270,8 @@ export interface ScreenerTemplateFilter {
   min: number | null
   max: number | null
   exclude: boolean
+  // 類別型條件：選項的值，min／max 是 null（大型權值股的投資風格九宮格規模 [1]，2026-11-26）
+  values?: (string | number)[] | null
 }
 
 // GET /screener/templates entry (the app's useScreenerTemplates.ts has the full type; this is

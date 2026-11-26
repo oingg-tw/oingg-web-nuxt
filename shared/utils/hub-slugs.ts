@@ -369,6 +369,8 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   // 上線後舊的那一條拿掉、舊網址在 nuxt.config 301 過來。新增「財務體質＋接近高點」（量化因子）
   '高殖利率＋財務體質＋低淨值比': 'high-yield-financial-strength-low-pb',
   '財務體質＋接近高點': 'financial-strength-near-high',
+  // 數據中台的投資風格九宮格（2026-11-26，使用者核准做成篩選欄位）：規模＝大型，業務中台當晚 21:13 上，「規模」分類的第一個
+  大型權值股: 'large-cap',
   '營收意外＋成長': 'revenue-surprise-growth',
   強勢創高: 'near-52w-high',
   營收加速: 'revenue-acceleration'

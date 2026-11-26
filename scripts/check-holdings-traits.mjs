@@ -8,7 +8,7 @@ let failures = 0
 const assert = (cond, label) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++ }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
-// 九宮格 9 格：列是規模、欄是風格；grid([[大型 價值, 混合, 成長], [中型…], [小型…]])
+// 九宮格 9 格：列是規模、欄是風格；grid([[大型 價值, 均衡, 成長], [中型…], [小型…]])
 const BOX = ['large', 'mid', 'small'].flatMap(row => ['Value', 'Core', 'Growth'].map(column => `${row}${column}Pct`))
 const grid = rows => Object.fromEntries(rows.flat().map((value, index) => [BOX[index], value]))
 const KEYS = ['exchangePeRatio', 'exchangePbRatio', 'dividendYield', 'roe', 'revenueGrowth', 'beta', 'revenueYoyVolatility', 'top3HoldingsPct', 'largeCapPct', ...BOX]
@@ -45,7 +45,7 @@ const newListings = { largeCapPct: [40.00, 1.0000], ...Object.fromEntries(Object
 assert(same(tagsOf(newListings), ['中小型為主']), '新上市的小型股占六成、分不出風格：九宮格只剩大型 100%，中小型為主仍照規模（大型 40%）判斷')
 assert(same(tagsOf(grid([[10.00, 40.00, 0.00], [26.74, 0.00, 0.00], [13.26, 10.00, 0.00]])), ['價值型為主']), '價值欄合計剛好 50%（浮點數會算成 49.99999999999999）：價值型為主')
 assert(same(tagsOf(grid([[0.00, 20.00, 30.00], [0.00, 0.00, 20.00], [0.00, 30.00, 0.00]])), ['成長型為主']), '成長欄合計 50%：成長型為主')
-assert(same(tagsOf(grid([[0.00, 100.00, 0.00], [0.00, 0.00, 0.00], [0.00, 0.00, 0.00]])), []), '全在大型混合（像台積電）：沒有規模、風格標籤')
+assert(same(tagsOf(grid([[0.00, 100.00, 0.00], [0.00, 0.00, 0.00], [0.00, 0.00, 0.00]])), []), '全在大型均衡（像台積電）：沒有規模、風格標籤')
 assert(same(tagsOf(grid([[0.00, 0.00, 0.00], [0.00, 0.00, 0.00], [90.00, 10.00, 0.00]]), null, 0.4000), []), 'ETF 占六成（九宮格只涵蓋 40%）：小型價值 90% 也不貼')
 assert(same(tagsOf({ top3HoldingsPct: 50.00 }), ['持股集中']), '前三大剛好 50% 也算（≥）：持股集中')
 assert(same(tagsOf({ top3HoldingsPct: 49.99 }), []), '前三大 49.99%：不貼')

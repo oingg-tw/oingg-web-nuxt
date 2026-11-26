@@ -28,7 +28,7 @@ const holdings = [
   { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: 120, totalCost: 240000, realizedProfitLoss: 0, close: 100, tradeDate: '2026-10-16', dayClose: 100, dayCloseTradeDate: '2026-10-16', priceChange: 2 }
 ]
 // 持股特色（業務中台 GET /holdings/traits，分享時同一份）：Beta 0.7（低 Beta），本益比、ROE、九宮格只涵蓋 60%（ETF 沒有財報、
-// 不分規模風格），2330 在大型混合；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀，
+// 不分規模風格），2330 在大型均衡；前三大（ETF 除外）只有 2330 的 60%（持股集中）。market 還沒上線時是 null，上線後同形狀，
 // 大盤九宮格是 DEV 10/16 的實際數字
 const trait = (value, coverage = 1) => ({ value, coverage })
 const BOX = ['large', 'mid', 'small'].flatMap(row => ['Value', 'Core', 'Growth'].map(column => `${row}${column}Pct`))
@@ -419,7 +419,7 @@ console.log('持股特色：持股分析頁（1440）')
   const captions = (await page.locator('.holdings-traits__box caption').allInnerTexts()).map(text => text.replace(/\s+/g, ''))
   const headers = await page.locator('.holdings-traits__box th').allInnerTexts()
   const coreCell = (await page.locator('.holdings-traits__box tbody tr').first().locator('td').nth(1).innerText()).trim()
-  check(figcaption === '規模與風格九宮格（占市值）' && captions.length === 1 && captions[0].startsWith('這組持股') && headers.join() === '價值,混合,成長,大型,中型,小型' && coreCell === '100%', `九宮格：大盤還沒有時只有「這組持股」一張，欄是風格、列是規模，大型混合 100%（${captions.join('、')}；${coreCell}）`)
+  check(figcaption === '規模與風格九宮格（占市值）' && captions.length === 1 && captions[0].startsWith('這組持股') && headers.join() === '價值,均衡,成長,大型,中型,小型' && coreCell === '100%', `九宮格：大盤還沒有時只有「這組持股」一張，欄是風格、列是規模，大型均衡 100%（${captions.join('、')}；${coreCell}）`)
   check(await page.locator('.holdings-traits tbody tr', { hasText: '大型股占比' }).count() === 0 && await page.locator('.holdings-traits__vs').count() === 0, '沒有大中小型三列（九宮格的列就是規模）；只有一張時沒有 vs')
   const metricHeaders = (await page.locator('.holdings-traits__metrics thead th').allInnerTexts()).map(text => text.trim())
   check(JSON.stringify(metricHeaders) === '["指標","這組持股"]', `指標表：大盤還沒有時只有兩欄、沒有「意思」欄（${metricHeaders.join('、')}）`)
@@ -442,7 +442,7 @@ console.log('持股特色：持股分析頁（1440）')
   const violations = await axe(page)
   check(violations === '0', `axe 0（${violations}）`)
   await shot(page, 'traits-analysis-1440', true)
-  // 九宮格最深的底色（light-7，大型混合 100%）對格子文字：7 個主色 × 深淺模式逐一量（axe 只量得到目前這一組）
+  // 九宮格最深的底色（light-7，大型均衡 100%）對格子文字：7 個主色 × 深淺模式逐一量（axe 只量得到目前這一組）
   const lowest = await page.evaluate(() => {
     const html = document.documentElement
     const luminance = (color) => {
@@ -502,7 +502,7 @@ for (const [width, payload] of [[1440, 'ratios'], [375, 'ratios'], [1440, 'marke
     // 上下兩層（使用者在三種排法裡選的）：上層九宮格兩張（寬時並排、各占一半寬、在自己那一半置中；窄時上下疊），下層指標表全寬
     const boxes = page.locator('.holdings-traits__box')
     const cores = await Promise.all([0, 1].map(async index => (await boxes.nth(index).locator('tbody tr').first().locator('td').nth(1).innerText()).trim()))
-    check(await boxes.count() === 2 && cores.join() === '100%,50%', `${label}：九宮格兩張，這組持股的大型混合 100%、大盤的 50%（${cores.join('、')}）`)
+    check(await boxes.count() === 2 && cores.join() === '100%,50%', `${label}：九宮格兩張，這組持股的大型均衡 100%、大盤的 50%（${cores.join('、')}）`)
     const [figureBox, metricsBox, own, market] = await Promise.all([page.locator('.holdings-traits__boxes'), page.locator('.holdings-traits__metrics'), boxes.nth(0), boxes.nth(1)].map(locator => locator.boundingBox()))
     // 兩張中間的 vs（使用者：「中間希望加上 vs」）
     const vs = await page.locator('.holdings-traits__vs').boundingBox()

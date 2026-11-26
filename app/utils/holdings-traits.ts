@@ -15,7 +15,7 @@
 // （四捨五入可能差 0.01）；只算分得出規模與風格的個股，9 格的 coverage 相同。「中小型為主」不看九宮格的列合計、讀 largeCapPct：
 // 分不出風格的多是近兩年上市的中小型股，九宮格不算它們，列合計會偏向大型（業務中台 提醒，2026-10-19）
 export const STYLE_BOX_ROWS = [{ key: 'large', label: '大型' }, { key: 'mid', label: '中型' }, { key: 'small', label: '小型' }] as const
-export const STYLE_BOX_COLUMNS = [{ key: 'Value', label: '價值' }, { key: 'Core', label: '混合' }, { key: 'Growth', label: '成長' }] as const
+export const STYLE_BOX_COLUMNS = [{ key: 'Value', label: '價值' }, { key: 'Core', label: '均衡' }, { key: 'Growth', label: '成長' }] as const
 type StyleBoxRow = typeof STYLE_BOX_ROWS[number]['key']
 type StyleBoxColumn = typeof STYLE_BOX_COLUMNS[number]['key']
 export type StyleBoxKey = `${StyleBoxRow}${StyleBoxColumn}Pct`
@@ -58,7 +58,7 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   // 景氣循環型 2026-11-05 先隱藏（使用者：「先註解隱藏，因為我懷疑現在的頁面有問題」）：這條只看營收波動，高速成長的公司一樣踩得到，數據中台的驗證名單 34 家
   // 循環股只標到 4 家。數據中台的景氣循環度上線、持股標籤有自己的門檻後換掉這條，不是原樣打開
   // { keys: ['revenueYoyVolatility'], label: '景氣循環型', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
-  // 規模、風格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的混合欄占六成
+  // 規模、風格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的均衡欄占六成
   { keys: ['largeCapPct'], label: '中小型為主', rule: '大型股占比 ≤ 50%', needsMarket: false, test: own => own <= 50 },
   { keys: boxColumn('Value'), label: '價值型為主', rule: '價值股（九宮格左欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
   { keys: boxColumn('Growth'), label: '成長型為主', rule: '成長股（九宮格右欄）合計 ≥ 50%', needsMarket: false, test: own => own >= 50 },
