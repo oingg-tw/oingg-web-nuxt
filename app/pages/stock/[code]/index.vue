@@ -274,6 +274,8 @@ function usePageData<T>(kind: keyof typeof PAGE_DATA) {
     () => `quick-view-${kind}-${code.value}`,
     async () => {
       if (!pinnedKinds.value.has(kind)) return null
+      // 興櫃沒有六面向（上游一律 404），卡片也不畫：不問
+      if (kind === 'six-dimensions' && profile.value?.market === 'rotc') return null
       const response = await $fetch<T>(pageUrl(kind), { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
       // 上游讀不到時伺服器回 200、series 或某個群組是 null（各頁當讀取失敗處理，見 margins.vue 的 readFailed）：這裡同樣當成沒讀到
       const partial = response as { series?: unknown; groups?: Record<string, unknown> } | null
