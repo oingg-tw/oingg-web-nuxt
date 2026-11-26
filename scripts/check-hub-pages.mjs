@@ -362,7 +362,8 @@ const browser = await chromium.launch()
   // 價值型、低波動、股利連續性 2026-11-24 拿掉，剩成長突破、低淨值比＋財務體質（現金股利類的預設與營收類第二批之後再加）
   expect('/screener/common (guest picker)', 'tiles ≥ 2', tileCount >= 2, `${tileCount}`)
   // 點低淨值比＋財務體質那一塊（目前約 70 檔）：成長突破條件嚴格，有些月份一檔都沒有，結果會是空的
-  const pickerTile = page.locator('.guest-picker__tile', { hasText: '低淨值比' })
+  // 名稱開頭要整個對：2026-11-26 範本換成 12 組，名稱裡有「低淨值比」的有三組
+  const pickerTile = page.locator('.guest-picker__tile', { hasText: /^\s*低淨值比＋財務體質/ })
   await pickerTile.click()
   await page.locator('.guest-picker__confirm').click()
   await page.getByRole('button', { name: '存成我的篩選' }).waitFor({ state: 'visible', timeout: 60000 })
