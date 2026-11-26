@@ -210,10 +210,11 @@ useHead({
 
         <div class="app-card landing-bento__tile landing-bento__tile--wide">
           <h3 class="landing-bento__title"><el-icon aria-hidden="true"><Filter /></el-icon>我想找符合條件的股票</h3>
-          <!-- 範本只給符合的檔數、不列名單（名單讀起來就是推薦），跟 /screener/common/{slug} 條件頁同一個規則 -->
+          <!-- 範本只給符合的檔數、不列名單（名單讀起來就是推薦），跟選股策略頁同一個規則。條件說明頁 2026-11-26 收進選股策略頁，這裡直接用那組條件打開篩選：
+               選股策略的入口只有「新增篩選」與網站導覽（使用者 11-26） -->
           <ul v-if="home?.templates?.length" class="landing-bento__templates">
             <li v-for="template in home.templates" :key="template.slug">
-              <NuxtLink :to="screenerTemplatePath(template.slug)" class="landing-bento__template">
+              <NuxtLink :to="commonScreenerPath({ template: template.slug })" class="landing-bento__template">
                 <span class="landing-bento__template-text"><b>{{ template.name }}</b><span>{{ template.rule }}</span></span>
                 <span v-if="template.count !== null" class="landing-bento__template-count">{{ groupThousands(template.count) }}<span> 檔</span></span>
               </NuxtLink>

@@ -1,7 +1,5 @@
-// 選股策略頁（/screener/strategies）與條件說明頁（/screener/common/{slug}）共用：範本的條件一條一個、選股策略頁的分段與出處說明。
+// 選股策略頁（/screener/strategies，STRATEGIES_PATH 在 shared/utils/hub-slugs.ts）：範本的條件一條一個、排列順序與出處說明。
 // scripts/check-screener-strategies.mjs 直接 import 這個檔案，所以不寫 import；templateConditions 用自動匯入的型錄工具，檢查腳本不呼叫它
-
-export const STRATEGIES_PATH = '/screener/strategies'
 
 interface TemplateFilter {
   field: string
@@ -43,14 +41,14 @@ export function templateConditions(filters: TemplateFilter[], categories: Parame
   })
 }
 
-// 出處說明：業務中台範本說明「——」後面那段（前面是條件，卡片上已經一條一條列了）；沒有「——」就整段
+// 出處說明：業務中台範本說明「——」後面那段（前面是條件，條件表已經一條一條列了）；沒有「——」就整段
 export function strategyIntro(description: string | null | undefined): string {
   const text = (description ?? '').trim()
   const cut = text.indexOf('——')
   return cut >= 0 ? text.slice(cut + 2).trim() : text
 }
 
-// 依類別分段：篩選頁預設那一組的類別排最前面，其餘照業務中台給的順序；段裡預設那組在前
+// 依類別排：篩選頁預設那一組的類別排最前面，其餘照業務中台給的順序；同類別裡預設那組在前
 export function strategyGroups<T extends { category: string | null; isDefault: boolean }>(templates: T[]): { category: string; items: T[] }[] {
   const groups = new Map<string, T[]>()
   for (const template of [...templates.filter(item => item.isDefault), ...templates.filter(item => !item.isDefault)]) {

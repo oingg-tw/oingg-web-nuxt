@@ -28,11 +28,6 @@ export default defineEventHandler(async () => {
     urls.push(ranking?.asOf ? { loc: rankPath(page.slug), lastmod: ranking.asOf } : { loc: rankPath(page.slug) })
   }
 
-  const templates = (await settle(getScreenerTemplates())) ?? []
-  for (const template of templates) {
-    if (template.slug && template.status === 'AVAILABLE') urls.push({ loc: screenerTemplatePath(template.slug) })
-  }
-
   for (const slug of METRIC_PAGE_SLUGS) urls.push({ loc: `/learn/${slug}` })
   for (const topic of LEARN_TOPICS) urls.push({ loc: learnTopicPath(topic.slug) })
   for (const group of LEARN_GROUPS) urls.push({ loc: learnTopicPath(group.slug) })

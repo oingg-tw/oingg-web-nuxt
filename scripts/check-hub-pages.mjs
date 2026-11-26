@@ -62,7 +62,8 @@ const ROUTES = [
   // The app page: no visible breadcrumb（所以沒有 BreadcrumbList — the JSON-LD must match what is on the page）。
   // 篩選區首頁 /screener 2026-10-16 拿掉（301 到這一頁）。標題下的「官方篩選條件說明與依類股瀏覽」連結區塊 2026-10-15 依使用者要求拿掉，所以不再要求類股與條件頁連結
   { path: '/screener/common', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
-  { path: '/screener/common/low-pb-financial-strength', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
+  // 選股策略（2026-11-26）：條件說明頁收進這一頁，每一組一張條件表
+  { path: '/screener/strategies', stockLinksMin: 0, industryLinksMin: 0, tablesMin: 1, disclaimer: true, noStockLinks: true },
   // 產業索引 2026-11-09 先隱藏（使用者：「把產業殖利率當作產業索引預設畫面，URL不變化」）：/industries 畫的是殖利率分析，要求同下一列
   { path: '/industries', canonicalPath: '/industries/dividend', stockLinksMin: 0, industryLinksMin: 30, tablesMin: 0, noDescriptionWindow: true, noBreadcrumb: true },
   // 殖利率分析（2026-10-01 從 /industries 拆出來）。跟它的兄弟頁同樣沒有麵包屑，tablesMin 0
@@ -123,6 +124,8 @@ const STATUS_CASES = [
   { path: '/industry/abc', status: 404 },
   { path: '/rank/nope', status: 404 },
   { path: '/screener/common/nope', status: 404 },
+  // 條件說明頁 2026-11-26 收進選股策略頁：舊網址 301 到那一組的段落
+  { path: '/screener/common/low-pb-financial-strength', status: 301, location: '/screener/strategies#low-pb-financial-strength' },
   // 用分數篩的四個範本 2026-11-10 拿掉，說明頁接回篩選頁
   ...['financial-resilience', 'earnings-quality', 'turnaround', 'growth-momentum'].map(slug => ({ path: `/screener/common/${slug}`, status: 301, location: '/screener/common' })),
   { path: '/screener/nope', status: 404 },

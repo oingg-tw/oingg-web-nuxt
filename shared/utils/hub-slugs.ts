@@ -384,9 +384,9 @@ export function screenerTemplateNameBySlug(slug: string): string | null {
   return Object.entries(SCREENER_TEMPLATE_SLUGS).find(([, candidate]) => candidate === slug)?.[0] ?? null
 }
 
-export function screenerTemplatePath(slug: string): string {
-  return `${SCREENER_PATHS.common}/${slug}`
-}
+// 選股策略（2026-11-26）：官方範本的介紹一頁看完。原本每組一頁的條件說明 /screener/common/{代稱} 收進這一頁（使用者「蓋成方案C」），
+// 舊網址 301 到 #代稱（pages/screener/common/[preset].vue）
+export const STRATEGIES_PATH = '/screener/strategies'
 
 // /metrics/{kebab-code} — GET /metrics codes are camelCase; the URL form is kebab-case. Two
 // split points: lower/digit → upper（ocfToNetIncome → ocf-to-net-income）and upper → upper+lower

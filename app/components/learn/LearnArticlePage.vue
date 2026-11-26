@@ -125,7 +125,7 @@ const { breadcrumbs } = useHubPageSeo({
       <ul v-if="seeAlso || rankPages.length || templatePages.length || badge" class="learn-page__related">
         <li v-if="seeAlso">{{ seeAlso.text }}<NuxtLink :to="seeAlso.to" class="hub-inline-link">{{ seeAlso.name }}</NuxtLink></li>
         <li v-for="page in rankPages" :key="page.slug"><NuxtLink :to="rankPath(page.slug)" class="hub-inline-link">台股{{ page.label }}排行</NuxtLink></li>
-        <li v-for="template in templatePages" :key="template.id"><NuxtLink :to="screenerTemplatePath(template.slug!)" class="hub-inline-link">「{{ template.name }}」篩選條件說明</NuxtLink></li>
+        <li v-for="template in templatePages" :key="template.id"><NuxtLink :to="commonScreenerPath({ template: template.slug! })" class="hub-inline-link">用「{{ template.name }}」這組條件篩選</NuxtLink></li>
         <li v-if="badge">此指標在大師徽章系統中有對應徽章：<NuxtLink :to="`/guru-indicators#guru-badge-${code}`" class="hub-inline-link">看大師徽章</NuxtLink></li>
       </ul>
     </StockQuestionSection>
