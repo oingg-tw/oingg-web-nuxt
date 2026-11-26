@@ -68,6 +68,8 @@ const CODE_KINDS: Record<string, LoadFailureKind> = {
   upstream_error: 'unavailable',
   upstream_bad_response: 'unavailable',
   rate_limited: 'unavailable',
+  // 欄位加密的 KMS 暫時連不上或權杖失效（業務中台 6a98a06，2026-11-26；本機 gcloud 登入過期時持股、交易全部是這個），原本是沒代碼的 500
+  field_encryption_unavailable: 'unavailable',
   // 503＋Retry-After：全站每分鐘額度（每個實例 3,800 次，2026-10-08）滿了，不是這個呼叫端的錯（RFC 9110），所以不是 429
   server_busy: 'busy',
   internal: 'server',
