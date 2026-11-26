@@ -30,12 +30,14 @@ const props = defineProps<{
 // app holds against filling a chart's gaps.
 //
 // 特別股與 ETF 的個別頁也用這張卡（2026-10-15）：特別股畫發行公司的 logo（2881A → 2881）；ETF 畫發行投信的（2026-11-24，A＋5 碼的
-// 投信代號，公開觀測站 manifest 的 issuerLogos），沒有投信代號就不畫
-const logoSymbol = computed(() => /^[1-9]\d{3}/.exec(props.stock.code)?.[0] ?? props.stock.issuer?.code ?? null)
+// 投信代號，公開觀測站 manifest 的 issuerLogos），沒有投信代號就不畫。REIT 畫管理機構或所屬集團的（2026-11-26，manifest 的 reitLogos，
+// 鍵是大寫代號 01001T）
+const isReit = computed(() => /^\d{5}T$/.test(props.stock.code))
+const logoSymbol = computed(() => /^[1-9]\d{3}/.exec(props.stock.code)?.[0] ?? props.stock.issuer?.code ?? (isReit.value ? props.stock.code : null))
 // logo 不會變（2026-10-23）：換頁時沿用已經抓過的那一份，不重抓；第一次抓也不擋換頁（lazy，伺服器照樣等）。原本每次換頁都重抓並等它
 const { data: logoData } = await useAsyncData(
   () => `stock-logo-${logoSymbol.value ?? 'none'}`,
-  () => (!logoSymbol.value ? Promise.resolve(null) : logoSymbol.value.startsWith('A') ? $fetch(`/api/issuer/${logoSymbol.value}/logo`) : $fetch(`/api/stock/${logoSymbol.value}/logo`)),
+  () => (!logoSymbol.value ? Promise.resolve(null) : logoSymbol.value.startsWith('A') ? $fetch(`/api/issuer/${logoSymbol.value}/logo`) : isReit.value ? $fetch(`/api/reit/${logoSymbol.value}/logo`) : $fetch(`/api/stock/${logoSymbol.value}/logo`)),
   { watch: [logoSymbol], default: () => null, lazy: true, getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
 )
 const logo = computed(() => logoData.value?.logo ?? null)
@@ -170,7 +172,7 @@ const qrDialogVisible = ref(false)
       <img
         v-if="logo"
         :src="logo.url"
-        :alt="stock.issuer ? `發行投信 ${stock.issuer.name} 的識別標誌` : `${shortName} 公司識別標誌`"
+        :alt="stock.issuer ? `發行投信 ${stock.issuer.name} 的識別標誌` : isReit ? `${shortName} 管理機構的識別標誌` : `${shortName} 公司識別標誌`"
         :width="logo.width ?? undefined"
         :height="logo.height ?? undefined"
         class="summary-card__logo"
