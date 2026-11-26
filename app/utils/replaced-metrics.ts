@@ -48,7 +48,10 @@ export const REPLACED_METRICS: Record<string, string> = {
 export const SCORE_METRICS = ['threeMarginsRising', 'piotroskiFScore', 'altmanZScore', 'altmanZDoublePrimeScore', 'ohlsonOScore', 'zmijewskiScore', 'beneishMScore', 'chowderNumber', 'sue', 'sus']
 // 2026-11-25 窗口全站統一成 1／3／5／10 年（數據中台加 1、10 年版），使用者選「成長率四個都列、成本殖利率不列」：持股股利 3 年成長率
 // 放回挑選器（1、10 年版加進型錄就會出現），成本殖利率每個窗口都藏（1、10 年版的代號數據中台 11-25 給了，上 DEV 前先列，一出現就藏住）
-export const PICKER_UNLISTED_METRICS = ['yieldOnCost1y', 'yieldOnCost3y', 'yieldOnCost5y', 'yieldOnCost10y', ...SCORE_METRICS]
+// 六面向（2026-11-27，使用者：「不要列進篩選器」）：六支百分位只給個股的雷達圖（/stock/{code}/six-dimensions 與指標速覽）用，不當篩選條件
+// 與欄位。代號照詞彙表與數據中台 8dd7598；型錄同步到之前就先列，一出現就藏住
+export const SIX_DIMENSION_METRICS = ['growthMomentumPercentile', 'priceTrendPercentile', 'fundamentalImprovementPercentile', 'valuePercentile', 'financialSafetyPercentile', 'shareholderReturnPercentile']
+export const PICKER_UNLISTED_METRICS = ['yieldOnCost1y', 'yieldOnCost3y', 'yieldOnCost5y', 'yieldOnCost10y', ...SCORE_METRICS, ...SIX_DIMENSION_METRICS]
 
 // 改名的欄位 id，整個 id 對（上面那張表是用指標對）：類股欄位 2026-11-16 從 sector.code 改叫 sector.name（詞彙檢核 X17 第 1 步，業務中台兩個都收，
 // 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的。

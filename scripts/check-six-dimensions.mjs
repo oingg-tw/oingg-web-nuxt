@@ -9,6 +9,9 @@ const axes = sixDimensionAxes({ axes: [axis('valuePercentile', 22.7), axis('grow
 assert.deepEqual(axes.map(item => [item.label, item.value, item.nullReason]), [['成長動能', 82.4, null], ['價格趨勢', 91.3, null], ['體質改善', null, 'missing_input'], ['價值', 22.7, null], ['財務安全', 73.5, null], ['股東回饋', null, null]])
 assert.deepEqual(sixDimensionAxes(null).map(item => item.value), [null, null, null, null, null, null])
 assert.equal(SIX_DIMENSIONS.length, 6)
+// 不列進篩選器的那份名單（replaced-metrics.ts，使用者 2026-11-27「不要列進篩選器」）跟這裡是同樣六支
+const { SIX_DIMENSION_METRICS } = await import('../app/utils/replaced-metrics.ts')
+assert.deepEqual(SIX_DIMENSIONS.map(item => item.code), SIX_DIMENSION_METRICS)
 
 // 表格兩位、圖上整數；不是數字的當沒有
 assert.equal(percentileText(82.4), '82.40')
