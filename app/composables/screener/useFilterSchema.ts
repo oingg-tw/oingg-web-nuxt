@@ -155,7 +155,11 @@ export interface Metric {
 }
 
 export interface MetricBadgeThreshold {
-  description: string
+  // 通過那一端的條件。只有警示的徽章沒有這個鍵（2026-11-27 數據中台：Beneish M、Zmijewski、外資持股三個月變化）
+  description?: string | null
+  // 警示那一端的條件（Piotroski 的 ≤ 2 從 2026-09-20 就有，2026-11-27 徽章換成「正向 5 個、警示 5 個」後才畫出來）。
+  // 精簡版型錄只留 description；note、comparator、thresholdLatex 沒有人讀
+  warning?: { description: string } | null
   denominator: number
   // Present on the eight badges whose threshold is a market position（「前 20%」「最低十分位」）rather
   // than a value. Typed 2026-09-22 the same way `note` was the day before: the field was already in

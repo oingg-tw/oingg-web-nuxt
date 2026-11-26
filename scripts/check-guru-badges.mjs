@@ -27,4 +27,15 @@ assert.equal(guruCategoryIcon('獲利品質'), GURU_CATEGORY_ICON['獲利品質'
 assert.ok(guruCategoryIcon('技術面'))
 assert.ok(GURU_BADGE_CATEGORIES.every(category => GURU_CATEGORY_ICON[category]))
 
+// 警示那一端（2026-11-27，數據中台把徽章換成「正向 5 個、警示 5 個」）：型錄的 threshold.warning.description 要帶到畫面；
+// 只有警示的徽章沒有通過條件（description 是 null 或不帶），不能印出 undefined，也不能把警示當成通過條件
+const withThreshold = threshold => ({ key: 'x', name: 'x', unit: '', fields: [{ key: 'Q', period: 'Q' }], badge: { ...badge('x'), threshold } })
+const thresholdOf = threshold => buildGuruBadges([{ key: 'quality', name: '獲利品質', sort: 0, metrics: [withThreshold(threshold)] }])[0].threshold
+assert.deepEqual(thresholdOf({ description: '≥ 8', denominator: 9, warning: { description: '≤ 2' } }), { description: '≥ 8', warning: '≤ 2', denominator: 9, isPercentileRank: false, percentileDirection: null })
+assert.deepEqual(thresholdOf({ description: '≥ 7', denominator: 9 }), { description: '≥ 7', warning: null, denominator: 9, isPercentileRank: false, percentileDirection: null })
+// 只有警示：精簡版型錄不帶 null 的鍵（pickKeys），所以兩種寫法都要當成沒有
+for (const only of [{ description: null, denominator: 1, warning: { description: '≤ −2 個百分點' } }, { denominator: 1, warning: { description: '≤ −2 個百分點' } }]) {
+  assert.deepEqual(thresholdOf(only), { description: null, warning: '≤ −2 個百分點', denominator: 1, isPercentileRank: false, percentileDirection: null })
+}
+
 console.log('PASS: guru badges')

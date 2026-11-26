@@ -51,7 +51,10 @@ export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介
 // 算 `passed` 後移除——他們指出用戶端那套有真 bug（比較器處理不一致、產業排除的 null 情況）。這裡只剩 `description` 與 Piotroski
 // 多訊號分數顯示要用的 `denominator`。
 export interface GuruBadgeThreshold {
-  description: string
+  // 通過那一端的條件；只有警示的徽章是 null（2026-11-27：Beneish M、Zmijewski、外資持股三個月變化）
+  description: string | null
+  // 警示那一端的條件（型錄 threshold.warning.description）；沒有警示的徽章是 null。兩端都有的是 Piotroski（≥ 8／≤ 2）與均線排列
+  warning: string | null
   // How many "points" this badge is out of. Piotroski F-Score is the one genuine 0-9 checklist
   // (denominator 9; split into 3 badges 2026-09-10, merged back into one 2026-09-19 by the
   // user's decision); every other badge here is a single real published comparison
@@ -125,7 +128,8 @@ function metricBadgeToGuruBadge(category: string, metric: Metric): GuruBadge | n
     hasProvenance: metric.hasProvenance ?? false,
     sourceUrl: badge.sourceUrl ?? null,
     threshold: {
-      description: threshold.description,
+      description: threshold.description ?? null,
+      warning: threshold.warning?.description ?? null,
       denominator: threshold.denominator,
       isPercentileRank: threshold.percentileRank != null,
       percentileDirection: threshold.percentileRank?.order ?? null

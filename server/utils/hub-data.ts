@@ -653,7 +653,11 @@ export const getFilterSchemaCatalog = defineCachedFunction(
               ? {
                   badge: {
                     ...pickKeys(badge, ['name', 'nameEn', 'nameSuffix', 'author', 'summary', 'timeframe', 'detail', 'sourceUrl']),
-                    threshold: pickKeys(badge.threshold as LooseRecord, ['description', 'denominator', 'percentileRank', 'allPositiveFieldIds'])
+                    // 只有警示的徽章沒有 description（pickKeys 本來就略過）；warning 只留它的 description（2026-11-27 徽章彈窗開始畫警示條件）
+                    threshold: {
+                      ...pickKeys(badge.threshold as LooseRecord, ['description', 'denominator', 'percentileRank', 'allPositiveFieldIds']),
+                      ...((badge.threshold as LooseRecord).warning ? { warning: pickKeys((badge.threshold as LooseRecord).warning as LooseRecord, ['description']) } : {})
+                    }
                   }
                 }
               : {})
@@ -663,8 +667,9 @@ export const getFilterSchemaCatalog = defineCachedFunction(
     }
   },
   // -v2：同上（沒有單位改成 null，精簡版不帶這個鍵）；-v3：最新財報季別的選項多了 fiscalYear／fiscalQuarter（2026-11-04），舊快取沒有；
-  // -v4：同日跟著 hub-metrics-catalog-v3 換（v3 是從還沒有是／否欄位的目錄建的）；-v5：2026-11-13 長文字移到 getMetricTexts
-  { name: 'hub-filter-schema-v5', ...swrCache(TTL_CATALOG, TTL_STATIC) }
+  // -v4：同日跟著 hub-metrics-catalog-v3 換（v3 是從還沒有是／否欄位的目錄建的）；-v5：2026-11-13 長文字移到 getMetricTexts；
+  // -v6：2026-11-27 徽章門檻多帶 warning.description
+  { name: 'hub-filter-schema-v6', ...swrCache(TTL_CATALOG, TTL_STATIC) }
 )
 
 // 精簡目錄拿掉的長文字，以指標代號為鍵（2026-11-13，/api/hub/metric-texts）：挑指標的面板在頁面閒下來時抓整份（搜尋英文名、別名，

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Trophy, TopRight } from '@element-plus/icons-vue'
+import { Trophy, TopRight, Warning } from '@element-plus/icons-vue'
 import type { GuruBadge } from '~/utils/guru-badges'
 const props = defineProps<{
   badge: GuruBadge
@@ -10,6 +10,9 @@ const dialogVisible = ref(false)
 // 徽章一律主題色（2026-09-10 使用者：「徽章的顏色都幫我統一改成主題色...減少畫面上的雜訊」），分類已由卡片所在的區塊說明
 const categoryColor = 'var(--el-color-primary)'
 const DISCLAIMER = GURU_BADGE_DISCLAIMER
+
+// 只有警示的徽章（沒有通過條件，2026-11-27）不畫獎盃：獎盃是「符合」的意思
+const medalIcon = computed(() => (!props.badge.threshold.description && props.badge.threshold.warning ? Warning : Trophy))
 
 // 幾個徽章（F-Score、Z-Score…）沒有中文名，nameEn 跟 name 同字串，只有真的不同才多顯示一行
 const hasDistinctNameEn = computed(() => props.badge.nameEn !== props.badge.name)
@@ -33,7 +36,7 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
   <el-card :id="`guru-badge-${badge.id}`" class="guru-badge-card" shadow="hover" :body-style="{ padding: 0 }">
     <button type="button" class="guru-badge-card__trigger" @click="dialogVisible = true" @pointerenter="prefetchFormula" @focus="prefetchFormula">
       <div class="guru-badge-card__medal" :style="{ background: categoryColor }">
-        <el-icon><Trophy /></el-icon>
+        <el-icon><component :is="medalIcon" /></el-icon>
       </div>
       <el-tag :color="categoryColor" class="guru-badge-card__category">
         {{ badge.category }}
@@ -70,7 +73,12 @@ const sourceUrl = computed(() => props.badge.sourceUrl)
          2026-09-10 實測 rgb(30,30,30) 對 rgb(38,39,39)）；視覺重點在公式，門檻文字退回一般字重（使用者指定）。 -->
     <div class="app-card guru-badge-card__criteria-card">
       <p class="guru-badge-card__criteria-label">比較標準</p>
-      <p class="guru-badge-card__criteria-value">{{ badge.threshold.description }}</p>
+      <!-- 有警示那一端的寫明哪一行是哪一端（2026-11-27）；只有通過條件的照舊一行，不加標籤 -->
+      <template v-if="badge.threshold.warning">
+        <p v-if="badge.threshold.description" class="guru-badge-card__criteria-value">符合：{{ badge.threshold.description }}</p>
+        <p class="guru-badge-card__criteria-value">警示：{{ badge.threshold.warning }}</p>
+      </template>
+      <p v-else class="guru-badge-card__criteria-value">{{ badge.threshold.description }}</p>
       <!-- 幾個公式（Ohlson／Zmijewski／Beneish 的多項迴歸）寬過對話框：在自己的盒子裡橫向捲動；可聚焦的具名區域，鍵盤才捲得到被切掉的那一段 -->
       <div v-if="formulaHtml" class="guru-badge-card__criteria-formula" tabindex="0" role="group" :aria-label="`${badge.name}的公式，可左右捲動`" v-html="formulaHtml" />
     </div>
