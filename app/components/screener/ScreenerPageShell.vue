@@ -265,6 +265,7 @@ function fromElOrder(order: 'ascending' | 'descending' | null): 'asc' | 'desc' |
       v-model="screener.newTabDialogVisible"
       :templates="screener.templates"
       :templates-loading="screener.templatesLoading"
+      :strategies-link="universe === 'common'"
       @custom="screener.addTab()"
       @copy="screener.copyActiveTab()"
       @template="screener.addTemplateTab"

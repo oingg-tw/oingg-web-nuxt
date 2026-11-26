@@ -48,7 +48,8 @@ const coverageItems = computed(() => {
 const linksOf = (key: SiteMapGroup['key']) => SITE_MAP.find(group => group.key === key)?.links ?? []
 const dividendLinks = linksOf('dividends')
 const findLinks = linksOf('find')
-const screenerLinks = findLinks.filter(link => link.to.startsWith('/screener'))
+// 選股策略不放首頁（入口只有網站導覽與「新增篩選」，2026-11-26）
+const screenerLinks = findLinks.filter(link => link.to.startsWith('/screener') && link.to !== STRATEGIES_PATH)
 const rankLink = findLinks.find(link => link.to === '/rank')!
 const industriesLink = findLinks.find(link => link.to === '/industries')!
 const companyCount = computed(() => sectors.value.reduce((sum, sector) => sum + sector.companyCount, 0))

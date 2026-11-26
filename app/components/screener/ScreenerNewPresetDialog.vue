@@ -5,6 +5,8 @@ import type { ScreenerTemplateOption } from '~/composables/screener/screener-tab
 const props = defineProps<{
   templates: ScreenerTemplateOption[]
   templatesLoading: boolean
+  // 普通股才有：格子下面一行連到選股策略頁（2026-11-26，使用者要的兩個入口之一，另一個是網站導覽）
+  strategiesLink?: boolean
 }>()
 const visible = defineModel<boolean>({ required: true })
 
@@ -140,10 +142,25 @@ const activeTemplates = computed(() => {
         </button>
       </div>
     </div>
+
+    <p v-if="step === 'grid' && strategiesLink" class="new-preset-dialog__strategies">
+      <NuxtLink :to="STRATEGIES_PATH" class="hub-inline-link">看每組選股策略的介紹 ›</NuxtLink>
+    </p>
   </el-dialog>
 </template>
 
 <style scoped>
+/* 連結本身至少 44px 高（觸控目標），所以段落不另外留上下距離以外的空間 */
+.new-preset-dialog__strategies {
+  margin: 8px 0 0;
+}
+
+.new-preset-dialog__strategies a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .new-preset-dialog__status {
   padding: 24px 0;
   text-align: center;

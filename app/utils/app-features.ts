@@ -120,6 +120,8 @@ export const SITE_MAP: SiteMapGroup[] = [
     label: '我想找符合條件的股票',
     links: [
       { label: '普通股篩選', to: SCREENER_PATHS.common, description: '用 ROE、負債比率、殖利率等條件，篩出符合的上市櫃公司' },
+      // 選股策略的入口只有這裡與「新增篩選」彈窗（2026-11-26，使用者：「這樣使用流程我認為比較合理」）；首頁那一格的連結列把它濾掉
+      { label: '選股策略', to: STRATEGIES_PATH, description: '幾組寫明出處的選股條件，看每組篩什麼、今天有幾檔符合' },
       { label: '特別股篩選', to: SCREENER_PATHS.preferred, description: '比較特別股的股息率、最差殖利率與契約條件' },
       { label: 'ETF 篩選', to: SCREENER_PATHS.etf, description: '依規模、費用率、配息頻率比較 ETF' },
       { label: 'REITs 總覽', to: SCREENER_PATHS.reits, description: '比較 REITs 的淨值折溢價與近 12 個月分配率' },

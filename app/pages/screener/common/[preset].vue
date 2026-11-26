@@ -25,40 +25,8 @@ const [{ data: countData }, { data: catalog }] = await Promise.all([
 
 const matchCount = computed(() => countData.value?.count ?? null)
 
-interface ConditionRow {
-  field: string
-  metricCode: string
-  label: string
-  period: string
-  range: string
-  metricPage: string | null
-}
-
-function rangeText(filter: ScreenerTemplateWithSlug['filters'][number], unit: string): string {
-  const suffix = unit === '%' ? '%' : unit ? ` ${unit}` : ''
-  const min = filter.min !== null ? `${filter.min}${suffix}` : null
-  const max = filter.max !== null ? `${filter.max}${suffix}` : null
-  let text = min && max ? `${min} 到 ${max}` : min ? `≥ ${min}` : max ? `≤ ${max}` : '有值即可'
-  if (filter.exclude) text = `排除：${text}`
-  // 負的界線用「−」（成長突破的「距 52 週高點 ≥ −15%」，2026-11-24）
-  return minusSign(text)
-}
-
-const conditions = computed<ConditionRow[]>(() =>
-  (template.value?.filters ?? []).map(filter => {
-    const located = locateFieldInSchema(catalog.value?.categories ?? [], filter.field)
-    const metricCode = filter.field.split('.')[0] ?? filter.field
-    const slugOf = metricSlug(metricCode)
-    return {
-      field: filter.field,
-      metricCode,
-      label: located ? metricDisplayName(located.metric) : metricCode,
-      period: located ? (formatPeriodLabel(located.field.period) ?? located.field.period) : (filter.field.split('.')[1] ?? ''),
-      range: rangeText(filter, located?.metric.unit ?? ''),
-      metricPage: isIndexableMetricSlug(slugOf) ? metricPath(metricCode) : null
-    }
-  })
-)
+// 條件一條一個（指標、期間、區間），選股策略頁的卡片用同一份（app/utils/screener-strategies.ts）
+const conditions = computed(() => templateConditions(template.value?.filters ?? [], catalog.value?.categories ?? []))
 
 const conditionSummary = computed(() => conditions.value.map(row => `${row.label}（${row.period}）${row.range}`).join('；'))
 const otherTemplates = computed(() => templates.value.filter(item => item.slug && item.slug !== slug && item.status === 'AVAILABLE'))
