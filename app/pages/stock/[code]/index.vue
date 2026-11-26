@@ -484,11 +484,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <!-- 六面向是雷達圖（SVG），不是 ECharts：內容區跟其他卡片讀取中的佔位同高，圖載到了不會把版面推動 -->
         <SharedChartCard v-else-if="item.spec.kind === 'six-dimensions' && !pageLoading('six-dimensions')">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="sixDimensions?.asOf ?? ''" @remove="removeRow(item.slug, item.label)" /></template>
-          <div v-if="sixHasValues" class="stock-quick-view-page__six">
-            <SharedChartLegend :groups="SIX_DIMENSIONS_LEGEND" />
-            <StockSixDimensionsRadar :axes="sixAxes" :label="sixDimensionsAriaLabel(stockShortName, sixAxes)" />
+          <!-- 沒有資料時那一句也放在同高的內容區裡：這張是預設卡片，讀取中的佔位換成一行字會把下面整頁往上拉 -->
+          <div class="stock-quick-view-page__six">
+            <template v-if="sixHasValues">
+              <SharedChartLegend :groups="SIX_DIMENSIONS_LEGEND" />
+              <StockSixDimensionsRadar :axes="sixAxes" :label="sixDimensionsAriaLabel(stockShortName, sixAxes)" />
+            </template>
+            <p v-else class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
           </div>
-          <p v-else class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
         </SharedChartCard>
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
