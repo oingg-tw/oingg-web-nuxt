@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Coin, CircleCheck, Histogram, Lock, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
+import { Coin, CircleCheck, Histogram, Lock, Medal, PriceTag, Refresh, Suitcase, TrendCharts } from '@element-plus/icons-vue'
 import type { FinancialAnalysisDimension } from '~/utils/financial-analysis-dimensions'
 import type { MetricCategory, Metric } from '~/composables/screener/useFilterSchema'
 
@@ -23,10 +23,13 @@ export const GURU_CATEGORY_ICON: Record<GuruBadgeCategory, Component> = {
   營運周轉: Refresh,
   大戶籌碼: Suitcase
 }
+// 這張表不認得的分類（型錄新增的，例如數據中台 2026-11-26 說徽章重訂後可能有技術面、籌碼面）用同一個預設圖示
+export const guruCategoryIcon = (category: string): Component => (GURU_CATEGORY_ICON as Record<string, Component>)[category] ?? Medal
 
 // GET /metrics 的 category `key`（analysis-ts 穩定的內部 slug）→ 本站的顯示名稱（2026-09-10）。後端的 name 有時跟本站用詞不同
 //（實測 股東政策→股東回饋、營運效率→營運周轉），所以鍵用 key 不用 name。型錄沒有 大戶籌碼（前端專用、目前零徽章），刻意不列。
-// buildGuruBadges() 也用它推每個徽章的顯示分類。
+// buildGuruBadges() 也用它推每個徽章的顯示分類；這裡沒有的 key 用型錄自己的分類名稱（2026-11-26：原本整類略過，新分類的徽章
+// 會悄悄不見）。
 export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> = {
   valuation: '市場評價',
   dividend: '股東回饋',
@@ -37,7 +40,7 @@ export const METRIC_CATEGORY_KEY_TO_DISPLAY: Record<string, GuruBadgeCategory> =
   growth: '成長動能'
 }
 
-// 固定的一行免責文字，由顯示徽章明細的元件各自顯示一次（GuruBadgeCard、StockBadgeDetailPage）——「與其文案在那邊寫非投資建議，
+// 固定的一行免責文字，由顯示徽章明細的元件顯示一次（GuruBadgeCard）——「與其文案在那邊寫非投資建議，
 // 不如把這個彈窗共用元件下面放固定文案就好」（2026-09-09）。
 export const GURU_BADGE_DISCLAIMER = '以上為公開學術方法論的框架介紹，不代表本站對任何個股之評等或投資建議。'
 
@@ -71,7 +74,8 @@ export interface GuruBadge {
   name: string
   nameEn: string
   author: string
-  category: GuruBadgeCategory
+  // 顯示分類：GURU_BADGE_CATEGORIES 的八類，或型錄新分類自己的名稱
+  category: string
   // 這個方法論對應的 GET /metrics 欄位（metricCode.timeframe 格式，不是舊的 metricKey.fieldKey）；2026-09-09 起對每檔做即時查詢。
   fieldId: string
   summary: string
@@ -93,7 +97,7 @@ export interface GuruBadge {
 // comparator 等欄位這裡沒用到，只用 threshold.description 與 denominator。門檻的合規審查史（為什麼移除 RNOA／杜邦／SGR／CCC 徽章、
 // NCAV 的 2/3 安全邊際為什麼拿掉）在 analysis-ts 的 MetricDefinitionSpec 註解。buildGuruBadges() 從型錄的 badge 欄位重建同樣的
 // GuruBadge 形狀，呼叫端不用知道資料曾經手寫在這裡。
-function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: Metric): GuruBadge | null {
+function metricBadgeToGuruBadge(category: string, metric: Metric): GuruBadge | null {
   const badge = metric.badge
   if (!badge) return null
   const { threshold } = badge
@@ -137,8 +141,7 @@ function metricBadgeToGuruBadge(category: GuruBadgeCategory, metric: Metric): Gu
 export function buildGuruBadges(categories: MetricCategory[]): GuruBadge[] {
   const badges: GuruBadge[] = []
   for (const backendCategory of categories) {
-    const displayCategory = METRIC_CATEGORY_KEY_TO_DISPLAY[backendCategory.key]
-    if (!displayCategory) continue
+    const displayCategory = METRIC_CATEGORY_KEY_TO_DISPLAY[backendCategory.key] ?? backendCategory.name
     for (const metric of backendCategory.metrics) {
       const badge = metricBadgeToGuruBadge(displayCategory, metric)
       if (badge) badges.push(badge)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
-import type { GuruBadge, GuruBadgeCategory } from '~/utils/guru-badges'
+import type { GuruBadge } from '~/utils/guru-badges'
 
 // 大師徽章（2026-09-14 定名，之前叫 徽章與指標／徽章系統／大師指標，見 app-features.ts）。原本有兩層：有門檻的徽章，加上其他指標的
 // 純參考表；2026-09-14 只留徽章（「不再顯示指標，因為表格模式取代了指標」——個股頁的歷年統計表已把每支指標當數字列出，這裡再放
@@ -12,17 +12,18 @@ const { data: filterSchema } = await useFilterSchema()
 useSeoMeta({ title: '大師徽章' })
 
 interface CategoryGroup {
-  category: GuruBadgeCategory
+  category: string
   anchor: string
   badges: GuruBadge[]
 }
 
-// 依 GURU_BADGE_CATEGORIES 的顯示順序排，不是 GET /metrics 的分類順序（後端順序是資料，不是版面）
+// 依 GURU_BADGE_CATEGORIES 的顯示順序排，不是 GET /metrics 的分類順序（後端順序是資料，不是版面）；這份順序不認得的分類
+//（型錄新增的）照型錄的先後接在後面，不會整類不見
 const categoryGroups = computed<CategoryGroup[]>(() => {
   const categories = filterSchema.value?.categories ?? []
   const allBadges = buildGuruBadges(categories)
 
-  return GURU_BADGE_CATEGORIES.map(category => {
+  return [...new Set([...GURU_BADGE_CATEGORIES, ...allBadges.map(badge => badge.category)])].map(category => {
     const badges = allBadges.filter(badge => badge.category === category)
     return { category, anchor: `guru-cat-${category}`, badges }
   }).filter(group => group.badges.length > 0)
@@ -75,7 +76,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
     <!-- 分類列不上色、只放 icon（使用者指定，同個股頁的分類列；GURU_CATEGORY_ICON 兩邊共用） -->
     <nav v-if="filteredGroups.length" class="guru-indicators-page__nav" aria-label="分類快速跳轉">
       <a v-for="group in filteredGroups" :key="group.anchor" :href="`#${group.anchor}`" class="hub-chip">
-        <el-icon class="guru-indicators-page__nav-icon"><component :is="GURU_CATEGORY_ICON[group.category]" /></el-icon>
+        <el-icon class="guru-indicators-page__nav-icon"><component :is="guruCategoryIcon(group.category)" /></el-icon>
         {{ group.category }}
       </a>
     </nav>
@@ -84,7 +85,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 
     <section v-for="group in filteredGroups" :id="group.anchor" :key="group.anchor" class="guru-indicators-page__section">
       <h2 class="guru-indicators-page__section-title">
-        <el-icon class="guru-indicators-page__section-icon"><component :is="GURU_CATEGORY_ICON[group.category]" /></el-icon>
+        <el-icon class="guru-indicators-page__section-icon"><component :is="guruCategoryIcon(group.category)" /></el-icon>
         {{ group.category }}
       </h2>
 
