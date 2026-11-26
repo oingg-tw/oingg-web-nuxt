@@ -368,7 +368,9 @@ export const SCREENER_TEMPLATE_SLUGS: Record<string, string> = {
   '高殖利率＋財務體質＋低淨值比': 'high-yield-financial-strength-low-pb',
   '財務體質＋接近高點': 'financial-strength-near-high',
   '低企業價值營收比＋近一年上漲': 'low-ev-sales-uptrend',
-  '合理本益比＋獲利成長＋接近高點': 'reasonable-pe-growth-near-high',
+  // 上架當晚改名（原本叫「合理本益比＋獲利成長＋接近高點」、reasonable-pe-growth-near-high：「合理」是 compliance-words 的禁用詞，使用者在業務中台
+  // 選了改名並換代稱，業務中台 0037）。舊代稱只在 DEV 存在過幾個小時，不留轉址
+  '本益成長比＋接近高點': 'peg-near-high',
   // 投資風格的代表範本（數據中台第十一輪，2026-11-26 21:13 上，業務中台 0035）：價值、成長、股利、品質、趨勢、防禦各一組。「規模」那一類
   //（大型權值股、小型股）同日拿掉，使用者：「希望規模拿掉 他呈現效果比我想像中更不明所以 是我的一個錯誤決策」
   '低本益比＋低淨值比': 'low-pe-low-pb',
