@@ -40,6 +40,12 @@ export const SIX_DIMENSIONS = [
   { code: 'shareholderReturnPercentile', label: '股東回饋' }
 ] as const
 
+// 雷達圖上方那一列（全站圖表的畫法：單位在左、說明在右）：頁面與指標速覽的卡片共用
+export const SIX_DIMENSIONS_LEGEND = [
+  { unit: '百分位（0 最低、100 最高）', items: [] },
+  { right: true, items: [{ name: '50：上市櫃公司的中間', color: 'currentColor', kind: 'line' as const, dash: 'dashed' as const }] }
+]
+
 export interface SixDimensionAxis {
   code: string
   label: string

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { RadarBreakdown, SixDimensionAxis } from '~/utils/six-dimensions'
-import type { ChartLegendGroup } from '~/components/shared/SharedChartLegend.vue'
 
 // 六面向（2026-11-27，使用者：「設計一個個股 卡片 / 頁面 應用到雷達圖。跟數據中台核對計算方式。」；設計圖
 // https://claude.ai/artifact/FWP3mJfa44md4csrM31MAb）：一家公司在成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋六件事上，各排在
@@ -13,11 +12,10 @@ const code = computed(() => String(route.params.code))
 const TOPIC = '六面向'
 
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
-// 六面向、型錄（組成指標的名稱、單位、選項）與公司資料（認興櫃）一起等到了才換頁：頁面沒有讀取中的樣子，資料晚到不會把版面往下推
-const [{ data, error, refresh }, { data: filterSchema }, { data: detail }] = await Promise.all([
+// 六面向與型錄（組成指標的名稱、單位、選項）一起等到了才換頁：頁面沒有讀取中的樣子，資料晚到不會把版面往下推
+const [{ data, error, refresh }, { data: filterSchema }] = await Promise.all([
   useFetch<RadarBreakdown>(() => `/api/cached/stocks/${code.value}/radar-breakdown`, { key: () => `stock-six-dimensions-${code.value}`, watch: [code] }),
-  useFilterSchema(),
-  useCompanyProfileDetail(code)
+  useFilterSchema()
 ])
 // 404（興櫃、不在母體）是沒有資料，不是讀不到
 watchLoadFailure(() => `stock-six-dimensions:${code.value}`, () => (error.value?.statusCode === 404 ? null : error.value), refresh)
@@ -25,19 +23,13 @@ watchLoadFailure(() => `stock-six-dimensions:${code.value}`, () => (error.value?
 const axes = computed(() => sixDimensionAxes(data.value))
 const hasAny = computed(() => axes.value.some(axis => axis.value !== null))
 const asOf = computed(() => data.value?.asOf ?? null)
-const emerging = computed(() => detail.value?.market === 'rotc')
+const emerging = computed(() => profile.value?.market === 'rotc')
 
 const answer = computed(() => {
   if (emerging.value) return '六面向只算上市櫃公司，興櫃公司不在比較範圍裡。'
   if (!data.value) return `目前沒有${stockShortName.value}的六面向資料。`
   return sixDimensionsAnswer(axes.value, asOf.value) ?? `${stockShortName.value}的六個面向都算不出來：每個面向的組成指標都不到一半有值。`
 })
-
-// 圖例那一列：單位在左，虛線那一圈的意思在右（全站圖表的畫法）
-const LEGEND: ChartLegendGroup[] = [
-  { unit: '百分位（0 最低、100 最高）', items: [] },
-  { right: true, items: [{ name: '50：上市櫃公司的中間', color: 'currentColor', kind: 'line', dash: 'dashed' }] }
-]
 
 // 第二段：每個面向的組成指標。名稱、單位、選項（均線排列）照型錄；有好幾種期別的才寫期別（只有一種的寫了也沒有資訊）
 const categories = computed(() => filterSchema.value?.categories ?? [])
@@ -77,7 +69,8 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '六面向：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋',
+  // 標題至多 32 字（check-stock-pages）：六個面向的名稱寫在 description，標題只寫這一頁有什麼
+  titleKeywords: '六面向雷達圖與組成指標',
   pathSuffix: '/six-dimensions',
   stock,
   description,
@@ -113,7 +106,7 @@ const GUIDE = [
       <div v-if="data" class="stock-six-dimensions-page__overview">
         <div class="stock-six-dimensions-page__overview-grid">
           <SharedChartCard v-if="hasAny">
-            <SharedChartLegend :groups="LEGEND" />
+            <SharedChartLegend :groups="SIX_DIMENSIONS_LEGEND" />
             <StockSixDimensionsRadar :axes="axes" :label="sixDimensionsAriaLabel(stockShortName, axes)" />
           </SharedChartCard>
           <SharedTable :label="`${stockShortName}六個面向的百分位${asOf ? `（${asOf}）` : ''}`">

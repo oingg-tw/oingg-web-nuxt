@@ -12,6 +12,7 @@ import type { StockSolvencyPageResponse } from '#shared/types/stock-solvency-pag
 import type { StockSeriesResponse } from '#shared/types/stock-series'
 import type { ShareholdingDistribution } from '#shared/types/screener-detail'
 import type { StockNewsResponse } from '#shared/types/stock-news'
+import type { RadarBreakdown } from '~/utils/six-dimensions'
 import type { RiverCellsByTimeframe, RiverLatest, RiverMissing } from '#shared/types/stock-metric-page'
 import type { RiverKind } from '#shared/utils/metric-pages'
 import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
@@ -188,9 +189,10 @@ const nameOf = (metricCode: string) => {
   return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
 }
 // 標題後面接最新數值（2026-10-07「速覽 卡片 左上角的 後面 請放上數值」），跟表格同一份 /screener/values
+// 興櫃沒有六面向（只算上市櫃）：那張卡片不畫，伺服器先畫的佔位也沒有，不會先留一塊再消失
 const charts = computed(() => rows.value.flatMap(row => {
   const spec = quickViewChartOf(row.slug)
-  return spec ? [{ ...row, spec }] : []
+  return spec && !(spec.kind === 'six-dimensions' && profile.value?.market === 'rotc') ? [{ ...row, spec }] : []
 }))
 
 // 上移／下移在表格最後一欄（2026-10-07「把上移／下移做進速覽 表格中」）。按鈕不是拖曳：拖曳要另補
@@ -259,8 +261,11 @@ const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric' | 'pr
   'solvency': 'solvency',
   'cash-cycle': 'series?page=cash-cycle',
   'holders': 'holders',
-  'news': 'news'
+  'news': 'news',
+  // 六面向（2026-11-27）不在 /api/stock 底下：數據中台算好的個股明細經快取轉發讀，跟那一頁同一支（pageUrl）
+  'six-dimensions': 'radar-breakdown'
 }
+const pageUrl = (kind: keyof typeof PAGE_DATA) => (kind === 'six-dimensions' ? `/api/cached/stocks/${code.value}/${PAGE_DATA[kind]}` : `/api/stock/${code.value}/${PAGE_DATA[kind]}`)
 const pinnedKinds = computed(() => new Set(pinnedSlugs.value.map(slug => quickViewChartOf(slug)?.kind)))
 const pageData = new Map<string, Ref<unknown>>()
 const pageStatus = new Map<string, Ref<string>>()
@@ -269,7 +274,7 @@ function usePageData<T>(kind: keyof typeof PAGE_DATA) {
     () => `quick-view-${kind}-${code.value}`,
     async () => {
       if (!pinnedKinds.value.has(kind)) return null
-      const response = await $fetch<T>(`/api/stock/${code.value}/${PAGE_DATA[kind]}`, { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
+      const response = await $fetch<T>(pageUrl(kind), { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
       // 上游讀不到時伺服器回 200、series 或某個群組是 null（各頁當讀取失敗處理，見 margins.vue 的 readFailed）：這裡同樣當成沒讀到
       const partial = response as { series?: unknown; groups?: Record<string, unknown> } | null
       return partial?.series === null || Object.values(partial?.groups ?? {}).includes(null) ? null : response
@@ -296,6 +301,10 @@ const solvencyData = usePageData<StockSolvencyPageResponse>('solvency')
 const cashCycleSeries = usePageData<StockSeriesResponse>('cash-cycle')
 const holdersData = usePageData<ShareholdingDistribution>('holders')
 const newsData = usePageData<StockNewsResponse>('news')
+// 六面向的雷達圖（2026-11-27，預設第一張）：六個軸照固定順序；一個都算不出來、興櫃（上游 404）或還沒有資料時卡片寫一句
+const sixDimensions = usePageData<RadarBreakdown>('six-dimensions')
+const sixAxes = computed(() => sixDimensionAxes(sixDimensions.value))
+const sixHasValues = computed(() => sixAxes.value.some(axis => axis.value !== null))
 // 金融業的資產負債表不分流動與非流動，那兩塊沒有可畫的期別：落到下面的空卡，不要整格消失
 const hasBalanceRows = (part: BalanceCompositionKind) => !!balanceComposition.value?.periods.some(period => pickBalanceComposition(part, period))
 const cashCycleEntry = computed(() => latestCashCycleEntry(cashCycleSeries.value?.groups?.TTM_CYCLE_20?.entries ?? []))
@@ -472,6 +481,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         <StockNewsCard v-else-if="item.spec.kind === 'news'" :news="newsData" :loading="pageLoading('news')" :short-name="stockShortName" :today="taipeiToday">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" value="" @remove="removeRow(item.slug, item.label)" /></template>
         </StockNewsCard>
+        <!-- 六面向是雷達圖（SVG），不是 ECharts：內容區跟其他卡片讀取中的佔位同高，圖載到了不會把版面推動 -->
+        <SharedChartCard v-else-if="item.spec.kind === 'six-dimensions' && !pageLoading('six-dimensions')">
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="sixDimensions?.asOf ?? ''" @remove="removeRow(item.slug, item.label)" /></template>
+          <div v-if="sixHasValues" class="stock-quick-view-page__six">
+            <SharedChartLegend :groups="SIX_DIMENSIONS_LEGEND" />
+            <StockSixDimensionsRadar :axes="sixAxes" :label="sixDimensionsAriaLabel(stockShortName, sixAxes)" />
+          </div>
+          <p v-else class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
+        </SharedChartCard>
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>
@@ -618,6 +636,23 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
 @container (min-width: 520px) {
   .stock-quick-view-page__placeholder {
     height: calc(32px + 8px + 320px);
+  }
+}
+
+/* 六面向的雷達圖卡片：內容區至少跟佔位一樣高、圖放中間。圖最寬 11.75rem（188×214）：窄卡片圖例折成兩行（52）加軸名兩列（94）
+   加圖 214 是 368，放得進 372；寬卡片圖例一行，342 放得進 360 */
+.stock-quick-view-page__six {
+  --six-radar-plot: 11.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: calc(44px + 8px + 320px);
+}
+
+@container (min-width: 520px) {
+  .stock-quick-view-page__six {
+    min-height: calc(32px + 8px + 320px);
   }
 }
 

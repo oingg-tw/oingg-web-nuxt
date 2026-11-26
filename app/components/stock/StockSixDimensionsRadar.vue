@@ -45,7 +45,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
 }
 
 /* 窄的時候（手機、指標速覽的格子）：圖撐滿寬度，最寬 15rem；六個軸名排在圖的上面一列、下面一列，左右兩個各靠自己那一側的角。
-   軸名放圖的兩旁要吃掉 144px，320 寬的手機上圖只剩 87px */
+   軸名放圖的兩旁要吃掉 144px，320 寬的手機上圖只剩 87px。--six-radar-plot：圖的最大寬度，指標速覽的卡片給小一點（卡片高度固定） */
 .six-radar__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -55,7 +55,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
     'a4 a3 a2';
   align-items: center;
   gap: 4px 8px;
-  max-width: 15rem;
+  max-width: var(--six-radar-plot, 15rem);
   margin-inline: auto;
 }
 
@@ -63,7 +63,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
    也就是圖高的 1/4 與 3/4，側邊四個軸的外端就在那裡 */
 @container (min-width: 352px) {
   .six-radar__layout {
-    grid-template-columns: max-content minmax(0, 15rem) max-content;
+    grid-template-columns: max-content minmax(0, var(--six-radar-plot, 15rem)) max-content;
     grid-template-areas:
       '. a0 .'
       'a5 plot a1'

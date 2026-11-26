@@ -8,6 +8,8 @@ export interface NormalizedCompanyProfile {
   // sectorName、establishedDate 2026-11-08 拿掉：一樣沒有地方讀（數據中台盤點 /companies/profile 的讀者時查到）
   // 沒有類股是 null（原本 String(null) 會變成字面上的 "null"）
   sectorCode: string | null
+  // sii 上市、otc 上櫃、rotc 興櫃（2026-11-27 加：六面向只算上市櫃，指標速覽要在伺服器那一刻就知道興櫃不畫那張卡片）
+  market: string | null
   listedDate: Date | null
   // financialReportType／financialReportTypeName 2026-10-10 刪掉：從來沒有地方讀它們，而上游同日改名成 declaredDataType 時
   // 編碼方向也反了（舊的交易所代碼 "1"＝合併，新的 MOPS 編號 "2"＝合併，跟 metricDataType 同向）。要顯示「合併／個別」時
@@ -42,6 +44,7 @@ function hydrateCompanyProfile(raw: Record<string, unknown>): NormalizedCompanyP
     name: typeof name === 'string' ? name : null,
     shortName: typeof shortName === 'string' ? shortName : null,
     sectorCode: typeof raw.sectorCode === 'string' && raw.sectorCode ? raw.sectorCode : null,
+    market: typeof raw.market === 'string' && raw.market ? raw.market : null,
     listedDate: toDate(raw.listingDate),
     metricDataType: (raw.metricDataType as string | null) ?? null
   }
