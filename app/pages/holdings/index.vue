@@ -94,6 +94,16 @@ const totals = computed(() => summarizeHoldings(baseRows.value.map(row => row.in
 const dayDate = computed(() => Object.values(market.value).map(quote => quote.dayPriceDate).filter((date): date is string => !!date).sort().at(-1) ?? null)
 const dayTotals = computed(() => summarizeDayChange(baseRows.value.map(row => row.dayInput), dayDate.value))
 const shortDate = (date: string) => date.slice(5).replace('-', '/')
+// 收盤還停在更早那一天的那一檔：漲跌照樣顯示，但標出是哪一天，不讓人當成今天。表格的第二行窄，日期寫在前面、不加括號（「11/25 +1.23%」）；
+// 卡片有一整列，寫金額與漲跌幅，日期在後面
+function dayChangeText(row: HoldingRow, card: boolean): string {
+  const change = dayChange(row.dayInput)
+  if (change.pct === null) return '－'
+  const date = row.dayInput.date
+  const stale = date && dayDate.value && date < dayDate.value ? shortDate(date) : null
+  if (card) return `${signedMoney(change.amount)} ${signedPct(change.pct)}${stale ? `（${stale}）` : ''}`
+  return stale ? `${stale} ${signedPct(change.pct)}` : signedPct(change.pct)
+}
 
 // 明細表（寬螢幕表格、窄的是卡片、排序、展開）在 HoldingsSymbolTable.vue，已實現損益頁共用。
 // 預設依市值由大到小（2026-10-05 UI 盤點：「哪幾檔最大」是看持股的第一個問題）。
@@ -176,10 +186,11 @@ const pnlLabel = computed(() => (withDividends.value ? '含息損益' : '未實�
 const pnlPctLabel = computed(() => (withDividends.value ? '含息報酬率' : '報酬率'))
 
 // 明細表的數字欄。卡片上一眼看到市值與未實現損益（帶報酬率），展開後才看到股數與預估年股利。表格裡股數在市值下面（under，2026-11-14
-//「合併成兩行的格子」）；損益與報酬率各一欄、今日漲跌不放（2026-11-19，使用者：「holdings 移除今日漲跌」「我主要希望把報酬率與損益拆開」；
-// 組合的今日漲跌照舊在總覽）。股數也自己一欄就放不進 720 寬的表格（跟指標檢視同一條斷點），欄寬照 720 寬量到的最寬數字（16px）：
-// 損益 150 放得下「▲ +60,600,000 元」、報酬率 104 放得下「+1011.11%」（長期持有的四位數報酬率常見；第二行是 14px，拆出來才變寬）、
-// 預估年股利 96 放得下七位數。放不下時 el-table 會在數字中間折行。
+//「合併成兩行的格子」）；損益與報酬率各一欄（2026-11-19，使用者：「我主要希望把報酬率與損益拆開」）。今日漲跌在報酬率下面一行
+//（2026-11-26，使用者問「holdings 損益 塞的下 當日漲跌嗎」，量過之後「1 要」；11-19 的「holdings 移除今日漲跌」之後表格與卡片都沒有，
+// 同分享出去的持股的排法）：自己一欄要 773px，表格只有 718。股數也自己一欄同樣放不進 720 寬的表格（跟指標檢視同一條斷點），
+// 欄寬照 720 寬量到的最寬數字（16px）：損益 150 放得下「▲ +60,600,000 元」、報酬率 128 放得下第一行的「+1011.11%」（長期持有的四位數
+// 報酬率常見）與第二行（14px）收盤還沒更新的「11/25 +12.34%」、預估年股利 96 放得下七位數。放不下時 el-table 會在數字中間折行。
 // 市值寫萬／億（2026-11-19，使用者看設計圖選 F1）：同篩選頁的市值欄，4 位有效數字（8,700萬、7.404萬），排序照精確的數字。
 // 欄寬 84：最寬的是下面一行的股數「1,234,567」（14px 約 59px）
 const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
@@ -196,11 +207,22 @@ const columns = computed<HoldingsSymbolColumn<HoldingRow>[]>(() => [
     }
   },
   {
-    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 104,
+    key: 'pnlPct', label: pnlPctLabel.value, minWidth: 128,
     text: row => signedPct(pnlPctOf(row.figures)) || '－',
     sortValue: row => pnlPctOf(row.figures),
     tone: (row) => {
       const pct = pnlPctOf(row.figures)
+      return pct === null ? null : Number(pct.toFixed(2))
+    }
+  },
+  // 表格只放漲跌幅（報酬率下面一行），卡片一列寫金額與漲跌幅（同未實現損益的寫法）；組合的金額在總覽
+  {
+    key: 'dayChange', label: '今日漲跌', minWidth: 90, card: 'summary', under: 'pnlPct',
+    text: row => dayChangeText(row, false),
+    cardText: row => dayChangeText(row, true),
+    sortValue: row => dayChange(row.dayInput).pct,
+    tone: (row) => {
+      const pct = dayChange(row.dayInput).pct
       return pct === null ? null : Number(pct.toFixed(2))
     }
   },
