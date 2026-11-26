@@ -61,12 +61,12 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
     if (p === '/api/core/watchlists' && m === 'POST') {
       const body = JSON.parse(req.postData()); calls.push(`POST /watchlists ${body.name} ${(body.symbols ?? []).join(',')} ${body.sourceShareToken ?? ''}`.trim())
       const saved = body.sourceShareToken && createdLists.find(list => list.sourceShareToken === body.sourceShareToken)
-      if (saved) return route.fulfill({ json: { watchlist: saved, items: createdItems.filter(item => item.watchlistId === saved.id), skipped: [], created: false } })
+      if (saved) return route.fulfill({ json: { watchlist: saved, watchlistItems: createdItems.filter(item => item.watchlistId === saved.id), skipped: [], created: false } })
       const watchlist = { id: `w-new-${createdLists.length + 1}`, name: body.name, position: createdLists.length + 1, sourceShareToken: body.sourceShareToken ?? null, createdAt: '2026-10-20T00:00:00Z' }
       createdLists.push(watchlist)
       const newItems = (body.symbols ?? []).map(symbol => ({ id: `i-new-${createdItems.length + 1}-${symbol}`, watchlistId: watchlist.id, symbol, note: null, createdAt: 'x', updatedAt: 'y' }))
       createdItems.push(...newItems)
-      return route.fulfill({ status: 201, json: { watchlist, items: newItems, skipped: [], created: true } })
+      return route.fulfill({ status: 201, json: { watchlist, watchlistItems: newItems, skipped: [], created: true } })
     }
     if (p === '/api/core/watchlist' && m === 'POST') {
       const body = JSON.parse(req.postData()); calls.push(`POST /watchlist ${body.watchlistId} ${body.symbol}`)
@@ -99,7 +99,7 @@ const mock = async (ctx, { withNote = false, holdingsPayload = 'ratios' } = {}) 
     }
     if (p === `/api/core/public/shares/${TOKEN}`) {
       const columns = [{ key: 'stock.price', label: '收盤價' }, { key: 'watchlist.change', label: '漲跌' }, { key: 'exchangePeRatio.EOD', label: '本益比' }, ...(withNote ? [{ key: 'note', label: '備註' }] : [])]
-      return route.fulfill({ json: { kind: 'watchlist', name: '存股名單', columns, items: items.map(({ symbol, note }) => ({ symbol, ...(withNote && note ? { note } : {}) })) } })
+      return route.fulfill({ json: { kind: 'watchlist', name: '存股名單', columns, watchlistItems: items.map(({ symbol, note }) => ({ symbol, ...(withNote && note ? { note } : {}) })) } })
     }
     if (p === `/api/core/public/shares/${TOKEN_H}`) return route.fulfill({ json: HOLDINGS_PAYLOAD[holdingsPayload] })
     if (p.startsWith('/api/core/public/shares/')) return route.fulfill({ status: 404, contentType: 'application/problem+json', body: JSON.stringify({ type: 'about:blank', title: 'Not Found', status: 404 }) })

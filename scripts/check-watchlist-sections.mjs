@@ -34,7 +34,7 @@ const SHARE = {
     { key: 'holding.portfolioNames.snapshot', label: 'ETF・持有帳戶' },
     { key: 'nominalDividendRatePct.snapshot', label: '特別股・票面利率' }
   ],
-  items: MIXED.map(symbol => ({ symbol, note: null }))
+  watchlistItems: MIXED.map(symbol => ({ symbol, note: null }))
 }
 
 const preset = (id, name, isDefault, fields) => ({ id, name, isDefault, columns: fields.map(field => ({ field })), createdAt: 'x', updatedAt: 'y' })
