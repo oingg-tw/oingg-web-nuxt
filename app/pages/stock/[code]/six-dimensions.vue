@@ -28,7 +28,8 @@ const emerging = computed(() => profile.value?.market === 'rotc')
 const answer = computed(() => {
   if (emerging.value) return '六面向只算上市櫃公司，興櫃公司不在比較範圍裡。'
   if (!data.value) return `目前沒有${stockShortName.value}的六面向資料。`
-  return sixDimensionsAnswer(axes.value, asOf.value) ?? `${stockShortName.value}的六個面向都算不出來：每個面向的組成指標都不到一半有值。`
+  // 六個都算不出來：原因每個面向不一定一樣（產業不適用、歷史不夠長、不到一半有值），寫在下面的表
+  return sixDimensionsAnswer(axes.value, asOf.value) ?? `${stockShortName.value}的六個面向目前都算不出來，各自的原因在下面的表。`
 })
 
 // 第二段：每個面向的組成指標。名稱、單位、選項（均線排列）照型錄；有好幾種期別的才寫期別（只有一種的寫了也沒有資訊）。
@@ -90,7 +91,7 @@ const footer = computed(() => ({
 const guide = computed(() => [
   '六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。',
   '百分位是位置，不是分數：0 是最低、100 是最高，同分的公司排在同一個位置。六個數字各自獨立，不能相加當成總分。',
-  '一個面向的組成指標不到一半有值，或者都不適用於這個產業時，這個面向算不出來，圖上那一個軸不連線。興櫃公司不在比較範圍裡。',
+  '一個面向的組成指標不到一半有值（剛掛牌、歷史資料還不夠長的也算），或者都不適用於這個產業時，這個面向算不出來，圖上那一個軸不連線。興櫃公司不在比較範圍裡。',
   ...axes.value.filter(axis => axis.financialType).map(axis => `金融保險業的${axis.label}分銀行、金控、保險業、證券業、其他金融業五類，各用自己的指標：每個指標只跟同一類比，面向的百分位只跟上市櫃的金融保險業比。類別看公司在財報申報的產業別。`),
   '百分位只跟同一天的上市櫃公司相比，不代表股價之後的漲跌。'
 ])

@@ -23,6 +23,7 @@ assert.equal(percentileLabel(null), '無法計算')
 // 算不出來的原因：產業不適用與不到一半有值分開寫；不認得的不猜
 assert.equal(sixDimensionNullText('not_applicable_industry'), '組成指標不適用於這個產業')
 assert.equal(sixDimensionNullText('missing_input'), '組成指標不到一半有值')
+assert.equal(sixDimensionNullText('insufficient_history'), '組成指標的歷史資料不夠長')
 assert.equal(sixDimensionNullText('something_new'), '')
 assert.equal(sixDimensionNullText(null), '')
 

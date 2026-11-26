@@ -101,10 +101,15 @@ export function sixDimensionPopulationNote(axes: Pick<SixDimensionAxis, 'label' 
 export const percentileText = (value: number | null | undefined): string => (typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '－')
 export const percentileLabel = (value: number | null): string => (value === null ? '無法計算' : String(Math.round(value)))
 
-// 一個面向為什麼算不出來（數據中台 2026-11-27）：扣掉這個產業不適用的指標之後不到一半是 not_applicable_industry（金融業的體質改善），
-// 其餘是 missing_input。不認得的原因只寫無法計算，不猜
-export const sixDimensionNullText = (nullReason: string | null | undefined): string =>
-  nullReason === 'not_applicable_industry' ? '組成指標不適用於這個產業' : nullReason === 'missing_input' ? '組成指標不到一半有值' : ''
+// 一個面向為什麼算不出來（數據中台 2026-11-27）：扣掉這個產業不適用的指標之後不到一半是 not_applicable_industry（金融業的體質改善）；
+// 再扣掉歷史不足的之後不到一半是 insufficient_history（剛掛牌的價格趨勢、月營收不滿一年的成長動能）；其餘是 missing_input。
+// 不認得的原因只寫無法計算，不猜
+const NULL_TEXTS = new Map([
+  ['not_applicable_industry', '組成指標不適用於這個產業'],
+  ['insufficient_history', '組成指標的歷史資料不夠長'],
+  ['missing_input', '組成指標不到一半有值']
+])
+export const sixDimensionNullText = (nullReason: string | null | undefined): string => NULL_TEXTS.get(nullReason ?? '') ?? ''
 
 // 第 k 個軸在半徑 r 的座標：第一個軸在正上方，順時針；原點是圖的中心
 function radarPoint(k: number, r: number, count: number): [number, number] {
