@@ -6,10 +6,9 @@ import type { ScreenerTemplate } from '~/composables/screener/useScreenerTemplat
 // registration nudge), now rendered directly in the page's own document flow where the empty
 // state used to sit, so a signed-out visitor sees "here's how to start" instead of nothing.
 //
-// Every description is now PERMANENT body text on its own tile (was a hover/focus el-tooltip
-// behind a small ⓘ icon) — the reference doc lists hover-triggered content as a barrier for the
-// target audience, and a tile this size has room for two lines of description without needing to
-// hide them behind an icon at all.
+// 2026-11-27：格子只有圖示與名稱，說明都在選股策略頁（/screener/strategies），格子下面一行連過去。使用者：「這個範本頁變的
+// 太肥了，可以把選擇範本與範本詳細說明拆開嗎？我印象中我們已經有了範本詳細說明區」。原本每格把說明整段寫出來（2026-09-19 從
+// 滑過才出現的提示改成常駐文字），範本變 12 組、說明都帶學術出處之後，手機上是 3,980px，「套用」在最底下
 const props = defineProps<{
   templates: ScreenerTemplate[]
   templatesLoading: boolean
@@ -51,13 +50,14 @@ function confirm() {
         :class="{ 'is-selected': selectedTemplateId === template.id }"
         @click="pickTemplate(template.id)"
       >
-        <span class="guest-picker__tile-head">
-          <el-icon class="guest-picker__tile-icon" aria-hidden="true"><component :is="filterTemplateIcon(template)" /></el-icon>
-          <span class="guest-picker__tile-name">{{ template.name }}</span>
-        </span>
-        <span class="guest-picker__tile-desc">{{ template.description }}</span>
+        <el-icon class="guest-picker__tile-icon" aria-hidden="true"><component :is="filterTemplateIcon(template)" /></el-icon>
+        <span class="guest-picker__tile-name">{{ template.name }}</span>
       </button>
     </div>
+
+    <p v-if="!templatesLoading" class="guest-picker__strategies">
+      <NuxtLink :to="STRATEGIES_PATH" class="hub-inline-link">看每組選股策略的介紹 ›</NuxtLink>
+    </p>
 
     <div class="guest-picker__footer">
       <el-button type="primary" :disabled="!canConfirm" class="guest-picker__confirm" @click="confirm">套用這組條件</el-button>
@@ -119,11 +119,10 @@ function confirm() {
 
 .guest-picker__tile {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  min-height: 64px;
-  padding: 16px;
+  min-height: 56px;
+  padding: 12px 16px;
   color: var(--el-text-color-primary);
   text-align: left;
   cursor: pointer;
@@ -145,12 +144,6 @@ function confirm() {
   font-weight: 700;
 }
 
-.guest-picker__tile-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .guest-picker__tile-icon {
   flex-shrink: 0;
   font-size: 1.25rem;
@@ -162,10 +155,15 @@ function confirm() {
   font-weight: 600;
 }
 
-.guest-picker__tile-desc {
-  font-size: 1rem;
-  line-height: 1.5;
-  color: var(--el-text-color-secondary);
+/* 連結本身至少 44px 高（觸控目標），同新增篩選彈窗的那一行 */
+.guest-picker__strategies {
+  margin: 0;
+}
+
+.guest-picker__strategies a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .guest-picker__footer {

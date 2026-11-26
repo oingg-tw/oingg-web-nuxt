@@ -137,7 +137,8 @@ const activeTemplates = computed(() => {
                  還沒開放的用 aria-disabled 而不是 disabled：仍可聚焦、仍會朗讀名稱與「即將推出」，chooseTemplate 自己擋 -->
             <el-tag v-if="template.status !== 'AVAILABLE'" type="info" effect="plain">即將推出</el-tag>
           </div>
-          <p class="new-preset-dialog__template-desc">{{ template.description }}</p>
+          <!-- 只寫條件那一句，出處在選股策略頁（格子那一步底下有連結），2026-11-27 -->
+          <p class="new-preset-dialog__template-desc">{{ strategyLead(template.description) }}</p>
           <p v-if="template.pendingReason" class="new-preset-dialog__template-pending">{{ template.pendingReason }}</p>
         </button>
       </div>

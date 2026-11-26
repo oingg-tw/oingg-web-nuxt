@@ -68,6 +68,10 @@ export function strategyIntro(description: string | null | undefined): string {
   return cut >= 0 ? text.slice(cut + 2).trim() : text
 }
 
+// 條件那一句：「——」前面那段。新增篩選彈窗的範本清單只寫這句，出處在選股策略頁（2026-11-27，使用者：「把選擇範本與範本
+// 詳細說明拆開」；訪客的挑選區一次列 12 組，連這句也不寫，只有名稱）；沒有「——」就整段（特別股、ETF 的範本本來就是一句）
+export const strategyLead = (description: string | null | undefined): string => (description ?? '').split('——')[0]!.trim()
+
 // 依類別排：篩選頁預設那一組的類別排最前面，其餘照業務中台給的順序；同類別裡預設那組在前
 export function strategyGroups<T extends { category: string | null; isDefault: boolean }>(templates: T[]): { category: string; items: T[] }[] {
   const groups = new Map<string, T[]>()

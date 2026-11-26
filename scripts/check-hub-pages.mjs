@@ -361,6 +361,11 @@ const browser = await chromium.launch()
   const tileCount = await page.locator('.guest-picker__tile').count()
   // 價值型、低波動、股利連續性 2026-11-24 拿掉，剩成長突破、低淨值比＋財務體質（現金股利類的預設與營收類第二批之後再加）
   expect('/screener/common (guest picker)', 'tiles ≥ 2', tileCount >= 2, `${tileCount}`)
+  // 格子只有名稱（2026-11-27，使用者：「把選擇範本與範本詳細說明拆開」）：說明在選股策略頁，格子下面一行連過去。名稱裡沒有句讀，
+  // 有的話就是說明又被寫進格子了
+  const tileTexts = await page.locator('.guest-picker__tile').allTextContents()
+  expect('/screener/common (guest picker)', 'tiles carry the name only', tileTexts.every(text => !/[，。；—]/.test(text)), tileTexts.find(text => /[，。；—]/.test(text))?.trim().slice(0, 40))
+  expect('/screener/common (guest picker)', 'one link to the strategies page', await page.locator('.guest-picker a[href="/screener/strategies"]').count() === 1)
   // 點低淨值比＋財務體質那一塊（目前約 70 檔）：成長突破條件嚴格，有些月份一檔都沒有，結果會是空的
   // 名稱開頭要整個對：2026-11-26 範本換成 12 組，名稱裡有「低淨值比」的有三組
   const pickerTile = page.locator('.guest-picker__tile', { hasText: /^\s*低淨值比＋財務體質/ })
