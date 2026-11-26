@@ -301,7 +301,7 @@ const solvencyData = usePageData<StockSolvencyPageResponse>('solvency')
 const cashCycleSeries = usePageData<StockSeriesResponse>('cash-cycle')
 const holdersData = usePageData<ShareholdingDistribution>('holders')
 const newsData = usePageData<StockNewsResponse>('news')
-// 六面向的雷達圖（2026-11-27，預設第一張）：六個軸照固定順序；一個都算不出來、興櫃（上游 404）或還沒有資料時卡片寫一句
+// 六面向的雷達圖（2026-11-27，預設第二張）：六個軸照固定順序；一個都算不出來、興櫃（上游 404）或還沒有資料時卡片寫一句
 const sixDimensions = usePageData<RadarBreakdown>('six-dimensions')
 const sixAxes = computed(() => sixDimensionAxes(sixDimensions.value))
 const sixHasValues = computed(() => sixAxes.value.some(axis => axis.value !== null))

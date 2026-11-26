@@ -115,15 +115,15 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     await dialog.waitFor({ state: 'hidden' })
   }
 
-  // 預設的前兩張（2026-11-27，使用者：「指標速覽 會是雷達圖」「雷達圖放進預設」）：六面向的雷達圖、基本資料（2026-11-08，8 列表格）。
+  // 預設的前兩張：基本資料（2026-11-08，8 列表格）、六面向的雷達圖（2026-11-27，使用者：「雷達圖放進預設」「預設第二張如何?」）。
   // 這兩張都不比圖表卡高（使用者：「我比較擔心他在電腦版 會把別的圖表比例撐高」）：跟第三張（本益比的圖）比。三張都先取消拉伸量自己的
   // 高度，同一列被拉成一樣高的話比不出來
   const cards = page.locator('.stock-quick-view-page__grid > *')
   const titleOf = index => cards.nth(index).locator('h3 a').textContent().then(text => text?.trim()).catch(() => '')
-  expect(code, '預設第一張是六面向', await waitFor(async () => (await titleOf(0)) === '六面向'))
-  expect(code, '預設第二張是基本資料', (await titleOf(1)) === '基本資料')
-  expect(code, '基本資料卡 8 列', await waitFor(async () => (await cards.nth(1).locator('.fact-list__item').count()) === 8))
-  expect(code, '六面向畫出雷達圖', await waitFor(async () => hasChart(cards.nth(0))))
+  expect(code, '預設第一張是基本資料', await waitFor(async () => (await titleOf(0)) === '基本資料'))
+  expect(code, '預設第二張是六面向', (await titleOf(1)) === '六面向')
+  expect(code, '基本資料卡 8 列', await waitFor(async () => (await cards.nth(0).locator('.fact-list__item').count()) === 8))
+  expect(code, '六面向畫出雷達圖', await waitFor(async () => hasChart(cards.nth(1))))
   await waitFor(async () => hasChart(cards.nth(2)))
   const heights = await page.evaluate(() => {
     const three = [...document.querySelectorAll('.stock-quick-view-page__grid > *')].slice(0, 3)
@@ -132,7 +132,7 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     for (const card of three) card.style.alignSelf = ''
     return sizes
   })
-  expect(code, '六面向、基本資料不比圖表卡高', heights[0] <= heights[2] && heights[1] <= heights[2], heights.join(' / '))
+  expect(code, '基本資料、六面向不比圖表卡高', heights[0] <= heights[2] && heights[1] <= heights[2], heights.join(' / '))
 
   for (const labels of BATCHES) {
     await pinOnly(page, labels)
