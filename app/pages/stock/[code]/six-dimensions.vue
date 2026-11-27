@@ -55,8 +55,8 @@ const groups = computed(() => axes.value.map(axis => ({
     }]
   })
 })))
-// 每個面向有幾個指標照資料寫（不是照畫出來的列數：型錄晚到時少畫的那幾列還是算）：金融保險業的財務安全是自己那一類的組成，
-// 銀行、金控有 5 個，保險、證券只有 2 個
+// 每個面向有幾個指標照資料寫（不是照畫出來的列數：型錄晚到時少畫的那幾列還是算）。不適用的面向沒有組成（sixDimensionAxes），不算進來：
+// 金融保險業只剩成長動能、價格趨勢、股東回饋，寫「3 到 4 個」
 const componentsAnswer = computed(() => {
   const counts = axes.value.map(axis => axis.components.length).filter(Boolean)
   const [min, max] = [Math.min(...counts), Math.max(...counts)]
@@ -93,7 +93,7 @@ const footer = computed(() => ({
 const guide = computed(() => [
   `六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：${axisNames.value}。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。`,
   '百分位是位置，不是分數：0 是最低、100 是最高，同分的公司排在同一個位置。六個數字各自獨立，不能相加當成總分。',
-  '一個面向的組成指標不到一半有值（剛掛牌、歷史資料還不夠長的也算），或者都不適用於這個產業時，這個面向算不出來，圖上那一個軸不連線。興櫃公司不在比較範圍裡。',
+  '一個面向的組成指標不到一半有值（剛掛牌、歷史資料還不夠長的也算）時，這個面向算不出來，圖上那一個軸不連線。金融保險業，以及用異業合併格式申報財報的公司，只看其中幾個面向，其餘寫「不適用」。興櫃公司不在比較範圍裡。',
   '百分位只跟同一天的上市櫃公司相比，不代表股價之後的漲跌。'
 ])
 </script>
@@ -127,7 +127,7 @@ const guide = computed(() => [
             <tbody>
               <tr v-for="axis in axes" :key="axis.code">
                 <th scope="row">{{ axis.label }}</th>
-                <td class="seo-table__num">{{ axis.value === null ? '無法計算' : percentileText(axis.value) }}</td>
+                <td class="seo-table__num">{{ axis.value === null ? sixDimensionMissingLabel(axis.nullReason) : percentileText(axis.value) }}</td>
                 <td class="stock-six-dimensions-page__position">
                   <span v-if="axis.value !== null" class="stock-six-dimensions-page__track" aria-hidden="true"><span :style="{ width: `${axis.value}%` }" /></span>
                   <template v-else>{{ sixDimensionNullText(axis.nullReason) }}</template>
@@ -156,7 +156,7 @@ const guide = computed(() => [
           <tr class="stock-six-dimensions-page__group">
             <th colspan="3" scope="rowgroup">
               {{ axis.label }}<template v-if="scope">（{{ scope }}）</template>
-              <span class="stock-six-dimensions-page__group-value">{{ axis.value === null ? `無法計算${sixDimensionNullText(axis.nullReason) ? `：${sixDimensionNullText(axis.nullReason)}` : ''}` : percentileText(axis.value) }}</span>
+              <span class="stock-six-dimensions-page__group-value">{{ axis.value === null ? `${sixDimensionMissingLabel(axis.nullReason)}${sixDimensionNullText(axis.nullReason) ? `：${sixDimensionNullText(axis.nullReason)}` : ''}` : percentileText(axis.value) }}</span>
             </th>
           </tr>
           <tr v-for="row in rows" :key="row.key">
@@ -233,6 +233,12 @@ const guide = computed(() => [
   background: var(--el-fill-color-lighter);
   font-weight: 600;
   white-space: normal;
+}
+
+/* 沒有組成列的面向（不適用的三個）分組列是那一段唯一的一列，全站「最後一列不畫底線」會把它的線拿掉，三個連在一起就分不開。
+   最後一個面向除外：卡片的框就是底 */
+:deep(.stock-six-dimensions-page__components) tbody:not(:last-child) > .stock-six-dimensions-page__group > th {
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .stock-six-dimensions-page__group-value {

@@ -4,8 +4,8 @@
 // 容器縮放，字永遠是內文的大小（SVG 的字會跟著圖一起縮，手機上會小於 16px）。單色、不分高低的顏色：高低只是位置。虛線那一圈是 50。
 // 數字同時在旁邊的表格；圖是 role="img" 加一句完整的替代文字，四周的字對輔助科技隱藏，不重複念
 const props = defineProps<{
-  // 六個軸：0 正上，順時針（1 右上、2 右下、3 正下、4 左下、5 左上）
-  axes: { label: string; value: number | null }[]
+  // 六個軸：0 正上，順時針（1 右上、2 右下、3 正下、4 左下、5 左上）。nullReason：沒有值的軸寫「不適用」還是「無法計算」
+  axes: { label: string; value: number | null; nullReason?: string | null }[]
   label: string
 }>()
 
@@ -33,7 +33,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
       </svg>
       <p v-for="(axis, index) in axes" :key="axis.label" :class="`six-radar__label six-radar__label--${index}`" aria-hidden="true">
         <span>{{ axis.label }}</span>
-        <span :class="axis.value === null ? 'six-radar__missing' : 'six-radar__value'">{{ percentileLabel(axis.value) }}</span>
+        <span :class="axis.value === null ? 'six-radar__missing' : 'six-radar__value'">{{ percentileLabel(axis.value, axis.nullReason) }}</span>
       </p>
     </div>
   </div>

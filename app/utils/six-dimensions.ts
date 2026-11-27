@@ -56,17 +56,23 @@ export interface SixDimensionAxis {
   components: RadarComponent[]
 }
 
+// 不適用的面向（2026-11-27 晚上起，數據中台說是使用者看過回測第二十四輪後定的）：金融保險業與異業合併格式申報的公司（和泰車、新纖、
+// 中纖、三商）只看成長動能、價格趨勢、股東回饋，體質改善、價值型、財務安全整個面向是 not_applicable_industry。這三軸繞一圈是相鄰的，
+// 圖上連成一片，沒有孤立的點。這種面向不列組成指標：上游還是會帶組成（富邦金的股價淨值比 1.67 倍），但沒有排名，列出來只是數字配一格「－」
+const NOT_APPLICABLE = 'not_applicable_industry'
+
 export function sixDimensionAxes(breakdown: Pick<RadarBreakdown, 'axes'> | null | undefined): SixDimensionAxis[] {
   return SIX_DIMENSIONS.map(({ code, label }) => {
     const axis = breakdown?.axes.find(item => item.metricCode === code)
     const value = typeof axis?.value === 'number' && Number.isFinite(axis.value) ? axis.value : null
-    return { code, label, value, nullReason: value === null ? axis?.nullReason ?? null : null, components: axis?.components ?? [] }
+    const nullReason = value === null ? axis?.nullReason ?? null : null
+    return { code, label, value, nullReason, components: nullReason === NOT_APPLICABLE ? [] : axis?.components ?? [] }
   })
 }
 
 // 一個面向的組成指標跟誰比（明細表分組列括號裡那一句）：都跟同產業比的才寫；跟全部上市櫃公司比的不寫。
 // 金融保險業的財務安全分五類、只跟同類比的那一套（financialType）只活了 2026-11-27 一個上午：同一天財務安全改成三支風險分數
-//（Zmijewski、Beneish、應計比率）、金融保險業整個面向不適用，數據中台把分類比拿掉
+//（Zmijewski、Beneish、應計比率）、金融保險業整個面向不適用，數據中台把分類比拿掉。不適用的面向沒有組成（sixDimensionAxes），這裡自然不寫
 export function sixDimensionScopeText(axis: Pick<SixDimensionAxis, 'components'>): string {
   return axis.components.length > 0 && axis.components.every(component => component.scope === 'sector') ? '跟同產業比' : ''
 }
@@ -79,13 +85,16 @@ export function sixDimensionScopeNote(axes: Pick<SixDimensionAxis, 'label' | 'co
 
 // 表格寫兩位（資料的精度）；圖上與答句寫整數
 export const percentileText = (value: number | null | undefined): string => (typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '－')
-export const percentileLabel = (value: number | null): string => (value === null ? '無法計算' : String(Math.round(value)))
+// 沒有值的面向寫什麼：不適用的寫「不適用」（全站同一個原因碼的格子都這樣寫），其餘是「無法計算」。圖上、兩張表、替代文字共用
+export const sixDimensionMissingLabel = (nullReason: string | null | undefined): string => (nullReason === NOT_APPLICABLE ? '不適用' : '無法計算')
+export const percentileLabel = (value: number | null, nullReason?: string | null): string => (value === null ? sixDimensionMissingLabel(nullReason) : String(Math.round(value)))
 
-// 一個面向為什麼算不出來（數據中台 2026-11-27）：扣掉這個產業不適用的指標之後不到一半是 not_applicable_industry（金融業的體質改善）；
-// 再扣掉歷史不足的之後不到一半是 insufficient_history（剛掛牌的價格趨勢、月營收不滿一年的成長動能）；其餘是 missing_input。
-// 不認得的原因只寫無法計算，不猜
+// 一個面向為什麼沒有值（數據中台 2026-11-27）：not_applicable_industry 是整個面向不適用（見上面 NOT_APPLICABLE；原本寫「組成指標不適用於
+// 這個產業」，但價值型的股價淨值比對金融股明明有數字，而且和泰車的產業是汽車工業）。格子已經寫「不適用」，這裡只補「依產業別」
+//（全站這個原因碼的說法）：是哪些公司寫在頁面最後的定義，一句話不在三列各寫一遍。扣掉歷史不足的之後不到一半是 insufficient_history
+//（剛掛牌的價格趨勢、月營收不滿一年的成長動能）；其餘是 missing_input。不認得的原因只寫無法計算，不猜
 const NULL_TEXTS = new Map([
-  ['not_applicable_industry', '組成指標不適用於這個產業'],
+  [NOT_APPLICABLE, '依產業別'],
   ['insufficient_history', '組成指標的歷史資料不夠長'],
   ['missing_input', '組成指標不到一半有值']
 ])
@@ -131,12 +140,13 @@ export function radarGeometry(values: (number | null)[], radius: number): RadarG
   }
 }
 
-// 卡片之前那一句（至多 80 字）：最高與最低各在哪個位置；算不出來的面向說出來。一個都沒有回 null，由頁面寫原因
-export function sixDimensionsAnswer(axes: Pick<SixDimensionAxis, 'label' | 'value'>[], asOf: string | null | undefined): string | null {
+// 卡片之前那一句（至多 80 字）：最高與最低各在哪個位置；不適用與算不出來的面向分開說。一個都沒有回 null，由頁面寫原因
+export function sixDimensionsAnswer(axes: (Pick<SixDimensionAxis, 'label' | 'value'> & { nullReason?: string | null })[], asOf: string | null | undefined): string | null {
   const known = axes.filter((axis): axis is { label: string; value: number } => axis.value !== null)
   if (!known.length) return null
-  const missing = axes.filter(axis => axis.value === null).map(axis => axis.label)
-  const missingText = missing.length ? `${missing.join('、')}算不出來。` : ''
+  const labelsOf = (notApplicable: boolean) => axes.filter(axis => axis.value === null && (axis.nullReason === NOT_APPLICABLE) === notApplicable).map(axis => axis.label)
+  const [notApplicable, missing] = [labelsOf(true), labelsOf(false)]
+  const missingText = `${notApplicable.length ? `${notApplicable.join('、')}不適用。` : ''}${missing.length ? `${missing.join('、')}算不出來。` : ''}`
   const dateText = asOf ? `資料日期 ${asOf}。` : ''
   const highest = known.reduce((best, axis) => (axis.value > best.value ? axis : best))
   const lowest = known.reduce((best, axis) => (axis.value < best.value ? axis : best))
@@ -146,5 +156,5 @@ export function sixDimensionsAnswer(axes: Pick<SixDimensionAxis, 'label' | 'valu
 }
 
 // 給螢幕閱讀器的一句：圖上每個軸的名稱與數字
-export const sixDimensionsAriaLabel = (shortName: string, axes: Pick<SixDimensionAxis, 'label' | 'value'>[]): string =>
-  `${shortName}六面向雷達圖：${axes.map(axis => `${axis.label} ${axis.value === null ? '無法計算' : percentileLabel(axis.value)}`).join('、')}`
+export const sixDimensionsAriaLabel = (shortName: string, axes: (Pick<SixDimensionAxis, 'label' | 'value'> & { nullReason?: string | null })[]): string =>
+  `${shortName}六面向雷達圖：${axes.map(axis => `${axis.label} ${percentileLabel(axis.value, axis.nullReason)}`).join('、')}`
