@@ -195,6 +195,79 @@ const charts = computed(() => rows.value.flatMap(row => {
   return spec && !(spec.kind === 'six-dimensions' && profile.value?.market === 'rotc') ? [{ ...row, spec }] : []
 }))
 
+// 每張卡片讀取中的高度（2026-11-28）：佔位原本一律照「控制列 44＋間距 8＋圖 320」畫，但卡片畫好之後高矮不一（手機上控制列折成兩列、
+// 折線圖的圖例另外佔位、基本資料是 8 列），2330 在 375 寬量到七張卡片各差 −20～+112px（基本資料 462→442、ROE 462→574），資料一到
+// 下面整頁跟著動。畫好之後記下每張卡片內容區（.el-card__body）的高度（cookie，伺服器讀得到）：下次伺服器先畫的佔位、資料還沒到的骨架都
+// 照它，重新整理不動；第一次來用下面的預設，可能動一次（同 useLayoutHint）。卡片窄（<520px，SharedChartCard 換排法的寬度）與寬的時候
+// 高度不同，各記一份（n、w）；只留現在釘選的那幾張
+type HeightHints = { n?: Record<string, number>, w?: Record<string, number> }
+const heightHints = useCookie<HeightHints | null>('layout-hint-quick-view', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+// 預設的內容區高度（含上下內距 24；窄、寬）：圖卡是控制列 32＋間距 12＋圖 320；基本資料 8 列各 2.75rem；六面向與近期新聞是它們自己的
+// 最小高度（.stock-quick-view-page__six、StockNewsCard 的 .news-card）；現金殖利率的控制列下面少 4，窄卡片上圖例另外佔 80（兩個固定的圖例）。
+// 其他折線圖的圖例折幾行看指標名稱，預設猜不準，第一次來會動一次、之後照記下來的
+const BODY_DEFAULTS: Partial<Record<QuickViewChart['kind'], [string, string]>> = {
+  'profile': ['calc(8 * 2.75rem + 24px)', 'calc(8 * 2.75rem + 24px)'],
+  'six-dimensions': ['396px', '384px'],
+  'news': ['396px', '384px'],
+  'dividend': ['464px', '384px']
+}
+// cookie 是瀏覽器送來的：只收合理的數字，其餘當沒有
+function heightHint(key: 'n' | 'w', slug: string) {
+  const value = heightHints.value?.[key]?.[slug]
+  return typeof value === 'number' && value >= 24 && value <= 2000 ? `${Math.round(value)}px` : null
+}
+function bodyVars(item: { slug: string, spec: QuickViewChart }) {
+  // 有好幾種期別的指標圖：窄卡片上期別切換折到控制列的第二列（多 40）
+  const twoControlRows = item.spec.kind === 'metric' && timeframesOf(item.spec.metricCode).length > 1
+  const [narrow, wide] = BODY_DEFAULTS[item.spec.kind] ?? [twoControlRows ? '428px' : '388px', '388px']
+  return { '--qv-body-narrow': heightHint('n', item.slug) ?? narrow, '--qv-body-wide': heightHint('w', item.slug) ?? wide }
+}
+// 畫好的卡片（內容區有東西、裡面沒有骨架）拿掉上面的高度，照自己的內容；全部畫好、靜下來半秒之後量一次記下來（還有卡片在讀的時候，
+// 同一列的卡片會被它的佔位撐高，量到的不是自己的高度）。讀不到的卡片內容區是空的，不算畫好：照舊佔著位置，也不會把空的記成它的高度
+const grid = ref<HTMLElement | null>(null)
+const drawnSlugs = ref<string[]>([])
+let rememberTimer: ReturnType<typeof setTimeout> | undefined
+let remembered = false
+function sweepCards() {
+  const cells = [...(grid.value?.querySelectorAll<HTMLElement>('.stock-quick-view-page__cell') ?? [])]
+  const drawn = cells.filter(cell => cell.querySelector('.el-card__body')?.childElementCount && !cell.querySelector('.app-skeleton'))
+  const slugs = drawn.map(cell => cell.dataset.slug ?? '')
+  if (slugs.join() !== drawnSlugs.value.join()) drawnSlugs.value = slugs
+  clearTimeout(rememberTimer)
+  if (drawn.length < cells.length) remembered = false
+  else if (!remembered && cells.length) rememberTimer = setTimeout(rememberHeights, 500)
+}
+function rememberHeights() {
+  remembered = true
+  const next: Required<HeightHints> = { n: {}, w: {} }
+  for (const cell of grid.value?.querySelectorAll<HTMLElement>('.stock-quick-view-page__cell') ?? []) {
+    const [slug, card, body] = [cell.dataset.slug ?? '', cell.firstElementChild, cell.querySelector('.el-card__body')]
+    if (!card || !body) continue
+    const [key, other] = card.getBoundingClientRect().width >= 520 ? ['w', 'n'] as const : ['n', 'w'] as const
+    next[key][slug] = Math.round(body.getBoundingClientRect().height)
+    const kept = heightHints.value?.[other]?.[slug]
+    if (typeof kept === 'number') next[other][slug] = kept
+  }
+  if (JSON.stringify(next) !== JSON.stringify(heightHints.value)) heightHints.value = next
+}
+let sweepFrame = 0
+const cardObserver = import.meta.client
+  ? new MutationObserver(() => {
+      cancelAnimationFrame(sweepFrame)
+      sweepFrame = requestAnimationFrame(sweepCards)
+    })
+  : null
+watch(grid, (element) => {
+  cardObserver?.disconnect()
+  if (!element) return
+  cardObserver?.observe(element, { childList: true, subtree: true })
+  sweepCards()
+})
+onBeforeUnmount(() => {
+  cardObserver?.disconnect()
+  clearTimeout(rememberTimer)
+})
+
 // 上移／下移在表格最後一欄（2026-10-07「把上移／下移做進速覽 表格中」）。按鈕不是拖曳：拖曳要另補
 // 一套鍵盤操作（WCAG 2.5.7）。移動後焦點跟著那一列；移到頭／尾時那一顆會 disabled，改落到另一顆。
 const orderAnnouncement = ref('')
@@ -396,9 +469,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     >
       <!-- 圖在表前（2026-09-27 規則）。釘選清單只在瀏覽器裡，所以圖也只在瀏覽器畫 -->
       <ClientOnly>
-        <div class="stock-quick-view-page__grid">
-        <!-- 每張圖自己就是圖卡（SharedChartCard，2026-10-14 起個股頁的圖一律由它包），標題從 #header 傳進去；資料還沒到的先放只有標題的空卡 -->
-        <template v-for="item in charts" :key="item.slug">
+        <div ref="grid" class="stock-quick-view-page__grid">
+        <!-- 每張圖自己就是圖卡（SharedChartCard，2026-10-14 起個股頁的圖一律由它包），標題從 #header 傳進去；資料還沒到的先放只有標題的空卡。
+             外面那一格帶著這張卡片讀取中該有的高度（bodyVars），畫好就拿掉 -->
+        <div v-for="item in charts" :key="item.slug" class="stock-quick-view-page__cell" :data-slug="item.slug" :style="drawnSlugs.includes(item.slug) ? undefined : bodyVars(item)">
         <StockDividendYieldHistoryChart v-if="item.spec.kind === 'dividend' && dividendYieldHistory?.entries?.length" :entries="dividendYieldHistory.entries" :cash-dividends="dividendYieldHistory.cashDividends">
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
         </StockDividendYieldHistoryChart>
@@ -502,7 +576,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>
           <div v-else-if="pageLoading(item.spec.kind)" class="stock-quick-view-page__placeholder app-skeleton" aria-hidden="true" />
         </SharedChartCard>
-        </template>
+        </div>
         <button type="button" class="stock-quick-view-page__add" @click="pickerOpen = true">
           <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
         </button>
@@ -538,16 +612,18 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             </ul>
           </section>
         </el-dialog>
-        <!-- 接手前（伺服器輸出與 hydration 那一刻）：同一個格子、同樣大小的空卡，標題照畫。原本這裡什麼都沒有，圖到了才整片出現，
+        <!-- 接手前（伺服器輸出與 hydration 那一刻）：同一個格子、同樣大小的空卡（每張卡片各自的高度，見 bodyVars），標題照畫。原本這裡什麼都沒有，圖到了才整片出現，
              把下面的表格推出畫面——2026-10-18 全站量測 /stock/2330 1440 寬 0.227、375 寬 0.289 -->
         <template #fallback>
           <div class="stock-quick-view-page__grid">
-            <SharedChartCard v-for="item in charts" :key="item.slug">
+            <div v-for="item in charts" :key="item.slug" class="stock-quick-view-page__cell" :style="bodyVars(item)">
+            <SharedChartCard>
               <!-- 河流圖那幾張的數字同畫好的卡片與表格：圖的最後一點（伺服器端算好的 river-latest）。原本這裡寫篩選器的數值，伺服器輸出的
                    本益比 27.76 跟表格的 27.24 不一樣，圖畫好後標題又跳成 27.24（2026-11-13） -->
               <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="riverKindOf(item.slug) ? riverHeaderText(undefined, item.slug, item.field) : valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
               <div class="stock-quick-view-page__placeholder app-skeleton" aria-hidden="true" />
             </SharedChartCard>
+            </div>
             <button type="button" class="stock-quick-view-page__add">
               <el-icon aria-hidden="true"><Plus /></el-icon>加入指標
             </button>
@@ -630,23 +706,43 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   margin-bottom: 0;
 }
 
+/* 一張卡片一格：卡片撐滿格子，同一列的卡片一樣高。格子上的 --qv-body-narrow／--qv-body-wide 是這張卡片讀取中內容區該有的高度
+  （script 的 bodyVars：上次畫好的高度，沒有就用預設）；卡片畫好之後格子不再帶它們，內容區照自己的內容 */
+.stock-quick-view-page__cell {
+  display: grid;
+}
+
+.stock-quick-view-page__cell > * {
+  min-width: 0;
+}
+
+.stock-quick-view-page__cell :deep(.el-card__body) {
+  min-height: var(--qv-body-narrow, 0);
+}
+
+@container (min-width: 520px) {
+  .stock-quick-view-page__cell :deep(.el-card__body) {
+    min-height: var(--qv-body-wide, 0);
+  }
+}
+
 .stock-quick-view-page__chart-empty {
   margin: 0;
 }
 
-/* 佔位卡的內容區＝圖卡的控制列＋間距＋圖（320px，全站圖表統一的高度）。控制列在窄卡片是 44px、卡片寬 ≥520px 是 32px，
-   用跟 SharedChartCard 同一個容器條件切換（它的 container-type 在 .shared-chart-card 上）。量到的真卡片：1440 寬 454px、375 寬第一張 466px */
+/* 佔位填滿內容區：那一格給的高度扣掉卡片上下的內距（24）。沒給的時候（不在格子裡）是一般圖卡的 364＝控制列 32＋間距 12＋圖 320。
+   窄與寬用跟 SharedChartCard 同一個容器條件切換（它的 container-type 在 .shared-chart-card 上） */
 .stock-quick-view-page__placeholder {
-  height: calc(44px + 8px + 320px);
+  height: calc(var(--qv-body-narrow, 388px) - 24px);
 }
 
 @container (min-width: 520px) {
   .stock-quick-view-page__placeholder {
-    height: calc(32px + 8px + 320px);
+    height: calc(var(--qv-body-wide, 388px) - 24px);
   }
 }
 
-/* 六面向的雷達圖卡片：內容區至少跟佔位一樣高、圖放中間。圖最寬 11.75rem（188×214）：窄卡片圖例折成兩行（52）加軸名兩列（94）
+/* 六面向的雷達圖卡片：內容區最少這麼高（窄 372、寬 360；這張卡片佔位的預設照這兩個數字，見 BODY_DEFAULTS，改這裡要一起改）、圖放中間。圖最寬 11.75rem（188×214）：窄卡片圖例折成兩行（52）加軸名兩列（94）
    加圖 214 是 368，放得進 372；寬卡片圖例一行，342 放得進 360 */
 .stock-quick-view-page__six {
   --six-radar-plot: 11.75rem;
@@ -695,9 +791,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   text-overflow: ellipsis;
 }
 
+/* 跟畫好的 8 列一樣高（每列 2.75rem，分隔線算在裡面） */
 .stock-quick-view-page__facts-placeholder {
   flex: 1;
-  min-height: calc(8 * (2.75rem + 1px));
+  min-height: calc(8 * 2.75rem);
 }
 
 /* 虛線外框＝空位，跟實心的圖表卡片一眼分得出來；同一列裡會被 grid 撐到跟旁邊的卡片一樣高 */

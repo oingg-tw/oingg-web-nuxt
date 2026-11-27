@@ -48,7 +48,7 @@ onMounted(() => { now.value = Date.now() })
 </template>
 
 <style scoped>
-/* 同指標速覽圖表卡的骨架（pages/stock/[code]/index.vue 的 .stock-quick-view-page__placeholder）：窄的時候 44＋8＋320，520 起 32＋8＋320 */
+/* 新聞卡的最小高度：窄的時候 44＋8＋320，520 起 32＋8＋320。指標速覽給這張卡片的佔位預設照這兩個數字（pages/stock/[code]/index.vue 的 BODY_DEFAULTS），改這裡要一起改 */
 .news-card {
   display: flex;
   flex-direction: column;

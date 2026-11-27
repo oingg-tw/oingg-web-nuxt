@@ -6,6 +6,8 @@ import { chromium } from 'playwright'
 //   - 2891（金控）：每一支都要有卡——三率、流動資產這些拆不開的是空狀態卡，不是整格消失；杜邦分析畫 ROE、資產報酬率、權益乘數（2026-11-19）
 //   - 彈窗裡沒有純表格頁（填權填息、三大報表）
 //   - 近期新聞（2026-11-16 起能釘，不在預設）：2330 列出新聞，卡片不比旁邊的圖表卡高
+//   - 重新整理（2026-11-28）：每張卡片從伺服器的第一個畫面到畫好，高度都不動（上次畫好的高度記在 cookie，佔位照它畫）；
+//     第一次來，手機第一個畫面裡的基本資料與六面向也不動
 // 用法：先開伺服器（正式建置：PORT=3100 node --env-file=.env .output/server/index.mjs），
 //   QUICK_VIEW_CHECK_URL=http://localhost:3100 node scripts/check-quick-view.mjs
 const baseUrl = process.env.QUICK_VIEW_CHECK_URL ?? 'http://localhost:3000'
@@ -190,6 +192,40 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     }
   }
   expect(code, '沒有頁面錯誤', pageErrors.length === 0, pageErrors.join(' | '))
+  await context.close()
+}
+
+// 每張卡片的高度從第一個畫面到畫好有沒有變（2026-11-28：佔位原本一律一樣高，手機上 2330 的基本資料 462→442、ROE 462→574，
+// 資料一到下面整頁跟著動）。每個畫面記一次每張卡片的高度；第一次來只看第一個畫面裡的前兩張（其餘用預設，可能動一次），
+// 重新整理之後七張都不能動
+for (const width of [375, 1440]) {
+  console.log(`\n== /stock/2330 卡片高度 @${width}`)
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
+  await context.addInitScript(() => {
+    window.__cardHeights = []
+    const tick = () => {
+      document.querySelectorAll('.stock-quick-view-page__grid > .stock-quick-view-page__cell').forEach((card, index) => {
+        const seen = (window.__cardHeights[index] ??= [])
+        const height = Math.round(card.getBoundingClientRect().height)
+        if (seen.at(-1) !== height) seen.push(height)
+      })
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+  const page = await context.newPage()
+  const settle = async () => {
+    await waitFor(async () => (await page.locator('.stock-quick-view-page__cell').count()) >= 7 && (await page.locator('.stock-quick-view-page__cell .app-skeleton').count()) === 0, 120000)
+    // 全部畫好、靜下來半秒才記高度（rememberHeights）
+    await page.waitForTimeout(1500)
+    return page.evaluate(() => window.__cardHeights.map(list => list.join('→')))
+  }
+  await page.goto(`${baseUrl}/stock/2330`, { waitUntil: 'networkidle' })
+  const first = await settle()
+  expect('2330', `${width} 寬第一次來：基本資料與六面向的高度不動`, first.slice(0, 2).every(seen => !seen.includes('→')), first.slice(0, 2).join(' / '))
+  await page.reload({ waitUntil: 'networkidle' })
+  const again = await settle()
+  expect('2330', `${width} 寬重新整理：每張卡片的高度都不動`, again.length >= 7 && again.every(seen => !seen.includes('→')), again.join(' / '))
   await context.close()
 }
 
