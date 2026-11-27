@@ -22,6 +22,12 @@ function provenanceScale(item: MetricProvenanceEntry): number {
   return item.fieldKey && PER_SHARE_KEYS.has(item.fieldKey) ? 1 : 1000
 }
 
+// 期別那一格：算出來的列（平均值）與市場資料沒有期別，寫「－」；只有年度的寫「2025 年」（全站年度的寫法）
+export function formatProvenancePeriod(fiscalYear: number | null | undefined, fiscalQuarter: number | null | undefined): string {
+  if (fiscalYear == null) return '－'
+  return fiscalQuarter == null ? `${fiscalYear} 年` : `${fiscalYear} Q${fiscalQuarter}`
+}
+
 // 沒有數值寫「－」，不是 0（2026-10-21：6741 那幾季財報根本沒有存貨科目，計算過程原本寫存貨 0）
 export function formatProvenanceValue(item: MetricProvenanceEntry): string {
   return item.value === null ? '－' : formatSignificantDigits(item.value * provenanceScale(item), 4)

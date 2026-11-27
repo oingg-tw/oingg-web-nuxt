@@ -82,19 +82,19 @@ const label = computed(() => `${props.shortName} ${props.symbol} 的${props.topi
                  於是那種列會渲染一顆按得下去、按了什麼都不會發生的按鈕。上游 2026-09-28 讓「這一期
                  沒有對應欄位」變成一個可表達的狀態（fieldKey 給 null），所以這種列會變多。
                  兩個條件寫兩次是刻意的：模板決定「能不能按」、函式決定「按了做什麼」，兩邊都得成立。 -->
-            <button v-if="item.type === 'statementField' && item.statementType && item.fieldKey" type="button" class="stock-provenance__link" @click="openProvenanceEntry(item)">
+            <button v-if="item.type === 'statementField' && item.statementType && item.fieldKey && item.fiscalYear !== null" type="button" class="stock-provenance__link" @click="openProvenanceEntry(item)">
               {{ item.role }}
             </button>
             <template v-else>{{ item.role }}</template>
           </td>
           <td>{{ formatProvenanceValue(item) }}</td>
-          <td>{{ item.fiscalYear }} Q{{ item.fiscalQuarter }}</td>
+          <td>{{ formatProvenancePeriod(item.fiscalYear, item.fiscalQuarter) }}</td>
           <td>{{ provenanceSourceText(item) }}</td>
         </tr>
         <tr v-if="result" class="stock-provenance__result">
           <td>{{ topic }}（計算結果）</td>
           <td>{{ result.value }}</td>
-          <td>{{ provenance.fiscalYear }} Q{{ provenance.fiscalQuarter }}（{{ result.basis }}）</td>
+          <td>{{ provenance.fiscalYear === null ? result.basis : `${formatProvenancePeriod(provenance.fiscalYear, provenance.fiscalQuarter)}（${result.basis}）` }}</td>
           <td>由以上數字計算</td>
         </tr>
       </tbody>

@@ -80,7 +80,7 @@ export async function jumpToStatementRow(target: { statementType: StatementType;
 //
 // 回傳 boolean 而不是 void：徽章對話框要在跳轉前先關掉自己，而它不該重複一次同樣的判斷。
 export function openProvenanceEntry(entry: MetricProvenanceEntry): boolean {
-  if (entry.type !== 'statementField' || !entry.statementType || !entry.fieldKey) return false
+  if (entry.type !== 'statementField' || !entry.statementType || !entry.fieldKey || entry.fiscalYear === null) return false
   void jumpToStatementRow({
     statementType: entry.statementType,
     rowKey: entry.fieldKey,

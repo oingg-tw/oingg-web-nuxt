@@ -6,7 +6,8 @@ import type { StatementType } from './financial-statement'
 // stock-badges.ts live here).
 export interface MetricProvenanceEntry {
   role: string
-  fiscalYear: number
+  // null：沒有期別的列，例如「上列各季末值的平均」、收盤價、月營收（2026-11-27 才照實寫成可以是 null：原本畫面印出一個孤零零的「Q」）
+  fiscalYear: number | null
   // 2026-10-07 業務中台 f750e92：上游本來就可能是 null，業務中台 以前轉成 "null"／0／false，現在原樣傳 null
   fiscalQuarter: number | null
   // null：那一期的財報沒有這個科目、或由它算出來的平均（2026-10-21 實測 6741 的存貨與應付帳款）
