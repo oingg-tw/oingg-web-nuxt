@@ -15,6 +15,11 @@ import type { MetricProvenanceEntry } from '#shared/types/metric-provenance'
 // 三種列三種刻度：報表欄位是千元、每股盈餘那兩個欄位本來就是元（PER_SHARE_KEYS 已經有這份清單，
 // 財報三表的表格在用同一個）、`type: 'other'`（股數、收盤價、市場快照）是絕對值。
 //
+// other 的金額一律是元：2026-11-27 起數據中台的 openapi 也這樣寫（「statementField 的金額照財報千元（每股欄位是元）；other 的金額
+// 一律是元」）。在那之前有幾類 other 把千元原樣送出來（各種平均、月營收、特別股清償金額與股利、銀行損益明細），照這裡的規則顯示就少
+// 1000 倍：技嘉的平均總資產寫 2.385 億、平均存貨寫 1.267 億，上面逐季列的卻是一兩千億。那次改的是資料，不是這裡；哪天 other 的金額
+// 又跟上面的報表數字差一千倍，先查上游，不要在這裡猜哪幾筆是千元（股數與金額從數字分不出來）。
+//
 // **不要寫成「statementField 一律千元」**：上游 2026-10-01 明確說了那條規則不成立——
 // financial-statement 的慣例是「金額千元、但每股欄位本身是元」，所以判斷必須看 fieldKey。
 function provenanceScale(item: MetricProvenanceEntry): number {
