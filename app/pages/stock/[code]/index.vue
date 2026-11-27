@@ -276,7 +276,9 @@ function usePageData<T>(kind: keyof typeof PAGE_DATA) {
       if (!pinnedKinds.value.has(kind)) return null
       // 興櫃沒有六面向（上游一律 404），卡片也不畫：不問
       if (kind === 'six-dimensions' && profile.value?.market === 'rotc') return null
-      const response = await $fetch<T>(pageUrl(kind), { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS }).catch(() => null)
+      const response = await $fetch<T>(pageUrl(kind), { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
+        // 六面向的 404 是查無資料（不在比較範圍），當成讀到了、沒有軸：卡片才分得出「目前沒有」與讀不到（讀不到留空，見下面 loadedEmpty）
+        .catch(error => (kind === 'six-dimensions' && error?.statusCode === 404 ? { asOf: null, axes: [] } as T : null))
       // 上游讀不到時伺服器回 200、series 或某個群組是 null（各頁當讀取失敗處理，見 margins.vue 的 readFailed）：這裡同樣當成沒讀到
       const partial = response as { series?: unknown; groups?: Record<string, unknown> } | null
       return partial?.series === null || Object.values(partial?.groups ?? {}).includes(null) ? null : response
@@ -492,7 +494,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
               <SharedChartLegend :groups="SIX_DIMENSIONS_LEGEND" />
               <StockSixDimensionsRadar :axes="sixAxes" :label="sixDimensionsAriaLabel(stockShortName, sixAxes)" />
             </template>
-            <p v-else class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
+            <p v-else-if="sixDimensions" class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
           </div>
         </SharedChartCard>
         <SharedChartCard v-else>

@@ -17,8 +17,10 @@ const [{ data, error, refresh }, { data: filterSchema }] = await Promise.all([
   useFetch<RadarBreakdown>(() => `/api/cached/stocks/${code.value}/radar-breakdown`, { key: () => `stock-six-dimensions-${code.value}`, watch: [code] }),
   useFilterSchema()
 ])
-// 404（興櫃、不在母體）是沒有資料，不是讀不到
-watchLoadFailure(() => `stock-six-dimensions:${code.value}`, () => (error.value?.statusCode === 404 ? null : error.value), refresh)
+// 404（興櫃、不在母體）是沒有資料，不是讀不到。讀不到的時候畫面不說「目前沒有」，交給全站的讀取失敗提示（它會自動重讀）：
+// 數據中台改了面向的定義、那一批還沒重算完時會回 503（經業務中台是 502，2026-11-27 起；之前是把舊的值配上新的組成名稱）
+const failure = computed(() => (error.value && error.value.statusCode !== 404 ? error.value : null))
+watchLoadFailure(() => `stock-six-dimensions:${code.value}`, () => failure.value, refresh)
 
 const axes = computed(() => sixDimensionAxes(data.value))
 const hasAny = computed(() => axes.value.some(axis => axis.value !== null))
@@ -27,6 +29,7 @@ const emerging = computed(() => profile.value?.market === 'rotc')
 
 const answer = computed(() => {
   if (emerging.value) return '六面向只算上市櫃公司，興櫃公司不在比較範圍裡。'
+  if (failure.value) return ''
   if (!data.value) return `目前沒有${stockShortName.value}的六面向資料。`
   // 六個都算不出來：原因每個面向不一定一樣（產業不適用、歷史不夠長、不到一半有值），寫在下面的表
   return sixDimensionsAnswer(axes.value, asOf.value) ?? `${stockShortName.value}的六個面向目前都算不出來，各自的原因在下面的表。`
