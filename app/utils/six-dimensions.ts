@@ -56,10 +56,19 @@ export interface SixDimensionAxis {
   components: RadarComponent[]
 }
 
-// 不適用的面向（2026-11-27 晚上起，數據中台說是使用者看過回測第二十四輪後定的）：金融保險業與異業合併格式申報的公司（和泰車、新纖、
-// 中纖、三商）只看成長動能、價格趨勢、股東回饋，體質改善、價值型、財務安全整個面向是 not_applicable_industry。這三軸繞一圈是相鄰的，
-// 圖上連成一片，沒有孤立的點。這種面向不列組成指標：上游還是會帶組成（富邦金的股價淨值比 1.67 倍），但沒有排名，列出來只是數字配一格「－」
+// 不適用的面向（2026-11-27 晚上起，數據中台說是使用者看過回測第二十四輪後定的；使用者 11-28 在這裡照這個前提要了三角形，見
+// sixDimensionChartAxes）：金融保險業與異業合併格式申報的公司（和泰車、新纖、中纖、三商）只看成長動能、價格趨勢、股東回饋，體質改善、
+// 價值型、財務安全整個面向是 not_applicable_industry。這種面向不列組成指標：上游還是會帶組成（富邦金的股價淨值比 1.67 倍），但沒有排名，
+// 列出來只是數字配一格「－」
 const NOT_APPLICABLE = 'not_applicable_industry'
+
+// 圖上畫哪幾個面向（2026-11-28 使用者：「雷達圖要是只有三個面向解釋就改成三角形吧」）：不適用的面向不畫，剩幾個就是幾邊形，那 44 家是
+// 三角形（答句與兩張表照舊列六個，其餘三個寫「不適用」）。算不出來的照畫、那一個軸不連線：它只是現在沒有值，不適用是這家公司一直不看。
+// 適用的不到三個畫不成多邊形，照六個軸畫（現在沒有這種公司）
+export function sixDimensionChartAxes<T extends { value: number | null; nullReason?: string | null }>(axes: T[]): T[] {
+  const applicable = axes.filter(axis => axis.value !== null || axis.nullReason !== NOT_APPLICABLE)
+  return applicable.length >= 3 ? applicable : axes
+}
 
 export function sixDimensionAxes(breakdown: Pick<RadarBreakdown, 'axes'> | null | undefined): SixDimensionAxis[] {
   return SIX_DIMENSIONS.map(({ code, label }) => {
@@ -90,11 +99,12 @@ export const sixDimensionMissingLabel = (nullReason: string | null | undefined):
 export const percentileLabel = (value: number | null, nullReason?: string | null): string => (value === null ? sixDimensionMissingLabel(nullReason) : String(Math.round(value)))
 
 // 一個面向為什麼沒有值（數據中台 2026-11-27）：not_applicable_industry 是整個面向不適用（見上面 NOT_APPLICABLE；原本寫「組成指標不適用於
-// 這個產業」，但價值型的股價淨值比對金融股明明有數字，而且和泰車的產業是汽車工業）。格子已經寫「不適用」，這裡只補「依產業別」
-//（全站這個原因碼的說法）：是哪些公司寫在頁面最後的定義，一句話不在三列各寫一遍。扣掉歷史不足的之後不到一半是 insufficient_history
+// 這個產業」，但價值型的股價淨值比對金融股明明有數字，而且和泰車的產業是汽車工業）。格子已經寫「不適用」，這裡只補「依產業或財報格式」
+//（使用者 2026-11-28 照建議選的；原本是全站這個原因碼的「依產業別」，對和泰車、新纖、中纖、三商不準：它們是因為用異業合併格式申報，
+// 不是因為產業）：是哪些公司寫在頁面最後的定義，一句話不在三列各寫一遍。扣掉歷史不足的之後不到一半是 insufficient_history
 //（剛掛牌的價格趨勢、月營收不滿一年的成長動能）；其餘是 missing_input。不認得的原因只寫無法計算，不猜
 const NULL_TEXTS = new Map([
-  [NOT_APPLICABLE, '依產業別'],
+  [NOT_APPLICABLE, '依產業或財報格式'],
   ['insufficient_history', '組成指標的歷史資料不夠長'],
   ['missing_input', '組成指標不到一半有值']
 ])
@@ -108,7 +118,16 @@ function radarPoint(k: number, r: number, count: number): [number, number] {
 }
 const pointsText = (points: [number, number][]) => points.map(point => point.join(',')).join(' ')
 
+// 第 k 個軸的名稱放在圖四周六個位置的哪一個（0 正上，順時針：1 右上、2 右下、3 正下、4 左下、5 左上）：離那個軸最近的位置。
+// 六個軸一個位置放一個；三個軸是 0、2、4（上、右下、左下）
+export const radarSlot = (k: number, count: number): number => Math.round(k * 6 / count)
+
+// 最外圈四周留給頂點圓點（半徑 5）的邊
+const RADAR_MARGIN = 6
+
 export interface RadarGeometry {
+  // SVG 的 viewBox（左、上、寬、高）：最外圈的範圍加四周的邊。六個軸是 -93 -106 186 212；三個軸的底邊在 50，是 -93 -106 186 162
+  box: [number, number, number, number]
   // 25、50、75、100 四圈的多邊形頂點
   rings: { percent: number; points: string }[]
   // 每個軸的外端
@@ -131,9 +150,13 @@ export function radarGeometry(values: (number | null)[], radius: number): RadarG
     fill.push(`M0,0L${dot.join(',')}L${next.join(',')}Z`)
     line.push(`M${dot.join(',')}L${next.join(',')}`)
   })
+  const spokes = values.map((_, k) => radarPoint(k, radius, count))
+  const [xs, ys] = [spokes.map(point => point[0]), spokes.map(point => point[1])]
+  const [left, top] = [Math.floor(Math.min(...xs) - RADAR_MARGIN), Math.floor(Math.min(...ys) - RADAR_MARGIN)]
   return {
+    box: [left, top, Math.ceil(Math.max(...xs) + RADAR_MARGIN) - left, Math.ceil(Math.max(...ys) + RADAR_MARGIN) - top],
     rings: [25, 50, 75, 100].map(percent => ({ percent, points: pointsText(values.map((_, k) => radarPoint(k, radius * percent / 100, count))) })),
-    spokes: values.map((_, k) => radarPoint(k, radius, count)),
+    spokes,
     dots,
     fill: fill.join(''),
     line: line.join('')

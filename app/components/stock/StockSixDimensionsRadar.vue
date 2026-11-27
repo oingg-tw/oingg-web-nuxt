@@ -2,24 +2,32 @@
 // 六面向的雷達圖（2026-11-27，設計圖 https://claude.ai/artifact/FWP3mJfa44md4csrM31MAb）。直接畫成 SVG，不經 ECharts：六個點的幾何很簡單，
 // SVG 在伺服器的 HTML 裡就有，不用等圖表庫、也不會先留一個空框。軸名與數字是 HTML（格線排在圖的四周），不是 SVG 的字：圖可以隨
 // 容器縮放，字永遠是內文的大小（SVG 的字會跟著圖一起縮，手機上會小於 16px）。單色、不分高低的顏色：高低只是位置。虛線那一圈是 50。
-// 數字同時在旁邊的表格；圖是 role="img" 加一句完整的替代文字，四周的字對輔助科技隱藏，不重複念
+// 數字同時在旁邊的表格；圖是 role="img" 加一句完整的替代文字，四周的字對輔助科技隱藏，不重複念。
+// 只畫適用的面向（2026-11-28 使用者：「雷達圖要是只有三個面向解釋就改成三角形吧」）：金融保險業那 44 家是三個軸的三角形
 const props = defineProps<{
-  // 六個軸：0 正上，順時針（1 右上、2 右下、3 正下、4 左下、5 左上）。nullReason：沒有值的軸寫「不適用」還是「無法計算」
+  // 六個面向，照固定的順序。nullReason：沒有值的軸寫「不適用」還是「無法計算」；不適用的不畫（sixDimensionChartAxes）
   axes: { label: string; value: number | null; nullReason?: string | null }[]
   label: string
 }>()
 
-// 圖本身的座標：半徑 100，四周留 6 給頂點的圓點
+// 圖本身的座標：半徑 100；第一個軸正上，順時針
 const RADIUS = 100
-const geometry = computed(() => radarGeometry(props.axes.map(axis => axis.value), RADIUS))
+const drawn = computed(() => sixDimensionChartAxes(props.axes))
+const geometry = computed(() => radarGeometry(drawn.value.map(axis => axis.value), RADIUS))
+// 三角形比六邊形扁（186×162 對 186×212）：把圖放寬到跟六個軸的圖一樣高，指標速覽的卡片高度不變，圖也不會小一截
+const FULL_BOX = radarGeometry(SIX_DIMENSIONS.map(() => null), RADIUS).box
+const stretch = computed(() => {
+  const [, , width, height] = geometry.value.box
+  return Math.round((FULL_BOX[3] / FULL_BOX[2]) / (height / width) * 1e4) / 1e4
+})
 const outerRings = computed(() => geometry.value.rings.filter(ring => ring.percent !== 50))
 const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent === 50)?.points ?? '')
 </script>
 
 <template>
-  <div class="six-radar">
+  <div class="six-radar" :class="{ 'six-radar--triangle': drawn.length === 3 }" :style="{ '--six-radar-stretch': stretch }">
     <div class="six-radar__layout">
-      <svg class="six-radar__plot" role="img" :aria-label="label" viewBox="-93 -106 186 212">
+      <svg class="six-radar__plot" role="img" :aria-label="label" :viewBox="geometry.box.join(' ')">
         <g class="six-radar__grid">
           <polygon v-for="ring in outerRings" :key="ring.percent" :points="ring.points" />
           <line v-for="(spoke, index) in geometry.spokes" :key="index" x1="0" y1="0" :x2="spoke[0]" :y2="spoke[1]" />
@@ -31,7 +39,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
           <circle v-if="dot" class="six-radar__dot" :cx="dot[0]" :cy="dot[1]" r="5" />
         </template>
       </svg>
-      <p v-for="(axis, index) in axes" :key="axis.label" :class="`six-radar__label six-radar__label--${index}`" aria-hidden="true">
+      <p v-for="(axis, index) in drawn" :key="axis.label" :class="`six-radar__label six-radar__label--${radarSlot(index, drawn.length)}`" aria-hidden="true">
         <span>{{ axis.label }}</span>
         <span :class="axis.value === null ? 'six-radar__missing' : 'six-radar__value'">{{ percentileLabel(axis.value, axis.nullReason) }}</span>
       </p>
@@ -45,9 +53,11 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
 }
 
 /* 窄的時候（手機、指標速覽的格子）：圖撐滿寬度，最寬 15rem；六個軸名排在圖的上面一列、下面一列，左右兩個各靠自己那一側的角。
-   軸名放圖的兩旁要吃掉 144px，320 寬的手機上圖只剩 87px。--six-radar-plot：圖的最大寬度，指標速覽的卡片給小一點（卡片高度固定）。
+   軸名放圖的兩旁要吃掉 144px，320 寬的手機上圖只剩 87px。--six-radar-plot：六個軸的圖的最大寬度，指標速覽的卡片給小一點（卡片高度固定）；
+   --six-radar-stretch 是元件算的：軸比較少的圖比較扁，放寬到一樣高（三角形 ×1.3086）。
    軸名那兩列至少 14rem：三個四個字的軸名排一列要 12rem 加間距，卡片的圖只有 11.75rem，跟著圖一樣寬時「股東回饋」會黏到「成長動能」 */
 .six-radar__layout {
+  --six-radar-width: calc(var(--six-radar-plot, 15rem) * var(--six-radar-stretch, 1));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-areas:
@@ -56,15 +66,16 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
     'a4 a3 a2';
   align-items: center;
   gap: 4px 8px;
-  max-width: max(var(--six-radar-plot, 15rem), 14rem);
+  max-width: max(var(--six-radar-width), 14rem);
   margin-inline: auto;
 }
 
 /* 352px 以上軸名放回圖的兩旁、各自貼著自己的軸：軸名 64＋間距 8＋圖至少 208＋間距 8＋軸名 64。圖跨兩列，左右的軸名各在一列的中間，
-   也就是圖高的 1/4 與 3/4，側邊四個軸的外端就在那裡 */
+   也就是圖高的 1/4 與 3/4，側邊四個軸的外端就在那裡。三角形不換：它的三個角在正上與底邊的兩端，軸名在上面一個、下面左右各一個
+   就貼著自己的角，多寬都一樣 */
 @container (min-width: 352px) {
-  .six-radar__layout {
-    grid-template-columns: max-content minmax(0, var(--six-radar-plot, 15rem)) max-content;
+  .six-radar:not(.six-radar--triangle) .six-radar__layout {
+    grid-template-columns: max-content minmax(0, var(--six-radar-width)) max-content;
     grid-template-areas:
       '. a0 .'
       'a5 plot a1'
@@ -80,7 +91,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
   justify-self: center;
   display: block;
   width: 100%;
-  max-width: var(--six-radar-plot, 15rem);
+  max-width: var(--six-radar-width);
   height: auto;
 }
 
@@ -140,13 +151,13 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
 .six-radar__label--5 { grid-area: a5; justify-self: end; min-width: 100%; text-align: left; }
 
 @container (min-width: 352px) {
-  .six-radar__label--1,
-  .six-radar__label--2 {
+  .six-radar:not(.six-radar--triangle) .six-radar__label--1,
+  .six-radar:not(.six-radar--triangle) .six-radar__label--2 {
     text-align: left;
   }
 
-  .six-radar__label--4,
-  .six-radar__label--5 {
+  .six-radar:not(.six-radar--triangle) .six-radar__label--4,
+  .six-radar:not(.six-radar--triangle) .six-radar__label--5 {
     text-align: right;
   }
 }

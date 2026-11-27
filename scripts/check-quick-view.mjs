@@ -134,7 +134,9 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
   })
   expect(code, '基本資料、六面向不比圖表卡高', heights[0] <= heights[2] && heights[1] <= heights[2], heights.join(' / '))
   // 六面向卡片的軸名在手機上不黏在一起（2026-11-27：卡片的圖只有 188px 寬，軸名那一列跟圖一樣寬時三個四個字的軸名放不下，
-  // 「股東回饋」緊接著「成長動能」）。量字本身佔的範圍：同一列的兩個軸名至少隔 4px
+  // 「股東回饋」緊接著「成長動能」）。量字本身佔的範圍：同一列的兩個軸名至少隔 4px。金控只畫適用的三個面向，是三角形
+  //（2026-11-28，使用者：「雷達圖要是只有三個面向解釋就改成三角形吧」）
+  const axisCount = code === '2891' ? 3 : 6
   for (const width of [375, 320]) {
     await page.setViewportSize({ width, height: 900 })
     const touching = await cards.nth(1).evaluate((card) => {
@@ -153,7 +155,7 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
       }
       return { count: names.length, pairs }
     })
-    expect(code, `${width} 寬：六面向卡片的六個軸名不黏在一起`, touching.count === 6 && touching.pairs.length === 0, touching.pairs.join('、') || `${touching.count} 個軸名`)
+    expect(code, `${width} 寬：六面向卡片的 ${axisCount} 個軸名不黏在一起`, touching.count === axisCount && touching.pairs.length === 0, touching.pairs.join('、') || `${touching.count} 個軸名`)
   }
   await page.setViewportSize({ width: 1440, height: 900 })
 

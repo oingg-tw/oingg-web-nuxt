@@ -1,7 +1,7 @@
 // 六面向（app/utils/six-dimensions.ts）：固定的軸序、雷達圖的座標（缺值的軸不連線）、答句。
 // Run: node scripts/check-six-dimensions.mjs（pnpm selfcheck 會跑）
 import assert from 'node:assert/strict'
-import { SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, sixDimensionAxes, sixDimensionMissingLabel, sixDimensionNullText, sixDimensionScopeNote, sixDimensionScopeText, sixDimensionsAnswer, sixDimensionsAriaLabel } from '../app/utils/six-dimensions.ts'
+import { SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, radarSlot, sixDimensionAxes, sixDimensionChartAxes, sixDimensionMissingLabel, sixDimensionNullText, sixDimensionScopeNote, sixDimensionScopeText, sixDimensionsAnswer, sixDimensionsAriaLabel } from '../app/utils/six-dimensions.ts'
 
 const axis = (metricCode, value, nullReason = null) => ({ metricCode, value, nullReason, components: [] })
 // 上游的順序亂掉、多給一支、少給一支：照固定的六個軸排，沒有的當沒有值
@@ -27,7 +27,7 @@ assert.equal(sixDimensionMissingLabel('something_new'), '無法計算')
 assert.equal(sixDimensionMissingLabel(null), '無法計算')
 
 // 沒有值的原因：整個面向不適用、不到一半有值、歷史不夠長分開寫；不認得的不猜
-assert.equal(sixDimensionNullText('not_applicable_industry'), '依產業別')
+assert.equal(sixDimensionNullText('not_applicable_industry'), '依產業或財報格式')
 assert.equal(sixDimensionNullText('missing_input'), '組成指標不到一半有值')
 assert.equal(sixDimensionNullText('insufficient_history'), '組成指標的歷史資料不夠長')
 assert.equal(sixDimensionNullText('something_new'), '')
@@ -59,6 +59,7 @@ assert.deepEqual(full.dots, full.spokes)
 assert.equal(full.rings.find(ring => ring.percent === 100).points, '0,-100 86.6,-50 86.6,50 0,100 -86.6,50 -86.6,-50')
 assert.equal(full.rings.find(ring => ring.percent === 50).points, '0,-50 43.3,-25 43.3,25 0,50 -43.3,25 -43.3,-25')
 assert.equal(full.line.split('M').length - 1, 6, '六個軸都有值：六段連成一圈')
+assert.deepEqual(full.box, [-93, -106, 186, 212])
 assert.deepEqual(radarGeometry([0, 50, 100, 0, 0, 0], 100).dots.slice(0, 3), [[0, 0], [43.3, -25], [86.6, 50]])
 // 超出 0～100 的值不會畫到圖外
 assert.deepEqual(radarGeometry([140, -5, 0, 0, 0, 0], 100).dots.slice(0, 2), [[0, -100], [0, 0]])
@@ -68,11 +69,26 @@ assert.equal(missing.dots[3], null)
 assert.equal(missing.line.split('M').length - 1, 4)
 assert.equal(missing.fill.split('M').length - 1, 4)
 assert.ok(!missing.line.includes('NaN') && !missing.fill.includes('null'))
-// 金融股的三個軸（成長動能、價格趨勢、股東回饋）繞一圈是相鄰的：兩段連線、兩片填色，沒有孤立的點
-const threeAxes = radarGeometry([82.4, 91.3, null, null, null, 38.2], 100)
-assert.deepEqual(threeAxes.dots.map(Boolean), [true, true, false, false, false, true])
-assert.equal(threeAxes.line.split('M').length - 1, 2)
-assert.equal(threeAxes.fill.split('M').length - 1, 2)
+// 金融股只畫適用的三個面向（使用者 2026-11-28「雷達圖要是只有三個面向解釋就改成三角形吧」）：三個軸隔 120 度，三段連成一個三角形；
+// 圖比六邊形扁（底邊在 50），軸名放上、右下、左下
+const financialAxes = [['成長動能', 82.4], ['價格趨勢', 91.3], ['體質改善', null], ['價值型', null], ['財務安全', null], ['股東回饋', 38.2]].map(([label, value]) => ({ label, value, nullReason: value === null ? 'not_applicable_industry' : null }))
+const chartAxes = sixDimensionChartAxes(financialAxes)
+assert.deepEqual(chartAxes.map(item => item.label), ['成長動能', '價格趨勢', '股東回饋'])
+const triangle = radarGeometry(chartAxes.map(item => item.value), 100)
+assert.deepEqual(triangle.spokes, [[0, -100], [86.6, 50], [-86.6, 50]])
+assert.deepEqual(triangle.box, [-93, -106, 186, 162])
+assert.equal(triangle.line.split('M').length - 1, 3)
+assert.equal(triangle.fill.split('M').length - 1, 3)
+assert.equal(triangle.rings.find(ring => ring.percent === 50).points, '0,-50 43.3,25 -43.3,25')
+assert.deepEqual(chartAxes.map((_, k) => radarSlot(k, chartAxes.length)), [0, 2, 4])
+assert.deepEqual(SIX_DIMENSIONS.map((_, k) => radarSlot(k, 6)), [0, 1, 2, 3, 4, 5])
+// 算不出來的面向照畫（那一個軸不連線）：剛掛牌的金融股還是三角形，一般公司還是六個軸
+const newlyListed = sixDimensionChartAxes(financialAxes.map(item => (item.label === '價格趨勢' ? { ...item, value: null, nullReason: 'insufficient_history' } : item)))
+assert.deepEqual(newlyListed.map(item => item.label), ['成長動能', '價格趨勢', '股東回饋'])
+assert.equal(radarGeometry(newlyListed.map(item => item.value), 100).line.split('M').length - 1, 1)
+assert.equal(sixDimensionChartAxes(financialAxes.map(item => ({ ...item, nullReason: item.value === null ? 'missing_input' : null }))).length, 6)
+// 適用的不到三個畫不成多邊形：照六個軸畫
+assert.equal(sixDimensionChartAxes(financialAxes.map(item => (item.label === '股東回饋' ? { ...item, value: null, nullReason: 'not_applicable_industry' } : item))).length, 6)
 // 兩邊都缺的那一點只剩一個點，不連線；全部都缺什麼都不畫
 const lone = radarGeometry([50, null, null, null, null, null], 100)
 assert.deepEqual([lone.dots[0], lone.line, lone.fill], [[0, -50], '', ''])
