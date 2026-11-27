@@ -313,10 +313,11 @@ export const STOCK_METRIC_INDEX: StockNavNode[] = [
       { label: '利息保障倍數', perspective: '倍數', to: code => `/stock/${code}/interest-coverage`, hook: '一年賺的錢，夠付幾次利息' },
       // 背書保證與資金貸與（2026-11-23，數據中台第 4 項）：財報附註的或有負債與借出去的錢，比率只算集團外
       { label: '背書保證與資金貸與', perspective: '占比', to: code => `/stock/${code}/guarantees`, hook: '替集團外的人擔保、借錢給別人多少，跟關係人買賣有多大' },
-      // 銀行與金控的三個比率（2026-11-22）：其他公司點進去是「不是銀行或金控」，hook 先講清楚
+      // 銀行與金控的三個比率（2026-11-22）：其他公司點進去是「不是銀行或金控」，hook 先講清楚。後兩列用型錄的名字（頁名，2026-11-27）；
+      // 第一列留「資本適足率」：同一列在銀行是銀行資本適足率、在金控是金控集團資本適足率
       { label: '資本適足率', perspective: '占比', to: code => `/stock/${code}/capital-adequacy`, hook: '銀行與金控的自有資本，夠不夠吸收放款與投資可能的損失' },
-      { label: '逾期放款比率', perspective: '占比', to: code => `/stock/${code}/npl-ratio`, hook: '銀行放出去的款，有多少已經逾期沒還' },
-      { label: '備抵呆帳覆蓋率', perspective: '占比', to: code => `/stock/${code}/npl-coverage`, hook: '銀行準備的呆帳，是逾期放款的幾倍' }
+      { label: '銀行逾期放款比率', perspective: '占比', to: code => `/stock/${code}/npl-ratio`, hook: '銀行放出去的款，有多少已經逾期沒還' },
+      { label: '銀行備抵呆帳覆蓋率', perspective: '占比', to: code => `/stock/${code}/npl-coverage`, hook: '銀行準備的呆帳，是逾期放款的幾倍' }
     ]
   },
   // 原始財報墊底：上面每一個比率都是從這三張表算出來的，要自己核對從這裡進去。這四頁不是指標，

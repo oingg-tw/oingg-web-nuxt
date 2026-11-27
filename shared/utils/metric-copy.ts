@@ -93,7 +93,7 @@ export interface MetricCopy {
 
 export const METRIC_COPY: Record<string, MetricCopy> = {
   roe: {
-    pin: '9adb264c695c',
+    pin: '5ce0c15b9a1f',
     definition:
       '股東每投入 1 元自有資本，公司一年幫你賺回多少。算法是一段期間的淨利，除以這段期間的平均股東權益。右上角切「近四季」或「單季」時，分子分母都只算母公司股東應得的部分；切「年度」時兩者都含非控制權益，跟公開資訊觀測站公布的年度 ROE 同一個算法。',
     reading: {
@@ -116,7 +116,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   quickRatio: {
-    pin: '9b1ea72dfc5b',
+    pin: '82196bc8de82',
     definition:
       '公司一年內可以變現的資產（扣掉存貨），蓋不蓋得過一年內要還的債。100% 代表剛好蓋得過，而且是在完全不賣存貨的前提下。這比流動比率嚴格，因為存貨不一定賣得掉。',
     reading: {
@@ -203,7 +203,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   grossMargin: {
-    pin: '31d5eb2e9015',
+    pin: 'bac4d7b1c40b',
     definition:
       '每賣 100 元的東西，扣掉原料、人工、製造這些直接成本之後，還剩下多少。剩得多，通常代表產品賣得起價錢，或成本壓得住。',
     reading: {
@@ -222,7 +222,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   operatingMargin: {
-    pin: '17a6c936bcdc',
+    pin: '5f56c96f02a3',
     definition:
       '每賣 100 元的東西，扣掉直接成本，再扣掉推銷、管理、研發這些營運費用之後，本業還剩下多少。它不含匯兌、賣資產這類跟本業無關的損益。',
     reading: {
@@ -241,7 +241,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   netProfitMargin: {
-    pin: '38fbde09543d',
+    pin: '302ccc7b6ac1',
     definition:
       '每賣 100 元的東西，把所有成本、費用、利息和稅都扣完之後，最後真正留下多少。淨利用整間公司的總額，包含子公司裡其他股東應得的那一份，跟券商看盤軟體和證交所的算法一樣；少數財報缺總額的期別，改用母公司股東應得的數字。',
     reading: {
@@ -251,7 +251,9 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     },
     limitations: [
       '賣掉資產的一次性獲利或資產減損，會讓單季數字跟該季真正的獲利能力差很多。看趨勢用近四季比較穩。',
-      '銀行的營收是利息收入加非利息淨收益，跟一般公司的營收不是同一件事，銀行的淨利率只適合跟其他銀行比。金控與保險公司目前不提供。',
+      // 2026-11-27 重讀（數據中台 88486df，v5）：保險公司（IFRS 17）的單季改用保險收入當營收，原本一律不提供。近四季與年度還沒有：
+      // 保險收入 2026 年起才有、要湊滿四季，第四季的全年段上游還沒接。實測 2850、2816 從 2026Q1 起有單季值
+      '銀行的營收是利息收入加非利息淨收益，跟一般公司的營收不是同一件事，銀行的淨利率只適合跟其他銀行比。保險公司從 2026 年起用保險收入當營收，目前只有單季的數字。金控目前不提供。',
       '這裡的淨利含子公司其他股東的那一份，每股盈餘只算母公司股東。子公司不是百分之百持有的集團，用淨利率和每股盈餘互相換算會對不上。'
     ],
     misreadings: [
@@ -261,9 +263,11 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   eps: {
-    pin: '5ef5742199e6',
+    pin: '1beec4840249',
     definition:
-      '公司這段期間賺的錢，平均分到每一股是多少。淨利以母公司股東應得的部分為準。這裡提供單季和近四季加總兩種算法。',
+      // 2026-11-27 重讀：頁面的期別照型錄給（單季、近四季、年度），原本只寫兩種。年度是年報公告的基本每股盈餘、上游直接讀不重算；
+      // 分割類事件的還原年度也有（實測 6415 2021 年度 15.38，公告時是面額變更前的數字）
+      '公司這段期間賺的錢，平均分到每一股是多少。淨利以母公司股東應得的部分為準。這裡提供單季、近四季加總和年度三種；年度用的是公司年報公告的每股盈餘。',
     reading: {
       up: '每一股賺得更多。可能是公司整體賺得更多，也可能是股數減少——庫藏股註銷或減資都會。',
       down: '獲利下滑；或是現金增資、可轉債轉換讓股數變多，同樣的獲利被更多股分掉。',
@@ -289,7 +293,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   peRatio: {
-    pin: '30eead176cb3',
+    pin: '78d125899206',
     definition:
       '市場願意為公司每賺 1 元付出多少倍的價格。算法是股價除以近四季每股盈餘。',
     reading: {
@@ -341,7 +345,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   psr: {
-    pin: '07cab3938efc',
+    pin: 'd1b4bbbc540e',
     definition:
       '市場願意為公司每 1 元的營收付出多少倍的價格。算法是市值除以近四季營收。它常用在虧損或獲利極不穩定、本益比算不出來的公司。',
     reading: {
@@ -362,7 +366,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   livePegRatio: {
-    pin: '60ee58a1effa',
+    pin: '3fc8b11af082',
     definition:
       '把估值和成長速度放在一起看：本益比除以每股盈餘的五年年均成長率。每個交易日更新。',
     reading: {
@@ -382,7 +386,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   livePegyRatio: {
-    pin: '9fb9d63a13d6',
+    pin: 'd1297bf759ff',
     definition:
       '把股利也算進去的本益成長比：本益比除以「每股盈餘的五年年均成長率加現金股利殖利率」。每個交易日更新。',
     reading: {
@@ -391,7 +395,9 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
       compare: '跟本益成長比一起看。配息越高的公司，這個數字比本益成長比低得越多；近 12 個月沒配息的公司，兩個數字一樣。'
     },
     limitations: [
-      '需要五年的年度每股盈餘，而且頭尾兩年都要獲利。近四季虧損、上市未滿五年或從沒公告過股利的公司都沒有數值，所以有數值的公司不多。',
+      // 2026-11-27 重讀（數據中台 7aa092e，v4）：一筆股利公告都沒有的公司殖利率算 0、數值等於本益成長比，原本沒有數值。
+      // 「怎麼看」那一格的「近 12 個月沒配息的公司，兩個數字一樣」已經包含它們
+      '需要五年的年度每股盈餘，而且頭尾兩年都要獲利。近四季虧損或上市未滿五年的公司沒有數值，所以有數值的公司不多。',
       '成長率用的是過去五年的實際成長，殖利率用的是過去 12 個月的配息，都不是對未來的預估。之後如果減少配息，這個數字不會事先反映。'
     ],
     misreadings: [
@@ -403,7 +409,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   liveGrahamNumber: {
-    pin: '1fca8e8ad7dd',
+    pin: '71e7827a0506',
     definition:
       '把本益比和股價淨值比相乘，對照葛拉漢設的上限 22.5（15 倍 × 1.5 倍）。每個交易日更新。',
     reading: {
@@ -423,16 +429,18 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   piotroskiFScore: {
-    pin: '142749db3eb9',
+    pin: 'a54f4781f7ce',
     definition:
-      '九個「有沒有改善」的是非題，答對幾題就是幾分，滿分 9 分。九題分別是：獲利為正、現金流為正、獲利改善、現金流大於淨利、槓桿下降、流動性改善、沒有增資稀釋、毛利率改善、資產週轉改善。',
+      // 2026-11-27 重讀（數據中台 abb3314、d29e48a、61bfeeb，v5～v7）：加了年度（照原始論文用年報）；第七題照論文改看發行普通股收到的現金
+      //（現金增資、員工認股權執行），原本比流通股數，所以配股、可轉債轉換不再算
+      '九個「有沒有改善」的是非題，答對幾題就是幾分，滿分 9 分。九題分別是：獲利為正、現金流為正、獲利改善、現金流大於淨利、槓桿下降、流動性改善、沒有發行新股募資、毛利率改善、資產週轉改善。',
     reading: {
       up: '九項體質檢查裡通過的項目變多，來源可能是獲利、現金流、負債或營運效率任何一項的改善。',
       down: '其中幾項由通過轉為未通過。它是 0 到 9 的整數，一次通常只動一兩分。',
       compare: '跟自己去年同期比最看得出方向。它是把九個是非題加起來，所以兩家公司同樣 7 分，通過的可能是完全不同的七項。'
     },
     limitations: [
-      '九題都是拿本季跟去年同季比，所以至少要有五季財報才算得出來。',
+      '有單季和年度兩種。單季是拿本季跟去年同季比，至少要有五季財報；年度照原始論文用年報跟前一年比，需要連續三年的年底資產負債表。',
       '只要其中一題因為缺資料無法判斷，整個分數就不給，不會只算八題再打折。',
       '原始研究的對象是股價淨值比低的價值股，套用在成長股上參考價值較低。'
     ],
@@ -443,16 +451,18 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   interestCoverage: {
-    pin: 'f5e8167cc48d',
+    pin: '3214a9186658',
     definition:
-      '公司一年賺的錢，夠付幾倍的利息。算法是近四季的稅前淨利加回利息費用，再除以近四季的利息費用。',
+      // 2026-11-27 重讀：型錄有單季（Q＝本季的稅前淨利加利息費用 ÷ 本季利息費用），頁面右上角切得到（實測 2330 有單季值），
+      // 原本寫「只有近四季一種算法，沒有單季版本」
+      '公司賺的錢，夠付幾倍的利息。算法是稅前淨利加回利息費用，再除以利息費用；預設用近四季，單季版本是同一季的兩個數字相除。',
     reading: {
       up: '一年賺的錢相對利息支出變多。可能是獲利增加，也可能是還掉借款讓利息變少。',
       down: '獲利下滑，或是利息支出增加。',
       compare: '跟自己過去比。完全沒有借款的公司分母是零、算不出來，那個空白不代表狀況不好。'
     },
     limitations: [
-      '分子分母都是一整年的累積數，所以只有近四季一種算法，沒有單季版本。',
+      '單季的獲利和利息費用起伏都比較大，看趨勢用近四季。',
       '銀行和保險公司的利息費用結構跟一般公司完全不同，這個比率不適用。',
       '沒有借款、或利息費用極低的公司，倍數會大到失去比較意義。'
     ],
@@ -482,7 +492,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   accrualsRatio: {
-    pin: '2fdea4d0f891',
+    pin: '8bf462fa37a2',
     definition:
       '帳上的獲利，有多少比例不是真的現金流進來，而是會計估計（應收帳款、存貨、折舊假設等）撐出來的。數字越高，代表獲利的「現金含量」越低。',
     reading: {
@@ -501,9 +511,9 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   ocfToNetIncome: {
-    pin: '484f7c17bb73',
+    pin: 'a02262cd03f9',
     definition:
-      '帳上賺的錢，有沒有真的變成現金流進來。算法是近四季的營業現金流除以近四季淨利。1 倍代表賺多少就收到多少現金。',
+      '帳上賺的錢，有沒有真的變成現金流進來。算法是營業現金流除以淨利；預設用近四季，單季版本是同一季的兩個數字相除。1 倍代表賺多少就收到多少現金。',
     reading: {
       up: '帳面賺的錢，實際收到現金的比例變高。可能是收款加快，也可能是折舊攤提大的公司本來就會超過 100%。',
       down: '獲利沒有等量的現金進來，常見原因是應收帳款或存貨增加。',
@@ -520,7 +530,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   ocfMargin: {
-    pin: 'd7b110df157c',
+    pin: 'b95701d9bba1',
     definition:
       '每收到 100 元營收，實際變成多少營業現金流入。它跟損益表上的淨利率互為對照：一個看帳面獲利，一個看實際收到的現金。',
     reading: {
@@ -544,7 +554,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 2026-10-23 開頁。上游三段敘述是空的：事實取自 analysis-ts 的計算（computeFcfMargin：營業現金流加上現金流量表原本就是負數的
   // 資本支出，近四季加總後相除；只有近四季）、同一個資本支出科目的 capexToRevenue 文案，以及實測的恆等式（metric-pages.ts）
   fcfMargin: {
-    pin: '52e63c045990',
+    pin: '155f88b1c6b4',
     definition:
       '每收到 100 元營收，扣掉買設備、蓋廠房的錢之後，還剩多少現金可以自由運用。算法是近四季的自由現金流（營業現金流減掉購置不動產、廠房及設備的支出）除以近四季營收。',
     reading: {
@@ -564,7 +574,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   fcfConversionRate: {
-    pin: 'bed2d5629dad',
+    pin: '375ba6dfd724',
     definition:
       '帳上賺的錢，有多少比例真的變成可以自由運用的現金。自由現金流（營業現金流減掉買設備的錢）除以淨利；預設用近四季，單季版本是同一季的兩個數字相除。',
     reading: {
@@ -583,7 +593,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendPayoutRatio: {
-    pin: '1dbddee40221',
+    pin: '7398addc3c61',
     definition:
       '公司把賺到的錢，拿多少比例出來發現金股利給股東。有兩種算法：年度口徑是某一年的盈餘配出去的股利除以該年的每股盈餘，分子分母落在同一年，個股頁預設看這一種；近四季口徑是近四季實際發出去的股利現金除以近四季淨利。',
     reading: {
@@ -605,7 +615,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   dividendCoverageRatio: {
-    pin: '6eb3dcae39b1',
+    pin: 'daf5673b8b4e',
     definition:
       '公司發出去的股利，背後有幾倍的自由現金流在撐。有兩種算法：年度口徑是某一年的自由現金流，除以那一年盈餘配發的現金股利，個股頁預設看這一種；近四季口徑是近四季自由現金流除以近四季發出去的股利現金。',
     reading: {
@@ -625,7 +635,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   shareholderYield: {
-    pin: 'd6df92d242eb',
+    pin: '6ece3f1aec21',
     definition:
       '公司一年回饋給股東的總金額，相當於市值的多少比例。它把兩種回饋方式加在一起：發現金股利，以及買回自家股票。',
     reading: {
@@ -636,7 +646,8 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
     limitations: [
       '買回庫藏股的金額只在財報的現金流量表明細裡；某一季沒有這項明細時，那一期就沒有數值。',
       '市值在年度口徑用年底的股價、近四季口徑用財報公告那天的股價，所以股價波動會直接改變這個比率。',
-      '年度口徑要等那一年的股利分派公告出來才算得出來，沒有分派公告的年度是空的。'
+      // 2026-11-27 重讀（數據中台 5af2183，v4）：過了隔年 6/30 仍沒有分派公告就當作不分派，原本整年是空的。實測 3041 每一年都是 0
+      '年度口徑要等那一年的股利分派公告出來才算得出來，最近一年常常還是空的。過了隔年 6 月底（股東常會的法定期限）還沒有分派公告的年度當作不配，只算買回自家股票的部分。'
     ],
     misreadings: [
       '跟交易所公布的殖利率不是同一個數字。這裡是一整年回饋給股東的總額（年度或近四季）除以市值，不是「最近一次宣告的股利除以今天股價」。',
@@ -646,7 +657,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
 
   // 建材營造選股指南的三支（2026-11-15，數據中台 d56f541）：定義、限制、常見誤讀用型錄的，這裡只寫怎麼看
   contractLiabilitiesToShareCapital: {
-    pin: '8eb857643334',
+    pin: 'ab9602cfeb9a',
     reading: {
       up: '預收款相對股本變多：已經賣出、還沒完工交屋或交貨的案子增加，之後會陸續認列成營收。',
       down: '預收款相對股本變少：可能是案子完工交屋、預收款轉成了營收，也可能是新簽的案子變少；對照同一段期間的營收，分得出是哪一種。',
@@ -697,7 +708,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   revenueGrowthRate: {
-    pin: '74d254417cdd',
+    pin: '6bf2ab07adde',
     definition:
       '營收比一年前同一段期間多了或少了多少：單季對去年同季、近四季對前一年的近四季、年度對前一年度。跟去年同期比而不是跟上一期比，是為了避開淡旺季造成的落差。',
     reading: {
@@ -717,7 +728,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   netIncomeGrowthRate: {
-    pin: '2b56d3f4b16f',
+    pin: '498de3621608',
     definition:
       '賺的錢比一年前同一段期間多了或少了多少（單季對去年同季、近四季對前一年的近四季、年度對前一年度）。學術上研究「盈餘動能」時，最常用的就是單季對去年同季這個定義。',
     reading: {
@@ -758,7 +769,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   capexToRevenue: {
-    pin: '85a1d93bb0e6',
+    pin: '2ddf4b4366b7',
     definition:
       '每收到 100 元營收，公司拿多少去買設備、蓋廠房。金額取自現金流量表裡購置不動產、廠房及設備的支出。',
     reading: {
@@ -779,7 +790,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   },
 
   rdIntensity: {
-    pin: 'ad867d364f30',
+    pin: 'badba8e2408b',
     definition:
       '每收到 100 元營收，公司拿多少去做研發。',
     reading: {
@@ -800,7 +811,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   inventoryDays: {
-    pin: '49fc63676056',
+    pin: '8b5515b20f86',
     reading: {
       up: '貨在倉庫裡待得比較久才賣出去。可能是備料因應後面的訂單，也可能是出貨速度慢了下來。',
       down: '貨賣得比較快，或是刻意把庫存壓低。',
@@ -810,7 +821,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   inventoryToRevenueRatio: {
-    pin: 'fbd397d8d49e',
+    pin: '67066515c7a4',
     reading: {
       up: '倉庫裡的貨相對一年營收變多。',
       down: '庫存相對營收變少，可能是去化加快，也可能是營收成長得比備貨快。',
@@ -820,7 +831,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   receivablesDays: {
-    pin: '85331be51e0f',
+    pin: '7cc00b02a564',
     reading: {
       up: '東西賣出去之後要等比較久才收到錢。可能是給客戶的帳期放寬，也可能是收款變慢。',
       down: '收款變快，或是現金交易的比重提高。',
@@ -830,7 +841,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   payablesDays: {
-    pin: '4bbb88045fda',
+    pin: 'c0659f5087fb',
     reading: {
       up: '比較晚才付錢給供應商，同一筆錢可以在自己手上多留幾天。可能是談到比較長的帳期，也可能是刻意放慢付款。',
       down: '付得比較快。可能是換到現金折扣，也可能是供應商要求縮短帳期。',
@@ -840,7 +851,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 只給 reading：定義、什麼時候不適用、容易誤讀三段由後端供（analysis-ts 1b7bcc8e，照本站規格寫的），
   // 不在這裡複製第二份。
   operatingCycle: {
-    pin: 'e941d8cfcc8e',
+    pin: '77dd2cafdf5d',
     reading: {
       up: '從把貨買進來、賣出去到收回貨款，整趟花的天數變長。可能是存貨待得久，也可能是收款變慢——拆開看存貨天數和收現天數就知道是哪一段。',
       down: '整趟變快，其中一段或兩段都縮短了。',
@@ -851,7 +862,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 不在這裡複製第二份。compare 原本附 2330 的驗算例子，2026-11-11 拿掉：數據中台 dc227db（v4）改用沒取位的天數，
   // 11/21 重算後那組數字會變，加減也可能差 0.01（現金循環頁容許 ±0.05 天，當場用那家公司的數字驗算）
   cashConversionCycle: {
-    pin: 'f343c71f72eb',
+    pin: '0b44fb63747a',
     reading: {
       up: '錢被卡在生意裡的天數變長。可能是營運週期拉長，也可能是付款付得比以前快——後者會讓這個數字變大，但那跟前者是完全不同的事。',
       down: '錢卡住的時間變短。可能是存貨或收款加快，也可能是付款拖得比較久。',
@@ -861,7 +872,7 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
 
   // 只給 reading：三段散文後端已經有（analysis-ts 1f09a593，照本站規格寫的），不在這裡複製第二份。
   roa: {
-    pin: '7f76b09136b3',
+    pin: 'f6b95f326773',
     reading: {
       up: '同樣的資產賺回更多。可能是獲利增加，也可能是處分掉沒在用的廠房設備讓分母變小。',
       down: '獲利減少，或是剛買了大筆設備、分母先變大而營收還沒跟上。',
@@ -872,13 +883,35 @@ export const METRIC_COPY: Record<string, MetricCopy> = {
   // 2026-09-28 重量過：抽 220 檔、兩支都有值的 204 檔裡 134 檔成立＝66%，差額中位數 1.0pp、p90 15.7pp。
   // 仍然是「約七成」，所以句子不動——但它是量出來的，不是沿用的。
   roic: {
-    pin: '9e8517fa30c8',
+    pin: '9ae5b67d4e53',
     reading: {
       up: '真正投入營運的資金（扣掉閒置現金）繳完稅後賺回更多。',
       down: '稅後營業利益下滑，或是投入資本增加。本業在虧損的期間會是負的——那一季沒有稅可繳，稅後營業利益就等於息稅前盈餘。',
       compare: '跟自己的過去比。圖上一起畫了 ROE——為什麼兩者常常不同，下面「容易看錯的地方」有完整說明。'
     }
   },
+
+  // 每股淨收益（2026-11-27 補）：銀行與金控淨收益組成頁的母項（數據中台 88486df）。型錄的三段敘述是空的，個股頁因此沒有「是什麼」那一段，
+  // check-metric-copy-drift.mjs 一直標它。事實取自型錄的 formulaNote：淨收益＝利息淨收益＋利息以外淨收益（兩張損益明細申報的合計欄，
+  // 量過每期都等於兩者相加）；每股用流通在外普通股（已發行 − 特別股 − 庫藏股）；其他產業是 not_applicable_industry
+  bankNetRevenuePerShare: {
+    pin: '15ab7db04e6e',
+    definition:
+      '銀行與金控這段期間的淨收益，平均分到每一股是多少。它們的損益表沒有營業收入，淨收益就在那個位置：利息淨收益（收到的利息減掉付出去的利息）加上利息以外淨收益（手續費、投資與其他業務的淨額）。這裡提供單季和近四季加總兩種。',
+    reading: {
+      up: '每一股分到的淨收益變多。可能是利息淨收益增加，也可能是手續費、投資這些利息以外的收益增加。',
+      down: '利息淨收益或利息以外的收益減少；現金增資讓股數變多，同樣的淨收益也會被更多股分掉。',
+      compare: '跟自己過去比，再看淨收益組成：變動來自利息淨收益，還是利息以外的收益。跟別家比，只跟同樣是銀行或金控的比。'
+    },
+    limitations: [
+      '只有銀行與金控有這個數字，其他產業的損益表沒有淨收益這一行。',
+      '淨收益還沒有扣掉呆帳費用和營業費用，所以它是收入，不是賺到的錢。',
+      '每股用的是該季期末的流通股數，也就是已發行股數扣掉特別股，以及公司和子公司持有的本公司股票。'
+    ],
+    misreadings: [
+      '淨收益和本期淨利名字很像，是兩個數字：淨收益是還沒扣呆帳與費用的收入，本期淨利是全部扣完之後剩下的。'
+    ]
+  }
 }
 
 export function findMetricCopy(metricCode: string): MetricCopy | null {

@@ -12,6 +12,7 @@
 // nor backend copy, and on a page whose own name drifted from the catalog's `name`.
 //
 // Run: node scripts/check-metric-copy-drift.mjs        (業務中台 must be up; no browser needed)
+// 推送前（.githooks/pre-push）本機業務中台開著時會跑一次，對不上只提醒、不擋推送（2026-11-27：在那之前沒有任何地方會跑它）
 //
 // When it fails on drift: re-read the affected copy against the new formula, fix what the change
 // invalidated, THEN update the pin. Never update a pin without reading the prose — a pin refreshed
@@ -109,7 +110,7 @@ for (const [code, pinned] of pins) {
 
 console.log(`指標專頁 ${pages.length} 頁，前端自有文案 ${pins.size} 支`)
 if (drifted.length) {
-  console.log(`\n⚠ ${drifted.length} 支的的公式、期別或後端敘述變了，文案必須重讀：`)
+  console.log(`\n⚠ ${drifted.length} 支的公式、期別或後端敘述變了，文案必須重讀：`)
   for (const line of drifted) console.log(`  ${line}`)
   console.log('\n  先照新公式重讀文案、改掉被推翻的部分，最後才更新 pin。')
   console.log('  沒讀就更新 pin 比不設 pin 還糟——那等於關掉唯一會抓到這件事的機制。')

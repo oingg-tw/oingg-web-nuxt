@@ -8,4 +8,9 @@ echo "pre-push: typecheck／lint／selfcheck"
 pnpm exec nuxt typecheck
 pnpm lint
 pnpm selfcheck > /dev/null
+# 指標文案的 pin（check-metric-copy-drift.mjs）要連業務中台的型錄才對得出來，所以不在 selfcheck 裡。2026-11-27 發現它沒有任何地方會跑：
+# 34 支文案的公式版本漂了兩週、三頁頁名跟型錄不一致。本機業務中台開著就順便跑；對不上只印出來、不擋推送（上游升版跟這次推的東西無關）
+if curl -sf -m 5 -o /dev/null "${API_BASE:-http://localhost:5400}/metrics"; then
+  drift=$(node scripts/check-metric-copy-drift.mjs 2>&1) || { echo "pre-push: 指標文案跟型錄對不上，要重讀文案（不擋推送）："; echo "$drift" | grep -v '^      '; }
+fi
 echo "pre-push: ok"
