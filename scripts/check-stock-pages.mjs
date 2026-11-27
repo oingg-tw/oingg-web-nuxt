@@ -48,8 +48,9 @@ const FIXED_ROUTES = ['', '/six-dimensions', '/dividend', '/dividend-fill', '/ma
 // 寫錯的代號不會靜靜跑 0 條：對不上任何已知路由時直接結束並印出可用清單，否則「全部通過」會變成
 // 「什麼都沒跑」，那正是 check-metric-identities 那種永遠 exit 0 的檢查最糟的失效形狀。
 // 只有銀行與金控有的頁（2026-11-20 起；資產組成 11-21）：其他代號點進去是不適用的說明、noindex，沒有圖表與三個問句，所以只在這幾個代號下跑
-//（STOCK_PAGES_SYMBOL=2881 或 2801）
-const BANK_ONLY_ROUTES = new Set(['/net-revenue', '/net-revenue-composition', '/asset-composition'])
+//（STOCK_PAGES_SYMBOL=2881 或 2801）。指標頁的讀登記表的 bankOnly：11-22 加的資本適足率、逾期放款比率、備抵呆帳覆蓋率三頁沒列進這裡，
+// 用 2330 跑整份時這三頁一直是紅的（2026-11-27 才發現，這支不在 pre-push 裡）
+const BANK_ONLY_ROUTES = new Set(['/net-revenue', '/net-revenue-composition', '/asset-composition', ...METRIC_PAGES.filter(page => page.bankOnly).map(page => `/${page.slug}`)])
 const BANK_SYMBOLS = new Set(['2801', '2834', '2881', '2882', '2891'])
 const ALL_ROUTES = [...FIXED_ROUTES, '/net-revenue-composition', '/asset-composition', ...registrySlugs].filter(route => !BANK_ONLY_ROUTES.has(route) || BANK_SYMBOLS.has(symbol))
 // 掛 StockMetricGuide 的路由：四個關係頁加上所有指標／徽章頁（2026-10-12）

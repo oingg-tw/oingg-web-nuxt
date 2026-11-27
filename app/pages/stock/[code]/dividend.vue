@@ -160,7 +160,7 @@ const exDividendAnswer = computed(() => {
     </StockQuestionSection>
 
     <StockQuestionSection v-if="resolved.length" id="stock-dividend-resolved" :question="`${stockShortName}已經通過、還沒發放的股利有哪些？`" :answer="resolvedAnswer">
-      <SharedTable :label="`${stockShortName}已經通過、還沒發放的股利`" :caption="`${stockShortName} ${code} 董事會或股東會已經通過、還沒發放的股利（新的在上）`">
+      <SharedTable :label="`${stockShortName}已經通過、還沒發放的股利`" :caption="`${stockShortName}已經通過、還沒發放的股利（董事會或股東會通過的，新的在上）`">
         <thead>
           <tr>
             <th scope="col">股利期間</th>
