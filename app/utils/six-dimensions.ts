@@ -2,14 +2,14 @@
 // 一家公司在六件事上各排在上市櫃公司的哪個位置。數字與每個組成指標的百分位都是數據中台算好的（GET /companies/radar-breakdown，
 // 經業務中台），這裡只排版：固定的軸序、雷達圖的座標、答句。算法在數據中台 crates/domain/src/market/radar.rs，2026-11-27 核對過：
 // 每支組成指標轉成越大越好、在上市櫃普通股裡排百分位（同分取中間，最低 0、最高 100），至少一半有值才平均，平均再排一次全體百分位；
-// 價值的三支在同產業裡排。所以畫面寫「百分位 N」，不寫「高過 N% 的公司」（同分的是一大群），也不寫強弱好壞。
+// 價值型的三支在同產業裡排。所以畫面寫「百分位 N」，不寫「高過 N% 的公司」（同分的是一大群），也不寫強弱好壞。
 // scripts/check-six-dimensions.mjs 直接 import 這個檔案，所以不寫 import
 
 export interface RadarComponent {
   fieldId: string
   order: 'asc' | 'desc'
   negativeLast: boolean
-  // sector：跟同產業比（價值的三支）；financialType：只跟同一類金融業比（金融保險業的財務安全）；market：跟全部上市櫃公司比
+  // sector：跟同產業比（價值型的三支）；financialType：只跟同一類金融業比（金融保險業的財務安全）；market：跟全部上市櫃公司比
   scope: 'market' | 'sector' | 'financialType'
   value: number | string | null
   knowledgeDate: string | null
@@ -33,11 +33,13 @@ export interface RadarBreakdown {
 }
 
 // 六個軸的順序與名稱固定（詞彙表「六面向」那一列）：每家公司的形狀才比得起來。上游多給的不畫、少給的當沒有值
+// 「價值型」原本叫「價值」（2026-11-27 使用者：「2330 六面向 價值 16 感覺像甚麼爛股票 名稱可以換換嗎?」，選「價值型」）：這一軸量的是股價相對
+// 淨值、營收、營業現金流的倍數低不低，16 是股價倍數比多數同業高，不是公司差；「價值型」跟選股策略頁的分類同一個詞，讀成「不是價值股」
 export const SIX_DIMENSIONS = [
   { code: 'growthMomentumPercentile', label: '成長動能' },
   { code: 'priceTrendPercentile', label: '價格趨勢' },
   { code: 'fundamentalImprovementPercentile', label: '體質改善' },
-  { code: 'valuePercentile', label: '價值' },
+  { code: 'valuePercentile', label: '價值型' },
   { code: 'financialSafetyPercentile', label: '財務安全' },
   { code: 'shareholderReturnPercentile', label: '股東回饋' }
 ] as const
@@ -78,7 +80,7 @@ export function sixDimensionScopeText(axis: Pick<SixDimensionAxis, 'financialTyp
   return scopes.has('financialType') ? `只跟${financialTypeLabel(axis.financialType)}比` : ''
 }
 
-// 明細表之後那一段的比較對象：價值跟同產業比、金融保險業的財務安全只跟同類比，其餘跟全部上市櫃公司比。都從資料來，組成改了跟著改
+// 明細表之後那一段的比較對象：價值型跟同產業比、金融保險業的財務安全只跟同類比，其餘跟全部上市櫃公司比。都從資料來，組成改了跟著改
 export function sixDimensionScopeNote(axes: Pick<SixDimensionAxis, 'label' | 'financialType' | 'components'>[]): string {
   const scoped = (scope: RadarComponent['scope']) => axes.filter(axis => axis.components.length > 0 && axis.components.every(component => component.scope === scope))
   const sector = scoped('sector').map(axis => axis.label)

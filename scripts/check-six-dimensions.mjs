@@ -6,7 +6,7 @@ import { SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, sixDime
 const axis = (metricCode, value, nullReason = null) => ({ metricCode, value, nullReason, components: [] })
 // 上游的順序亂掉、多給一支、少給一支：照固定的六個軸排，沒有的當沒有值
 const axes = sixDimensionAxes({ axes: [axis('valuePercentile', 22.7), axis('growthMomentumPercentile', 82.4), axis('somethingElse', 50), axis('priceTrendPercentile', 91.3), axis('fundamentalImprovementPercentile', null, 'missing_input'), axis('financialSafetyPercentile', 73.5)] })
-assert.deepEqual(axes.map(item => [item.label, item.value, item.nullReason]), [['成長動能', 82.4, null], ['價格趨勢', 91.3, null], ['體質改善', null, 'missing_input'], ['價值', 22.7, null], ['財務安全', 73.5, null], ['股東回饋', null, null]])
+assert.deepEqual(axes.map(item => [item.label, item.value, item.nullReason]), [['成長動能', 82.4, null], ['價格趨勢', 91.3, null], ['體質改善', null, 'missing_input'], ['價值型', 22.7, null], ['財務安全', 73.5, null], ['股東回饋', null, null]])
 assert.deepEqual(sixDimensionAxes(null).map(item => item.value), [null, null, null, null, null, null])
 assert.equal(SIX_DIMENSIONS.length, 6)
 // 不列進篩選器的那份名單（replaced-metrics.ts，使用者 2026-11-27「不要列進篩選器」）跟這裡是同樣六支
@@ -27,10 +27,10 @@ assert.equal(sixDimensionNullText('insufficient_history'), '組成指標的歷�
 assert.equal(sixDimensionNullText('something_new'), '')
 assert.equal(sixDimensionNullText(null), '')
 
-// 比較對象：價值的三支跟同產業比；金融保險業的財務安全分五類（數據中台 2026-11-27），組成只跟同一類比、面向的百分位只跟金融保險業比
+// 比較對象：價值型的三支跟同產業比；金融保險業的財務安全分五類（數據中台 2026-11-27），組成只跟同一類比、面向的百分位只跟金融保險業比
 const part = scope => ({ fieldId: 'x.Q', order: 'desc', negativeLast: false, scope, value: 1, knowledgeDate: null, percentile: 50, nullReason: null })
 const scoped = (label, scope, financialType = null, value = 50) => ({ label, value, financialType, components: [part(scope), part(scope)] })
-assert.equal(sixDimensionScopeText(scoped('價值', 'sector')), '跟同產業比')
+assert.equal(sixDimensionScopeText(scoped('價值型', 'sector')), '跟同產業比')
 assert.equal(sixDimensionScopeText(scoped('成長動能', 'market')), '')
 assert.deepEqual(
   ['bank', 'financialHolding', 'insurance', 'brokerDealer', 'other'].map(type => sixDimensionScopeText(scoped('財務安全', 'financialType', type))),
@@ -41,10 +41,10 @@ assert.equal(sixDimensionScopeText(scoped('財務安全', 'financialType', 'some
 assert.equal(sixDimensionScopeText(scoped('財務安全', 'financialType', 'constructor')), '只跟同一類金融業比')
 assert.equal(sixDimensionScopeText({ financialType: null, components: [] }), '')
 assert.equal(sixDimensionScopeText({ financialType: null, components: [part('sector'), part('market')] }), '')
-const general = [scoped('成長動能', 'market'), scoped('價值', 'sector'), scoped('財務安全', 'market')]
-const holding = [scoped('成長動能', 'market'), scoped('價值', 'sector'), scoped('財務安全', 'financialType', 'financialHolding', 78.95)]
-assert.equal(sixDimensionScopeNote(general), '價值的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。其餘跟全部上市櫃公司比。')
-assert.equal(sixDimensionScopeNote(holding), '價值的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。財務安全的指標只跟金控比；同類的家數少，名次之間的差距大。其餘跟全部上市櫃公司比。')
+const general = [scoped('成長動能', 'market'), scoped('價值型', 'sector'), scoped('財務安全', 'market')]
+const holding = [scoped('成長動能', 'market'), scoped('價值型', 'sector'), scoped('財務安全', 'financialType', 'financialHolding', 78.95)]
+assert.equal(sixDimensionScopeNote(general), '價值型的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。其餘跟全部上市櫃公司比。')
+assert.equal(sixDimensionScopeNote(holding), '價值型的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。財務安全的指標只跟金控比；同類的家數少，名次之間的差距大。其餘跟全部上市櫃公司比。')
 assert.equal(sixDimensionScopeNote([scoped('成長動能', 'market')]), '')
 // 雷達圖之後那一句：金融保險業、而且財務安全算得出來才寫（華票那種算不出來的不寫）
 assert.equal(sixDimensionPopulationNote(holding), '財務安全是在上市櫃金融保險業裡的位置，其餘面向是在全部上市櫃公司裡的位置。')
@@ -76,12 +76,12 @@ assert.deepEqual([lone.dots[0], lone.line, lone.fill], [[0, -50], '', ''])
 assert.deepEqual(radarGeometry([null, null, null, null, null, null], 100).dots, [null, null, null, null, null, null])
 
 // 答句：最高與最低；算不出來的說出來；至多 80 字（卡片之前的文字，全站規則）
-const sample = [['成長動能', 82.4], ['價格趨勢', 91.3], ['體質改善', 64.1], ['價值', 22.7], ['財務安全', 73.5], ['股東回饋', 38.2]].map(([label, value]) => ({ label, value }))
-assert.equal(sixDimensionsAnswer(sample, '2026-11-26'), '六個面向裡，價格趨勢的百分位 91，最高；價值的百分位 23，最低。資料日期 2026-11-26。')
+const sample = [['成長動能', 82.4], ['價格趨勢', 91.3], ['體質改善', 64.1], ['價值型', 22.7], ['財務安全', 73.5], ['股東回饋', 38.2]].map(([label, value]) => ({ label, value }))
+assert.equal(sixDimensionsAnswer(sample, '2026-11-26'), '六個面向裡，價格趨勢的百分位 91，最高；價值型的百分位 23，最低。資料日期 2026-11-26。')
 // 金融股那種缺兩個角的
 const financial = sample.map(item => (['體質改善', '財務安全'].includes(item.label) ? { ...item, value: null } : item))
 const financialAnswer = sixDimensionsAnswer(financial, '2026-11-26')
-assert.equal(financialAnswer, '六個面向裡，價格趨勢的百分位 91，最高；價值的百分位 23，最低。體質改善、財務安全算不出來。資料日期 2026-11-26。')
+assert.equal(financialAnswer, '六個面向裡，價格趨勢的百分位 91，最高；價值型的百分位 23，最低。體質改善、財務安全算不出來。資料日期 2026-11-26。')
 // 最長的情況（缺三個、名稱最長）也在 80 字以內
 const worst = sixDimensionsAnswer(sample.map(item => (['成長動能', '體質改善', '財務安全'].includes(item.label) ? { ...item, value: null } : item)), '2026-11-26')
 assert.ok([...worst].length <= 80, `${[...worst].length} 字：${worst}`)
@@ -91,8 +91,8 @@ assert.equal(sixDimensionsAnswer(sample.map((item, index) => ({ ...item, value: 
 assert.equal(sixDimensionsAnswer(sample.map(item => ({ ...item, value: 50 })), null), '六個面向的百分位都是 50。')
 assert.equal(sixDimensionsAnswer(sample.map(item => ({ ...item, value: null })), '2026-11-26'), null)
 // 同分時最高取前面的軸、最低也取前面的，不會同一個
-assert.equal(sixDimensionsAnswer([{ label: '成長動能', value: 80 }, { label: '價格趨勢', value: 80 }, { label: '價值', value: 20 }, { label: '財務安全', value: 20 }], null), '六個面向裡，成長動能的百分位 80，最高；價值的百分位 20，最低。')
+assert.equal(sixDimensionsAnswer([{ label: '成長動能', value: 80 }, { label: '價格趨勢', value: 80 }, { label: '價值型', value: 20 }, { label: '財務安全', value: 20 }], null), '六個面向裡，成長動能的百分位 80，最高；價值型的百分位 20，最低。')
 
-assert.equal(sixDimensionsAriaLabel('範例', financial), '範例六面向雷達圖：成長動能 82、價格趨勢 91、體質改善 無法計算、價值 23、財務安全 無法計算、股東回饋 38')
+assert.equal(sixDimensionsAriaLabel('範例', financial), '範例六面向雷達圖：成長動能 82、價格趨勢 91、體質改善 無法計算、價值型 23、財務安全 無法計算、股東回饋 38')
 
 console.log('PASS: six dimensions')

@@ -2,7 +2,7 @@
 import type { RadarBreakdown } from '~/utils/six-dimensions'
 
 // 六面向（2026-11-27，使用者：「設計一個個股 卡片 / 頁面 應用到雷達圖。跟數據中台核對計算方式。」；設計圖
-// https://claude.ai/artifact/FWP3mJfa44md4csrM31MAb）：一家公司在成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋六件事上，各排在
+// https://claude.ai/artifact/FWP3mJfa44md4csrM31MAb）：一家公司在成長動能、價格趨勢、體質改善、價值型、財務安全、股東回饋六件事上，各排在
 // 上市櫃公司的哪個位置。第一段是雷達圖加六列的表，第二段把每個面向的組成指標攤開（這家公司的數字與它的百分位），讀者看得出數字怎麼來。
 // 合規（使用者同日）：畫這個不算評等，「因為我沒給買進賣出持有與價位建議」。所以文字只寫位置，不寫強弱好壞、不寫回測報酬；
 // 不出總分（使用者在數據中台的決定）。數字全部是數據中台算好的（radar-breakdown），算法見 app/utils/six-dimensions.ts 開頭
@@ -67,7 +67,9 @@ const closingNote = computed(() => {
 })
 const populationNote = computed(() => sixDimensionPopulationNote(axes.value))
 
-const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的六面向：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋各自在上市櫃公司裡的百分位，以及每個面向由哪些指標組成。`))
+// 六個名稱只寫在 SIX_DIMENSIONS（2026-11-27「價值」改叫「價值型」時，這一頁還有兩句各抄了一份）
+const axisNames = SIX_DIMENSIONS.map(item => item.label).join('、')
+const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的六面向：${axisNames}各自在上市櫃公司裡的百分位，以及每個面向由哪些指標組成。`))
 
 const { breadcrumbs } = useStockPageSeo({
   code,
@@ -89,7 +91,7 @@ const footer = computed(() => ({
 }))
 // 金融保險業的那一段只有這家公司的財務安全是分類算的時候才寫：其他公司用不到
 const guide = computed(() => [
-  '六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：成長動能、價格趨勢、體質改善、價值、財務安全、股東回饋。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。',
+  `六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：${axisNames}。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。`,
   '百分位是位置，不是分數：0 是最低、100 是最高，同分的公司排在同一個位置。六個數字各自獨立，不能相加當成總分。',
   '一個面向的組成指標不到一半有值（剛掛牌、歷史資料還不夠長的也算），或者都不適用於這個產業時，這個面向算不出來，圖上那一個軸不連線。興櫃公司不在比較範圍裡。',
   ...axes.value.filter(axis => axis.financialType).map(axis => `金融保險業的${axis.label}分銀行、金控、保險業、證券業、其他金融業五類，各用自己的指標：每個指標只跟同一類比，面向的百分位只跟上市櫃的金融保險業比。類別看公司在財報申報的產業別。`),
