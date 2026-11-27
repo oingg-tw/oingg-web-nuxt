@@ -5,7 +5,17 @@ import type { MarginHistory, MarginTradingPage } from '#shared/utils/trading-flo
 const cachedMarginTrading = defineCachedFunction(
   async (symbol: string): Promise<MarginTradingPage> => {
     const history = await businessFetch<MarginHistory>(`/stocks/${symbol}/margin-history`, { query: { from: `${new Date().getUTCFullYear() - 10}-01-01` } })
-    return { market: history.market, latest: history.latest, sblShortBalanceSource: history.sblShortBalanceSource, months: marginMonths(history.entries), recent: recentDays(history.entries) }
+    // 停資停券預告只留還沒結束的（上游給 10 年內的每一段）；「今天」先用最新一份預告表的日期，頁面再篩一次
+    const asOf = history.suspensionsAsOf ?? null
+    return {
+      market: history.market,
+      latest: history.latest,
+      sblShortBalanceSource: history.sblShortBalanceSource,
+      suspensions: liveSuspensions(history.suspensions ?? [], asOf, asOf ?? ''),
+      suspensionsAsOf: asOf,
+      months: marginMonths(history.entries),
+      recent: recentDays(history.entries)
+    }
   },
   { name: 'stock-margin-trading', getKey: (symbol: string) => symbol, ...swrCache(HOUR, 6 * HOUR) }
 )

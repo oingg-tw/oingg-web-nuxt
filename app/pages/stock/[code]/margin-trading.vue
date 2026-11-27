@@ -3,7 +3,8 @@ import type { MarginTradingPage } from '#shared/utils/trading-flows'
 
 // 信用交易（2026-11-24，使用者 11-23 選的「信用交易（融資融券、借券）」，數據中台 00185-jqq、業務中台轉發）：融資餘額與使用率、融券餘額與
 // 券資比、上櫃的借券賣出餘額。圖是每月月底，表是最近 10 個交易日。上市的借券賣出餘額只在證交所網站、不在開放資料，這一頁不畫，定義段說明。
-// 證交所的借券賣出上限（TWT96U，上市上櫃都有，2026-11-12 起）只寫最新一天的一句：還沒有幾天的歷史，不畫圖、表格也不加欄
+// 證交所的借券賣出上限（TWT96U，上市上櫃都有，2026-11-12 起）只寫最新一天的一句：還沒有幾天的歷史，不畫圖、表格也不加欄。
+// 停資停券預告（2026-11-28）也是一句，有預告才有那一段；現在有沒有暫停是融資那一句後半（latest 的旗標），兩件事分開寫
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
@@ -26,6 +27,9 @@ const sblText = computed(() => {
   return value === null ? '' : `${last.value!.tradeDate} 借券賣出餘額 ${lotsNumber(value)} 張。`
 })
 const sblLimitText = computed(() => sblLimitAnswer(last.value))
+// 伺服器算的「今天」帶到瀏覽器，hydration 時不會差一天
+const today = useState('taipei-today', () => holdingsTaipeiDate())
+const suspensionText = computed(() => (data.value ? suspensionNoticeText(data.value, today.value) : ''))
 
 const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的融資餘額與融資使用率、融券餘額與券資比，每月月底的走勢與最近 10 個交易日的數字，資料取自臺灣證券交易所與證券櫃檯買賣中心。`))
 
@@ -42,7 +46,7 @@ const { breadcrumbs } = useStockPageSeo({
 })
 
 const footer = {
-  sources: ['臺灣證券交易所（2026）上市股票融資融券餘額、上市上櫃股票當日可借券賣出股數', '證券櫃檯買賣中心（2026）上櫃股票融資融券餘額、借券賣出餘額'],
+  sources: ['臺灣證券交易所（2026）上市股票融資融券餘額、上市上櫃股票當日可借券賣出股數、集中市場停資停券預告表', '證券櫃檯買賣中心（2026）上櫃股票融資融券餘額、借券賣出餘額、上櫃融資融券暫停融券賣出預告表'],
   links: [{ to: 'https://data.gov.tw/license', label: '政府資料開放授權條款第 1 版', external: true }],
   disclaimer: '以上數字依政府資料開放授權條款第 1 版，取自臺灣證券交易所與證券櫃檯買賣中心的開放資料，不代表本站對此個股之評等或投資建議。'
 }
@@ -50,7 +54,8 @@ const GUIDE = [
   '融資是向券商借錢買股票，融券是向券商借股票來賣。融資使用率＝融資餘額 ÷ 融資限額，券資比＝融券餘額 ÷ 融資餘額。1 張是 1,000 股。',
   '圖是每個月最後一個交易日的餘額，這個月還沒過完的是最新一天；表是最近 10 個交易日。不在融資融券名單上的日子沒有數字，限額是 0 的日子是暫停，沒有使用率。',
   '借券賣出是向證券金融公司或其他投資人借股票來賣，跟融券分開計算。上櫃公司的借券賣出餘額取自證券櫃檯買賣中心；上市公司的只放在臺灣證券交易所的網站、不在開放資料裡，本站目前沒有。',
-  '借券賣出的上限是臺灣證券交易所每天公布、那一天可以借券賣出的額度，上市、上櫃都有。它照規定算出來，規定改了就跟著變；它不是借券的庫存，也不是已經賣出的量。'
+  '借券賣出的上限是臺灣證券交易所每天公布、那一天可以借券賣出的額度，上市、上櫃都有。它照規定算出來，規定改了就跟著變；它不是借券的庫存，也不是已經賣出的量。',
+  '暫停融資融券的預告取自臺灣證券交易所的停資停券預告表與證券櫃檯買賣中心的暫停融券賣出預告表，原因照交易所寫的列出。上櫃的預告只列融券、不寫原因，也不一定每一段都列；現在有沒有暫停，以每天的融資融券資料為準。'
 ]
 </script>
 
@@ -72,6 +77,8 @@ const GUIDE = [
     <StockQuestionSection v-if="months.length" id="stock-short" :question="`${stockShortName}的融券有多少？`" :answer="shortText">
       <StockMarginChart kind="short" :months="months" />
     </StockQuestionSection>
+
+    <StockQuestionSection v-if="suspensionText" id="stock-margin-suspension" :question="`${stockShortName}什麼時候暫停融資融券？`" :answer="suspensionText" />
 
     <StockQuestionSection v-if="hasSbl" id="stock-sbl" :question="`${stockShortName}的借券賣出餘額多少？`" :answer="sblText">
       <StockMarginChart kind="sbl" :months="months" />

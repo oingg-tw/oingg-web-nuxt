@@ -2,10 +2,11 @@
 // Run: node scripts/check-trading-flows.mjs
 import assert from 'node:assert/strict'
 import { groupThousands } from '../shared/utils/number-format.ts'
-import { institutionalMonths, marginMonths } from '../shared/utils/trading-flows.ts'
+import { institutionalMonths, liveSuspensions, marginMonths } from '../shared/utils/trading-flows.ts'
+import { monthDay } from '../app/utils/dividend-event.ts'
 
-Object.assign(globalThis, { groupThousands })
-const { institutionalAnswer, marginAnswer, marginStatusText, netBuyText, sblLimitAnswer, shortAnswer, signedLots } = await import('../app/utils/trading-flows-text.ts')
+Object.assign(globalThis, { groupThousands, liveSuspensions, monthDay })
+const { institutionalAnswer, marginAnswer, marginStatusText, netBuyText, sblLimitAnswer, shortAnswer, signedLots, suspensionNoticeText } = await import('../app/utils/trading-flows-text.ts')
 
 // 每月一列是月底那一天；順序亂的也照日期排
 const day = (tradeDate, marginBalanceLots, marginUtilizationRate) => ({ tradeDate, marginBalanceLots, marginLimitLots: 100000, marginUtilizationRate, shortBalanceLots: 50, shortToMarginRatio: 0.17, sblShortBalanceLots: null, sblShortAvailableLots: null })
@@ -29,6 +30,30 @@ assert.equal(sblLimitAnswer(capped(0)), '2026-11-23 借券賣出的上限是 0 �
 assert.equal(sblLimitAnswer(capped(null)), '')
 assert.equal(sblLimitAnswer({ ...months.at(-1), sblShortAvailableLots: undefined }), '')
 assert.equal(sblLimitAnswer(undefined), '')
+
+// 停資停券預告（數據中台 2026-11-28 給的三個例子）：是預告不是實際狀態，沒有預告什麼都不寫
+const notice = (suspensionType, startDate, endDate, reason = null, lastSeenDate = '2026-11-27') => ({ suspensionType, reason, startDate, endDate, lastSeenDate })
+const preview = (suspensions, today = '2026-11-28') => suspensionNoticeText({ suspensions, suspensionsAsOf: '2026-11-27' }, today)
+// 6141：減資停資停券各一列、沒寫迄日、還在最新一份預告表上 → 併成一段，帶年份
+assert.equal(preview([notice('margin', '2026-12-04', null, '減資'), notice('short', '2026-12-04', null, '減資')]), '交易所預告 2026/12/4 起暫停融資與融券（減資）。')
+// 1516：同樣沒寫迄日，但最後出現在 10-12、早就不在預告表上 → 不寫
+assert.equal(preview([notice('margin', '2026-09-28', null, '減資', '2026-10-12'), notice('short', '2026-09-28', null, '減資', '2026-10-12')]), '')
+// 6488（上櫃）：只停券、沒有原因 → 不加括號
+assert.equal(preview([notice('short', '2026-12-22', '2026-12-28')]), '交易所預告 12/22～12/28 暫停融券。')
+// 迄日當天還算，隔天就不寫；有迄日的不看還在不在預告表上（開始之後交易所可能就不再列）
+const agm = [notice('short', '2026-11-20', '2026-11-28', '股東常會', '2026-11-19')]
+assert.equal(preview(agm), '交易所預告 11/20～11/28 暫停融券（股東常會）。')
+assert.equal(preview(agm, '2026-11-29'), '')
+// 同一段兩個原因併在一起、重複的原因只寫一次；好幾段照起日排；只有一天不寫「～」；跨年兩端都帶年份
+assert.equal(
+  preview([notice('short', '2026-12-28', '2027-01-04', '除息'), notice('short', '2026-12-10', '2026-12-10', '股東臨時會'), notice('short', '2026-12-01', '2026-12-05', '分配收益'), notice('short', '2026-12-01', '2026-12-05', '受益人大會 '), notice('short', '2026-12-01', '2026-12-05', '分配收益')]),
+  '交易所預告 12/1～12/5 暫停融券（分配收益、受益人大會）；12/10 暫停融券（股東臨時會）；2026/12/28～2027/1/4 暫停融券（除息）。'
+)
+// 不認得的種類不寫；業務中台還沒轉發、快取裡的舊資料沒有這兩個鍵也不壞
+assert.equal(preview([notice('other', '2026-12-01', '2026-12-05', '減資')]), '')
+assert.equal(suspensionNoticeText({}, '2026-11-28'), '')
+// 伺服器先篩：拿最新一份預告表的日期當「今天」，結束在那之前的、不在表上的都不留
+assert.deepEqual(liveSuspensions([notice('short', '2026-11-01', '2026-11-26'), notice('short', '2026-11-20', '2026-11-27'), notice('margin', '2026-09-28', null, '減資', '2026-10-12'), notice('margin', '2026-12-04', null)], '2026-11-27', '2026-11-27').map(item => item.startDate), ['2026-11-20', '2026-12-04'])
 
 // 三大法人：每月加總，整個月沒有值是 null；張四捨五入、負數寫賣超
 const trade = (tradeDate, foreign, trust, dealer) => ({ tradeDate, foreignNetBuyLots: foreign, investmentTrustNetBuyLots: trust, dealerNetBuyLots: dealer, totalNetBuyLots: foreign === null ? null : foreign + trust + dealer })

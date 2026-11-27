@@ -16,13 +16,33 @@ export interface MarginDay {
   sblShortAvailableLots: number | null
 }
 
+// 停資停券預告的一段（2026-11-28，數據中台 7710bf8：證交所的停資停券預告表、櫃買的暫停融券賣出預告表）。減資兩種都停時 margin、short 各一列、
+// 起訖相同；同一段期間也可能因不同原因各一列。reason 是交易所寫的原樣，上櫃沒寫是 null。endDate null＝來源沒寫迄日
+export interface MarginSuspension {
+  suspensionType: string
+  reason: string | null
+  startDate: string
+  endDate: string | null
+  // 最後一次還在預告表上的那一份的日期
+  lastSeenDate: string
+}
+
+// latest 的兩個旗標是實際狀態（交易所每天的融資融券資料）；suspensions 是預告，不是實際狀態：上櫃只預告停券、不寫原因，而且常漏
+//（櫃買每天其實有 75～82 家停資）。suspensionsAsOf 是那一所最新一份預告表的日期。業務中台轉發之前、網站快取裡換版前存的那一份沒有這兩個鍵
 export interface MarginHistory {
   symbol: string
   market: string | null
-  latest: { tradeDate: string; isMarginSuspended: boolean; isShortSuspended: boolean } | null
+  latest: { tradeDate: string; isMarginSuspended: boolean | null; isShortSuspended: boolean | null } | null
   sblShortBalanceSource: string | null
+  suspensions?: MarginSuspension[]
+  suspensionsAsOf?: string | null
   entries: MarginDay[]
 }
+
+// 還沒結束的預告：有迄日的看迄日；沒寫迄日的要還在最新一份預告表上（lastSeenDate＝asOf），不然不知道它結束了沒（1516 的減資最後出現在
+// 10-12，早就不在表上）。伺服器拿 asOf 當「今天」先篩一次（asOf 不會晚於今天，快取裡的不會因為過了一天變錯），頁面再用真的今天篩
+export const liveSuspensions = (items: MarginSuspension[], asOf: string | null, today: string): MarginSuspension[] =>
+  items.filter(item => (item.endDate ? item.endDate >= today : item.lastSeenDate === asOf))
 
 // 每月一列是那個月最後一天的那一列（餘額看月底；這個月還沒過完就是最新一天），tradeDate 留著，答句寫得出是哪一天
 export interface MarginMonth extends MarginDay {
@@ -75,7 +95,7 @@ export function institutionalMonths(entries: InstitutionalDay[]): InstitutionalM
 }
 
 // 網站自己的兩支（/api/stock/{code}/margin-trading、/institutional-trades）：每月給圖，最近 10 個交易日給表（新的在前）
-export interface MarginTradingPage extends Pick<MarginHistory, 'market' | 'latest' | 'sblShortBalanceSource'> {
+export interface MarginTradingPage extends Pick<MarginHistory, 'market' | 'latest' | 'sblShortBalanceSource' | 'suspensions' | 'suspensionsAsOf'> {
   months: MarginMonth[]
   recent: MarginDay[]
 }
