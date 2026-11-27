@@ -153,6 +153,22 @@ console.log('\n記一筆交易的預設日期：最近一個交易日（holdings
   assert(holdingsLatestTradingDay('2026-11-10') === '2026-11-10', '平日就是當天')
   assert(holdingsLatestTradingDay('2026-11-07') === '2026-11-06', '週六往回到週五')
   assert(holdingsLatestTradingDay('2026-11-01') === '2026-10-30', '週日往回到週五，跨月')
+  // 開休市日（GET /market/calendar 的 dates）：列了的日子照它，沒列的照平日／週末
+  const calendar = [
+    { date: '2027-01-01', isTradingDay: false },
+    { date: '2027-02-04', isTradingDay: true },
+    ...['2027-02-05', '2027-02-08', '2027-02-09', '2027-02-10'].map(date => ({ date, isTradingDay: false })),
+    { date: '2027-02-06', isTradingDay: false },
+    { date: '2027-02-20', isTradingDay: true }
+  ]
+  assert(holdingsLatestTradingDay('2027-01-01', calendar) === '2026-12-31', '元旦（週五）休市：往回到前一天，跨年')
+  assert(holdingsLatestTradingDay('2027-02-10', calendar) === '2027-02-04', '春節連假中：跳過休市的平日與中間的週末，回到節前最後交易日')
+  assert(holdingsLatestTradingDay('2027-02-11', calendar) === '2027-02-11', '沒列的平日照樣是交易日')
+  assert(holdingsLatestTradingDay('2027-02-20', calendar) === '2027-02-20', '清單寫明開市的週六是交易日')
+  assert(holdingsLatestTradingDay('2027-02-21', calendar) === '2027-02-20', '週日往回到那個開市的週六')
+  assert(holdingsLatestTradingDay('2026-11-07', calendar) === '2026-11-06', '清單沒列的週末照舊往回到週五')
+  const closed = Array.from({ length: 60 }, (_, index) => ({ date: new Date(Date.UTC(2027, 0, 1 + index)).toISOString().slice(0, 10), isTradingDay: false }))
+  assert(holdingsLatestTradingDay('2027-02-20', closed) === '2027-02-20', '清單壞了（連續兩個月都休市）：不一直往回找，帶今天')
 }
 
 console.log(failures ? `\nFAILED (${failures})` : '\nALL PASS')

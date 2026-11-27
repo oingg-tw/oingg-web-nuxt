@@ -29,12 +29,19 @@ export function holdingsTaipeiDate(): string {
   return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 }
 
-// 記一筆交易的預設日期：最近一個交易日（2026-11-10，使用者：「由系統自動設定為最近一個交易日就好」），週末往回到週五
-// ponytail: 不看國定假日（那天照樣帶出），上游還沒有證交所的開休市日期；只是預設值，配股與股利都比「交易日早於除權息日」，差一兩天算出來一樣
-export function holdingsLatestTradingDay(today = holdingsTaipeiDate()): string {
+// 記一筆交易的預設日期：最近一個交易日（2026-11-10，使用者：「由系統自動設定為最近一個交易日就好」）。開休市日（2026-11-28，數據中台
+// GET /market/calendar：證交所一年公告一份，只列特殊的日子）列了的照它：國定假日休市、春節前的補行交易日開市；沒列的日子、清單沒讀到、
+// 超出清單的年份，都照「平日交易、週末休市」。颱風等臨時休市不在裡面。只是預設值，使用者填哪一天都收
+export function holdingsLatestTradingDay(today = holdingsTaipeiDate(), calendar: { date: string; isTradingDay: boolean }[] = []): string {
+  const listed = new Map(calendar.map(day => [day.date, day.isTradingDay]))
   const date = new Date(`${today}T00:00:00Z`)
-  date.setUTCDate(date.getUTCDate() - [2, 0, 0, 0, 0, 0, 1][date.getUTCDay()]!)
-  return date.toISOString().slice(0, 10)
+  // 最多往回找 30 天（春節連假加前後週末不到兩週）：清單壞了也不會一直找下去
+  for (let step = 0; step < 30; step++) {
+    const day = date.toISOString().slice(0, 10)
+    if (listed.get(day) ?? date.getUTCDay() % 6 !== 0) return day
+    date.setUTCDate(date.getUTCDate() - 1)
+  }
+  return today
 }
 
 // 台北日期字串往前推 N 個月（月底對不上時落在該月最後一天，例如 05-31 往前三個月是 02-28）

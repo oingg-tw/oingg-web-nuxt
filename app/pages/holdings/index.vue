@@ -48,11 +48,14 @@ const expanded = ref<string[]>([])
 // 依使用者身分而不是只看 currentUser：登出要清空，換一個人登入要重新載入。
 // 誰＋哪個帳戶（2026-10-19）：換帳戶就跟換人一樣重新載入
 const { holdingsScope } = useHoldingsPortfolios()
+// 開休市日（2026-11-28）：只給記一筆交易的預設日期用（holdingsLatestTradingDay）。登入後在瀏覽器讀一次、不擋畫面；讀不到就照平日交易、週末休市
+const { data: marketCalendar, execute: loadMarketCalendar } = useLazyFetch<{ dates: { date: string; isTradingDay: boolean }[] }>(`${BUSINESS_CACHED_BASE}/market/calendar`, { server: false, immediate: false })
 watch([authResolved, holdingsScope], ([resolved, uid]) => {
   if (!resolved) return
   expanded.value = []
   if (uid) ensureLoaded()
   else clear()
+  if (uid && !marketCalendar.value) loadMarketCalendar()
 }, { immediate: true })
 
 const { keyword, fetchSuggestions, isCompanyEntry, routeFor } = useStockSearch()
@@ -408,7 +411,7 @@ function selectStock(item: Record<string, unknown>) {
 function openRecord(symbol: string | null = null) {
   editing.value = null
   lockedSymbol.value = symbol
-  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: holdingsLatestTradingDay(), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false, portfolioId: defaultAccountId() })
+  Object.assign(form, { symbol: symbol ?? '', action: 'BUY', tradeDate: holdingsLatestTradingDay(holdingsTaipeiDate(), marketCalendar.value?.dates), quantity: undefined, price: undefined, fee: 0, tax: 0, note: '', costUnknown: false, portfolioId: defaultAccountId() })
   selectedLabel = ''
   keyword.value = ''
   notice.value = ''

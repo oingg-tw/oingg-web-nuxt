@@ -6,7 +6,8 @@
 //   - 已實現損益頁：「賣出（期間內）」不會被切成兩半；最後一筆不跟頁尾疊兩條線；報酬率（已實現損益 ÷ costBasis）在卡片與答句上
 //   - 沒有橫向捲動、axe 0
 //   - 記一筆交易（2026-11-10，使用者：「手機版的 記一筆交易跑版了」）：交易日期的外框跟裡面的框一樣高（不伸出去蓋住下一行）、跟其他欄一樣寬；
-//     日期面板的箭頭跟年月字同一列，320 寬也放得下。預設日期是最近一個交易日（同一天，「由系統自動設定為最近一個交易日就好」）
+//     日期面板的箭頭跟年月字同一列，320 寬也放得下。預設日期是最近一個交易日（同一天，「由系統自動設定為最近一個交易日就好」），
+//     2026-11-28 起照開休市日（GET /market/calendar）避開國定假日
 // 持股與交易紀錄全是攔截的假資料，寫入一律擋下。
 //
 // Run: 本機 dev（:3000）開著，node --env-file=.env scripts/check-holdings-cards.mjs（要 A11Y_TEST_EMAIL／A11Y_TEST_PASSWORD；DIR=資料夾 會存截圖）
@@ -28,10 +29,14 @@ const transactions = {
     tx('t4', '0056', 'BUY', 800, '36.5', '2023-11-02')
   ]
 }
+// 開休市日（2026-11-28）：把今天（台北）和前四天都列成休市，預設日期要再往回——只看平日／週末算不出這一天，這一頁真的讀了清單才會對
+const taipeiToday = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+const calendarDates = Array.from({ length: 5 }, (_, back) => ({ date: new Date(Date.parse(taipeiToday) - back * 86_400_000).toISOString().slice(0, 10), isTradingDay: false, name: '檢查用的休市日', description: null }))
 const blocked = []
 const mock = async (ctx) => {
   await ctx.route('**/*', async (route) => {
     const req = route.request(); const url = new URL(req.url()); const p = url.pathname; const m = req.method()
+    if (p === '/api/cached/market/calendar') return route.fulfill({ json: { dates: calendarDates, coverage: { from: `${taipeiToday.slice(0, 4)}-01-01`, to: `${taipeiToday.slice(0, 4)}-12-31` } } })
     if (p === '/api/core/portfolios' && m === 'GET') return route.fulfill({ json: { portfolios: [{ id: 'p-a', name: '元大', brokerCode: null, position: 0, createdAt: '2026-10-01T00:00:00Z' }] } })
     if (p === '/api/core/holdings' && m === 'GET') return route.fulfill({ json: { holdings: [{ symbol: '2330', quantity: 300, costUnknownQuantity: 0, averageCost: '660.0000', totalCost: '198000', realizedProfitLoss: '230000', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', priceChange: '2' }, { symbol: '0056', quantity: 2000, costUnknownQuantity: 0, averageCost: '36.5100', totalCost: '73020', realizedProfitLoss: '0', close: '100', tradeDate: '2026-10-16', dayClose: '100', dayCloseTradeDate: '2026-10-16', priceChange: '2' }] } })
     if (p === '/api/core/transactions' && m === 'GET') return route.fulfill({ json: { transactions: transactions[url.searchParams.get('symbol')] ?? [] } })
@@ -148,7 +153,8 @@ const date = await recordDialog.evaluate((el) => {
 })
 check(date.outer === date.frame, `交易日期的外框跟裡面的框一樣高（${date.outer}／${date.frame}）`)
 check(date.width === date.quantity, `交易日期跟股數一樣寬（${date.width}／${date.quantity}）`)
-check(date.value === holdingsLatestTradingDay().replaceAll('-', '/'), `交易日期預設是最近一個交易日（${date.value}）`)
+const expectedDate = holdingsLatestTradingDay(taipeiToday, calendarDates)
+check(expectedDate !== holdingsLatestTradingDay(taipeiToday) && date.value === expectedDate.replaceAll('-', '/'), `交易日期預設是最近一個交易日（${date.value}；清單把 ${calendarDates.at(-1).date}～${taipeiToday} 列成休市）`)
 const header = await datePanel()
 check(header.off <= 1, `日期面板：箭頭跟年月字同一列置中（差 ${header.off}px）`)
 console.log('記一筆交易 320')
