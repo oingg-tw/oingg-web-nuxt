@@ -13,6 +13,8 @@ allowBuilds:
 # - source-map-js：建置工具群鎖在 1.2.1。
 # - zod（GHSA-mrhx-c7xc-m3w5，2026-11-08）：@nuxt/content 3.16 還直接依賴 zod 3，修補版只在 4.x。它認得 zod 4 的 schema（另走 zod4 的
 #   轉換），@nuxtjs/robots／sitemap 的 zod 是 >=3 的選用 peer，所以只換它底下這份；content.config.ts 的 z 跟著是 zod 4。它改依賴 4 時刪掉（nuxt/content#3904）
+# - minimatch（GHSA-g3hv-75wg-m249，2026-11-27）：nitropack → archiver 8 → readdir-glob 3 鎖在 ^10.2.2，修補版從 11.0.1 起。這條路只有 Nitro 的
+#   azure preset 壓 zip 時會走，我們的建置（cloudflare_module）不走；樹裡本來就有 glob 14 帶的 11.x，所以只是併成那一份。readdir-glob 改依賴 11 時刪掉
 # simple-git 不能這樣鎖：試過鎖 4.x，Nuxt devtools 用 3.x 的 default export，連 nuxt prepare 都失敗（2026-10-13）。
 # 沒有修補版的（node-forge、braces）不在這裡，等上游。
 # pnpm audit 先接受的（2026-10-27，使用者核准 Dependabot 檢查的修正）：每週的 .github/workflows/audit.yml 只對新的 high 失敗。
@@ -28,6 +30,7 @@ overrides:
   '@grpc/grpc-js@<1.13.6': ^1.13.6
   'source-map-js@<1.2.2': ^1.2.2
   '@nuxt/content>zod': ^4.6.6
+  'minimatch@>=7 <11.0.1': ^11.0.1
 
 # Nitro 的 defineCachedFunction 只在第一個參數是 event 時才用 event.waitUntil（2026-10-27，搬 Cloudflare Workers）：我們的快取函式都不傳 event，
 # 過期後的背景重算與寫回 KV 在回應送出後會被 Workers 砍掉。補丁改成沒傳就用 async context 裡的請求（asyncContext 已開）。
