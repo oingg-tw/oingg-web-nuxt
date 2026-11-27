@@ -62,7 +62,8 @@ const pinOf = (metric) => createHash('sha256').update([
 
 const pins = new Map(Object.entries(METRIC_COPY).map(([code, copy]) => [code, copy.pin]))
 
-const pages = METRIC_PAGES.map(page => ({ slug: page.slug, metricCode: page.metricCode, topic: page.topic, ownName: !page.valueTopic }))
+// ownName：頁名該不該等於型錄的 name。同一支指標的第二頁（valueTopic）與一頁畫兩支的（holdingMetricCode：資本適足率頁在銀行、金控各畫一支）有自己的頁名
+const pages = METRIC_PAGES.map(page => ({ slug: page.slug, metricCode: page.metricCode, topic: page.topic, ownName: !page.valueTopic && !page.holdingMetricCode }))
 
 const response = await fetch(`${API}/metrics`, { signal: AbortSignal.timeout(30_000) })
 if (!response.ok) {
