@@ -57,8 +57,9 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
 <template>
   <div class="guru-indicators-page">
     <h1 class="app-page__title app-page__title--app guru-indicators-page__title">大師徽章</h1>
+    <!-- 2026-11-27 徽章換成 8 個之後不只財務評分（創 52 週新高、均線排列看股價，外資持股三個月變化看籌碼），原本寫「財務評分方法論」 -->
     <p class="guru-indicators-page__subtitle">
-      公開學術文獻與投資實務中常見的財務評分方法論參考手冊——不是任何一檔股票的評等或投資建議
+      公開學術文獻與投資實務中常見的財務、股價與籌碼條件參考手冊——不是任何一檔股票的評等或投資建議
     </p>
 
     <!-- 看不見但朗讀得到的 label（WCAG 3.3.2）：placeholder 清掉或聚焦後就不是名稱了 -->
@@ -67,7 +68,7 @@ useHead({ htmlAttrs: { class: 'smooth-anchors' } })
       id="guru-indicators-search"
       v-model="searchQuery"
       class="guru-indicators-page__search"
-      placeholder="搜尋徽章名稱，例如 ROE、F-Score"
+      placeholder="搜尋徽章名稱，例如 F-Score、三率三升"
       clearable
       :prefix-icon="Search"
     />

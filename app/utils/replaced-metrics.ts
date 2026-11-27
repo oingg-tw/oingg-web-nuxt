@@ -51,7 +51,9 @@ export const SCORE_METRICS = ['threeMarginsRising', 'piotroskiFScore', 'altmanZS
 // 六面向（2026-11-27，使用者：「不要列進篩選器」）：六支百分位只給個股的雷達圖（/stock/{code}/six-dimensions 與指標速覽）用，不當篩選條件
 // 與欄位。代號照詞彙表與數據中台 8dd7598；型錄同步到之前就先列，一出現就藏住
 export const SIX_DIMENSION_METRICS = ['growthMomentumPercentile', 'priceTrendPercentile', 'fundamentalImprovementPercentile', 'valuePercentile', 'financialSafetyPercentile', 'shareholderReturnPercentile']
-export const PICKER_UNLISTED_METRICS = ['yieldOnCost1y', 'yieldOnCost3y', 'yieldOnCost5y', 'yieldOnCost10y', ...SCORE_METRICS, ...SIX_DIMENSION_METRICS]
+// 外資持股三個月變化（2026-11-27 跟著徽章進型錄）：只有上櫃公司有值（證交所的匯出資料沒有外資持股比率），當條件會把上市整批篩掉、
+// 畫面上看不出來——同 11-24 數據中台先不放外資／投信四個篩選欄位的理由。徽章頁與 /learn 照舊看得到。上市有資料、或使用者決定要列時拿掉這一項
+export const PICKER_UNLISTED_METRICS = ['yieldOnCost1y', 'yieldOnCost3y', 'yieldOnCost5y', 'yieldOnCost10y', ...SCORE_METRICS, ...SIX_DIMENSION_METRICS, 'foreignHoldingChange3m']
 
 // 改名的欄位 id，整個 id 對（上面那張表是用指標對）：類股欄位 2026-11-16 從 sector.code 改叫 sector.name（詞彙檢核 X17 第 1 步，業務中台兩個都收，
 // 之後才用 migration 改寫存檔、再把 sector.code 改成真的代碼）。不放進上面那張表：它對的是型錄裡的指標，類股是網站自己加的。
