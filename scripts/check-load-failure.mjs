@@ -1,5 +1,5 @@
 // 讀取失敗提示的行為檢查（2026-10-11，使用者：「太容易跳出來了，而且也不會自關掉」）。對著跑著的 `pnpm run dev`：
-//   node scripts/check-load-failure.mjs            （LOAD_FAILURE_URL／LOAD_FAILURE_WIDTH 可覆寫）
+//   node scripts/check-load-failure.mjs            （LOAD_FAILURE_URL／LOAD_FAILURE_WIDTH 可覆寫；LOAD_FAILURE_ONLY=橫幅 只跑名字裡有這兩個字的情境）
 // Cookie 說明只有正式建置才出現（useAnalyticsConsent 的 asks）：提示有沒有讓開它，要把 LOAD_FAILURE_URL 指到正式建置才驗得到。
 // 只能攔瀏覽器發出的請求，所以每個情境挑的都是瀏覽器端的讀取：個股子頁「客戶端換頁」時的 /api/stock/…、
 // ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /securities；全站橫幅是讓公司索引失敗、再假造 /api/system-health
@@ -10,6 +10,7 @@ import { chromium } from 'playwright'
 const baseUrl = process.env.LOAD_FAILURE_URL ?? 'http://localhost:3000'
 const width = Number(process.env.LOAD_FAILURE_WIDTH ?? 1440)
 const GRACE_MS = 8_000
+const only = process.env.LOAD_FAILURE_ONLY
 
 const browser = await chromium.launch()
 const failures = []
@@ -17,6 +18,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 const fail502 = route => route.fulfill({ status: 502, contentType: 'application/problem+json', body: JSON.stringify({ title: 'Bad Gateway', status: 502 }) })
 
 async function scenario(name, run) {
+  if (only && !name.includes(only)) return
   const context = await browser.newContext({ viewport: { width, height: 900 } })
   const page = await context.newPage()
   const dialog = page.getByRole('dialog', { name: '資料暫時讀不到' })
@@ -217,11 +219,15 @@ await scenario('上游不健康、這位訪客沒有請求失敗：不問健康�
     asked++
     return route.fulfill({ json: { ok: false } })
   })
+  // 這個情境要的是「沒有請求失敗」：本機上游剛好在重啟時真的會有請求失敗（那時去問是對的），這一輪就驗不到
+  let reallyFailed = 0
+  page.on('response', (response) => { if (response.status() >= 500 && new URL(response.url()).pathname.startsWith('/api/')) reallyFailed++ })
   await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
   await loadCompanyIndex(page)
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
   // 等過一次 30 秒的計時器：健康的時候它什麼都不做
   await wait(32_000)
+  expect(reallyFailed === 0, `這一輪有 ${reallyFailed} 個請求真的失敗（上游在重啟？），驗不到，請重跑`)
   expect(asked === 0, `沒有請求失敗卻問了 ${asked} 次健康狀態`)
   expect(!(await page.evaluate(() => window.__bannerSeen)), '出現了橫幅')
 })
@@ -288,6 +294,23 @@ await scenario('橫幅出現後上游恢復：切回分頁就收掉，之後不�
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
   await wait(1_500)
   expect(asked === askedAfterRecovery, `恢復之後還在問健康狀態（多了 ${asked - askedAfterRecovery} 次）`)
+})
+
+// 頁面回報的讀取失敗（不經 apiFetch 的本站路由）也會帶出橫幅；回報的那個頁面換掉之後，橫幅照樣要等得到恢復
+//（2026-11-27：輪詢的計時器只能由橫幅自己註冊，跟著回報的頁面元件走的話，換頁之後就沒有人再查）
+await scenario('頁面的讀取失敗帶出橫幅，換頁後上游恢復：橫幅照樣收掉', async ({ page }) => {
+  let ok = false
+  await page.route('**/api/system-health**', route => route.fulfill({ json: { ok } }))
+  await openStock(page)
+  await page.route('**/api/stock/2330/dupont', route => (ok ? route.continue() : fail502(route)))
+  await clientNavigate(page, '/stock/2330/dupont')
+  const banner = page.locator('.app-system-health-banner')
+  await banner.waitFor({ state: 'visible', timeout: 15_000 })
+  await clientNavigate(page, '/calendar')
+  await page.waitForURL('**/calendar', { timeout: 30_000 })
+  ok = true
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await banner.waitFor({ state: 'hidden', timeout: 10_000 })
 })
 
 // 一支請求失敗不等於連不上（2026-11-06，DEV 的 /holdings/statistics 手機位移 0.135）：原本先出橫幅再重查，上游好好的也出現 2 秒，

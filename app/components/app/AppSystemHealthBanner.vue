@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Close, WarningFilled } from '@element-plus/icons-vue'
 
-const { healthy, reachable } = useSystemHealth()
+const { healthy, reachable } = useSystemHealth({ poll: true })
 
 // Dismissible per direct request — but NOT a one-time-forever dismissal: reset back to false
 // whenever healthy recovers, so a later, separate outage still shows the banner fresh instead

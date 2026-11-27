@@ -10,7 +10,7 @@ let probing = false
 // 什麼時候問（2026-11-27，使用者：「這個訊息跟網站正常使用同時發生了 why?」→ 選「失敗才出現」）：平常不問。訪客自己的請求真的失敗
 //（reportFailure）才查，確認上游不健康才出橫幅；之後每 30 秒與切回分頁時再查，恢復就收掉、不再問。原本不管有沒有失敗每 30 秒都問：
 // 本機數據中台重啟的那幾分鐘業務中台回「依賴異常」，頁面有快取、照常能用，橫幅卻出現、把頁面往下推——受影響的人本來就有讀取失敗的提示
-export function useSystemHealth() {
+export function useSystemHealth(options: { poll?: boolean } = {}) {
   const healthy = useState('system-health-ok', () => true)
   // 網站有沒有回應（2026-11-19，使用者「用戶這邊要怎麼區分是網路斷線還是我系統在更新中?」→「照建議改」）：有回應、上游不健康＝我們的問題；
   // 連狀態碼都沒有（連不上、逾時：伺服器等上游最多 7 秒就會回 ok:false）＝多半是使用者的網路。橫幅照這個換說法
@@ -40,20 +40,11 @@ export function useSystemHealth() {
     check(true).finally(() => { probing = false })
   }
 
-  // Real bug found live 2026-09-16 (reported: "app 層級的既有問題" — a `[Vue warn]: onMounted is
-  // called when there is no active component instance` firing on every single page load).
-  // Root-caused via a captured stack trace: a Nuxt PLUGIN (system-health-monitor, folded into
-  // apiFetch's request hooks 2026-10-23 — still outside any component) called this composable just
-  // to grab `reportFailure`, so Vue had nowhere to attach the onMounted callback below and warned
-  // instead of silently no-opping. `reportFailure` itself doesn't depend on onMounted (it just
-  // flips `healthy` and calls `check()` directly). getCurrentInstance() lets this composable stay
-  // callable from both places: AppSystemHealthBanner.vue's own real component call still registers
-  // the polling interval exactly as before (see this function's own body for why only the FIRST
-  // mount matters), and a call from outside a component skips registration entirely.
-  if (getCurrentInstance()) onMounted(() => {
-    // Starts on the FIRST component to mount this composable, not every one — otherwise
-    // the login dialog, banner, or any future consumer would each spin up their own
-    // redundant 30s polling loop against the same endpoint.
+  // 只有橫幅註冊輪詢（poll: true）。其他呼叫端只是要 reportFailure：apiFetch 的請求鉤子在元件之外（2026-09-16 那時沒有元件可掛
+  // onMounted，每頁都警告一次），讀取失敗的回報（useLoadFailure）則可能就在某個頁面元件的 setup 裡——讓它註冊的話，計時器跟著那個
+  // 元件走，它一卸載就沒有人再查，橫幅收不掉（2026-11-27 加那個呼叫端時發現）
+  if (options.poll) onMounted(() => {
+    // 橫幅掛兩次也只開一個計時器
     if (checking.value) return
     checking.value = true
     // 只在不健康的期間問（見檔頭）：等它恢復。計時器照樣每 30 秒醒一次，健康時什麼都不做
