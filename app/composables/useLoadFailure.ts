@@ -76,6 +76,9 @@ function reportLoadFailure(key: string, error: unknown, retry: () => Promise<unk
     clearLoadFailure(key, owner)
     return
   }
+  // 真的讀不到：順便確認是不是上游整個不健康（是的話出全站橫幅，2026-11-27 起橫幅只在訪客自己的讀取失敗時才查）。
+  // 走本站路由的讀取（/api/stock、/api/hub）不經 apiFetch，沒有這一行就不會查
+  useSystemHealth().reportFailure()
   const { failures, startedAt } = useLoadFailureState()
   retries.set(key, retry)
   owners.set(key, (owners.get(key) ?? new Set<number>()).add(owner))

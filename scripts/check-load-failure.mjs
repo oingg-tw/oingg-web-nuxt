@@ -2,7 +2,8 @@
 //   node scripts/check-load-failure.mjs            （LOAD_FAILURE_URL／LOAD_FAILURE_WIDTH 可覆寫）
 // Cookie 說明只有正式建置才出現（useAnalyticsConsent 的 asks）：提示有沒有讓開它，要把 LOAD_FAILURE_URL 指到正式建置才驗得到。
 // 只能攔瀏覽器發出的請求，所以每個情境挑的都是瀏覽器端的讀取：個股子頁「客戶端換頁」時的 /api/stock/…、
-// ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /securities；連不上伺服器的橫幅是假造 /api/system-health。
+// ETF 專區掛上後才送的 POST /etf-screener、每頁都在瀏覽器抓的公司索引 GET /securities；全站橫幅是讓公司索引失敗、再假造 /api/system-health
+//（2026-11-27 起橫幅只在訪客自己的讀取失敗時才查，平常不問）。
 // 時間點跟著 LOAD_FAILURE_GRACE_MS（8 秒）與第一次退避（5 秒，隨機多等最多一半：5～7.5 秒）走，改了那兩個要一起改這裡。
 import { chromium } from 'playwright'
 
@@ -199,13 +200,37 @@ const contrast = (a, b) => {
   return (high + 0.05) / (low + 0.05)
 }
 
-await scenario('連不上伺服器的橫幅：晚出現也把頁面往下推、淺深色都夠對比，關掉後收回', async ({ page }) => {
-  let ok = true
-  await page.route('**/api/system-health**', route => route.fulfill({ json: { ok } }))
+// 全站橫幅只在訪客自己的讀取失敗、重查確認上游不健康時才出現（2026-11-27，使用者：「這個訊息跟網站正常使用同時發生了 why?」→ 選
+// 「失敗才出現」；原本每 30 秒問一次，上游不健康就出現，頁面有快取、沒受影響的人也看到）。下面每個情境都讓公司索引失敗來觸發
+const failCompanyIndex = (page, respond = fail502) => page.route(url => url.pathname === '/api/cached/securities', respond)
+
+await scenario('上游不健康、這位訪客沒有請求失敗：不問健康狀態、不出現橫幅', async ({ page }) => {
+  await page.addInitScript(() => {
+    const tick = () => {
+      if (document.querySelector('.app-system-health-banner')) window.__bannerSeen = true
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+  let asked = 0
+  await page.route('**/api/system-health**', (route) => {
+    asked++
+    return route.fulfill({ json: { ok: false } })
+  })
   await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
-  ok = false
-  // 不等 30 秒的輪詢：分頁回到前景會立刻重查
+  await loadCompanyIndex(page)
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  // 等過一次 30 秒的計時器：健康的時候它什麼都不做
+  await wait(32_000)
+  expect(asked === 0, `沒有請求失敗卻問了 ${asked} 次健康狀態`)
+  expect(!(await page.evaluate(() => window.__bannerSeen)), '出現了橫幅')
+})
+
+await scenario('讀取失敗、上游不健康的橫幅：把頁面往下推、淺深色都夠對比，關掉後收回', async ({ page }) => {
+  await failCompanyIndex(page)
+  await page.route('**/api/system-health**', route => route.fulfill({ json: { ok: false } }))
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
+  await loadCompanyIndex(page)
   const banner = page.locator('.app-system-health-banner')
   await banner.waitFor({ state: 'visible', timeout: 10_000 })
   // 健康檢查有回應、上游不健康＝我們的問題
@@ -230,13 +255,39 @@ await scenario('連不上伺服器的橫幅：晚出現也把頁面往下推、�
   expect(height === '0px', `關掉後 --app-banner-height 是 ${height}`)
 })
 
-await scenario('健康檢查連網站都沒回應：橫幅請用戶檢查網路', async ({ page }) => {
-  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
+await scenario('讀取失敗、健康檢查連網站都沒回應：橫幅請用戶檢查網路', async ({ page }) => {
+  await failCompanyIndex(page, route => route.abort('internetdisconnected'))
   await page.route('**/api/system-health**', route => route.abort('internetdisconnected'))
-  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
+  await loadCompanyIndex(page)
+  const banner = page.locator('.app-system-health-banner')
+  await banner.waitFor({ state: 'visible', timeout: 15_000 })
+  expect(/確認一下網路連線/.test(await banner.innerText()), `連不上網站時橫幅的說法不對：${await banner.innerText()}`)
+})
+
+await scenario('橫幅出現後上游恢復：切回分頁就收掉，之後不再問', async ({ page }) => {
+  let ok = false
+  let asked = 0
+  // 上游恢復後公司索引也讀得到了（還在失敗的讀取會再查一次，那是對的，不是這裡要驗的）
+  await failCompanyIndex(page, route => (ok ? route.continue() : fail502(route)))
+  await page.route('**/api/system-health**', (route) => {
+    asked++
+    return route.fulfill({ json: { ok } })
+  })
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle', timeout: 120_000 })
+  await loadCompanyIndex(page)
   const banner = page.locator('.app-system-health-banner')
   await banner.waitFor({ state: 'visible', timeout: 10_000 })
-  expect(/確認一下網路連線/.test(await banner.innerText()), `連不上網站時橫幅的說法不對：${await banner.innerText()}`)
+  ok = true
+  // 不等 30 秒：不健康的期間，分頁回到前景會立刻重查
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await banner.waitFor({ state: 'hidden', timeout: 10_000 })
+  // 等背景的重讀跑完（公司索引恢復），再看切回分頁會不會又去問
+  await wait(GRACE_MS)
+  const askedAfterRecovery = asked
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await wait(1_500)
+  expect(asked === askedAfterRecovery, `恢復之後還在問健康狀態（多了 ${asked - askedAfterRecovery} 次）`)
 })
 
 // 一支請求失敗不等於連不上（2026-11-06，DEV 的 /holdings/statistics 手機位移 0.135）：原本先出橫幅再重查，上游好好的也出現 2 秒，
@@ -250,7 +301,7 @@ await scenario('一支請求失敗、重查是好的：不出現橫幅', async (
     requestAnimationFrame(tick)
   })
   let failed = 0
-  await page.route(url => url.pathname === '/api/cached/securities', (route) => {
+  await failCompanyIndex(page, (route) => {
     failed++
     return fail502(route)
   })
