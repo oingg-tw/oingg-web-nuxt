@@ -15,11 +15,7 @@ for (const [hidden, target] of Object.entries(REPLACED_METRICS)) {
   assert.ok(from.fields.every(field => field.unit === to.unit), `${hidden}（${from.fields.map(field => field.unit)}）跟 ${target}（${to.unit}）單位不同`)
 }
 // 只藏不換的也要還在型錄裡：上游改名或拿掉時，表上的名字就過期了
-// 六面向第 5 軸要從財務安全換成盈餘品質（數據中台 2026-11-27 預告，同一個提交換）：兩支在型錄裡只會有一支，有一支就算對。
-// 換完之後 replaced-metrics.ts 拿掉財務安全，這裡也拿掉這個例外
-const fifthAxis = ['financialSafetyPercentile', 'earningsQualityPercentile']
-assert.ok(fifthAxis.some(key => metrics.get(key)), '六面向的第 5 軸（財務安全或盈餘品質）不在型錄裡')
-for (const key of PICKER_UNLISTED_METRICS) assert.ok(metrics.get(key) || fifthAxis.includes(key), `${key} 不在型錄裡`)
+for (const key of PICKER_UNLISTED_METRICS) assert.ok(metrics.get(key), `${key} 不在型錄裡`)
 // 官方欄位範本是業務中台的資料，這張表一改就可能過期（11-01 改留即時股價淨值比，範本舊了四天才發現）。沒有欄位組合的帳號（新帳號的第一個畫面）直接
 // 讀總覽範本，網站換不到，紅了要請業務中台改範本（同它的 migration 0013）
 const { templates } = await (await fetch(`${base}/api/core/screener/column-preset-templates`)).json()

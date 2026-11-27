@@ -68,8 +68,6 @@ const closingNote = computed(() => {
   const lowerIsHigher = [...new Set(groups.value.flatMap(group => group.rows.filter(row => row.lowerIsHigher).map(row => row.name)))]
   return `${lowerIsHigher.length ? `${lowerIsHigher.join('、')}是數字越低、百分位越高。` : ''}${sixDimensionScopeNote(axes.value)}`
 })
-const populationNote = computed(() => sixDimensionPopulationNote(axes.value))
-
 // 六個名稱只寫在 six-dimensions.ts（2026-11-27「價值」改叫「價值型」時，這一頁還有兩句各抄了一份）；跟著實際畫的軸走，第 5 軸換了也對
 const axisNames = computed(() => axes.value.map(axis => axis.label).join('、'))
 const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的六面向：${axisNames.value}各自在上市櫃公司裡的百分位，以及每個面向由哪些指標組成。`))
@@ -92,12 +90,10 @@ const footer = computed(() => ({
   freshness: asOf.value ? `資料日期 ${asOf.value}` : null,
   disclaimer: '百分位是統計上的位置，不代表本站對此個股之評等或投資建議。'
 }))
-// 金融保險業的那一段只有這家公司的財務安全是分類算的時候才寫：其他公司用不到
 const guide = computed(() => [
   `六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：${axisNames.value}。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。`,
   '百分位是位置，不是分數：0 是最低、100 是最高，同分的公司排在同一個位置。六個數字各自獨立，不能相加當成總分。',
   '一個面向的組成指標不到一半有值（剛掛牌、歷史資料還不夠長的也算），或者都不適用於這個產業時，這個面向算不出來，圖上那一個軸不連線。興櫃公司不在比較範圍裡。',
-  ...axes.value.filter(axis => axis.financialType).map(axis => `金融保險業的${axis.label}分銀行、金控、保險業、證券業、其他金融業五類，各用自己的指標：每個指標只跟同一類比，面向的百分位只跟上市櫃的金融保險業比。類別看公司在財報申報的產業別。`),
   '百分位只跟同一天的上市櫃公司相比，不代表股價之後的漲跌。'
 ])
 </script>
@@ -141,7 +137,6 @@ const guide = computed(() => [
           </SharedTable>
         </div>
       </div>
-      <p v-if="populationNote" class="hub-answer">{{ populationNote }}</p>
     </StockQuestionSection>
     <StockQuestionSection
       v-if="data"

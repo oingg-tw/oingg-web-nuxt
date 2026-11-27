@@ -9,8 +9,8 @@ export interface RadarComponent {
   fieldId: string
   order: 'asc' | 'desc'
   negativeLast: boolean
-  // sector：跟同產業比（價值型的三支）；financialType：只跟同一類金融業比（金融保險業的財務安全）；market：跟全部上市櫃公司比
-  scope: 'market' | 'sector' | 'financialType'
+  // sector：跟同產業比（價值型的三支）；market：跟全部上市櫃公司比
+  scope: 'market' | 'sector'
   value: number | string | null
   knowledgeDate: string | null
   percentile: number | null
@@ -21,8 +21,6 @@ export interface RadarAxis {
   metricCode: string
   value: number | null
   nullReason: string | null
-  // 金融保險業的財務安全才有（bank、financialHolding、insurance、brokerDealer、other），其他是 null
-  financialType?: string | null
   components: RadarComponent[]
 }
 
@@ -55,55 +53,28 @@ export interface SixDimensionAxis {
   label: string
   value: number | null
   nullReason: string | null
-  financialType: string | null
   components: RadarComponent[]
 }
 
-// 第 5 軸要從財務安全換成盈餘品質（數據中台 2026-11-27 預告：財務安全回測三種版本都不及格，換成應計比率與自由現金流利潤率組成的
-// earningsQualityPercentile，金融業分類比 financialType 一起拿掉）。它等網站先能讀新的才切，所以明細給哪一個就畫哪一個。
-// shortcut: 兩種形狀都讀只為了切換那幾天；數據中台切完、PRD 也上了之後，SIX_DIMENSIONS 的第 5 個直接換成這一個，financialType 那幾段一起拿掉
-export const NEXT_FIFTH_AXIS = { code: 'earningsQualityPercentile', label: '盈餘品質' } as const
-
 export function sixDimensionAxes(breakdown: Pick<RadarBreakdown, 'axes'> | null | undefined): SixDimensionAxis[] {
-  const swapped = breakdown?.axes.some(item => item.metricCode === NEXT_FIFTH_AXIS.code)
-  return SIX_DIMENSIONS.map((entry, index) => {
-    const { code, label } = swapped && index === 4 ? NEXT_FIFTH_AXIS : entry
+  return SIX_DIMENSIONS.map(({ code, label }) => {
     const axis = breakdown?.axes.find(item => item.metricCode === code)
     const value = typeof axis?.value === 'number' && Number.isFinite(axis.value) ? axis.value : null
-    return { code, label, value, nullReason: value === null ? axis?.nullReason ?? null : null, financialType: axis?.financialType ?? null, components: axis?.components ?? [] }
+    return { code, label, value, nullReason: value === null ? axis?.nullReason ?? null : null, components: axis?.components ?? [] }
   })
 }
 
-// 金融保險業的財務安全分五類算（數據中台 2026-11-27，詞彙表「六面向」）：組成指標是那一類自己的（銀行有資本適足率、逾放比…），每支只跟
-// 同一類比，面向的百分位只跟上市櫃的金融保險業比。類別看公司在財報申報的產業別。不認得的類別只寫「同一類金融業」，不猜
-const FINANCIAL_TYPE_LABELS = new Map([['bank', '銀行'], ['financialHolding', '金控'], ['insurance', '保險業'], ['brokerDealer', '證券業'], ['other', '其他金融業']])
-export const financialTypeLabel = (type: string | null | undefined): string => FINANCIAL_TYPE_LABELS.get(type ?? '') ?? '同一類金融業'
-
-// 一個面向的組成指標跟誰比（明細表分組列括號裡那一句）：都跟同產業比、都只跟同一類金融業比；跟全部上市櫃公司比的不寫
-export function sixDimensionScopeText(axis: Pick<SixDimensionAxis, 'financialType' | 'components'>): string {
-  const scopes = new Set(axis.components.map(component => component.scope))
-  if (scopes.size !== 1) return ''
-  if (scopes.has('sector')) return '跟同產業比'
-  return scopes.has('financialType') ? `只跟${financialTypeLabel(axis.financialType)}比` : ''
+// 一個面向的組成指標跟誰比（明細表分組列括號裡那一句）：都跟同產業比的才寫；跟全部上市櫃公司比的不寫。
+// 金融保險業的財務安全分五類、只跟同類比的那一套（financialType）只活了 2026-11-27 一個上午：同一天財務安全改成三支風險分數
+//（Zmijewski、Beneish、應計比率）、金融保險業整個面向不適用，數據中台把分類比拿掉
+export function sixDimensionScopeText(axis: Pick<SixDimensionAxis, 'components'>): string {
+  return axis.components.length > 0 && axis.components.every(component => component.scope === 'sector') ? '跟同產業比' : ''
 }
 
-// 明細表之後那一段的比較對象：價值型跟同產業比、金融保險業的財務安全只跟同類比，其餘跟全部上市櫃公司比。都從資料來，組成改了跟著改
-export function sixDimensionScopeNote(axes: Pick<SixDimensionAxis, 'label' | 'financialType' | 'components'>[]): string {
-  const scoped = (scope: RadarComponent['scope']) => axes.filter(axis => axis.components.length > 0 && axis.components.every(component => component.scope === scope))
-  const sector = scoped('sector').map(axis => axis.label)
-  const financial = scoped('financialType')
-  if (!sector.length && !financial.length) return ''
-  return [
-    sector.length ? `${sector.join('、')}的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。` : '',
-    ...financial.map(axis => `${axis.label}的指標只跟${financialTypeLabel(axis.financialType)}比；同類的家數少，名次之間的差距大。`),
-    '其餘跟全部上市櫃公司比。'
-  ].join('')
-}
-
-// 雷達圖之後那一句：金融保險業的財務安全是在金融保險業裡的位置，跟另外五個軸的比較對象不同，圖上看不出來所以寫出來。算不出來的不必說
-export function sixDimensionPopulationNote(axes: Pick<SixDimensionAxis, 'label' | 'value' | 'financialType'>[]): string {
-  const own = axes.filter(axis => axis.financialType && axis.value !== null).map(axis => axis.label)
-  return own.length ? `${own.join('、')}是在上市櫃金融保險業裡的位置，其餘面向是在全部上市櫃公司裡的位置。` : ''
+// 明細表之後那一段的比較對象：價值型跟同產業比，其餘跟全部上市櫃公司比。都從資料來，組成改了跟著改
+export function sixDimensionScopeNote(axes: Pick<SixDimensionAxis, 'label' | 'components'>[]): string {
+  const sector = axes.filter(axis => sixDimensionScopeText(axis)).map(axis => axis.label)
+  return sector.length ? `${sector.join('、')}的指標跟同產業的公司比（同產業不到 5 家的跟全部上市櫃公司比）。其餘跟全部上市櫃公司比。` : ''
 }
 
 // 表格寫兩位（資料的精度）；圖上與答句寫整數
