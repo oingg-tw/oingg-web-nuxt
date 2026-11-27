@@ -59,8 +59,15 @@ export interface SixDimensionAxis {
   components: RadarComponent[]
 }
 
+// 第 5 軸要從財務安全換成盈餘品質（數據中台 2026-11-27 預告：財務安全回測三種版本都不及格，換成應計比率與自由現金流利潤率組成的
+// earningsQualityPercentile，金融業分類比 financialType 一起拿掉）。它等網站先能讀新的才切，所以明細給哪一個就畫哪一個。
+// shortcut: 兩種形狀都讀只為了切換那幾天；數據中台切完、PRD 也上了之後，SIX_DIMENSIONS 的第 5 個直接換成這一個，financialType 那幾段一起拿掉
+export const NEXT_FIFTH_AXIS = { code: 'earningsQualityPercentile', label: '盈餘品質' } as const
+
 export function sixDimensionAxes(breakdown: Pick<RadarBreakdown, 'axes'> | null | undefined): SixDimensionAxis[] {
-  return SIX_DIMENSIONS.map(({ code, label }) => {
+  const swapped = breakdown?.axes.some(item => item.metricCode === NEXT_FIFTH_AXIS.code)
+  return SIX_DIMENSIONS.map((entry, index) => {
+    const { code, label } = swapped && index === 4 ? NEXT_FIFTH_AXIS : entry
     const axis = breakdown?.axes.find(item => item.metricCode === code)
     const value = typeof axis?.value === 'number' && Number.isFinite(axis.value) ? axis.value : null
     return { code, label, value, nullReason: value === null ? axis?.nullReason ?? null : null, financialType: axis?.financialType ?? null, components: axis?.components ?? [] }

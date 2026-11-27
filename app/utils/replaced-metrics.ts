@@ -50,7 +50,8 @@ export const SCORE_METRICS = ['threeMarginsRising', 'piotroskiFScore', 'altmanZS
 // 放回挑選器（1、10 年版加進型錄就會出現），成本殖利率每個窗口都藏（1、10 年版的代號數據中台 11-25 給了，上 DEV 前先列，一出現就藏住）
 // 六面向（2026-11-27，使用者：「不要列進篩選器」）：六支百分位只給個股的雷達圖（/stock/{code}/six-dimensions 與指標速覽）用，不當篩選條件
 // 與欄位。代號照詞彙表與數據中台 8dd7598；型錄同步到之前就先列，一出現就藏住
-export const SIX_DIMENSION_METRICS = ['growthMomentumPercentile', 'priceTrendPercentile', 'fundamentalImprovementPercentile', 'valuePercentile', 'financialSafetyPercentile', 'shareholderReturnPercentile']
+// 最後一支是要換進第 5 軸的盈餘品質（數據中台 2026-11-27 預告，見 six-dimensions.ts 的 NEXT_FIFTH_AXIS）：進型錄之前先列；換完之後拿掉財務安全
+export const SIX_DIMENSION_METRICS = ['growthMomentumPercentile', 'priceTrendPercentile', 'fundamentalImprovementPercentile', 'valuePercentile', 'financialSafetyPercentile', 'shareholderReturnPercentile', 'earningsQualityPercentile']
 // 外資持股三個月變化（2026-11-27 跟著徽章進型錄）：只有上櫃公司有值（證交所的匯出資料沒有外資持股比率），當條件會把上市整批篩掉、
 // 畫面上看不出來——同 11-24 數據中台先不放外資／投信四個篩選欄位的理由。徽章頁與 /learn 照舊看得到。上市有資料、或使用者決定要列時拿掉這一項
 export const PICKER_UNLISTED_METRICS = ['yieldOnCost1y', 'yieldOnCost3y', 'yieldOnCost5y', 'yieldOnCost10y', ...SCORE_METRICS, ...SIX_DIMENSION_METRICS, 'foreignHoldingChange3m']

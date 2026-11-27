@@ -1,7 +1,7 @@
 // 六面向（app/utils/six-dimensions.ts）：固定的軸序、雷達圖的座標（缺值的軸不連線）、答句。
 // Run: node scripts/check-six-dimensions.mjs（pnpm selfcheck 會跑）
 import assert from 'node:assert/strict'
-import { SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, sixDimensionAxes, sixDimensionNullText, sixDimensionPopulationNote, sixDimensionScopeNote, sixDimensionScopeText, sixDimensionsAnswer, sixDimensionsAriaLabel } from '../app/utils/six-dimensions.ts'
+import { NEXT_FIFTH_AXIS, SIX_DIMENSIONS, percentileLabel, percentileText, radarGeometry, sixDimensionAxes, sixDimensionNullText, sixDimensionPopulationNote, sixDimensionScopeNote, sixDimensionScopeText, sixDimensionsAnswer, sixDimensionsAriaLabel } from '../app/utils/six-dimensions.ts'
 
 const axis = (metricCode, value, nullReason = null) => ({ metricCode, value, nullReason, components: [] })
 // 上游的順序亂掉、多給一支、少給一支：照固定的六個軸排，沒有的當沒有值
@@ -9,9 +9,15 @@ const axes = sixDimensionAxes({ axes: [axis('valuePercentile', 22.7), axis('grow
 assert.deepEqual(axes.map(item => [item.label, item.value, item.nullReason]), [['成長動能', 82.4, null], ['價格趨勢', 91.3, null], ['體質改善', null, 'missing_input'], ['價值型', 22.7, null], ['財務安全', 73.5, null], ['股東回饋', null, null]])
 assert.deepEqual(sixDimensionAxes(null).map(item => item.value), [null, null, null, null, null, null])
 assert.equal(SIX_DIMENSIONS.length, 6)
-// 不列進篩選器的那份名單（replaced-metrics.ts，使用者 2026-11-27「不要列進篩選器」）跟這裡是同樣六支
+// 第 5 軸要從財務安全換成盈餘品質（數據中台 2026-11-27 預告）：上游換之前、之後都畫得出來——明細給盈餘品質就畫盈餘品質，
+// 兩個都沒有（沒有資料）或只有舊的照舊叫財務安全；上游的順序亂掉也排在第 5 個
+const swapped = sixDimensionAxes({ axes: [axis('shareholderReturnPercentile', 40), axis('earningsQualityPercentile', 66.6), axis('valuePercentile', 22.7)] })
+assert.deepEqual(swapped.map(item => [item.label, item.value]), [['成長動能', null], ['價格趨勢', null], ['體質改善', null], ['價值型', 22.7], ['盈餘品質', 66.6], ['股東回饋', 40]])
+assert.equal(swapped[4].code, 'earningsQualityPercentile')
+assert.equal(sixDimensionAxes(null)[4].label, '財務安全')
+// 不列進篩選器的那份名單（replaced-metrics.ts，使用者 2026-11-27「不要列進篩選器」）是這裡的六支，加上要換進來的那一支
 const { SIX_DIMENSION_METRICS } = await import('../app/utils/replaced-metrics.ts')
-assert.deepEqual(SIX_DIMENSIONS.map(item => item.code), SIX_DIMENSION_METRICS)
+assert.deepEqual([...SIX_DIMENSIONS.map(item => item.code), NEXT_FIFTH_AXIS.code], SIX_DIMENSION_METRICS)
 
 // 表格兩位、圖上整數；不是數字的當沒有
 assert.equal(percentileText(82.4), '82.40')
