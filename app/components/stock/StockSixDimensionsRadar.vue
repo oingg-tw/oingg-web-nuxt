@@ -45,7 +45,8 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
 }
 
 /* 窄的時候（手機、指標速覽的格子）：圖撐滿寬度，最寬 15rem；六個軸名排在圖的上面一列、下面一列，左右兩個各靠自己那一側的角。
-   軸名放圖的兩旁要吃掉 144px，320 寬的手機上圖只剩 87px。--six-radar-plot：圖的最大寬度，指標速覽的卡片給小一點（卡片高度固定） */
+   軸名放圖的兩旁要吃掉 144px，320 寬的手機上圖只剩 87px。--six-radar-plot：圖的最大寬度，指標速覽的卡片給小一點（卡片高度固定）。
+   軸名那兩列至少 14rem：三個四個字的軸名排一列要 12rem 加間距，卡片的圖只有 11.75rem，跟著圖一樣寬時「股東回饋」會黏到「成長動能」 */
 .six-radar__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -55,7 +56,7 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
     'a4 a3 a2';
   align-items: center;
   gap: 4px 8px;
-  max-width: var(--six-radar-plot, 15rem);
+  max-width: max(var(--six-radar-plot, 15rem), 14rem);
   margin-inline: auto;
 }
 
@@ -76,8 +77,10 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
 
 .six-radar__plot {
   grid-area: plot;
+  justify-self: center;
   display: block;
   width: 100%;
+  max-width: var(--six-radar-plot, 15rem);
   height: auto;
 }
 
@@ -127,12 +130,14 @@ const middleRing = computed(() => geometry.value.rings.find(ring => ring.percent
   text-align: center;
 }
 
+/* 左右的軸名：欄位夠寬時撐滿欄位、字靠自己那一側的角；欄位比字窄時（320 寬的手機把字放大到 120%）貼著中間那一欄、往外側超出去，
+   不壓到中間的軸名。超出去的那幾 px 落在卡片的內距裡 */
 .six-radar__label--0 { grid-area: a0; }
-.six-radar__label--1 { grid-area: a1; text-align: right; }
-.six-radar__label--2 { grid-area: a2; text-align: right; }
+.six-radar__label--1 { grid-area: a1; justify-self: start; min-width: 100%; text-align: right; }
+.six-radar__label--2 { grid-area: a2; justify-self: start; min-width: 100%; text-align: right; }
 .six-radar__label--3 { grid-area: a3; }
-.six-radar__label--4 { grid-area: a4; text-align: left; }
-.six-radar__label--5 { grid-area: a5; text-align: left; }
+.six-radar__label--4 { grid-area: a4; justify-self: end; min-width: 100%; text-align: left; }
+.six-radar__label--5 { grid-area: a5; justify-self: end; min-width: 100%; text-align: left; }
 
 @container (min-width: 352px) {
   .six-radar__label--1,

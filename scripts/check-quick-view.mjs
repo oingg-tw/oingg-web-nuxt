@@ -133,6 +133,29 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     return sizes
   })
   expect(code, '基本資料、六面向不比圖表卡高', heights[0] <= heights[2] && heights[1] <= heights[2], heights.join(' / '))
+  // 六面向卡片的軸名在手機上不黏在一起（2026-11-27：卡片的圖只有 188px 寬，軸名那一列跟圖一樣寬時三個四個字的軸名放不下，
+  // 「股東回饋」緊接著「成長動能」）。量字本身佔的範圍：同一列的兩個軸名至少隔 4px
+  for (const width of [375, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    const touching = await cards.nth(1).evaluate((card) => {
+      const names = [...card.querySelectorAll('.six-radar__label > span:first-child')].map((node) => {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        return { name: node.textContent.trim(), rect: range.getBoundingClientRect() }
+      })
+      const pairs = []
+      for (let a = 0; a < names.length; a++) {
+        for (let b = a + 1; b < names.length; b++) {
+          const [first, second] = [names[a].rect, names[b].rect]
+          const sameRow = Math.max(first.top, second.top) < Math.min(first.bottom, second.bottom)
+          if (sameRow && Math.max(first.left, second.left) - Math.min(first.right, second.right) < 4) pairs.push(`${names[a].name}／${names[b].name}`)
+        }
+      }
+      return { count: names.length, pairs }
+    })
+    expect(code, `${width} 寬：六面向卡片的六個軸名不黏在一起`, touching.count === 6 && touching.pairs.length === 0, touching.pairs.join('、') || `${touching.count} 個軸名`)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
 
   for (const labels of BATCHES) {
     await pinOnly(page, labels)
