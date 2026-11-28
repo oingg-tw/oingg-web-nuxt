@@ -42,9 +42,10 @@ export const SIX_DIMENSIONS = [
   { code: 'shareholderReturnPercentile', label: '股東回饋' }
 ] as const
 
-// 雷達圖上方那一列（全站圖表的畫法：單位在左、說明在右）：頁面與指標速覽的卡片共用
+// 雷達圖上方那一列（全站圖表的畫法：單位在左、說明在右）：頁面與指標速覽的卡片共用。單位只寫「百分位」（2026-11-29，使用者：「六面向卡片手機版
+// 請微調」）：原本「百分位（0 最低、100 最高）」在 375 寬的卡片上把這一列折成兩行，圖少 28px；0 到 100 寫在頁面的定義
 export const SIX_DIMENSIONS_LEGEND = [
-  { unit: '百分位（0 最低、100 最高）', items: [] },
+  { unit: '百分位', items: [] },
   { right: true, items: [{ name: '50：上市櫃公司的中間', color: 'currentColor', kind: 'line' as const, dash: 'dashed' as const }] }
 ]
 

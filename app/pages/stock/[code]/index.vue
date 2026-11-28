@@ -572,7 +572,8 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
         </StockNewsCard>
         <!-- 六面向是雷達圖（SVG），不是 ECharts：內容區跟其他卡片讀取中的佔位同高，圖載到了不會把版面推動 -->
         <SharedChartCard v-else-if="item.spec.kind === 'six-dimensions' && !pageLoading('six-dimensions')">
-          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="sixDimensions?.asOf ?? ''" @remove="removeRow(item.slug, item.label)" /></template>
+          <!-- 標題後面不接日期（2026-11-29）：那一格是別的卡片放最新數值的地方，粗體的日期讀起來像一個數；同基本資料、近期新聞，日期在六面向那一頁 -->
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" value="" @remove="removeRow(item.slug, item.label)" /></template>
           <!-- 沒有資料時那一句也放在同高的內容區裡：這張是預設卡片，讀取中的佔位換成一行字會把下面整頁往上拉 -->
           <div class="stock-quick-view-page__six">
             <template v-if="sixHasValues">
@@ -756,8 +757,10 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   }
 }
 
-/* 六面向的雷達圖卡片：內容區最少這麼高（窄 372、寬 360；這張卡片佔位的預設照這兩個數字，見 BODY_DEFAULTS，改這裡要一起改）、圖放中間。圖最寬 11.75rem（188×214）：窄卡片圖例折成兩行（52）加軸名兩列（94）
-   加圖 214 是 368，放得進 372；寬卡片圖例一行，342 放得進 360 */
+/* 六面向的雷達圖卡片：內容區最少這麼高（窄 372、寬 360；這張卡片佔位的預設照這兩個數字，見 BODY_DEFAULTS，改這裡要一起改）、圖放中間。
+   圖最寬 11.75rem（188×214）：圖例兩行（52）加軸名兩列（94）加圖 214 是 368，放得進 372。卡片 320px 以上（360、375 寬的手機）圖例「百分位」
+   與「50：上市櫃公司的中間」放得進一行（量過要 260px，卡片內容 278 以上），圖放大到 13rem（208×237）：24＋94＋237 是 363（2026-11-29，使用者：
+   「六面向卡片手機版請微調」，原本 375 寬的卡片兩旁空一大塊）。寬卡片軸名在兩旁，圖照舊 11.75rem，342 放得進 360 */
 .stock-quick-view-page__six {
   --six-radar-plot: 11.75rem;
   display: flex;
@@ -767,8 +770,15 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
   min-height: calc(44px + 8px + 320px);
 }
 
+@container (min-width: 320px) {
+  .stock-quick-view-page__six {
+    --six-radar-plot: 13rem;
+  }
+}
+
 @container (min-width: 520px) {
   .stock-quick-view-page__six {
+    --six-radar-plot: 11.75rem;
     min-height: calc(32px + 8px + 320px);
   }
 }
