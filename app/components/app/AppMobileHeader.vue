@@ -33,18 +33,14 @@ const unseen = useInboxUnseen()
       <span v-if="unseen" class="mobile-header__badge" aria-hidden="true">{{ unseenText(unseen) }}</span>
       <span v-if="unseen" class="visually-hidden">，{{ unseen }} 則未讀站內信</span>
     </button>
-    <!-- Two equal flex: 1 spacers (not one) bracket the logo, not just push it right — since
-         the menu/search buttons on either end are the same 44px circle size, this centers the
-         logo/name group exactly in the header's remaining space, matching "logo/站名 請水平
-         置中" rather than just left-aligning it after the menu button. -->
-    <div class="mobile-header__spacer" />
+    <!-- 「logo/站名 請水平置中」：兩顆按鈕一樣寬，justify-content: space-between 把 logo 放在正中間（.mobile-header）。原本左右各一個
+         flex: 1 的空白元素做同一件事，但多佔兩個 8px 的間距：320 寬、字級 110% 以上時「搜尋」被推出畫面（2026-11-28） -->
     <!-- always-show-name: without it AppLogo hides the "安盈選股" text below 1280px (correct
          default for the app-shell's OWN dense header, which competes for space with a search
          bar/sidebar trigger there — see AppLogo.vue's own comment) — this header has no such
          competing chrome, and landing.vue's sticky header already opts into the same override
          for the identical reason. -->
     <AppLogo always-show-name home-accesskey class="mobile-header__logo" />
-    <div class="mobile-header__spacer" />
     <!-- accesskey="s"（2026-09-16 是 n，2026-10-08 改成無障礙規範 2.0 慣例的 S；配置見 pages/sitemap.vue）：這顆按鈕本來就做 Alt+S 要做的事（開搜尋圖層），不像桌機的
          內嵌輸入框得另放一顆隱藏的觸發鈕（見 AppHeaderMenu）。 -->
     <button type="button" class="app-bar-item mobile-header__btn" accesskey="s" title="搜尋區塊" @click="toggle('search')">
@@ -65,18 +61,30 @@ const unseen = useInboxUnseen()
   translate: 0 var(--app-stage-top, 0px);
   display: flex;
   align-items: center;
+  /* logo 在兩顆一樣寬的按鈕正中間（「logo/站名 請水平置中」） */
+  justify-content: space-between;
   gap: 8px;
   /* 60px：44px 的控制項上下各 8px，同桌機頁首 */
   padding: calc(8px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right, 0px)) 8px calc(16px + env(safe-area-inset-left, 0px));
   /* 純色，同 AppHeaderMenu（2026-10-21「背景不要 再有 樣式 改成純色就好」） */
   background: var(--el-bg-color);
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
+  /* 兩顆按鈕的左右內距看這一列放不放得下（下面的 @container） */
+  container-type: inline-size;
 }
 
-/* Two of these (one each side of the logo) share the header's remaining space equally,
-   centering the logo/name group between the menu and search buttons. */
-.mobile-header__spacer {
-  flex: 1;
+/* 按鈕的左右內距（2026-11-28）：320 寬的手機、外觀設定字級 110% 以上時，選單、logo、搜尋加兩個間距放不下，「搜尋」被推出畫面 12～29px。
+   放不下時內距從 12px 收成 4px（每顆省 16px）；按鈕還是 44px 高、寬 60px 以上。門檻量過（三樣加兩個 8px 間距，不含這一列左右的 16px）：
+   字級 100% 要 284px（17.75rem），110% 要 301px（17.1rem），120% 要 317px（16.5rem）；取最大的 17.75rem，rem 跟著字級變，三種字級都在放不下之前換。
+   手機優先：不支援容器查詢的瀏覽器（iOS 15）拿收緊的那一種，哪裡都放得下 */
+.mobile-header__btn {
+  padding-inline: 4px;
+}
+
+@container (min-width: 17.75rem) {
+  .mobile-header__btn {
+    padding-inline: 12px;
+  }
 }
 
 /* 未讀站內信的數字（2026-11-16）：疊在選單圖示右上角，不佔寬度；樣子同頁首「帳號」上的那個（UserMenuButton） */
@@ -101,10 +109,9 @@ const unseen = useInboxUnseen()
   text-align: center;
 }
 
-/* flex-shrink: 0 for the same reason as .mobile-header__btn above — without it, the logo/name
-   group (the widest child) would be the first to give up space under gap pressure at very
-   narrow widths, shrinking its text instead of the spacers either side of it giving up their
-   own (empty, safe-to-shrink) space first. */
+/* flex-shrink: 0 like the buttons (.app-bar-item): without it the logo/name group, the widest child,
+   would be the first to give up space at very narrow widths and squeeze its text; the buttons'
+   padding gives way instead (the @container above). */
 .mobile-header__logo {
   flex-shrink: 0;
 }

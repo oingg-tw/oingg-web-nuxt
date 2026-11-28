@@ -528,12 +528,15 @@ textarea {
 
 /* 全站的晶片（2026-11-06）：可點的短標籤，44px 高、膠囊形，框是控制項的 3:1。目前這一個（連結是 aria-current，切換鈕是 aria-pressed）實心主色，
    同分段鈕選中的樣子。排行的換指標、更新紀錄的篩選、指標總覽的跳轉、大師徽章的段落、速覽的挑指標、觀察清單手機的最右欄都是它，各頁只補自己的版面 */
+/* 名稱太長、放不下一行時（320 寬、外觀設定字級 120% 的「近 3 年 現金流量股利保障倍數」，2026-11-28）折成兩行：上下留 6px、
+   字靠左（按鈕預設置中，第二行會跑到中間）。一行的照舊 44px 高（min-height 比內容高） */
 .hub-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  padding: 0 14px;
+  padding: 6px 14px;
+  text-align: start;
   border: 1px solid var(--el-border-color);
   border-radius: 22px;
   color: var(--el-text-color-primary);
