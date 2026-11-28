@@ -9,7 +9,10 @@
   // 網址先用 workers.dev（使用者 2026-10-27 選）；DEV 全站 noindex（NUXT_SITE_ENV=preview）
   "workers_dev": true,
   "preview_urls": false,
-  "observability": { "enabled": true },
+  // issues（2026-11-28，使用者：「開 Issues 就好」，紫隊演練「Worker 出錯沒有告警」）：Cloudflare 把錯誤歸成類型，主控台 Workers 的這個 Worker 底下有 Issues 頁；
+  // 新類型要通知，在那一頁的 Automations 設目的地（聊天、webhook，沒有 email）。只在主控台打開的話，下一次 wrangler deploy 會把它關掉，所以寫在這裡。
+  // 要 Wrangler 4.134.0 以上（scripts/deploy.mjs 的 npx 拿最新版）；beta 期間免費
+  "observability": { "enabled": true, "issues": { "enabled": true } },
   // 不設 placement：改在業務中台旁邊（gcp:asia-southeast1）執行試過兩次都比較慢——10/27 冷啟動整頁慢 0.7～1.1 秒，10/28 持續負載下
   // 頁面 p50 慢 300～570 ms（HiNet 入口還是 SJC，整頁 HTML 要從新加坡繞回來）；入口在新加坡的使用者不設也已經在那裡執行。
   // 見 docs/cloudflare-migration-plan.md
