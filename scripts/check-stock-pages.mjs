@@ -160,6 +160,10 @@ for (const route of ROUTES) {
   const title = ssr.match(/<title>([^<]+)<\/title>/)?.[1] ?? ''
   const description = ssr.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? ''
   const questionH2s = [...ssr.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(text => text.endsWith('？'))
+  // 頁面自己 noindex（2026-11-28）：不適用或沒有資料的公司只寫一句原因（國泰金的景氣循環度、背書保證，長榮航的營業費用組成），
+  // 下面三條給搜尋結果看的下限（描述長度、三個問句、一張表）對它不適用；硬湊標題或表格就是那兩條註解反對的事。原本用 2330 跑整份
+  // 碰不到這種頁，換金融股或 2618 跑才紅。環境層級的 noindex（本機、DEV）帶 data-hint="Site Config"，不算
+  const ownNoindex = /<meta name="robots" content="noindex[^"]*"(?![^>]*data-hint)[^>]*>/.test(ssr)
   const banned = [...new Set([...visibleText(ssrHtml).matchAll(BANNED_WORDS_PATTERN)].map(m => m[0]))]
   // No sideways scroll. A transformed element still contributes scrollable overflow, and this repo
   // has shipped that bug once already（「反覆點選功能選單與上一頁按鈕…跑出橫向的scrollbar」, measured
@@ -180,7 +184,7 @@ for (const route of ROUTES) {
     titleLength: cjkLength(title) <= 32,
     // Built from the symbol's own numbers, so the floor is soft（a sparse symbol has fewer
     // clauses）; the 90 ceiling is the hard one.
-    descriptionLength: cjkLength(description) >= 50 && cjkLength(description) <= 90,
+    descriptionLength: ownNoindex || (cjkLength(description) >= 50 && cjkLength(description) <= 90),
     // Three question-form <h2>s for most pages — the question → answer document shape the SEO
     // build established. The index route is the exception from 2026-09-20: four of its five
     // sections were removed by direct instruction over that one day（是什麼公司／同業有哪些／
@@ -193,14 +197,14 @@ for (const route of ROUTES) {
     // 「有哪些數字可以看？」與「是哪一期的？」兩問；理由同上，不發明第三個標題。
     // 首頁（''）2026-10-18 起是指標速覽：兩問（自選指標最新是多少、是哪一期的），表格由預設釘選在伺服器端畫出來
     // /financial-statements 2026-10-14 起是稽核用的三大財務報表本身（「主角是 "三大財務報表"」），剩「每一期是多少」與「多久更新」兩問
-    questionH2s: questionH2s.length >= (route === '' ? 1 : route === '/metrics' || route === '/financial-statements' ? 2 : 3),
-    // 沒有豁免（2026-09-28）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
+    questionH2s: ownNoindex || questionH2s.length >= (route === '' ? 1 : route === '/metrics' || route === '/financial-statements' ? 2 : 3),
+    // 路由沒有豁免（2026-09-28；頁面自己 noindex 的除外，見 ownNoindex）。唯一一個曾經豁免的是 /f-score，而那一頁已經刪掉——它和
     // /graham-number、/peg 是當時僅有的三個「只有徽章那一列連得到」的頁（「徽章不要歷史，有歷史的
     // 只有指標」）。所以這一行現在對每一條路由都是同一個條件。
     //
     // The index route ('') is 指標速覽 since 2026-10-18: its table is SSR-rendered from the default pins.
     // /financial-statements 的三張表是切換期別的互動元件（el-table），最新一期的 SSR 表格在 /balance-sheet 等三頁、頁尾連過去（2026-10-14）
-    ssrTables: route === '/financial-statements' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
+    ssrTables: ownNoindex || route === '/financial-statements' || (ssr.match(/<table[^>]*data-ssr-table/g) ?? []).length >= 1,
     // /dividend 原本要兩張表（每季配息＋歷年股利）；2026-10-15 改成一頁一張表（使用者：「一個指標只能留一個表」），跟其他頁同一個下限
     // 每頁恰好一個頁尾，且有免責（2026-10-11 使用者：「個股瀏覽頁面的底部希望可以統一元件去管理」，免責每頁都放）。
     // 兩句免責都含「不代表本站對」：個股頁的那句與徽章頁的那句。資料來源那一行不強制——/metrics 是連結目錄，沒有數字就不列來源。
