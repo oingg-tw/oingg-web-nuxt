@@ -130,9 +130,10 @@ export function nullReasonShortText(nullReason: string | null | undefined): stri
 // 主詞是哪幾期由呼叫端給：一期是「這一期」，好幾期併成一列是「這 13 期」「其中 10 期」（mergedPeriodNotesText）
 const EXPENSE_NOT_ITEMIZED: Record<string, (periods: string, amount: string) => string> = {
   total_only: periods => `${periods}的營業費用只申報合計，拆不出推銷、管理與研發。`,
-  // 單季的第四季（數據中台 2026-11-28，讀者先行）：那一季是全年減前三季，年報有拆、前三季只申報合計，所以各項推不出來。2615 2021～2024 的
-  // 第四季原本寫「只申報合計」（不準，年報有管理費用），更早是「加起來不等於合計，差 21.06 億元」（那是整筆營業費用）
-  earlier_quarters_total_only: periods => `${periods}是第四季單季（全年減前三季）：前三季只申報營業費用合計，推不出推銷、管理與研發。`,
+  // 單季的第四季（數據中台 2026-11-28，讀者先行）：那一季是全年減前三季累計，年報有拆、第三季的報表（前三季累計）只申報合計，所以各項推不出來。
+  // 2615 2021～2024 的第四季原本寫「只申報合計」（不準，年報有管理費用），更早是「加起來不等於合計，差 21.06 億元」（那是整筆營業費用）。
+  // 寫「第三季的報表」不寫「前三季」：1467、5516、2617 第一、二季有拆、只有第三季的報表沒拆，寫前三季會跟旁邊有數字的列對不上（數據中台同日）
+  earlier_quarters_total_only: periods => `${periods}是第四季單季（全年減前三季累計）：第三季的報表只申報營業費用合計，推不出推銷、管理與研發。`,
   other_expense_items: (periods, amount) => `${periods}的營業費用有推銷、管理、研發以外的其他費用科目${amount ? `（${amount}）` : ''}，拆不完。`,
   components_do_not_add_up: (periods, amount) => `${periods}推銷、管理、研發與減損加起來不等於營業費用合計${amount ? `，差 ${amount}` : ''}。`,
   financial_industry_format: () => '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。'

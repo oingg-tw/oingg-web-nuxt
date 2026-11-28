@@ -133,10 +133,10 @@ assert.equal(
 assert.equal(mergedPeriodNotesText([missing(notAddUp(2105646))]), '這一期推銷、管理、研發與減損加起來不等於營業費用合計，差 21.06億元。')
 // 單季第四季的原因（數據中台的 earlier_quarters_total_only）：年報有拆、前三季只申報合計。一期與併成一列各一句，金額不寫
 const fourthQuarter = { code: 'operating_expense_not_itemized', reason: 'earlier_quarters_total_only', unitemizedAmount: 2105646 }
-assert.equal(periodNotesText([missing(fourthQuarter)]), '這一期是第四季單季（全年減前三季）：前三季只申報營業費用合計，推不出推銷、管理與研發。')
+assert.equal(periodNotesText([missing(fourthQuarter)]), '這一期是第四季單季（全年減前三季累計）：第三季的報表只申報營業費用合計，推不出推銷、管理與研發。')
 assert.equal(
   mergedPeriodNotesText([missing(fourthQuarter), ...Array.from({ length: 3 }, () => missing(totalOnly)), missing(fourthQuarter)]),
-  '其中 2 期是第四季單季（全年減前三季）：前三季只申報營業費用合計，推不出推銷、管理與研發。其中 3 期的營業費用只申報合計，拆不出推銷、管理與研發。'
+  '其中 2 期是第四季單季（全年減前三季累計）：第三季的報表只申報營業費用合計，推不出推銷、管理與研發。其中 3 期的營業費用只申報合計，拆不出推銷、管理與研發。'
 )
 // 沒有主詞的句子（金融業、沒有申報）照舊只寫一次；沒有說明的期別不算在內
 assert.equal(mergedPeriodNotesText([missing(shared), missing(shared)]), '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。')
