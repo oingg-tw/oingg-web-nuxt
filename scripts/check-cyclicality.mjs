@@ -67,6 +67,8 @@ assert.equal(cyclicalityAnswer('國泰金', { value: null, nullReason: 'not_appl
 assert.equal(cyclicalityMissingText('insufficient_history'), '財報未滿 8 年，算不出景氣循環度。')
 assert.equal(cyclicalityMissingText('not_in_universe'), '景氣循環度只算上市櫃的普通股，這一檔不在比較範圍裡。')
 assert.equal(cyclicalityMissingText('something_new'), '要用的財報數字不齊，目前算不出景氣循環度。')
+assert.equal(cyclicalityMissingText('zero_or_negative_denominator'), '有幾年的營收是 0，算不出利潤率，也就算不出景氣循環度。')
+assert.equal(cyclicalityItemNullText('zero_or_negative_denominator'), '有幾年營收是 0')
 assert.equal(cyclicalityItemNullText('insufficient_history'), '歷史資料不夠長')
 assert.equal(cyclicalityItemNullText('something_new'), '')
 

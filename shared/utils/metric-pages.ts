@@ -383,7 +383,9 @@ export const METRIC_PAGE_ALIASES: Record<string, string> = {
   groupCapitalAdequacyRatio: 'capital-adequacy',
   // 第 4、5 項（2026-11-23）：背書保證與資金貸與頁（含關係人交易那一段）、轉投資頁
   endorsementGuaranteeToEquity: 'guarantees', loansToOthersToEquity: 'guarantees', relatedPartySalesToRevenue: 'guarantees', relatedPartyPurchasesToCostOfRevenue: 'guarantees',
-  mainlandChinaInvestmentToEquity: 'investments'
+  mainlandChinaInvestmentToEquity: 'investments',
+  // 景氣循環度的四支篩選欄位（2026-11-29，使用者選「兩個都做」：合成與三支單一數字）：景氣循環度頁的表格與圖寫的就是它們
+  cyclicalityPercentile: 'cyclicality', operatingMarginTrendDeviation: 'cyclicality', revenueMaxDrawdown: 'cyclicality', revenueMarketCorrelation: 'cyclicality'
 }
 
 export function metricPageSlug(metricCode: string): string | null {

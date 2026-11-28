@@ -80,11 +80,13 @@ export function cyclicalityItems(breakdown: CyclicalityBreakdown | null | undefi
 const MISSING_TEXTS: Record<string, string> = {
   not_applicable_industry: '金融保險業、建材營造業，以及用異業合併格式申報財報的公司，不適用景氣循環度。',
   insufficient_history: '財報未滿 8 年，算不出景氣循環度。',
+  // 年報營收有幾年是 0、營收大於 0 的年度不到 8 個（還沒有營收的新藥公司，數據中台 2026-11-29）：照設計沒有值，不是資料不齊
+  zero_or_negative_denominator: '有幾年的營收是 0，算不出利潤率，也就算不出景氣循環度。',
   not_in_universe: '景氣循環度只算上市櫃的普通股，這一檔不在比較範圍裡。'
 }
 export const cyclicalityMissingText = (nullReason: string | null | undefined): string => MISSING_TEXTS[nullReason ?? ''] ?? '要用的財報數字不齊，目前算不出景氣循環度。'
 // 某一項沒有值時，表格那一列補的原因（格子已經寫「無法計算」或「不適用」）
-const ITEM_NULL_TEXTS: Record<string, string> = { insufficient_history: '歷史資料不夠長', missing_input: '要用的數字不齊' }
+const ITEM_NULL_TEXTS: Record<string, string> = { insufficient_history: '歷史資料不夠長', missing_input: '要用的數字不齊', zero_or_negative_denominator: '有幾年營收是 0' }
 export const cyclicalityItemNullText = (nullReason: string | null | undefined): string => ITEM_NULL_TEXTS[nullReason ?? ''] ?? ''
 
 // 位置條上的參照：所屬產業有分數的家數與中位數。名稱照回應，沒給（代碼表載不到）就用網站自己的類股名稱；家數或中位數沒有就不畫

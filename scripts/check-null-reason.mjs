@@ -60,6 +60,10 @@ assert.equal(screenerNullText('roeWeighted5y.FY', 'insufficient_history'), '未�
 assert.equal(screenerNullText('beta.5Y_1M', 'insufficient_history'), '未滿 5 年')
 assert.equal(screenerNullText('peRatioRiverBand.3Y_1D', 'insufficient_history'), '未滿 3 年')
 assert.equal(screenerNullText('holdingDividendGrowthRate3y.EOD', 'insufficient_history'), '未滿 3 年')
+// 景氣循環度的四支：期別是 EOD，年數照它們要的 8 年
+assert.equal(screenerNullText('cyclicalityPercentile.EOD', 'insufficient_history'), '未滿 8 年')
+assert.equal(screenerNullText('revenueMarketCorrelation.EOD', 'insufficient_history'), '未滿 8 年')
+assert.equal(screenerNullText('cyclicalityPercentile.EOD', 'not_applicable_industry'), null)
 assert.equal(screenerNullText('livePriceChangeRate.EOD', 'no_trade'), '無成交')
 assert.equal(NULL_REASON_LABELS.no_trade, '當天沒有成交')
 assert.equal(screenerNullText('epsCagr5y.FY', 'zero_or_negative_denominator'), null)

@@ -97,9 +97,11 @@ export function screenerNullText(field: string, nullReason: string | null | unde
   if (nullReason === 'no_trade') return '無成交'
   if (nullReason !== 'insufficient_history') return null
   const [metric = '', period = ''] = field.split('.')
-  const years = /^(\d+)Y_/.exec(period)?.[1] ?? /(\d+)y$/.exec(metric)?.[1]
+  const years = /^(\d+)Y_/.exec(period)?.[1] ?? /(\d+)y$/.exec(metric)?.[1] ?? HISTORY_YEARS[metric]
   return years ? `未滿 ${years} 年` : null
 }
+// 期別與代號看不出年數、要的歷史卻固定的欄位：景氣循環度的四支（2026-11-29）要年報 8 年、財報 32 季、月營收 96 個月，期別只寫 EOD
+const HISTORY_YEARS: Record<string, string> = { cyclicalityPercentile: '8', operatingMarginTrendDeviation: '8', revenueMaxDrawdown: '8', revenueMarketCorrelation: '8' }
 
 export function nullReasonTitle(point: NullablePoint | null | undefined): string | undefined {
   if (!point || point.value !== null || !point.nullReason) return undefined
