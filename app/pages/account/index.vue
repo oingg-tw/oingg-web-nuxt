@@ -100,19 +100,34 @@ watch(currentUser, async (user) => {
 // LINE 登入的就重新用 LINE 登入，回來自動打開同一個對話框），最後按一次就完成。解除之後再用 LINE 登入會進到另一個新的 LINE 帳號、
 // 看不到這裡的資料，所以解除前要停下來決定（帳號的不可逆動作保留確認）。業務中台照舊：DELETE /auth/line/link 要 10 分鐘內登入過，
 // 不然 401 reauth_required（2026-11-09 資安盤點 M1）；綁定的 POST /auth/line/link 也會再檢查一次
-const lineDialog = ref<'link' | 'unlink' | null>(null)
+// 登出所有裝置也在這個對話框（2026-11-29，紫隊 M1 的缺口：偷到憑證的人用綁上的 LINE 登入過，解除綁定之後那個登入照樣能用。使用者在
+// 業務中台選「加端點＋解除綁定也撤銷」）：POST /users/me/sessions/revoke 與解除綁定都會撤銷這個帳號全部的登入，連這一台的也作廢
+//（手上的 token 還能用到過期，但換不到新的），所以兩者成功後這一台立刻登出；同樣要 10 分鐘內登入過
+type SecurityAction = 'link' | 'unlink' | 'revoke'
+const LINE_DIALOG_TEXT: Record<SecurityAction, { title: string, button: string }> = {
+  link: { title: '綁定 LINE', button: '綁定 LINE' },
+  unlink: { title: '解除綁定 LINE', button: '解除綁定' },
+  revoke: { title: '登出所有裝置', button: '登出所有裝置' }
+}
+const lineDialog = ref<SecurityAction | null>(null)
 const lineDialogOpen = computed({ get: () => lineDialog.value !== null, set: (open) => { if (!open) lineDialog.value = null } })
 const lineNeedsReauth = ref(false)
 const linePassword = ref('')
 const lineMessage = ref('')
 const lineBusy = ref(false)
 
-async function openLineDialog(mode: 'link' | 'unlink') {
+async function openLineDialog(mode: SecurityAction) {
   linePassword.value = ''
   lineMessage.value = ''
   lineDialog.value = mode
   lineNeedsReauth.value = !(await recentlySignedIn())
 }
+// 對話框上面那一句：按下去之後會怎樣
+const lineDialogText = computed(() => {
+  if (lineDialog.value === 'unlink') return '解除之後，所有裝置（包括這一台）都會登出、要重新登入；用 LINE 登入會變成另一個新帳號，看不到這裡的持股與觀察清單，要再用 LINE 登入這個帳號，得重新綁定。'
+  if (lineDialog.value === 'revoke') return `所有登入這個帳號的裝置都會登出，包括這一台，要重新登入才能再用。${lineLinked.value ? '綁定的 LINE 也要重新綁定，才能再用 LINE 登入。' : ''}`
+  return '綁定之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號，看得到同一份持股與觀察清單。按下「綁定 LINE」會先到 LINE 授權，再回到這裡。'
+})
 
 async function confirmLineDialog() {
   const mode = lineDialog.value
@@ -133,17 +148,21 @@ async function confirmLineDialog() {
       startLineLogin('/account', 'link')
       return
     }
-    await authedFetch('/auth/line/link', { method: 'DELETE' })
+    if (mode === 'unlink') await authedFetch('/auth/line/link', { method: 'DELETE' })
+    else await authedFetch('/users/me/sessions/revoke', { method: 'POST' })
     lineDialog.value = null
-    lineStatus.value = 'unlinked'
-    ElMessage.success('已解除綁定 LINE。')
+    await signOut(auth)
+    ElMessage.success(mode === 'unlink' ? '已解除綁定 LINE，所有裝置都已登出，請重新登入。' : '已登出所有裝置，請重新登入。')
+    await navigateTo('/')
   } catch (error) {
     const code = businessErrorCode(error)
     if (code === 'reauth_required') {
       lineNeedsReauth.value = true
       lineMessage.value = '為了安全，請再驗證一次身分。'
+    } else if (code === 'line_account_cannot_unlink') {
+      lineMessage.value = '這是用 LINE 建立的帳號，沒辦法解除綁定。'
     } else {
-      lineMessage.value = code === 'line_account_cannot_unlink' ? '這是用 LINE 建立的帳號，沒辦法解除綁定。' : '沒有解除綁定，請稍後再試。'
+      lineMessage.value = mode === 'revoke' ? '沒有登出所有裝置，請稍後再試。' : '沒有解除綁定，請稍後再試。'
     }
   } finally {
     lineBusy.value = false
@@ -163,6 +182,7 @@ watch(lineStatus, (status) => {
 }, { immediate: true })
 onMounted(() => {
   if (reopenAfterLineLogin('delete')) void openDelete()
+  else if (reopenAfterLineLogin('revoke')) void openLineDialog('revoke')
 })
 
 // ---- LINE 帳號加上 Google 登入（2026-10-20，使用者：「這樣對方初次登入就是用 Line 怎麼處理？」→「我想補上」）----
@@ -293,6 +313,8 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
           <p v-if="lineAccount && inLineBrowser && !providers.includes('google.com')" class="account-page__note">LINE 內建瀏覽器打不開 Google 的登入視窗：用外部瀏覽器開啟這一頁、用 LINE 登入後，再按「加上 Google 登入」。</p>
           <p v-if="lineAccount && !providers.includes('google.com')" class="account-page__note">這是用 LINE 建立的帳號。加上 Google 登入後，換到沒有 LINE 的電腦也能用 Google 登入同一個帳號。（之前已經用 Google 或電子郵件建過帳號的話，請改用那個方式登入，再綁定 LINE。）</p>
           <p v-else-if="!lineAccount" class="account-page__note">綁定 LINE 之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號、看得到同一份持股與觀察清單。</p>
+          <p class="account-page__note">在別人的電腦登入過忘了登出，或擔心帳號被別人用了，可以一次登出所有裝置。</p>
+          <el-button class="account-page__revoke" @click="openLineDialog('revoke')">登出所有裝置…</el-button>
         </AccountSection>
 
         <AccountSection title="刪除帳號">
@@ -339,18 +361,14 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
         </template>
       </el-dialog>
 
-      <el-dialog v-model="lineDialogOpen" :title="lineDialog === 'unlink' ? '解除綁定 LINE' : '綁定 LINE'" width="min(480px, 92vw)">
-        <p class="account-page__text">
-          {{ lineDialog === 'unlink'
-            ? '解除之後，用 LINE 登入會變成另一個新帳號，看不到這裡的持股與觀察清單；要再用 LINE 登入這個帳號，得重新綁定。'
-            : '綁定之後，用 LINE 登入（例如在 LINE 裡打開網站）就是這個帳號，看得到同一份持股與觀察清單。按下「綁定 LINE」會先到 LINE 授權，再回到這裡。' }}
-        </p>
+      <el-dialog v-model="lineDialogOpen" :title="lineDialog ? LINE_DIALOG_TEXT[lineDialog].title : ''" width="min(480px, 92vw)">
+        <p class="account-page__text">{{ lineDialogText }}</p>
         <template v-if="lineNeedsReauth">
           <template v-if="lineSession">
             <p class="account-page__text">為了安全，請先重新用 LINE 登入；回來會自動打開這個視窗。</p>
-            <el-button @click="startLineLogin('/account?line=unlink')">用 LINE 重新登入</el-button>
+            <el-button @click="startLineLogin(`/account?line=${lineDialog}`)">用 LINE 重新登入</el-button>
           </template>
-          <p v-else-if="reauthWithGoogle" class="account-page__text">為了安全，按下「{{ lineDialog === 'unlink' ? '解除綁定' : '綁定 LINE' }}」時會先跳出 Google 視窗，確認是你本人。</p>
+          <p v-else-if="reauthWithGoogle" class="account-page__text">為了安全，按下「{{ lineDialog && LINE_DIALOG_TEXT[lineDialog].button }}」時會先跳出 Google 視窗，確認是你本人。</p>
           <template v-else>
             <label for="line-dialog-password" class="account-page__label">為了安全，請輸入密碼</label>
             <el-input id="line-dialog-password" v-model="linePassword" type="password" show-password autocomplete="current-password" @keyup.enter="confirmLineDialog" />
@@ -360,12 +378,12 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
         <template #footer>
           <el-button @click="lineDialog = null">取消</el-button>
           <el-button
-            :type="lineDialog === 'unlink' ? 'danger' : 'primary'"
+            :type="lineDialog === 'link' ? 'primary' : 'danger'"
             :loading="lineBusy"
             :disabled="lineNeedsReauth && (lineSession || (!reauthWithGoogle && !linePassword))"
             @click="confirmLineDialog"
           >
-            {{ lineDialog === 'unlink' ? '解除綁定' : '綁定 LINE' }}
+            {{ lineDialog && LINE_DIALOG_TEXT[lineDialog].button }}
           </el-button>
         </template>
       </el-dialog>
@@ -534,7 +552,13 @@ const dateText = (iso: string | null | undefined) => (iso ? new Date(iso).toLoca
   color: var(--el-color-danger);
 }
 
-.account-page__delete-button {
+.account-page__delete-button,
+.account-page__revoke {
   min-height: 44px;
+}
+
+/* 登入方式那一段是直排：按鈕照自己的寬，不撐滿 */
+.account-page__revoke {
+  align-self: flex-start;
 }
 </style>
