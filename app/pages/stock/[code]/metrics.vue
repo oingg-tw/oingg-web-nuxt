@@ -31,6 +31,12 @@ import type { StockNavNode } from '~/utils/stock-page-nav'
 // 跟著帳號、以及這些數字是哪一期的（最後一段是 60 幾頁共用的規則，現在散在每一頁的開頭句、沒有一處
 // 總說）。母項標題降為 <h3> 放在 <summary> 裡，大綱是 h1 → h2×3 → h3×11。
 //
+// ## 2026-11-29：6 大類、只列用得到的（使用者：「metrics 頁面的分類好好整理下，這對新手來說夠直覺嗎?」）
+//
+// 量到的問題：375 寬 12,504px；13 組裡五個組名是會計用語；毛利率在本業損益 18 項裡排第 16（前面是每股推銷費用這類細項）；每一家都列
+// 全部 100 項。改成：13 個母項收成 6 大類（收合的單位是類，跳轉列 6 個），母項名降為 h4、母項本身不拆；每一組先放最常查的那一支；
+// 數據中台說不適用的不列（兆豐金 100 → 57 項）。大綱是 h1 → h2×2 → h3×6 → h4。
+//
 // **noindex, follow；不進 sitemap，只進 check-stock-pages.mjs 的 FIXED_ROUTES。** 這一頁每一檔
 // 股票的 body 一字不差，唯一的差別是公司名——2339 個內容相同的 URL 進 sitemap 是典型的薄內容。
 // 走站上既有的「可達但不宣傳」拆法。要改成收錄的話，把 '/metrics' 加進
@@ -52,16 +58,26 @@ const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(c
 const { isPinned, isFull, toggle } = useStockPinnedMetrics()
 const slugOf = (node: StockNavNode) => node.to!('_').split('/').pop()!
 
-const sections = computed(() =>
-  STOCK_METRIC_INDEX.map((group, index) => ({
-    id: `stock-metric-group-${index}`,
-    label: group.label,
-    answer: group.answer ?? null,
-    links: group.children ?? []
-  }))
-)
+// 只列這家公司用得到的（2026-11-29，使用者：「metrics 頁面的分類好好整理下，這對新手來說夠直覺嗎?」）：原本每一家都列全部 100 項，
+// 台積電看得到資本適足率、兆豐金看得到毛利率與存貨週轉天數，點進去只有一句「不適用」。不適用由數據中台判斷（not-applicable，
+// 兆豐金 43 項、台積電 6 項），加上上市櫃別決定的幾頁。等它回來才畫（await），清單不會在載入後縮短；讀不到就全部列，等於改版前
+const { data: notApplicable } = await useFetch(() => `/api/stock/${code.value}/not-applicable`, { default: () => [] as string[] })
+const hidden = computed(() => new Set([...notApplicable.value, ...marketHiddenSlugs(profile.value?.market)]))
+const hiddenLinks = computed(() => STOCK_METRIC_INDEX.flatMap(group => group.children ?? []).filter(link => hidden.value.has(slugOf(link))))
 
-const totalLinks = computed(() => sections.value.reduce((sum, section) => sum + section.links.length, 0))
+// 6 大類，每一類底下是原本的母項（metricIndexSections，utils/stock-page-nav.ts）
+const sections = computed(() => metricIndexSections(STOCK_METRIC_INDEX, hidden.value))
+const groups = computed(() => sections.value.flatMap(section => section.groups))
+
+const totalLinks = computed(() => groups.value.reduce((sum, group) => sum + group.links.length, 0))
+// 不列的舉兩個例子，先挑一看就懂為什麼沒有的（銀行沒有毛利率、一般公司沒有資本適足率），挑不到才照目錄順序。寫「沒有」不寫「不適用」：
+// 上市公司的三大法人是網站沒有資料，不是不適用
+const TELLING_EXAMPLES = ['gross-margin', 'inventory-days', 'current-ratio', 'capital-adequacy', 'npl-ratio']
+const indexAnswer = computed(() => {
+  const telling = TELLING_EXAMPLES.flatMap(slug => hiddenLinks.value.filter(link => slugOf(link) === slug))
+  const examples = [...new Set([...telling, ...hiddenLinks.value])].slice(0, 2).map(link => link.label).join('、')
+  return `共 ${totalLinks.value} 項，分成 ${sections.value.length} 類。${hiddenLinks.value.length ? `${stockShortName.value}沒有的 ${hiddenLinks.value.length} 項（例如${examples}）不列。` : ''}`
+})
 
 // 搜尋（2026-09-28「希望加上一個 search 功能可以搜尋想要的指標」）。
 //
@@ -97,19 +113,23 @@ const matches = computed(() => {
   // 打中名字的那一項淹掉。實測：「現金」直接命中 4 項、整組命中 11 項；「稀釋」只有整組命中。
   const direct: { link: StockNavNode; group: string }[] = []
   const byGroup: { link: StockNavNode; group: string }[] = []
-  for (const section of sections.value) {
-    const groupHit = searchKey(section.label).includes(q) || searchKey(section.answer ?? '').includes(q)
-    for (const link of section.links) {
-      const hit = searchKey(link.label).includes(q)
-        || searchKey(link.hook ?? '').includes(q)
-        || searchKey(link.perspective ?? '').includes(q)
-        || matchesStockNavKeyword(link, q, aliasesOf)
-      if (hit) direct.push({ link, group: section.label })
-      else if (groupHit) byGroup.push({ link, group: section.label })
+  for (const group of groups.value) {
+    const groupHit = searchKey(group.label).includes(q) || searchKey(group.answer ?? '').includes(q)
+    for (const link of group.links) {
+      if (linkMatches(link, q)) direct.push({ link, group: group.label })
+      else if (groupHit) byGroup.push({ link, group: group.label })
     }
   }
   return [...direct, ...byGroup]
 })
+function linkMatches(link: StockNavNode, q: string): boolean {
+  return searchKey(link.label).includes(q)
+    || searchKey(link.hook ?? '').includes(q)
+    || searchKey(link.perspective ?? '').includes(q)
+    || matchesStockNavKeyword(link, q, aliasesOf)
+}
+// 搜到的是不列的那幾項（兆豐金搜「毛利率」）：說這家公司沒有，而不是「找不到」
+const hiddenMatches = computed(() => (normalizedQuery.value ? hiddenLinks.value.filter(link => linkMatches(link, normalizedQuery.value)).map(link => link.label) : []))
 
 // 全部母項**預設展開**（2026-09-28，依 docs/2_knowledge 的導航樹研究）。
 //
@@ -129,13 +149,13 @@ const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
-  titleKeywords: '所有指標按財報科目分組',
+  titleKeywords: '所有指標分成六類',
   pathSuffix: '/metrics',
   noindex: true,
   stock,
   description: computed(() =>
     clampDescription(
-      `${stockShortName.value}（${code.value}）可以查的 ${totalLinks.value} 項財報指標，按 ${sections.value.length} 個財報科目分組：淨值、盈餘、營收、現金流、股利、負債等。每一組再按視角排列，組成、每股、成長率、占比放在一起，手機上可以逐組展開。`
+      `${stockShortName.value}（${code.value}）可以查的 ${totalLinks.value} 項指標，分成${sections.value.map(section => section.label).join('、')}${sections.value.length} 類。每一類再按財報科目分組，最常查的那一支排在前面。`
     )
   ),
   sectorCode: computed(() => profile.value?.sectorCode ?? null)
@@ -156,9 +176,7 @@ const { breadcrumbs } = useStockPageSeo({
     <StockQuestionSection
       id="stock-metric-index"
       :question="`${stockShortName}（${code}）有哪些數字可以看？`"
-      :answer="normalizedQuery
-        ? `搜尋「${query.trim()}」，${matches.length} 項符合。`
-        : `共 ${totalLinks} 項，按財報科目分成 ${sections.length} 組，順序跟著三張報表走。`"
+      :answer="normalizedQuery ? `搜尋「${query.trim()}」，${matches.length} 項符合。` : indexAnswer"
     >
       <!-- aria-label 是必要的，不是保險：el-input 的 placeholder 不構成可及名稱。 -->
       <el-input
@@ -177,7 +195,7 @@ const { breadcrumbs } = useStockPageSeo({
 
       <!-- 跳轉索引：一次選擇就到位，Hick 成本是一次對數而不是「捲到找到」。真的 <a href="#…">，
            不靠 JS，爬蟲也讀得到。搜尋中不顯示——那時候結果已經是平鋪的。 -->
-      <nav v-if="!normalizedQuery" class="stock-metric-index-page__jump" aria-label="跳到指標分組">
+      <nav v-if="!normalizedQuery" class="stock-metric-index-page__jump" aria-label="跳到指標分類">
         <a v-for="section in sections" :key="section.id" :href="`#${section.id}`" class="hub-chip stock-metric-index-page__jump-link">
           {{ section.label }}
         </a>
@@ -219,6 +237,9 @@ const { breadcrumbs } = useStockPageSeo({
             </tr>
           </tbody>
         </SharedTable>
+        <p v-else-if="hiddenMatches.length" class="stock-answer">
+          {{ stockShortName }}沒有{{ hiddenMatches.slice(0, 3).join('、') }}{{ hiddenMatches.length > 3 ? ` 等 ${hiddenMatches.length} 項` : '' }}，所以不列。
+        </p>
         <p v-else class="stock-answer">
           找不到「{{ query.trim() }}」。指標名、說明、視角（組成、每股、成長率…）和英文縮寫都可以搜，例如輸入 ROE 或 天數。
         </p>
@@ -237,14 +258,17 @@ const { breadcrumbs } = useStockPageSeo({
         <summary>
           <h3 class="stock-metric-index-page__group-title">{{ section.label }}</h3>
         </summary>
-        <div class="stock-metric-index-page__group-body">
+        <!-- 一類底下的母項（2026-11-29）：母項名是 h4、不再收合（收合的單位是類）；只有一個同名母項的類（原始財報）不另寫母項名 -->
+        <div class="stock-metric-index-page__section-body">
+        <div v-for="group in section.groups" :id="group.id" :key="group.id" class="stock-metric-index-page__group-body">
+          <h4 v-if="group.label !== section.label" class="stock-metric-index-page__subgroup-title">{{ group.label }}</h4>
           <!-- 母項的說明句必須在展開後的 panel 裡，不能塞進 <summary>：11 個 summary × 48px
                ＝ 528px，加上上面的 h2 與答句剛好落在 375×812 扣掉瀏覽器 chrome 與底部導覽列之後的
                預算內。說明句塞進 summary 每列會變 72px，11 列就爆掉。 -->
-          <p v-if="section.answer" class="stock-answer">{{ section.answer }}</p>
+          <p v-if="group.answer" class="stock-answer">{{ group.answer }}</p>
           <!-- 表頭視覺隱藏：11 段各印一次「指標｜它回答什麼」是純噪音。欄名對輔助技術仍然
                存在，caption 也還在。 -->
-          <SharedTable :label="`${stockShortName} ${code} 的${section.label}指標`" table-class="stock-metric-index-page__links">
+          <SharedTable :label="`${stockShortName} ${code} 的${group.label}指標`" table-class="stock-metric-index-page__links">
             <thead class="visually-hidden">
               <tr>
                 <th scope="col">指標</th>
@@ -256,7 +280,7 @@ const { breadcrumbs } = useStockPageSeo({
                  移除」）。欄位本身留在資料裡：它決定同一組裡的撰寫順序，也是搜尋的比對欄位之一，
                  只是不占畫面。 -->
             <tbody>
-              <tr v-for="link in section.links" :key="link.label">
+              <tr v-for="link in group.links" :key="link.label">
                 <th scope="row">
                   <NuxtLink :to="link.to!(code)" class="seo-table__link">{{ link.label }}</NuxtLink>
                 </th>
@@ -286,6 +310,7 @@ const { breadcrumbs } = useStockPageSeo({
               </tr>
             </tbody>
           </SharedTable>
+        </div>
         </div>
       </details>
       </div>
@@ -378,10 +403,24 @@ const { breadcrumbs } = useStockPageSeo({
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* 一類底下的母項（2026-11-29）：母項之間 24px，比母項裡面（說明句與表格 12px）寬，看得出是下一組；最後一組下面 16px 再接分隔線 */
+.stock-metric-index-page__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   padding: 0 0 16px;
 }
 
+/* 類名（summary 裡的 h3）大一階，母項名（h4）照原本的 1rem */
 .stock-metric-index-page__group-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.stock-metric-index-page__subgroup-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;

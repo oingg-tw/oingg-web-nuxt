@@ -95,6 +95,25 @@ export const cachedMetricsHistory = defineCachedFunction(
   }
 )
 
+// 指標總覽不列的頁（notApplicableSlugs，shared/utils/metric-pages.ts）。每個期別讀最近 4 期（最新一期還沒申報時往前看）；景氣循環度另讀
+// 它自己的明細：金融保險業、建材營造業與異業合併格式是 not_applicable_industry，興櫃不在比較範圍（404）。讀不到就丟，頁面照舊全列
+export const cachedNotApplicable = defineCachedFunction(
+  async (symbol: string): Promise<string[]> => {
+    const timeframes = [...new Set(APPLICABILITY_PROBES.map(probe => probe.timeframe))]
+    const series = new Map(await Promise.all(timeframes.map(async (timeframe) => {
+      const codes = [...new Set(APPLICABILITY_PROBES.filter(probe => probe.timeframe === timeframe).flatMap(probe => probe.codes))]
+      return [timeframe, (await cachedMetricsHistory(symbol, timeframe, codes, 4)).entries] as const
+    })))
+    const cyclicality = await businessFetch<{ nullReason: string | null }>(`/stocks/${symbol}/cyclicality-breakdown`)
+      .catch((error: { statusCode?: number }) => (error?.statusCode === 404 ? { nullReason: 'not_applicable_industry' } : null))
+    return [
+      ...notApplicableSlugs(APPLICABILITY_PROBES, timeframe => series.get(timeframe) ?? []),
+      ...(cyclicality?.nullReason === 'not_applicable_industry' ? ['cyclicality'] : [])
+    ]
+  },
+  { name: 'stock-not-applicable', getKey: (symbol: string) => symbol, ...swrCache(TTL_FUNDAMENTALS, TTL_STATIC) }
+)
+
 // 河流圖的最後一點（2026-11-01，使用者選「摘要用圖的最新一點」）：指標頁、徽章頁的答句跟圖同一個數字。只要 current，抓 1 年最省；
 // current 是最新交易日的「股價 ÷ 每股基數」，跟回溯幾年無關。股價每天變，快取 15 分鐘（同 /api/cached 的 quote）；頁面載入後圖自己的
 // 那份到了會蓋過這一份（StockMetricDetailPage 的 riverLive），所以盤後這 15 分鐘的落差只在伺服器畫的那一瞬間

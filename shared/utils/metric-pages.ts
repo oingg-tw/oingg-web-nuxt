@@ -397,3 +397,47 @@ export function stockMetricPath(symbol: string, field: string): string | null {
   const slug = metricPageSlug(field.split('.')[0] ?? '')
   return slug ? `/stock/${symbol}/${slug}` : null
 }
+
+// 指標總覽不列的頁（2026-11-29，使用者：「metrics 頁面的分類好好整理下，這對新手來說夠直覺嗎?」）：這家公司用不到的。用不到是數據中台說的——
+// 最近一期的 nullReason 是 not_applicable_industry；網站不按產業自己猜，金融業三種各不相同（DEV 量過：兆豐金 35 支、旺旺保 29 支、
+// 群益證 15 支，台積電與建商華固 0 支）。銀行專屬的（bankOnly 或代碼 bank 開頭）對別的公司一期都沒有、也不帶原因，最近幾期都沒有也算。
+// 關係頁沒有自己的指標，借最核心的那一支（指標頁的 slug；它們對兆豐金都是 noindex 的一句話）；背書保證沒有指標頁，直接給代碼。
+// 讀的是 server/utils/stock-data.ts 的 cachedNotApplicable
+export interface ApplicabilityProbe { slug: string; codes: string[]; timeframe: 'TTM' | 'Q' | 'FY'; bankOnly: boolean }
+
+const APPLICABILITY_PROXIES: Record<string, string> = {
+  'cash-cycle': 'operating-cycle',
+  'receivables-aging': 'receivables-days',
+  'solvency': 'current-ratio',
+  'current-asset-composition': 'current-ratio',
+  'non-current-asset-composition': 'current-ratio',
+  'operating-expense-composition': 'operating-expense',
+  'shareholder-yield-composition': 'shareholder-yield',
+  'non-operating-composition': 'non-operating-income',
+  'net-revenue-composition': 'net-revenue',
+  'asset-composition': 'net-revenue'
+}
+
+const probeOf = (slug: string, page: MetricPageDefinition): ApplicabilityProbe => ({
+  slug,
+  codes: page.holdingMetricCode ? [page.metricCode, page.holdingMetricCode] : [page.metricCode],
+  timeframe: page.timeframe,
+  bankOnly: Boolean(page.bankOnly) || page.metricCode.startsWith('bank')
+})
+
+export const APPLICABILITY_PROBES: ApplicabilityProbe[] = [
+  ...METRIC_PAGES.map(page => probeOf(page.slug, page)),
+  ...Object.entries(APPLICABILITY_PROXIES).map(([slug, proxy]) => probeOf(slug, findMetricPage(proxy)!)),
+  { slug: 'guarantees', codes: ['endorsementGuaranteeToEquity'], timeframe: 'Q', bankOnly: false }
+]
+
+// entriesOf：那個期別最近幾期的 metrics-history（舊到新）
+export function notApplicableSlugs(
+  probes: ApplicabilityProbe[],
+  entriesOf: (timeframe: ApplicabilityProbe['timeframe']) => { values: Record<string, { value: number | null; nullReason?: string | null } | null | undefined> }[]
+): string[] {
+  return probes.filter(probe => probe.codes.every((code) => {
+    const cell = entriesOf(probe.timeframe).map(entry => entry.values[code]).filter(Boolean).at(-1)
+    return cell ? cell.value === null && cell.nullReason === 'not_applicable_industry' : probe.bankOnly
+  })).map(probe => probe.slug)
+}
