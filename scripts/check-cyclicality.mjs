@@ -126,15 +126,18 @@ assert.deepEqual(trend.labels, [
 ])
 // 每個點到趨勢線的距離：2021 年從最上面連到線上
 assert.deepEqual(trend.stems.find(stem => stem.x === 55.56), { x: 55.56, y1: 0, y2: 58.67 })
-// 0% 標在離線比較遠的那一端（右邊的點 23.66% 離 0 比左邊的 3.27% 遠）
+// 0% 標在右端
 assert.equal(trend.zeroLabel, 'end')
+// 最後一年貼著 0% 的線就標左端；兩端都貼著不標
+assert.equal(cyclicalityTrend({ trendStart: { fiscalYear: 2016, value: 30 }, trendEnd: { fiscalYear: 2019, value: 5 }, points: years(2016, [30, 25, 10, 1]) }).zeroLabel, 'start')
+assert.equal(cyclicalityTrend({ trendStart: { fiscalYear: 2016, value: 1 }, trendEnd: { fiscalYear: 2019, value: 1 }, points: years(2016, [1, 30, 25, 1]) }).zeroLabel, null)
 assert.equal(trend.capped, false)
 assert.equal(cyclicalityTrendLabel('萬海', trend, wanHai.profitSwing.operatingMargin), '萬海 2016～2025 年的年度營業利益率與趨勢線：最高 56.00%（2021 年），最低 −6.29%（2023 年）；年度營業利益率平均 17.96%，每年通常偏離趨勢線 19.76 個百分點')
 
-// 中華電：全部是正的，0% 就是底邊（不標）；十個點擠在最上面 10% 裡，是一條平線
+// 中華電：全部是正的，0% 就是底邊、照樣標（讀者才知道底邊是 0）；十個點擠在最上面 10% 裡，是一條平線
 const steady = cyclicalityTrend(chunghwa.profitSwing.operatingMargin)
 assert.equal(steady.zero, 100)
-assert.equal(steady.zeroLabel, null)
+assert.equal(steady.zeroLabel, 'end')
 assert.ok(steady.dots.every(dot => dot.y < 10), JSON.stringify(steady.dots.map(dot => dot.y)))
 
 // 超過 ±100% 的年度照全站利益率圖的規則畫在邊上（少數幾年才截）；最低那一年的字照寫原數字

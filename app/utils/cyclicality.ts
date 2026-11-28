@@ -186,7 +186,7 @@ export const cyclicalityTrendCaption = (margin: CyclicalityMargin | null | undef
 // 超過 ±100% 的年度照全站利益率圖的規則畫在邊上、換成箭頭（marginBounds；多數年度都超出就照實撐開）
 export interface CyclicalityTrend {
   years: [number, number]
-  // 0% 那條線的 y；label 是「0%」標在哪一端（線在圖中間才標：線就是底邊時不必標；兩端的點都貼著線就不標）
+  // 0% 那條線的 y；label 是「0%」標在哪一端。線就是底邊時也標：點離底邊多遠正是起伏小的樣子，不標讀者不知道底邊是 0（兩端的點都貼著線就不標）
   zero: number
   zeroLabel: 'start' | 'end' | null
   line: [number, number, number, number]
@@ -227,9 +227,9 @@ export function cyclicalityTrend(margin: CyclicalityMargin | null | undefined): 
     return { text: `${rate(point.value)}（${point.fiscalYear}）`, x: at, y: y(clamp(point.value)), below, align: at < 15 ? 'start' as const : at > 85 ? 'end' as const : 'center' as const }
   }
   const zero = y(0)
-  // 「0%」標在離線比較遠的那一端：兩端的點離線都不到圖高的 12% 就不標（字會壓到點）
+  // 「0%」標在右端；最後一年的點貼著線（不到圖高的 16%，字會壓到點）才標左端，兩端都貼著就不標
   const gaps = [Math.abs(dots[0]!.y - zero), Math.abs(dots.at(-1)!.y - zero)]
-  const zeroLabel = low === 0 || Math.max(...gaps) < 12 ? null : gaps[1]! >= gaps[0]! ? 'end' as const : 'start' as const
+  const zeroLabel = gaps[1]! >= 16 ? 'end' as const : gaps[0]! >= 16 ? 'start' as const : null
   return {
     years: [from, to],
     zero,
