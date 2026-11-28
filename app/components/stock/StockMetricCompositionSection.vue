@@ -13,7 +13,8 @@ import type { MetricsHistoryEntry, MetricsHistoryTimeframe } from '~/composables
 //
 // 一根加不起來的柱子比沒有柱子糟，因為它看起來跟其他柱子一樣可信。所以**只畫恆等式成立的期別**：
 // 現有成分加起來等於母項（容差見下）才畫，加不起來就整期不畫，成立的期別少於兩期就整段不渲染
-// （金融業的營業費用四項全 null，就是這個情況）。
+// （航空業的營業費用只申報合計，就是這個情況）。畫不成的時候那一頁（StockMetricCompositionPage）改寫一句為什麼，
+// 判斷是同一支 metricComposition。
 //
 // 缺值的成分當 0，但**那是恆等式的結論不是假設**——這兩件事差很多。2330 的每股預期信用減損損失有
 // 16 期是 `insufficient_history`，而那 16 期的推銷＋管理＋研發**剛好等於**營業費用（實測 20/20），
@@ -50,45 +51,15 @@ const unit = computed(() => metricOf(props.parentCode)?.unit ?? '')
 
 // 挑期別的規則住在 shared/utils/metric-composition.ts，因為它要有一個跑得起來的檢查
 // （scripts/check-metric-composition.mjs）——.vue 裡的 computed 沒辦法從 node 呼叫。
-interface CompositionRow {
-  entry: MetricsHistoryEntry
-  parent: number
-  parts: number[]
-}
-
-const rows = computed<CompositionRow[]>(() => {
-  const out: CompositionRow[] = []
-  for (const entry of props.entries) {
-    const row = compositionRow({
-      parent: entry.values[props.parentCode]?.value ?? null,
-      parts: props.partCodes.map((code) => {
-        const value = entry.values[code]?.value ?? null
-        return value !== null && props.negatedPartCodes?.includes(code) ? -value : value
-      })
-    })
-    if (row) out.push({ entry, ...row })
-  }
-  return out
-})
-
-const usable = computed(() => rows.value.length >= 2 && shown.value.length >= 2)
-
-// 有總數、但每個組成項都被上游標成不適用（2026-10-09，負債比率對銀行與金控：資產負債表不分流動與非流動）：
-// 圖退回單色長條，這一段改成一句話說明為什麼沒拆，不留讀者猜「別檔有拆、這檔怎麼沒有」。
-const notApplicable = computed(() => {
-  const latest = [...props.entries].reverse().find(entry => entry.values[props.parentCode]?.value != null)
-  return !!latest && props.partCodes.every(code => {
-    const cell = latest.values[code]
-    return cell?.value == null && cell?.nullReason === 'not_applicable_industry'
-  })
-})
+const composition = computed(() => metricComposition(props.entries, props.parentCode, props.partCodes, props.negatedPartCodes))
+const rows = computed(() => composition.value.rows)
 const newest = computed(() => rows.value[rows.value.length - 1] ?? null)
 
 // 每一期都是 0 的成分不畫、也不列（2330 的每股預期信用減損損失在 20 期裡全是 0）。它占一格圖例、
 // 一個顏色與一整欄，卻沒有任何一期在說話。**只在全部都是 0 時丟掉**，不是「最新一期是 0」——後者會
 // 讓一支曾經有過的成分在某一季突然從表上消失，而那一季正是它歸零的那一季，最該看得到。
 // 丟掉全 0 的成分不影響恆等式：它加了 0。
-const shown = computed(() => props.partCodes.map((_, i) => i).filter(i => rows.value.some(row => row.parts[i] !== 0)))
+const shown = computed(() => composition.value.shown)
 
 // 排序由最新一期的大小決定，而且圖、表、答句共用同一個順序——三個地方各自排序的話，讀者在圖上找到的
 // 第一層在表上會是第三欄。第 0 層拿強調色，所以最大的那一項排第一個（見 StockStackedBarChart 的註解）。
@@ -111,6 +82,8 @@ const answer = computed(() => {
   const parts = order.value
     .map(i => ({ name: nameOf(props.partCodes[i]!), value: last.parts[i]! }))
     .map(part => (mixed || last.parent === 0 ? `${part.name} ${numberText(part.value)}` : `${part.name} ${numberText(part.value)}（${minusSign(`${((part.value / last.parent) * 100).toFixed(1)}%`)}）`))
+  // 只有一個成分有東西（2615 萬海：營業費用全部是管理費用）：不寫「由 X（100.0%）組成」
+  if (order.value.length === 1) return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，全部是${nameOf(props.partCodes[order.value[0]!]!)}。`
   return `${periodLabel(last.entry, props.timeframe)} 的${props.topic} ${numberText(last.parent)}，由${parts.slice(0, 2).join('、')}${parts.length > 2 ? '等' : ''}組成。`
 })
 
@@ -127,7 +100,7 @@ const tableRows = computed(() => [...rows.value].reverse())
 
 <template>
   <StockQuestionSection
-    v-if="usable"
+    v-if="composition.usable"
     id="stock-metric-composition"
     :question="`${topic}由哪些項目組成？`"
     :answer="answer"
@@ -149,10 +122,4 @@ const tableRows = computed(() => [...rows.value].reverse())
       </tbody>
     </SharedTable>
   </StockQuestionSection>
-  <StockQuestionSection
-    v-else-if="notApplicable"
-    id="stock-metric-composition"
-    :question="`${topic}由哪些項目組成？`"
-    :answer="`${partCodes.map(nameOf).join('、')}${NULL_REASON_SHORT_LABELS.not_applicable_industry}，所以這裡只顯示${topic}的總數。`"
-  />
 </template>

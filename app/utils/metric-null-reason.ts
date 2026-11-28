@@ -127,10 +127,11 @@ export function nullReasonShortText(nullReason: string | null | undefined): stri
 
 // 每一期的說明（2026-11-21，使用者 11-12 說「好」）：數據中台給代碼與參數，句子在這裡寫，放在歷年表那一期底下與提示框。金額是千元。
 // 不認得的代碼不寫（數據中台以後可能加新的），讀不到金額就不寫金額
-const EXPENSE_NOT_ITEMIZED: Record<string, (amount: string) => string> = {
-  total_only: () => '這一期的營業費用只申報合計，拆不出推銷、管理與研發。',
-  other_expense_items: amount => `這一期的營業費用有推銷、管理、研發以外的其他費用科目${amount ? `（${amount}）` : ''}，拆不完。`,
-  components_do_not_add_up: amount => `這一期推銷、管理、研發與減損加起來不等於營業費用合計${amount ? `，差 ${amount}` : ''}。`,
+// 主詞是哪幾期由呼叫端給：一期是「這一期」，好幾期併成一列是「這 13 期」「其中 10 期」（mergedPeriodNotesText）
+const EXPENSE_NOT_ITEMIZED: Record<string, (periods: string, amount: string) => string> = {
+  total_only: periods => `${periods}的營業費用只申報合計，拆不出推銷、管理與研發。`,
+  other_expense_items: (periods, amount) => `${periods}的營業費用有推銷、管理、研發以外的其他費用科目${amount ? `（${amount}）` : ''}，拆不完。`,
+  components_do_not_add_up: (periods, amount) => `${periods}推銷、管理、研發與減損加起來不等於營業費用合計${amount ? `，差 ${amount}` : ''}。`,
   financial_industry_format: () => '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。'
 }
 const thousands = (value: number | null | undefined): string => (typeof value === 'number' ? minusSign(formatMoney(value * 1000)) : '')
@@ -141,25 +142,48 @@ const CORRECTED: Record<string, (at: string) => string> = {
   monthly_revenue_corrected: at => `這個月的營收${at}更正過，數字是更正後的。`
 }
 
-export function periodNoteText(note: PeriodNote): string | null {
-  if (CORRECTED[note.code]) return CORRECTED[note.code]!(note.announcementDate ? `在 ${note.announcementDate} ` : '')
+// periods：好幾期共用這一句時的主詞（「這幾期」）。那時不寫各期的金額與日期，沒有金額、日期就不成句的（更正、大額其他收益）不寫
+export function periodNoteText(note: PeriodNote, periods?: string): string | null {
+  if (CORRECTED[note.code]) return periods ? null : CORRECTED[note.code]!(note.announcementDate ? `在 ${note.announcementDate} ` : '')
   // 差額寫正數（「差 123.4萬元」），哪一邊多不是讀者要的
-  if (note.code === 'operating_expense_not_itemized') return EXPENSE_NOT_ITEMIZED[note.reason ?? '']?.(thousands(typeof note.unitemizedAmount === 'number' ? Math.abs(note.unitemizedAmount) : null)) ?? null
+  if (note.code === 'operating_expense_not_itemized') return EXPENSE_NOT_ITEMIZED[note.reason ?? '']?.(periods ?? '這一期', periods ? '' : thousands(typeof note.unitemizedAmount === 'number' ? Math.abs(note.unitemizedAmount) : null)) ?? null
   if (note.code === 'large_net_other_income_expenses') {
     const amount = thousands(note.amount)
-    if (!amount) return null
+    if (!amount || periods) return null
     const ratio = typeof note.ratioToRevenue === 'number' ? `（占營收 ${minusSign(note.ratioToRevenue.toFixed(2))}%）` : ''
     return `營業利益含其他收益及費損 ${amount}${ratio}${note.operatingMarginAboveGrossMargin ? '，營業利益率因此高過毛利率' : ''}。`
   }
   return null
 }
 
+type NotedPoint = Pick<MetricsHistoryPoint, 'notes'> & Partial<Pick<MetricsHistoryPoint, 'value' | 'nullReason'>> | null | undefined
+// 哪一格寫哪一則（2026-11-28，使用者看 2615：「不少營業費用未拆解？」）：
+// ・拆不開的說明只寫在沒有值的那一格，那是那一格「無法計算」的原因（每股管理費用）。有值的格子數字是完整的：每股營業費用的歷年表原本每一列
+//   底下都是同一句（2884 20 列、2615 16 列），而那張表沒有列成分。組成圖畫成「未拆解」的那一根照寫（unsplit）。
+// ・更正、重編只寫在有值的格子：沒有數字就沒有「更正後的數字」。月營收的列沒有 value 欄，照寫
+const ABSENT_REASONS = new Set(['no_filing', 'unsupported_format'])
+function noteTexts(point: NotedPoint, unsplit: boolean, periods?: string): string[] {
+  if (!point) return []
+  const written = (note: PeriodNote) => (note.code === 'operating_expense_not_itemized' ? unsplit || point.value == null : !(CORRECTED[note.code] && point.value === null))
+  return [
+    ...(point.notes ?? []).filter(written).map(note => periodNoteText(note, periods)),
+    point.value == null && point.nullReason && ABSENT_REASONS.has(point.nullReason) ? `${NULL_REASON_LABELS[point.nullReason]}。` : null
+  ].filter((text): text is string => !!text)
+}
+
 // 同一期好幾支指標帶同一則說明（三率都帶 large_net_other_income_expenses、更正帶在每一格）：同一句只寫一次。沒有申報的期別也寫原因
 //（月營收的列也傳進來，它只有 notes）
-const ABSENT_REASONS = new Set(['no_filing', 'unsupported_format'])
-export function periodNotesText(points: (Pick<MetricsHistoryPoint, 'notes'> & Partial<Pick<MetricsHistoryPoint, 'value' | 'nullReason'>> | null | undefined)[]): string {
-  return [...new Set(points.flatMap(point => [
-    ...(point?.notes ?? []).map(periodNoteText),
-    point?.value == null && point?.nullReason && ABSENT_REASONS.has(point.nullReason) ? `${NULL_REASON_LABELS[point.nullReason]}。` : null
-  ]).filter((text): text is string => !!text))].join('')
+export function periodNotesText(points: NotedPoint[], unsplit = false): string {
+  return [...new Set(points.flatMap(point => noteTexts(point, unsplit)))].join('')
+}
+
+// 好幾期併成一列（歷年表把連續幾期同一個原因算不出來的寫成「2021 Q4～2024 Q4（13 期）」）或一句（組成頁說哪幾期拆不開），一格是一期：
+// 同一種說明寫一次，主詞是「這 13 期」，不是每一期都有的寫「其中 10 期」，不寫各期的金額。原本把每一期的句子接在一起，2615 每股管理費用那一列
+// 底下是七句「這一期…」，各帶各的金額與更正日（2026-11-28）。只有一期就是那一期自己的句子
+const MERGED_PERIODS = '這幾期'
+export function mergedPeriodNotesText(points: NotedPoint[], unsplit = false): string {
+  if (points.length < 2) return periodNotesText(points, unsplit)
+  const counts = new Map<string, number>()
+  for (const point of points) for (const text of new Set(noteTexts(point, unsplit, MERGED_PERIODS))) counts.set(text, (counts.get(text) ?? 0) + 1)
+  return [...counts].map(([text, count]) => text.replace(MERGED_PERIODS, count === points.length ? `這 ${count} 期` : `其中 ${count} 期`)).join('')
 }

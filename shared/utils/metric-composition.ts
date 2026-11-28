@@ -32,6 +32,28 @@ export function compositionRow(input: CompositionInput): CompositionResult | nul
   return { parent, parts: parts.map(value => value ?? 0) }
 }
 
+// 一支指標的組成頁畫不畫得成（StockMetricCompositionSection 的圖與表、那一頁的 noindex 與描述讀同一份）：拆得開的期別（rows）至少兩期，
+// 而且至少有一個成分不是每一期都 0（shown，成分的位置；每一期都 0 的不畫也不列）。只有一個成分有東西也畫：2615 萬海的營業費用全部是管理費用，
+// 原本要兩個成分以上，那一頁整段不畫、是空白的（2026-11-28）。unsplit 是合計有值、拆不開的期別，圖上畫成「未拆解」
+interface CompositionCells { values: Record<string, { value: number | null } | null | undefined> }
+export function metricComposition<T extends CompositionCells>(entries: T[], parentCode: string, partCodes: string[], negatedPartCodes: string[] = []) {
+  const rows: (CompositionResult & { entry: T })[] = []
+  const unsplit: T[] = []
+  for (const entry of entries) {
+    const row = compositionRow({
+      parent: entry.values[parentCode]?.value ?? null,
+      parts: partCodes.map((code) => {
+        const value = entry.values[code]?.value ?? null
+        return value !== null && negatedPartCodes.includes(code) ? -value : value
+      })
+    })
+    if (row) rows.push({ entry, ...row })
+    else if (entry.values[parentCode]?.value != null) unsplit.push(entry)
+  }
+  const shown = partCodes.map((_, i) => i).filter(i => rows.some(row => row.parts[i] !== 0))
+  return { rows, shown, unsplit, usable: rows.length >= 2 && shown.length >= 1 }
+}
+
 // ---- 組成圖的小項併進「其他」（2026-11-20）----
 // 使用者：「7767 流動資產組成 流動金融資產 在圖表上根本看不到。要盤點當項目的占比多小的時候，就讓它直接合併到其他流動資產。所有類似組成畫面
 // 比照此規則」。門檻是量出來的：7767 那張圖每 1% 在手機最高的那根是 2.2px（矮的柱子 1.2px）、桌機 2.7px，每一段又有 1px 卡片底色的分隔線，

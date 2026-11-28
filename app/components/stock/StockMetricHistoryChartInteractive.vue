@@ -129,20 +129,26 @@ const periodsPerYear = computed(() => {
 // 缺口畫成空位，提示框說原因。
 const allPoints = computed(() => {
   const list = disclosed.value
-    .map(entry => ({
-      fiscalYear: entry.fiscalYear,
-      fiscalQuarter: entry.fiscalQuarter,
-      value: entry.values[metricCode.value]?.value ?? null,
-      nullReason: entry.values[metricCode.value]?.nullReason ?? null,
-      // 這一期的說明（2026-11-21）：柱狀圖與堆疊圖的提示框接在數字下面
-      remark: periodNotesText([entry.values[metricCode.value]]) || undefined,
+    .map((entry) => {
+      const point = entry.values[metricCode.value]
       // 挑期別的規則跟組成表共用同一支（shared/utils/metric-composition.ts），所以圖與表不會各自
       // 判斷一次而給出不同的期別集合。
-      parts: compositionRow({
-        parent: entry.values[metricCode.value]?.value ?? null,
+      const parts = compositionRow({
+        parent: point?.value ?? null,
         parts: (props.partCodes ?? []).map(code => signedPart(code, entry.values[code]?.value ?? null))
       })?.parts ?? null
-    }))
+      // 畫成「未拆解」的那一根：為什麼拆不開寫在成分那幾格（合計有值，不帶這一則，見 periodNotesText）
+      const unsplit = !!props.partCodes?.length && !parts
+      return {
+        fiscalYear: entry.fiscalYear,
+        fiscalQuarter: entry.fiscalQuarter,
+        value: point?.value ?? null,
+        nullReason: point?.nullReason ?? null,
+        // 這一期的說明（2026-11-21）：柱狀圖與堆疊圖的提示框接在數字下面
+        remark: periodNotesText([point, ...(unsplit ? props.partCodes!.map(code => entry.values[code]) : [])], unsplit) || undefined,
+        parts
+      }
+    })
   const first = list.findIndex(entry => entry.value !== null)
   return first === -1 ? [] : list.slice(first, list.findLastIndex(entry => entry.value !== null) + 1)
 })

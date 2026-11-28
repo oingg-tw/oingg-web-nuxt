@@ -60,17 +60,34 @@ const footerLinks = computed(() => [
 
 // 母項一期值都沒有（淨收益組成之於銀行與金控以外的公司，2026-11-20）：說一句為什麼，不放空的圖與來源段，noindex（同指標頁：沒有這一檔
 // 自己的內容可以收錄）。產業不適用與單純沒資料分開說
-const parentValues = computed(() => (metricData.value?.series?.entries ?? []).map(entry => entry.values[metricPage.metricCode]))
+const entries = computed(() => metricData.value?.series?.entries ?? [])
+const parentValues = computed(() => entries.value.map(entry => entry.values[metricPage.metricCode]))
 const hasParent = computed(() => parentValues.value.some(cell => cell?.value != null))
 const parentNotApplicable = computed(() => !hasParent.value && parentValues.value.some(cell => cell?.nullReason === 'not_applicable_industry'))
-const noindex = computed(() => !hasParent.value)
+// 畫不畫得成組成，跟 StockMetricCompositionSection 讀同一支。合計有值、組成畫不成（2026-11-28，使用者看 2615：「不少營業費用未拆解？」）：
+// 原本整段不畫，2615 萬海（只有管理費用一項）、2618 長榮航（只申報合計）的營業費用組成是空白頁、還可以收錄；現在寫一句為什麼、noindex
+const composition = computed(() => metricComposition(entries.value, metricPage.metricCode, partCodes, metricPage.negatedPartMetricCodes))
+const noindex = computed(() => !composition.value.usable)
+// 拆不開的那幾期為什麼：每一期拿一格帶說明的成分（數據中台的每一期說明目前只有營業費用有），好幾期寫成一句
+const unsplitText = computed(() => mergedPeriodNotesText(composition.value.unsplit.map(entry => partCodes.map(partCode => entry.values[partCode]).find(cell => cell?.notes?.length)), true))
 
-const emptyText = computed(() => (parentNotApplicable.value
-  ? `${stockShortName.value}的財報沒有${valueTopic}（${NULL_REASON_SHORT_LABELS.not_applicable_industry}），這一頁沒有數字。`
-  : `目前沒有${stockShortName.value}的${valueTopic}資料。`))
-const description = computed(() => clampDescription(!hasParent.value
+const emptyText = computed(() => {
+  if (parentNotApplicable.value) return `${stockShortName.value}的財報沒有${valueTopic}（${NULL_REASON_SHORT_LABELS.not_applicable_industry}），這一頁沒有數字。`
+  if (!hasParent.value) return `目前沒有${stockShortName.value}的${valueTopic}資料。`
+  if (unsplitText.value) return `${stockShortName.value}的${valueTopic}拆不出組成：${unsplitText.value}`
+  // 拆得開的期別夠、但每一項都是 0（沒配息也沒買回庫藏股的股東總回饋率）
+  if (composition.value.rows.length >= 2) return `${stockShortName.value}近 ${composition.value.rows.length} 期的${valueTopic}都是 0，沒有組成。`
+  return `${stockShortName.value}的${valueTopic}畫不出組成：各項加起來等於${valueTopic}的期別不到兩期。`
+})
+// 圖上「未拆解」的那幾期，寫在最後一段（卡片之前的文字只放答句）
+const unsplitNote = computed(() => {
+  const count = composition.value.unsplit.length
+  return composition.value.usable && count ? `近 ${count + composition.value.rows.length} 期有 ${count} 期拆不出來，圖上畫成「未拆解」${unsplitText.value ? `：${unsplitText.value}` : '。'}` : ''
+})
+// 描述只列這一檔真的有的成分：原本七項全列（一般公司也列銀行的三項），超過長度從中間截斷
+const description = computed(() => clampDescription(!composition.value.usable
   ? `${stockShortName.value}（${code.value}）：${emptyText.value}`
-  : `${stockShortName.value}（${code.value}）的${valueTopic}由${partNames.value.join('、')}組成：逐期列出各項的數值與占比，資料整理自公開資訊觀測站的財務報表。`))
+  : `${stockShortName.value}（${code.value}）的${valueTopic}由${composition.value.shown.map(i => partNames.value[i]).join('、')}組成：逐期列出各項的數值與占比，資料整理自公開資訊觀測站的財務報表。`))
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: props.topic, titleKeywords: props.titleKeywords, pathSuffix: props.pathSuffix, stock, summary, description, noindex, sectorCode })
 </script>
@@ -87,14 +104,14 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
     :footer="{ sources: dataSources, links: footerLinks }"
   >
     <StockQuestionSection
-      v-if="metricData?.series && !hasParent"
+      v-if="metricData?.series && !composition.usable"
       id="stock-metric-composition"
       :question="`${valueTopic}由哪些項目組成？`"
       :answer="emptyText"
     />
     <StockMetricCompositionSection
       v-else-if="metricData?.series"
-      :entries="metricData.series.entries"
+      :entries="entries"
       :parent-code="metricPage.metricCode"
       :part-codes="partCodes"
       :negated-part-codes="metricPage.negatedPartMetricCodes"
@@ -125,7 +142,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
       <SharedChartCard><div class="app-skeleton app-skeleton--chart" aria-hidden="true" /></SharedChartCard>
     </StockQuestionSection>
 
-    <StockQuestionSection v-if="hasParent" id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。`" />
+    <StockQuestionSection v-if="composition.usable" id="stock-metric-composition-source" question="這些數字是從哪份報表來的？" :answer="`${valueTopic}與各項成分都來自損益表與股利資料，整理自公開資訊觀測站（MOPS）的公司申報；各項加起來等於${valueTopic}的期別才列出來。${unsplitNote}`" />
     <template #guide>
       <StockMetricGuide id-prefix="stock-metric-composition" :topic="metricPage.topic" :definition="[...(definition ? [definition] : []), ...(metricPage.partsNote ? [metricPage.partsNote] : [])]" />
     </template>

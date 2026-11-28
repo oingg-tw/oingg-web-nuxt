@@ -3,7 +3,7 @@
 // 跑：node scripts/check-metric-composition.mjs
 import assert from 'node:assert/strict'
 // shared/utils/metric-composition.ts 沒有 import，Node 直接剝型別載入（2026-10-08，取代原本用正規表達式剝型別註記的做法）
-import { COMPOSITION_TOLERANCE, compositionRow, foldSmallLayers, SMALL_LAYER_SHARE } from '../shared/utils/metric-composition.ts'
+import { COMPOSITION_TOLERANCE, compositionRow, foldSmallLayers, metricComposition, SMALL_LAYER_SHARE } from '../shared/utils/metric-composition.ts'
 
 assert.equal(COMPOSITION_TOLERANCE, 0.03, '容差是 5 × 0.005 的進位預算，改動要連同註解一起想清楚')
 
@@ -61,5 +61,27 @@ const gaps = foldSmallLayers([{ name: '存貨', values: [null, 99] }, { name: '�
 assert.deepEqual(gaps.map(layer => [layer.name, layer.values]), [['存貨', [null, 99]], ['其他流動資產（含流動金融資產）', [null, 1]]])
 // 全是 0 的層不畫；指定的「其他」不在圖上就照畫
 assert.deepEqual(foldSmallLayers([{ name: '存貨', values: [99, 99] }, { name: '流動金融資產', values: [1, 1] }, { name: '合約資產', values: [0, 0] }], ASSET_OTHERS).map(layer => layer.name), ['存貨', '流動金融資產'])
+
+// 一頁的組成畫不畫得成（metricComposition，2026-11-28）。數字是 GET /stocks/{code}/metrics-history 的實測（近四季，每股營業費用與推銷、管理、研發、減損）
+const opexCodes = ['selling', 'admin', 'rd', 'ecl']
+const opexEntry = (total, parts) => ({ values: { total: total === null ? null : { value: total }, ...Object.fromEntries(opexCodes.map((code, i) => [code, { value: parts[i] }])) } })
+const none = [null, null, null, null]
+// 2615 萬海：2025Q1～Q3 只申報合計，2025Q4 起全部是管理費用。原本要兩個成分以上才畫，那一頁是空白的；現在一個成分也畫
+const wanHai = metricComposition([opexEntry(2.74, none), opexEntry(2.69, none), opexEntry(2.42, none), opexEntry(2.46, [0, 2.46, 0, 0]), opexEntry(2.5, [0, 2.5, 0, 0]), opexEntry(2.69, [0, 2.69, 0, 0]), opexEntry(2.79, [0, 2.79, 0, 0])], 'total', opexCodes)
+assert.equal(wanHai.usable, true)
+assert.deepEqual(wanHai.shown, [1], '只有管理費用有東西，每一期都 0 的不列')
+assert.equal(wanHai.rows.length, 4)
+assert.equal(wanHai.unsplit.length, 3, '合計有值、拆不開的三期畫成未拆解')
+// 2618 長榮航：每一期都只申報合計 → 畫不成；合計自己沒有值的期別不算未拆解
+const evaAir = metricComposition([opexEntry(1.2, none), opexEntry(1.3, none), opexEntry(null, none)], 'total', opexCodes)
+assert.equal(evaAir.usable, false)
+assert.equal(evaAir.unsplit.length, 2)
+// 拆得開的只有一期、或每一項都是 0（沒配息也沒買回的股東總回饋率）：畫不成
+assert.equal(metricComposition([opexEntry(2.46, [0, 2.46, 0, 0]), opexEntry(2.5, none)], 'total', opexCodes).usable, false)
+const zero = metricComposition([opexEntry(0, [0, 0, 0, 0]), opexEntry(0, [0, 0, 0, 0])], 'total', opexCodes)
+assert.equal(zero.usable, false)
+assert.equal(zero.rows.length, 2)
+// 要變號的成分（業外損益組成的財務成本是正數、是支出）
+assert.deepEqual(metricComposition([opexEntry(1, [3, 2, 0, 0]), opexEntry(2, [5, 3, 0, 0])], 'total', opexCodes, ['admin']).rows.map(row => row.parts), [[3, -2, 0, 0], [5, -3, 0, 0]])
 
 console.log('metric composition rows and small layers: ok')

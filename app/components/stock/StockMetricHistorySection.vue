@@ -43,8 +43,8 @@ const rows = computed(() => {
   return groups.map((group) => {
     const newest = group[0]!
     const label = periodLabel(newest, props.timeframe)
-    // 這一期的說明（2026-11-21，使用者 11-12 說「好」）：寫在那一期底下的一整列
-    const remark = periodNotesText(group.map(entry => entry.point))
+    // 這一期的說明（2026-11-21，使用者 11-12 說「好」）：寫在那一期底下的一整列；併成一列的好幾期寫成一句「這 13 期…」
+    const remark = mergedPeriodNotesText(group.map(entry => entry.point))
     return { key: `${newest.fiscalYear}-${newest.fiscalQuarter}`, entry: newest, remark, period: group.length > 1 ? `${periodLabel(group.at(-1)!, props.timeframe)}～${label}（${group.length} 期）` : label }
   })
 })

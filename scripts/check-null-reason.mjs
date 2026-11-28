@@ -2,7 +2,7 @@
 // 近四季跨到只申報半年報那一年時提示框寫的原因，與頭尾修掉、中間留著
 // Run: node scripts/check-null-reason.mjs
 import assert from 'node:assert/strict'
-import { NULL_REASON_LABELS, nullReasonShortText, periodNotesText, periodNoteText, semiannualWindowNote, screenerNullText } from '../app/utils/metric-null-reason.ts'
+import { NULL_REASON_LABELS, mergedPeriodNotesText, nullReasonShortText, periodNotesText, periodNoteText, semiannualWindowNote, screenerNullText } from '../app/utils/metric-null-reason.ts'
 import { trimEmptyEnds, undisclosedQuarter } from '../app/utils/metric-history-points.ts'
 import { withPeriodFacts } from '../shared/utils/metrics-history.ts'
 
@@ -110,5 +110,30 @@ assert.equal(periodNotesText([facts[3].values.eps]), '財報格式還讀不到�
 assert.equal(periodNotesText([facts[0].values.eps]), '')
 // 月營收的列只有 notes
 assert.equal(periodNotesText([{ notes: [{ code: 'monthly_revenue_corrected', announcementDate: '2026-11-20' }] }]), '這個月的營收在 2026-11-20 更正過，數字是更正後的。')
+
+// 哪一格寫哪一則（2026-11-28，2615 萬海：2024Q4 以前的季報只申報營業費用合計）。拆不開的說明只寫在沒有值的那一格：合計有值、不寫
+//（每股營業費用的歷年表原本 16 列都帶這一句），成分沒有值、寫；組成圖畫成未拆解的那一根（unsplit）有值也寫
+const totalOnly = { code: 'operating_expense_not_itemized', reason: 'total_only', unitemizedAmount: 1651731 }
+const notAddUp = amount => ({ code: 'operating_expense_not_itemized', reason: 'components_do_not_add_up', unitemizedAmount: amount })
+const missing = (...notes) => ({ value: null, nullReason: 'missing_input', notes })
+assert.equal(periodNotesText([{ value: 0.59, notes: [totalOnly, corrected] }]), '這一期的財報在 2026-11-16 更正過，數字是更正後的。')
+assert.equal(periodNotesText([missing(totalOnly)]), '這一期的營業費用只申報合計，拆不出推銷、管理與研發。')
+assert.equal(periodNotesText([{ value: 0.59, notes: [totalOnly] }, missing(totalOnly)], true), '這一期的營業費用只申報合計，拆不出推銷、管理與研發。')
+assert.equal(periodNotesText([{ value: 0.4, notes: [{ code: 'operating_expense_not_itemized', reason: 'other_expense_items', unitemizedAmount: 5000 }] }], true), '這一期的營業費用有推銷、管理、研發以外的其他費用科目（500萬元），拆不完。')
+// 更正只寫在有值的格子：沒有數字就沒有「更正後的數字」
+assert.equal(periodNotesText([missing(totalOnly, corrected)]), '這一期的營業費用只申報合計，拆不出推銷、管理與研發。')
+assert.equal(periodNotesText([missing(corrected)]), '')
+// 好幾期併成一列：一句、主詞是幾期、不寫各期的金額與更正日；不是每一期都有的寫其中幾期；只有一期照那一期自己的句子（帶金額）
+assert.equal(mergedPeriodNotesText([missing(totalOnly, corrected), missing(totalOnly), missing(totalOnly)]), '這 3 期的營業費用只申報合計，拆不出推銷、管理與研發。')
+// 2615 每股管理費用的 2021 Q4～2024 Q4：10 期只申報合計、3 個第四季是加不起來（各帶各的金額），原本接成七句「這一期…」
+assert.equal(
+  mergedPeriodNotesText([...Array.from({ length: 4 }, () => missing(totalOnly)), missing(notAddUp(2105646)), ...Array.from({ length: 3 }, () => missing(totalOnly)), missing(notAddUp(1192343), corrected), ...Array.from({ length: 3 }, () => missing(totalOnly)), missing(notAddUp(1793103))]),
+  '其中 10 期的營業費用只申報合計，拆不出推銷、管理與研發。其中 3 期推銷、管理、研發與減損加起來不等於營業費用合計。'
+)
+assert.equal(mergedPeriodNotesText([missing(notAddUp(2105646))]), '這一期推銷、管理、研發與減損加起來不等於營業費用合計，差 21.06億元。')
+// 沒有主詞的句子（金融業、沒有申報）照舊只寫一次；沒有說明的期別不算在內
+assert.equal(mergedPeriodNotesText([missing(shared), missing(shared)]), '銀行、金控、保險與證券的營業費用用另一套科目申報，拆不出推銷、管理與研發。')
+assert.equal(mergedPeriodNotesText([{ value: null, nullReason: 'no_filing' }, { value: null, nullReason: 'no_filing' }]), '沒有申報 XBRL 財報，所以沒有數字。')
+assert.equal(mergedPeriodNotesText([missing(totalOnly), undefined, missing()], true), '其中 1 期的營業費用只申報合計，拆不出推銷、管理與研發。')
 
 console.log('check-null-reason: ok')
