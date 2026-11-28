@@ -34,9 +34,11 @@ const answer = computed(() => {
   if (!data.value || profile.value?.market === 'rotc') return cyclicalityMissingText('not_in_universe')
   return cyclicalityAnswer(stockShortName.value, data.value, sector.value)
 })
-const trendAnswer = computed(() => (trend.value
-  ? `${cyclicalityTrendCaption(margin.value)}；最高 ${fixedRateText(trend.value.highest.value)}（${trend.value.highest.fiscalYear} 年），最低 ${fixedRateText(trend.value.lowest.value)}（${trend.value.lowest.fiscalYear} 年）。`
-  : ''))
+// 最高與最低那兩年圖上標了，這裡只寫獲利起伏量的那個數
+const trendAnswer = computed(() => {
+  const numbers = cyclicalityTrendNumbers(margin.value)
+  return trend.value && numbers ? `年度營業利益率每年通常偏離趨勢線 ${numbers.ser} 個百分點，十年平均 ${numbers.mean}。` : ''
+})
 // 圖例與單位照全站圖表的畫法（圖上方一列）。顏色用 CSS 變數：這張圖在伺服器的 HTML 裡就有，不等瀏覽器判斷深淺色
 const trendLegend = computed<ChartLegendGroup[]>(() => [{
   unit: '%',
@@ -68,15 +70,14 @@ const footer = computed(() => ({
   freshness: asOf.value ? `資料日期 ${asOf.value}` : null,
   disclaimer: '百分位是統計上的位置，不代表本站對此個股之評等或投資建議。'
 }))
-// 定義與限制照數據中台寫進 openapi 與詞彙表的那兩段（2026-11-28 核對）：景氣循環度不是型錄的指標，所以文字在這裡
+// 定義與限制：數據中台寫進 openapi 與詞彙表的那兩段（2026-11-28 核對），縮成一項一句（2026-11-29，使用者：「文字太多 導致 手機版閱覽 略顯擁擠
+// 吃力」，原本七段長文）。景氣循環度不是型錄的指標，所以文字在這裡
 const guide = [
-  `景氣循環度把一家公司放進上市櫃公司裡，看四項財報特徵各排在哪裡：${itemNames}。四項合成一個百分位：越高，財務特徵越像景氣循環股。金融保險業、建材營造業，以及用異業合併格式申報財報的公司不適用；財報未滿 8 年的公司算不出來；興櫃公司不在比較範圍裡。`,
-  '獲利起伏：近 10 年年度營業利益率、毛利率偏離長期趨勢線的幅度，相對於十年平均有多大。先畫出十年的趨勢線，看每年通常離線多遠，再除以十年平均；比例越大，起伏相對於獲利本身越大。先去掉趨勢，穩定成長的公司才不會被當成起伏大。',
-  '高點回落：近 10 年裡，近四季合計營收從高點跌多少、近四季營業利益率從高點掉幾個百分點。',
-  '同業連動：近三個月營收的年增率，跟同產業其他公司中位數、全市場中位數的相關係數。產業照交易所的產業分類，上市與上櫃公司合在一起算；同一個產業裡的公司做的生意不一定一樣。',
-  '重資產：不動產、廠房及設備占總資產的比例，與固定資產週轉率的高低差。兩個都要高才排得上來：資產重但週轉率很穩的公司不算。',
-  '每一項先看兩個數字各自的百分位，平均後再排一次。獲利起伏占一半、其他三項的平均占一半（幾何平均），再換成百分位。獲利起伏的去趨勢做法參考標普全球評級的 Corporate Methodology：原文用在 EBITDA 等獲利指標，這裡套用在營業利益率與毛利率；其他三項是本站設計。',
-  '百分位是位置，不是評分，不代表景氣現在走到哪個階段，也不代表股價之後的漲跌。多角化集團的合併報表把不同事業加在一起，起伏會互相抵銷。期間內合併、分割、轉型或處分主要事業的公司，起伏可能來自事業改變，而不是景氣。'
+  '景氣循環度看四項財報特徵在上市櫃公司裡各排在哪裡，合成一個百分位：越高，財務特徵越像景氣循環股。每一項先看兩個數字各自的百分位，獲利起伏占一半，其他三項的平均占一半。',
+  '獲利起伏：近 10 年營業利益率、毛利率每年通常離長期趨勢線多遠，再除以十年平均（去掉趨勢的做法參考標普全球評級的 Corporate Methodology），穩定成長的公司才不會被當成起伏大。',
+  '高點回落：近四季合計營收、近四季營業利益率從高點掉多少。同業連動：近 120 個月裡，近三個月營收年增率跟同產業其他公司、全市場中位數的相關係數；產業照交易所分類，上市上櫃合算。',
+  '重資產：不動產、廠房及設備占總資產，與固定資產週轉率的高低差，兩個都高才排得上來。',
+  '金融保險業、建材營造業與用異業合併格式申報的公司不適用，財報未滿 8 年的算不出來，興櫃不在比較範圍裡。百分位是位置，不代表景氣走到哪個階段，也不代表股價之後的漲跌；多角化集團的起伏會互相抵銷，期間內合併、分割或轉型的公司，起伏可能來自事業改變。'
 ]
 </script>
 
@@ -98,20 +99,22 @@ const guide = [
         </template>
         <thead>
           <tr>
-            <th scope="col">特徵與{{ stockShortName }}的數字</th>
+            <th scope="col">特徵</th>
+            <th scope="col" class="seo-table__num">{{ stockShortName }}</th>
             <th scope="col" class="seo-table__num">百分位</th>
           </tr>
         </thead>
         <tbody v-for="row in rows" :key="row.key">
           <tr class="stock-cyclicality-page__group">
-            <th scope="rowgroup">{{ row.label }}<span v-if="row.note" class="stock-cyclicality-page__note">（{{ row.note }}）</span></th>
+            <th colspan="2" scope="rowgroup">{{ row.label }}<span v-if="row.note" class="stock-cyclicality-page__note">（{{ row.note }}）</span></th>
             <td class="seo-table__num">
               <template v-if="row.percentile !== null">{{ percentileText(row.percentile) }}</template>
               <template v-else>{{ sixDimensionMissingLabel(row.nullReason) }}<template v-if="cyclicalityItemNullText(row.nullReason)">：{{ cyclicalityItemNullText(row.nullReason) }}</template></template>
             </td>
           </tr>
-          <tr v-for="measure in row.measures" :key="measure.text">
-            <th scope="row" class="stock-cyclicality-page__measure">{{ measure.text }}</th>
+          <tr v-for="measure in row.measures" :key="measure.label">
+            <th scope="row" class="stock-cyclicality-page__measure">{{ measure.label }}</th>
+            <td class="seo-table__num">{{ measure.value }}</td>
             <td class="seo-table__num">{{ percentileText(measure.percentile) }}</td>
           </tr>
         </tbody>
@@ -130,7 +133,7 @@ const guide = [
 </template>
 
 <style scoped>
-/* 每一項一列（名稱與它的百分位），底下是它看的兩個數字：句子那一欄吃掉剩下的寬度、可以折行，百分位那一欄照內容寬（表頭的「百分位」不折） */
+/* 每一項一列（名稱與它的百分位），底下是它看的兩個數字：名稱那一欄吃掉剩下的寬度、可以折行，數字與百分位兩欄照內容寬、不折 */
 :deep(.stock-cyclicality-page__table) tbody th {
   white-space: normal;
 }
@@ -154,9 +157,10 @@ const guide = [
   color: var(--el-text-color-secondary);
 }
 
+/* 名稱比那一項的標題縮進 8px（離卡片邊 24px），看得出是那一項的；手機上名稱那一欄窄，縮多了會折成三行 */
 :deep(.stock-cyclicality-page__table) .stock-cyclicality-page__measure {
   width: 100%;
-  padding-left: 32px;
+  padding-left: 24px;
   font-weight: 400;
   color: var(--el-text-color-regular);
 }

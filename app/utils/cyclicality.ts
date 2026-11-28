@@ -5,7 +5,7 @@
 // 「是不是」只寫位置，不分高中低、不貼標籤（使用者同日：「跟數據中臺核對 做出理論上與實務上的最佳選擇」，兩邊核對的結論）：他的指南說循環是
 // 連續光譜；切點得平台自己訂（他的分位座標層規範不准）；資料上也找不到夠準又夠穩的切點（公認的循環股有 8～9 家排不到 70，一年約 6% 的公司
 // 會換邊）。讀者要的參照是所屬產業的中位數（指南：先看產業、再看個別公司），畫在位置條上。
-// scripts/check-cyclicality.mjs 直接 import 這個檔案，所以不寫 import（formatMoney、marginBounds、cappedPoint 是自動匯入的）
+// scripts/check-cyclicality.mjs 直接 import 這個檔案，所以不寫 import（marginBounds、cappedPoint 是自動匯入的）
 
 interface YearValue { fiscalYear: number, value: number }
 interface QuarterValue { fiscalYear: number, fiscalQuarter: number, value: number }
@@ -57,7 +57,6 @@ const fixed2 = (value: number): string => {
   return `${value < 0 && text !== '0.00' ? '−' : ''}${text}`
 }
 const rate = (value: number): string => `${fixed2(value)}%`
-const quarterText = (point: QuarterValue): string => `${point.fiscalYear} Q${point.fiscalQuarter}`
 
 // 四項特徵的順序與名稱固定（詞彙表「景氣循環度」）
 export const CYCLICALITY_ITEMS = [
@@ -97,88 +96,72 @@ export function cyclicalitySector(breakdown: CyclicalityBreakdown | null | undef
 }
 export const cyclicalitySectorText = (sector: CyclicalitySector): string => `${sector.name} ${sector.companies} 家的中位數 ${Math.round(sector.median)}`
 
-// 卡片之前那一句（至多 80 字）：位置、產業的中位數、四項裡最高與最低。放不下時先拿掉產業那一句（位置條上有），再拿掉算不出來的項目
+// 卡片之前那一句：位置與產業的中位數。四項各排在哪裡在下面的表，不再說一遍（2026-11-29，使用者：「個股景氣循環度 文字太多 導致 手機版閱覽
+// 略顯擁擠吃力」）
 export function cyclicalityAnswer(shortName: string, breakdown: CyclicalityBreakdown | null | undefined, sector: CyclicalitySector | null): string {
   const value = num(breakdown?.value)
   if (value === null) return cyclicalityMissingText(breakdown?.nullReason)
-  const items = cyclicalityItems(breakdown)
-  const known = items.filter((item): item is CyclicalityItem & { percentile: number } => item.percentile !== null)
-  const head = `${shortName}的景氣循環度是百分位 ${Math.round(value)}`
-  const sectorText = sector ? `；${sector.name}有分數的 ${sector.companies} 家，中位數是 ${Math.round(sector.median)}` : ''
-  const highest = known.reduce<(typeof known)[number] | null>((best, item) => (!best || item.percentile > best.percentile ? item : best), null)
-  const lowest = known.reduce<(typeof known)[number] | null>((best, item) => (!best || item.percentile < best.percentile ? item : best), null)
-  const itemsText = !highest || !lowest || known.length < 2
-    ? ''
-    : highest.percentile === lowest.percentile
-      ? `算得出來的特徵百分位都是 ${Math.round(highest.percentile)}。`
-      : `四項特徵裡${highest.label}最高（${Math.round(highest.percentile)}），${lowest.label}最低（${Math.round(lowest.percentile)}）。`
-  const missing = items.filter(item => item.percentile === null).map(item => item.label)
-  const missingText = missing.length ? `${missing.join('、')}算不出來。` : ''
-  return [`${head}${sectorText}。${itemsText}${missingText}`, `${head}。${itemsText}${missingText}`, `${head}。${itemsText}`].find(text => text.length <= 80) ?? `${head}。`
+  return `${shortName}的景氣循環度是百分位 ${Math.round(value)}${sector ? `；${sector.name} ${sector.companies} 家的中位數是 ${Math.round(sector.median)}` : ''}。`
 }
 
-// 頁面的表：每一項底下是它看的兩個數字（這家公司的數字與各自的百分位），讀者看得出每一項的百分位怎麼來。句子照數據中台核對過的寫法：
-// 獲利起伏寫平均與每年通常偏離幾個百分點（不寫「占平均的 X%」：三分之一的公司十年平均是負的或接近 0，那個比例沒有意義）；高點回落兩支各寫
-// 自己的高點、低點（不一定同一季）；同業連動的同業是同產業「其他公司的中位數」；重資產寫全名
-export interface CyclicalityMeasure { text: string, percentile: number | null }
+// 頁面的表：每一項底下是它看的兩個數字，各有自己的百分位，讀者看得出每一項的百分位怎麼來。一列一個短名稱、一個數字（同全站手機表格：
+// 數字在欄位裡、名稱只寫一次），日期、平均、最高最低不寫進格子：句子在手機上一格折成三四行（2026-11-29，同上）。名稱照數據中台核對過的：
+// 獲利起伏寫每年通常偏離趨勢線幾個百分點（不寫「占平均的 X%」：三分之一的公司十年平均是負的或接近 0）；營收寫「近四季合計」；同業連動的
+// 同業是同產業「其他公司」的中位數，數字是相關係數（寫在那一項的標題）；重資產寫全名
+export interface CyclicalityMeasure { label: string, value: string, percentile: number | null }
 export interface CyclicalityRow extends CyclicalityItem { note: string, measures: CyclicalityMeasure[] }
 
-function marginMeasure(name: string, margin: CyclicalityMargin | null | undefined): CyclicalityMeasure[] {
-  const [mean, ser] = [num(margin?.mean), num(margin?.ser)]
-  return mean === null || ser === null ? [] : [{ text: `年度${name}平均 ${rate(mean)}，每年通常偏離趨勢線 ${fixed2(ser)} 個百分點`, percentile: num(margin?.percentile) }]
+const marginMeasure = (label: string, margin: CyclicalityMargin | null | undefined): CyclicalityMeasure[] => {
+  const ser = num(margin?.ser)
+  return ser === null ? [] : [{ label, value: `${fixed2(ser)} 個百分點`, percentile: num(margin?.percentile) }]
 }
 
 export function cyclicalityRows(breakdown: CyclicalityBreakdown | null | undefined, names: Record<string, { name: string }>): CyclicalityRow[] {
   const { profitSwing, peakDecline, peerComovement, heavyAssets } = breakdown ?? {}
-  const revenue = peakDecline?.revenue
-  const margin = peakDecline?.operatingMargin
-  const [drawdown, decline] = [num(revenue?.drawdownPct), num(margin?.declinePp)]
+  const [drawdown, decline] = [num(peakDecline?.revenue?.drawdownPct), num(peakDecline?.operatingMargin?.declinePp)]
   const sectorName = names[peerComovement?.sectorCode ?? '']?.name ?? '同產業'
   const [sectorCorrelation, marketCorrelation, peers] = [num(peerComovement?.sector?.correlation), num(peerComovement?.market?.correlation), num(peerComovement?.sector?.peers)]
   const [ratio, swing] = [num(heavyAssets?.ratio), num(heavyAssets?.turnover?.swingPct)]
-  const [highest, lowest] = [heavyAssets?.turnover?.highest, heavyAssets?.turnover?.lowest]
   const measures: Record<CyclicalityItem['key'], { note: string, measures: CyclicalityMeasure[] }> = {
     profitSwing: {
-      note: profitSwing?.fromYear && profitSwing.toYear ? `${profitSwing.fromYear}～${profitSwing.toYear} 年` : '',
-      measures: [...marginMeasure('營業利益率', profitSwing?.operatingMargin), ...marginMeasure('毛利率', profitSwing?.grossMargin)]
+      note: '',
+      measures: [...marginMeasure('營業利益率偏離趨勢', profitSwing?.operatingMargin), ...marginMeasure('毛利率偏離趨勢', profitSwing?.grossMargin)]
     },
     peakDecline: {
       note: '',
       measures: [
-        ...(drawdown === null ? [] : [{
-          text: revenue?.peak && revenue.trough && drawdown > 0
-            ? `近四季合計營收從 ${formatMoney(revenue.peak.value * 1000)}（${quarterText(revenue.peak)}）跌到 ${formatMoney(revenue.trough.value * 1000)}（${quarterText(revenue.trough)}），跌 ${rate(drawdown)}`
-            : '近四季合計營收沒有從高點跌下來過',
-          percentile: num(revenue?.percentile)
-        }]),
-        ...(decline === null ? [] : [{
-          text: margin?.peak && margin.trough && decline > 0
-            ? `近四季營業利益率從 ${rate(margin.peak.value)}（${quarterText(margin.peak)}）掉到 ${rate(margin.trough.value)}（${quarterText(margin.trough)}），少 ${fixed2(decline)} 個百分點`
-            : '近四季營業利益率沒有從高點掉下來過',
-          percentile: num(margin?.percentile)
-        }])
+        ...(drawdown === null ? [] : [{ label: '近四季合計營收跌幅', value: drawdown > 0 ? rate(drawdown) : '沒有跌過', percentile: num(peakDecline?.revenue?.percentile) }]),
+        ...(decline === null ? [] : [{ label: '近四季營業利益率降幅', value: decline > 0 ? `${fixed2(decline)} 個百分點` : '沒有降過', percentile: num(peakDecline?.operatingMargin?.percentile) }])
       ]
     },
     peerComovement: {
-      note: `${peerComovement?.months ? `近 ${peerComovement.months} 個月，` : ''}近三個月營收的年增率`,
+      note: '相關係數',
       measures: [
-        ...(sectorCorrelation === null ? [] : [{ text: `跟${sectorName}其他${peers === null ? '' : ` ${peers} 家`}公司中位數的相關係數 ${fixed2(sectorCorrelation)}`, percentile: num(peerComovement?.sector?.percentile) }]),
-        ...(marketCorrelation === null ? [] : [{ text: `跟全市場中位數的相關係數 ${fixed2(marketCorrelation)}`, percentile: num(peerComovement?.market?.percentile) }])
+        ...(sectorCorrelation === null ? [] : [{ label: `${sectorName}其他${peers === null ? '公司' : ` ${peers} 家`}`, value: fixed2(sectorCorrelation), percentile: num(peerComovement?.sector?.percentile) }]),
+        ...(marketCorrelation === null ? [] : [{ label: '全市場', value: fixed2(marketCorrelation), percentile: num(peerComovement?.market?.percentile) }])
       ]
     },
     heavyAssets: {
       note: '',
       measures: [
-        ...(ratio === null ? [] : [{ text: `不動產、廠房及設備占總資產 ${rate(ratio)}${heavyAssets?.fiscalYear && heavyAssets.fiscalQuarter ? `（${heavyAssets.fiscalYear} Q${heavyAssets.fiscalQuarter}）` : ''}`, percentile: num(heavyAssets?.ratioPercentile) }]),
-        ...(swing === null || !highest || !lowest ? [] : [{ text: `固定資產週轉率最低 ${fixed2(lowest.value)} 次（${lowest.fiscalYear} 年）、最高 ${fixed2(highest.value)} 次（${highest.fiscalYear} 年），高低差 ${rate(swing)}`, percentile: num(heavyAssets?.turnover?.percentile) }])
+        ...(ratio === null ? [] : [{ label: '不動產、廠房及設備占總資產', value: rate(ratio), percentile: num(heavyAssets?.ratioPercentile) }]),
+        ...(swing === null ? [] : [{ label: '固定資產週轉率高低差', value: rate(swing), percentile: num(heavyAssets?.turnover?.percentile) }])
       ]
     }
   }
   return cyclicalityItems(breakdown).map(item => ({ ...item, ...measures[item.key] }))
 }
 
-// 圖下面那一句：年度營業利益率平均多少、每年通常離趨勢線幾個百分點（就是獲利起伏量的東西；跟表格那一列同一句）
-export const cyclicalityTrendCaption = (margin: CyclicalityMargin | null | undefined): string => marginMeasure('營業利益率', margin)[0]?.text ?? ''
+// 營業利益率每年通常離趨勢線幾個百分點（迴歸標準誤）與十年平均：獲利起伏量的就是這兩個的比
+export function cyclicalityTrendNumbers(margin: CyclicalityMargin | null | undefined): { ser: string, mean: string } | null {
+  const [mean, ser] = [num(margin?.mean), num(margin?.ser)]
+  return mean === null || ser === null ? null : { ser: fixed2(ser), mean: rate(mean) }
+}
+// 卡片的圖下面那一句，窄卡片一行放得下（平均寫在個股頁）
+export function cyclicalityTrendCaption(margin: CyclicalityMargin | null | undefined): string {
+  const numbers = cyclicalityTrendNumbers(margin)
+  return numbers ? `營業利益率通常偏離趨勢線 ${numbers.ser} 個百分點` : ''
+}
 
 // 年度營業利益率的點與趨勢線（卡片與頁面同一張圖）。座標是圖面的百分比（x 由左到右、y 由上到下），線用拉伸的 SVG 畫、點與字是 HTML：
 // 卡片的高度固定、寬度不定，圖要能橫向拉開，字與圓點不能跟著變形。
