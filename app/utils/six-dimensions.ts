@@ -181,4 +181,4 @@ export function sixDimensionsAnswer(axes: (Pick<SixDimensionAxis, 'label' | 'val
 
 // 給螢幕閱讀器的一句：圖上每個軸的名稱與數字
 export const sixDimensionsAriaLabel = (shortName: string, axes: (Pick<SixDimensionAxis, 'label' | 'value'> & { nullReason?: string | null })[]): string =>
-  `${shortName}六面向雷達圖：${axes.map(axis => `${axis.label} ${percentileLabel(axis.value, axis.nullReason)}`).join('、')}`
+  `${shortName}個股輪廓雷達圖：${axes.map(axis => `${axis.label} ${percentileLabel(axis.value, axis.nullReason)}`).join('、')}`

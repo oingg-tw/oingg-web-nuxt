@@ -580,7 +580,7 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
               <SharedChartLegend :groups="SIX_DIMENSIONS_LEGEND" />
               <StockSixDimensionsRadar :axes="sixAxes" :label="sixDimensionsAriaLabel(stockShortName, sixAxes)" />
             </template>
-            <p v-else-if="sixDimensions" class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
+            <p v-else-if="sixDimensions" class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的個股輪廓資料。</p>
           </div>
         </SharedChartCard>
         <StockCyclicalityCard v-else-if="item.spec.kind === 'cyclicality' && !pageLoading('cyclicality')" :breakdown="cyclicality" :short-name="stockShortName">

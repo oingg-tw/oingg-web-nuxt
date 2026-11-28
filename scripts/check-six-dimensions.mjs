@@ -118,7 +118,7 @@ assert.equal(sixDimensionsAnswer(sample.map(item => ({ ...item, value: null })),
 // 同分時最高取前面的軸、最低也取前面的，不會同一個
 assert.equal(sixDimensionsAnswer([{ label: '成長動能', value: 80 }, { label: '價格趨勢', value: 80 }, { label: '價值型', value: 20 }, { label: '財務安全', value: 20 }], null), '六個面向裡，成長動能的百分位 80，最高；價值型的百分位 20，最低。')
 
-assert.equal(sixDimensionsAriaLabel('範例', financial), '範例六面向雷達圖：成長動能 82、價格趨勢 91、體質改善 不適用、價值型 不適用、財務安全 不適用、股東回饋 38')
-assert.equal(sixDimensionsAriaLabel('範例', sample.map(item => (item.label === '體質改善' ? { ...item, value: null, nullReason: 'missing_input' } : item))), '範例六面向雷達圖：成長動能 82、價格趨勢 91、體質改善 無法計算、價值型 23、財務安全 74、股東回饋 38')
+assert.equal(sixDimensionsAriaLabel('範例', financial), '範例個股輪廓雷達圖：成長動能 82、價格趨勢 91、體質改善 不適用、價值型 不適用、財務安全 不適用、股東回饋 38')
+assert.equal(sixDimensionsAriaLabel('範例', sample.map(item => (item.label === '體質改善' ? { ...item, value: null, nullReason: 'missing_input' } : item))), '範例個股輪廓雷達圖：成長動能 82、價格趨勢 91、體質改善 無法計算、價值型 23、財務安全 74、股東回饋 38')
 
 console.log('PASS: six dimensions')

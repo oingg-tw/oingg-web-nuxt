@@ -148,12 +148,12 @@ await scenario('先關閉：同一批不再彈出，新的主要資料失敗才�
 // 重連指南（2026-11-16）：背景分頁不排重試，回到前景立刻試一次。document.hidden 用覆寫的：無頭瀏覽器的分頁一直是前景
 // 讀不到不等於沒有資料（全站慣例）。六面向的明細在數據中台改了定義、還沒重算完時回 503（經業務中台 502，2026-11-27）：
 // 頁面與指標速覽的卡片原本都寫「目前沒有…的六面向資料」，那是 404（不在比較範圍）的說法
-await scenario('六面向讀不到：卡片留空、頁面不說「目前沒有」，寬限期後開彈窗', async ({ page, dialog }) => {
+await scenario('個股輪廓（六面向）讀不到：卡片留空、頁面不說「目前沒有」，寬限期後開彈窗', async ({ page, dialog }) => {
   await page.route('**/api/cached/stocks/2330/radar-breakdown', fail502)
   await openStock(page)
   await wait(2_500)
   const card = await page.locator('.stock-quick-view-page__six').first().innerText()
-  expect(card.trim() === '', `指標速覽的六面向卡片寫了：${card.trim()}`)
+  expect(card.trim() === '', `指標速覽的個股輪廓卡片寫了：${card.trim()}`)
   await clientNavigate(page, '/stock/2330/six-dimensions')
   await page.waitForURL('**/six-dimensions', { timeout: 30_000 })
   await wait(2_000)

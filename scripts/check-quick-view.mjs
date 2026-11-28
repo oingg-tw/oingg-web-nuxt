@@ -15,7 +15,7 @@ const baseUrl = process.env.QUICK_VIEW_CHECK_URL ?? 'http://localhost:3000'
 // 每種 kind 一支，列名同指標目錄（STOCK_METRIC_INDEX）。一次最多釘 12 支，所以分兩批
 const BATCHES = [
   ['本益比', '每股盈餘', 'ROE', '股東回饋組成', '營業費用組成', '現金殖利率', '月營收', '杜邦分析', '淨值從哪來', '財報三率', '償債能力比率', '現金循環的組成'],
-  ['淨值組成', '流動資產組成', '非流動資產組成', '負債組成', '現金流量的組成', '近期新聞', '六面向', '景氣循環度']
+  ['淨值組成', '流動資產組成', '非流動資產組成', '負債組成', '現金流量的組成', '近期新聞', '個股輪廓', '景氣循環度']
 ]
 const TABLE_ONLY = ['填權填息', '三大財務報表', '資產負債表', '損益表', '現金流量表']
 
@@ -124,9 +124,9 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
   const cards = page.locator('.stock-quick-view-page__grid > *')
   const titleOf = index => cards.nth(index).locator('h3 a').textContent().then(text => text?.trim()).catch(() => '')
   expect(code, '預設第一張是基本資料', await waitFor(async () => (await titleOf(0)) === '基本資料'))
-  expect(code, '預設第二張是六面向', (await titleOf(1)) === '六面向')
+  expect(code, '預設第二張是個股輪廓（六面向）', (await titleOf(1)) === '個股輪廓')
   expect(code, '基本資料卡 8 列', await waitFor(async () => (await cards.nth(0).locator('.fact-list__item').count()) === 8))
-  expect(code, '六面向畫出雷達圖', await waitFor(async () => hasChart(cards.nth(1))))
+  expect(code, '個股輪廓畫出雷達圖', await waitFor(async () => hasChart(cards.nth(1))))
   await waitFor(async () => hasChart(cards.nth(2)))
   const heights = await page.evaluate(() => {
     const three = [...document.querySelectorAll('.stock-quick-view-page__grid > *')].slice(0, 3)
@@ -135,7 +135,7 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
     for (const card of three) card.style.alignSelf = ''
     return sizes
   })
-  expect(code, '基本資料、六面向不比圖表卡高', heights[0] <= heights[2] && heights[1] <= heights[2], heights.join(' / '))
+  expect(code, '基本資料、個股輪廓不比圖表卡高', heights[0] <= heights[2] && heights[1] <= heights[2], heights.join(' / '))
   // 六面向卡片的軸名在手機上不黏在一起（2026-11-27：卡片的圖只有 188px 寬，軸名那一列跟圖一樣寬時三個四個字的軸名放不下，
   // 「股東回饋」緊接著「成長動能」）。量字本身佔的範圍：同一列的兩個軸名至少隔 4px。金控只畫適用的三個面向，是三角形
   //（2026-11-28，使用者：「雷達圖要是只有三個面向解釋就改成三角形吧」）
@@ -158,7 +158,7 @@ for (const { code, needChart } of [{ code: '2330', needChart: true }, { code: '2
       }
       return { count: names.length, pairs }
     })
-    expect(code, `${width} 寬：六面向卡片的 ${axisCount} 個軸名不黏在一起`, touching.count === axisCount && touching.pairs.length === 0, touching.pairs.join('、') || `${touching.count} 個軸名`)
+    expect(code, `${width} 寬：個股輪廓卡片的 ${axisCount} 個軸名不黏在一起`, touching.count === axisCount && touching.pairs.length === 0, touching.pairs.join('、') || `${touching.count} 個軸名`)
   }
   await page.setViewportSize({ width: 1440, height: 900 })
 
@@ -223,7 +223,7 @@ for (const width of [375, 1440]) {
   }
   await page.goto(`${baseUrl}/stock/2330`, { waitUntil: 'networkidle' })
   const first = await settle()
-  expect('2330', `${width} 寬第一次來：基本資料與六面向的高度不動`, first.slice(0, 2).every(seen => !seen.includes('→')), first.slice(0, 2).join(' / '))
+  expect('2330', `${width} 寬第一次來：基本資料與個股輪廓的高度不動`, first.slice(0, 2).every(seen => !seen.includes('→')), first.slice(0, 2).join(' / '))
   await page.reload({ waitUntil: 'networkidle' })
   const again = await settle()
   expect('2330', `${width} 寬重新整理：每張卡片的高度都不動`, again.length >= 7 && again.every(seen => !seen.includes('→')), again.join(' / '))

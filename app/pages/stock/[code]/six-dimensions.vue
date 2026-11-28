@@ -9,7 +9,9 @@ import type { RadarBreakdown } from '~/utils/six-dimensions'
 const route = useRoute()
 const code = computed(() => String(route.params.code))
 
-const TOPIC = '六面向'
+// 畫面上叫「個股輪廓」（2026-11-29，使用者：「六面向名稱有點爛，請改改」，選「個股輪廓」）：雷達圖的形狀就是這檔股票在六個面向上的輪廓。
+// 網址、程式裡的名字（six-dimensions）照舊，舊連結不會壞
+const TOPIC = '個股輪廓'
 
 const { stock, profile, stockShortName, stockPending } = useStockDetailSummary(code)
 // 六面向與型錄（組成指標的名稱、單位、選項）一起等到了才換頁：頁面沒有讀取中的樣子，資料晚到不會把版面往下推
@@ -28,9 +30,9 @@ const asOf = computed(() => data.value?.asOf ?? null)
 const emerging = computed(() => profile.value?.market === 'rotc')
 
 const answer = computed(() => {
-  if (emerging.value) return '六面向只算上市櫃公司，興櫃公司不在比較範圍裡。'
+  if (emerging.value) return '個股輪廓只算上市櫃公司，興櫃公司不在比較範圍裡。'
   if (failure.value) return ''
-  if (!data.value) return `目前沒有${stockShortName.value}的六面向資料。`
+  if (!data.value) return `目前沒有${stockShortName.value}的個股輪廓資料。`
   // 六個都算不出來：原因每個面向不一定一樣（產業不適用、歷史不夠長、不到一半有值），寫在下面的表
   return sixDimensionsAnswer(axes.value, asOf.value) ?? `${stockShortName.value}的六個面向目前都算不出來，各自的原因在下面的表。`
 })
@@ -70,14 +72,14 @@ const closingNote = computed(() => {
 })
 // 六個名稱只寫在 six-dimensions.ts（2026-11-27「價值」改叫「價值型」時，這一頁還有兩句各抄了一份）；跟著實際畫的軸走，第 5 軸換了也對
 const axisNames = computed(() => axes.value.map(axis => axis.label).join('、'))
-const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的六面向：${axisNames.value}各自在上市櫃公司裡的百分位，以及每個面向由哪些指標組成。`))
+const description = computed(() => clampDescription(`${stockShortName.value}（${code.value}）的個股輪廓：${axisNames.value}各自在上市櫃公司裡的百分位，以及每個面向由哪些指標組成。`))
 
 const { breadcrumbs } = useStockPageSeo({
   code,
   shortName: stockShortName,
   topic: TOPIC,
   // 標題至多 32 字（check-stock-pages）：六個面向的名稱寫在 description，標題只寫這一頁有什麼
-  titleKeywords: '六面向雷達圖與組成指標',
+  titleKeywords: '個股輪廓雷達圖與組成指標',
   pathSuffix: '/six-dimensions',
   stock,
   description,
@@ -91,7 +93,7 @@ const footer = computed(() => ({
   disclaimer: '百分位是統計上的位置，不代表本站對此個股之評等或投資建議。'
 }))
 const guide = computed(() => [
-  `六面向把一家公司放進全部上市櫃公司裡，看它在六件事上各排在哪裡：${axisNames.value}。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。`,
+  `個股輪廓把一家公司放進全部上市櫃公司裡，看它在六個面向上各排在哪裡：${axisNames.value}。每個面向取幾個指標，各自換成百分位之後平均，再換成全體的百分位。`,
   '百分位是位置，不是分數：0 是最低、100 是最高，同分的公司排在同一個位置。六個數字各自獨立，不能相加當成總分。',
   '一個面向的組成指標不到一半有值（剛掛牌、歷史資料還不夠長的也算）時，這個面向算不出來，圖上那一個軸不連線。金融保險業，以及用異業合併格式申報財報的公司，只看其中幾個面向：圖上只畫這幾個，其餘在表格寫「不適用」。興櫃公司不在比較範圍裡。',
   '百分位只跟同一天的上市櫃公司相比，不代表股價之後的漲跌。'
@@ -171,7 +173,7 @@ const guide = computed(() => [
       <p v-if="closingNote" class="hub-answer">{{ closingNote }}</p>
     </StockQuestionSection>
     <template #guide>
-      <StockMetricGuide id-prefix="stock-six-dimensions" :topic="TOPIC" definition-question="六面向是什麼？" :definition="guide" />
+      <StockMetricGuide id-prefix="stock-six-dimensions" :topic="TOPIC" definition-question="個股輪廓是什麼？" :definition="guide" />
     </template>
   </StockPageShell>
 </template>
