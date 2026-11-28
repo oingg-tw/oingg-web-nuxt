@@ -48,6 +48,8 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily
   // 股權分散表（2026-11-22，持有人結構頁）：MOPS 一年一期，一天的快取就夠。內部人申報轉讓（同日，/insider-transfers）：兩所每天出表，一小時
   { pattern: /^stocks\/\d{4}\/shareholder-distribution$/, ttl: 'daily' },
   { pattern: /^stocks\/\d{4}\/insider-transfers$/, ttl: 'hourly' },
+  // 裁罰、違反申報規定與經營權異動（2026-11-28，基本資料頁那一段）：兩所每天收一次名單，一小時
+  { pattern: /^stocks\/\d{4}\/regulatory-events$/, ttl: 'hourly' },
   // 六面向的個股明細（2026-11-27，/six-dimensions 與指標速覽預設的雷達圖卡片；業務中台照轉數據中台的 radar-breakdown，沒有參數）：
   // 數據中台每批收尾重算一次，一小時。興櫃與不在母體的是 404（not_in_radar_universe），不快取
   { pattern: /^stocks\/\d{4}\/radar-breakdown$/, ttl: 'hourly' },
