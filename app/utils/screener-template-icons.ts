@@ -7,18 +7,27 @@ import type { ColumnPresetTemplate } from '~/composables/screener/useScreenerCol
 // 也要同一份「先比穩定 key、再退回中文名關鍵字」的範本→圖示對應（同 ScreenerIndicatorPickerBody 的 iconForCategory）；三份會漂，
 // 兩份已經漂了。
 
-// GET /screener/templates' own `category` field (大師策略/量化因子/台股籌碼面/存股主題 as of
-// writing) — a new category added server-side just falls back to the generic Collection default
-// below, no code change needed.
+// 範本分類的圖示。普通股的 category 是業務中台給的，2026-11-26 起是六種投資風格（0035）；後四個是 ETF 與特別股篩選自己的範本分類
+//（useEtfSource、usePreferredSource）。這張表原本列的是 2026-09 的舊分類（大師策略、量化因子、台股籌碼面、存股主題），改成投資風格後一個都
+// 對不上：新增篩選的分類格子全是同一個預設圖示，訪客挑選器 12 組裡 5 組也是（2026-11-28 改）。不認得的分類照舊用預設圖示，開發時在主控台
+// 提醒：上游改分類名稱時這張表要跟著改
 const FILTER_TEMPLATE_CATEGORY_ICONS: Record<string, Component> = {
-  大師策略: Trophy,
-  量化因子: DataAnalysis,
-  台股籌碼面: Histogram,
-  存股主題: Coin
+  價值型: Money,
+  成長型: TrendCharts,
+  股利型: Coin,
+  品質型: CircleCheck,
+  趨勢型: Odometer,
+  防禦型: Umbrella,
+  基金類型: PieChart,
+  主動或被動: DataAnalysis,
+  股息: Coin,
+  條款: Key
 }
 
 export function filterTemplateCategoryIcon(category: string): Component {
-  return FILTER_TEMPLATE_CATEGORY_ICONS[category] ?? Collection
+  const icon = FILTER_TEMPLATE_CATEGORY_ICONS[category]
+  if (!icon && import.meta.dev) console.warn(`[screener-templates] no icon mapped for category "${category}" — add one in screener-template-icons.ts`)
+  return icon ?? Collection
 }
 
 // Per-template icon, distinct from the category grid above — real design gap fixed 2026-09-11
@@ -43,9 +52,8 @@ const FILTER_TEMPLATE_NAME_KEYWORDS: { pattern: RegExp; icon: Component }[] = [
 ]
 
 export function filterTemplateIcon(template: ScreenerTemplate): Component {
-  const byName = FILTER_TEMPLATE_NAME_KEYWORDS.find(({ pattern }) => pattern.test(template.name))
-  if (byName) return byName.icon
-  return filterTemplateCategoryIcon(template.category)
+  // 分類先（2026-11-28）：分類現在是投資風格，同一種風格同一個圖示（挑選器照風格排，看得出哪幾組是一類）；分類不認得才看名稱的關鍵字
+  return FILTER_TEMPLATE_CATEGORY_ICONS[template.category] ?? FILTER_TEMPLATE_NAME_KEYWORDS.find(({ pattern }) => pattern.test(template.name))?.icon ?? filterTemplateCategoryIcon(template.category)
 }
 
 // Real bug fixed 2026-09-11 (see ScreenerNewColumnPresetDialog.vue's own git history) — rewritten
