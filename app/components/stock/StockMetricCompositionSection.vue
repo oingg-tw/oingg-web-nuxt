@@ -59,16 +59,10 @@ const newest = computed(() => rows.value[rows.value.length - 1] ?? null)
 // 一個顏色與一整欄，卻沒有任何一期在說話。**只在全部都是 0 時丟掉**，不是「最新一期是 0」——後者會
 // 讓一支曾經有過的成分在某一季突然從表上消失，而那一季正是它歸零的那一季，最該看得到。
 // 丟掉全 0 的成分不影響恆等式：它加了 0。
-const shown = computed(() => composition.value.shown)
-
-// 排序由最新一期的大小決定，而且圖、表、答句共用同一個順序——三個地方各自排序的話，讀者在圖上找到的
+//
+// 排序由最新一期的大小決定（metricComposition 排好的 shown），而且圖、表、答句共用同一個順序——三個地方各自排序的話，讀者在圖上找到的
 // 第一層在表上會是第三欄。第 0 層拿強調色，所以最大的那一項排第一個（見 StockStackedBarChart 的註解）。
-const order = computed<number[]>(() => {
-  const last = newest.value
-  const index = [...shown.value]
-  if (!last) return index
-  return index.sort((a, b) => Math.abs(last.parts[b]!) - Math.abs(last.parts[a]!))
-})
+const order = computed(() => composition.value.shown)
 
 const numberText = (value: number): string => `${formatSignificantDigits(value, 4)}${unit.value}`
 

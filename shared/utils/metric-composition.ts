@@ -34,7 +34,8 @@ export function compositionRow(input: CompositionInput): CompositionResult | nul
 
 // 一支指標的組成頁畫不畫得成（StockMetricCompositionSection 的圖與表、那一頁的 noindex 與描述讀同一份）：拆得開的期別（rows）至少兩期，
 // 而且至少有一個成分不是每一期都 0（shown，成分的位置；每一期都 0 的不畫也不列）。只有一個成分有東西也畫：2615 萬海的營業費用全部是管理費用，
-// 原本要兩個成分以上，那一頁整段不畫、是空白的（2026-11-28）。unsplit 是合計有值、拆不開的期別，圖上畫成「未拆解」
+// 原本要兩個成分以上，那一頁整段不畫、是空白的（2026-11-28）。unsplit 是合計有值、拆不開的期別，圖上畫成「未拆解」。
+// shown 照最新一期由大到小排：圖、表、答句與描述共用同一個順序，各自排的話讀者在圖上找到的第一層在表上會是第三欄
 interface CompositionCells { values: Record<string, { value: number | null } | null | undefined> }
 export function metricComposition<T extends CompositionCells>(entries: T[], parentCode: string, partCodes: string[], negatedPartCodes: string[] = []) {
   const rows: (CompositionResult & { entry: T })[] = []
@@ -50,7 +51,8 @@ export function metricComposition<T extends CompositionCells>(entries: T[], pare
     if (row) rows.push({ entry, ...row })
     else if (entry.values[parentCode]?.value != null) unsplit.push(entry)
   }
-  const shown = partCodes.map((_, i) => i).filter(i => rows.some(row => row.parts[i] !== 0))
+  const last = rows.at(-1)
+  const shown = partCodes.map((_, i) => i).filter(i => rows.some(row => row.parts[i] !== 0)).sort((a, b) => Math.abs(last!.parts[b]!) - Math.abs(last!.parts[a]!))
   return { rows, shown, unsplit, usable: rows.length >= 2 && shown.length >= 1 }
 }
 

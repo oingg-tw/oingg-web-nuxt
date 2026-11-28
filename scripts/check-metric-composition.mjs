@@ -72,6 +72,8 @@ assert.equal(wanHai.usable, true)
 assert.deepEqual(wanHai.shown, [1], '只有管理費用有東西，每一期都 0 的不列')
 assert.equal(wanHai.rows.length, 4)
 assert.equal(wanHai.unsplit.length, 3, '合計有值、拆不開的三期畫成未拆解')
+// 有東西的成分照最新一期由大到小排（2330 2026Q2：研發 10.4、管理 3.15、推銷 0.69；減損每一期都 0 不列），圖、表、答句、描述同一個順序
+assert.deepEqual(metricComposition([opexEntry(13.9, [0.7, 3.1, 10.1, 0]), opexEntry(14.24, [0.69, 3.15, 10.4, 0])], 'total', opexCodes).shown, [2, 1, 0])
 // 2618 長榮航：每一期都只申報合計 → 畫不成；合計自己沒有值的期別不算未拆解
 const evaAir = metricComposition([opexEntry(1.2, none), opexEntry(1.3, none), opexEntry(null, none)], 'total', opexCodes)
 assert.equal(evaAir.usable, false)

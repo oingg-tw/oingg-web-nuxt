@@ -84,10 +84,12 @@ const unsplitNote = computed(() => {
   const count = composition.value.unsplit.length
   return composition.value.usable && count ? `近 ${count + composition.value.rows.length} 期有 ${count} 期拆不出來，圖上畫成「未拆解」${unsplitText.value ? `：${unsplitText.value}` : '。'}` : ''
 })
-// 描述只列這一檔真的有的成分：原本七項全列（一般公司也列銀行的三項），超過長度從中間截斷
-const description = computed(() => clampDescription(!composition.value.usable
-  ? `${stockShortName.value}（${code.value}）：${emptyText.value}`
-  : `${stockShortName.value}（${code.value}）的${valueTopic}由${composition.value.shown.map(i => partNames.value[i]).join('、')}組成：逐期列出各項的數值與占比，資料整理自公開資訊觀測站的財務報表。`))
+// 描述只寫這一檔真的有的成分，最大的兩項加「等 N 項」（同答句）：原本每一項都列（一般公司也列銀行的三項），超過長度從清單中間截斷
+const description = computed(() => {
+  if (!composition.value.usable) return clampDescription(`${stockShortName.value}（${code.value}）：${emptyText.value}`)
+  const names = composition.value.shown.map(i => partNames.value[i])
+  return clampDescription(`${stockShortName.value}（${code.value}）的${valueTopic}由${names.slice(0, 2).join('、')}${names.length > 2 ? `等 ${names.length} 項` : ''}組成：逐期列出各項的數值與占比，資料整理自公開資訊觀測站的財務報表。`)
+})
 const sectorCode = computed(() => profile.value?.sectorCode ?? null)
 const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic: props.topic, titleKeywords: props.titleKeywords, pathSuffix: props.pathSuffix, stock, summary, description, noindex, sectorCode })
 </script>
