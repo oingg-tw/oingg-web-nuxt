@@ -284,7 +284,7 @@ export type QuickViewChart =
   | { kind: 'river'; river: 'pe' | 'pb' | 'ps' }
   | { kind: 'metric'; metricCode: string; holdingMetricCode?: string; bankOnly?: string; topic: string; timeframe: 'TTM' | 'Q' | 'FY'; partCodes?: string[]; negatedPartCodes?: string[]; partOthers?: Record<string, string>; compareMetricCode?: string; rightMetricCode?: string; rightMetricBar?: boolean }
   | { kind: 'balance'; part: 'current' | 'noncurrent' | 'debt' | 'bankAssets' | 'equity' | 'intangible' }
-  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' | 'six-dimensions' }
+  | { kind: 'dividend' | 'monthly-revenue' | 'monthly-revenue-growth' | 'dupont' | 'book-value-flow' | 'margins' | 'solvency' | 'cash-cycle' | 'cash-flow' | 'profile' | 'holders' | 'news' | 'six-dimensions' | 'cyclicality' }
 
 // 組成頁的圖＝母項的互動卡片加上成分，StockMetricCompositionPage 畫的就是這張
 function compositionChart(parentSlug: string): QuickViewChart {
@@ -299,6 +299,8 @@ const RELATIONSHIP_PAGES: Record<string, { topic: string; chart?: QuickViewChart
   profile: { topic: '基本資料', chart: { kind: 'profile' } },
   // 六面向（2026-11-27，使用者：「指標速覽 會是雷達圖」「雷達圖放進預設」）：卡片就是那一頁的雷達圖（StockSixDimensionsRadar）
   'six-dimensions': { topic: '六面向', chart: { kind: 'six-dimensions' } },
+  // 景氣循環度（2026-11-28）：位置條、四項特徵的百分位、年度營業利益率與趨勢線（StockCyclicalityCard）；能釘，不在預設裡
+  cyclicality: { topic: '景氣循環度', chart: { kind: 'cyclicality' } },
   // 持有人結構（2026-11-12）：集保股權分散的堆疊柱，跟那一頁同一張圖
   holders: { topic: '持有人結構', chart: { kind: 'holders' } },
   // 近期新聞（2026-11-16，使用者選「先不放預設，只做成可以釘」）：不是圖，是最新 5 則標題的卡片（StockNewsCard），跟基本資料一樣能釘

@@ -56,7 +56,7 @@ export const TAG_RULES: { keys: TraitKey[]; label: string; rule: string; needsMa
   { keys: ['roe'], label: '高 ROE', rule: 'ROE ≥ 大盤＋5 個百分點', needsMarket: true, test: (own, market) => own >= market + 5 },
   { keys: ['revenueGrowth'], label: '高成長', rule: '營收成長率 ≥ 大盤＋10 個百分點', needsMarket: true, test: (own, market) => own >= market + 10 },
   // 景氣循環型 2026-11-05 先隱藏（使用者：「先註解隱藏，因為我懷疑現在的頁面有問題」）：這條只看營收波動，高速成長的公司一樣踩得到，數據中台的驗證名單 34 家
-  // 循環股只標到 4 家。數據中台的景氣循環度上線、持股標籤有自己的門檻後換掉這條，不是原樣打開
+  // 循環股只標到 4 家。數據中台的景氣循環度 2026-11-28 上線，但只給位置、刻意不訂切點（CLAUDE.md 景氣循環度那一列），所以這條繼續藏著，不是原樣打開
   // { keys: ['revenueYoyVolatility'], label: '景氣循環型', rule: '營收年增率波動 ≥ 大盤的 1.5 倍', needsMarket: true, test: (own, market) => own >= market * 1.5 },
   // 規模、風格與前三大用固定門檻：大盤的大型約七成、前三大約 45%，風格欄則是台積電所在的均衡欄占六成
   { keys: ['largeCapPct'], label: '中小型為主', rule: '大型股占比 ≤ 50%', needsMarket: false, test: own => own <= 50 },

@@ -53,6 +53,9 @@ const ALLOW_LIST: { pattern: RegExp; ttl: 'minute' | 'quote' | 'hourly' | 'daily
   // 六面向的個股明細（2026-11-27，/six-dimensions 與指標速覽預設的雷達圖卡片；業務中台照轉數據中台的 radar-breakdown，沒有參數）：
   // 數據中台每批收尾重算一次，一小時。興櫃與不在母體的是 404（not_in_radar_universe），不快取
   { pattern: /^stocks\/\d{4}\/radar-breakdown$/, ttl: 'hourly' },
+  // 景氣循環度的個股明細（2026-11-28，/cyclicality 與指標速覽可以釘的卡片；業務中台照轉數據中台的 cyclicality-breakdown，沒有參數）：
+  // 月營收或季報那一批跑完才重算，一小時。興櫃與不在母體的是 404（not_in_cyclicality_universe），不快取
+  { pattern: /^stocks\/\d{4}\/cyclicality-breakdown$/, ttl: 'hourly' },
   // 應收帳款帳齡（同日，/receivables-aging）：一季一份財報附註，一天的快取就夠
   { pattern: /^stocks\/\d{4}\/receivables-aging$/, ttl: 'daily' },
   // 減資（2026-11-24，股本變化年增率頁）：includeUpcoming 列已公告、還沒恢復買賣的，公告跟得上要一小時

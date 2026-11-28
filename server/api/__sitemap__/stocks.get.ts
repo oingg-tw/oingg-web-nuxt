@@ -43,7 +43,9 @@
 // /institutional-trades（三大法人）is not listed: only 上櫃 has a source, and every 上市 page is noindex.
 // /six-dimensions（六面向）joined 2026-11-27 once 數據中台's first values were in: its population is the listed and OTC common stocks, the same
 // 1,987 companies this file lists (興櫃 is already left out below); a company with no value yet is noindex on its page.
-const INDEXABLE_SUFFIXES = ['', '/profile', '/six-dimensions', '/holders', '/announcements', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/receivables-aging', '/guarantees', '/investments', '/margin-trading', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/non-operating-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
+// /cyclicality（景氣循環度）joined 2026-11-28: the same population; about four in five have a score (1,566 of 1,987 on 數據中台's v4), and the rest
+// (金融保險業、建材營造業、異業合併格式, or fewer than 8 years of reports) are noindex on their page.
+const INDEXABLE_SUFFIXES = ['', '/profile', '/six-dimensions', '/cyclicality', '/holders', '/announcements', '/dividend', '/dividend-fill', '/monthly-revenue', '/monthly-revenue-growth', '/margins', '/solvency', '/cash-cycle', '/receivables-aging', '/guarantees', '/investments', '/margin-trading', '/equity-source', '/equity-composition', '/cash-flow-composition', '/operating-expense-composition', '/non-operating-composition', '/shareholder-yield-composition', '/current-asset-composition', '/non-current-asset-composition', '/intangible-assets', '/debt-composition', '/financial-statements', '/balance-sheet', '/income-statement', '/cash-flow-statement']
 
 // The METRIC_PAGES entries that are indexable RIGHT NOW. A metric page self-noindexes when its
 // catalog `description` is null (StockMetricDetailPage.vue's own `noindex` computed), and listing

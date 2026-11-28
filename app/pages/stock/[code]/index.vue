@@ -13,6 +13,7 @@ import type { StockSeriesResponse } from '#shared/types/stock-series'
 import type { ShareholdingDistribution } from '#shared/types/screener-detail'
 import type { StockNewsResponse } from '#shared/types/stock-news'
 import type { RadarBreakdown } from '~/utils/six-dimensions'
+import type { CyclicalityBreakdown } from '~/utils/cyclicality'
 import type { RiverCellsByTimeframe, RiverLatest, RiverMissing } from '#shared/types/stock-metric-page'
 import type { RiverKind } from '#shared/utils/metric-pages'
 import type { BalanceCompositionKind } from '#shared/utils/balance-composition'
@@ -189,10 +190,11 @@ const nameOf = (metricCode: string) => {
   return metric ? (metric.nameSuffix ? `${metric.nameSuffix} ${metric.name}` : metric.name) : undefined
 }
 // 標題後面接最新數值（2026-10-07「速覽 卡片 左上角的 後面 請放上數值」），跟表格同一份 /screener/values
-// 興櫃沒有六面向（只算上市櫃）：那張卡片不畫，伺服器先畫的佔位也沒有，不會先留一塊再消失
+// 興櫃沒有六面向與景氣循環度（只算上市櫃）：那兩張卡片不畫，伺服器先畫的佔位也沒有，不會先留一塊再消失
+const LISTED_ONLY_KINDS: ReadonlySet<string> = new Set(['six-dimensions', 'cyclicality'])
 const charts = computed(() => rows.value.flatMap(row => {
   const spec = quickViewChartOf(row.slug)
-  return spec && !(spec.kind === 'six-dimensions' && profile.value?.market === 'rotc') ? [{ ...row, spec }] : []
+  return spec && !(LISTED_ONLY_KINDS.has(spec.kind) && profile.value?.market === 'rotc') ? [{ ...row, spec }] : []
 }))
 
 // 每張卡片讀取中的高度（2026-11-28）：佔位原本一律照「控制列 44＋間距 8＋圖 320」畫，但卡片畫好之後高矮不一（手機上控制列折成兩列、
@@ -202,12 +204,13 @@ const charts = computed(() => rows.value.flatMap(row => {
 // 高度不同，各記一份（n、w）；只留現在釘選的那幾張
 type HeightHints = { n?: Record<string, number>, w?: Record<string, number> }
 const heightHints = useCookie<HeightHints | null>('layout-hint-quick-view', { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
-// 預設的內容區高度（含上下內距 24；窄、寬）：圖卡是控制列 32＋間距 12＋圖 320；基本資料 8 列各 2.75rem；六面向與近期新聞是它們自己的
-// 最小高度（.stock-quick-view-page__six、StockNewsCard 的 .news-card）；現金殖利率的控制列下面少 4，窄卡片上圖例另外佔 80（兩個固定的圖例）。
+// 預設的內容區高度（含上下內距 24；窄、寬）：圖卡是控制列 32＋間距 12＋圖 320；基本資料 8 列各 2.75rem；六面向、近期新聞與景氣循環度是它們自己的
+// 最小高度（.stock-quick-view-page__six、StockNewsCard 的 .news-card、StockCyclicalityCard 的 .cycle-card）；現金殖利率的控制列下面少 4，窄卡片上圖例另外佔 80（兩個固定的圖例）。
 // 其他折線圖的圖例折幾行看指標名稱，預設猜不準，第一次來會動一次、之後照記下來的
 const BODY_DEFAULTS: Partial<Record<QuickViewChart['kind'], [string, string]>> = {
   'profile': ['calc(8 * 2.75rem + 24px)', 'calc(8 * 2.75rem + 24px)'],
   'six-dimensions': ['396px', '384px'],
+  'cyclicality': ['396px', '384px'],
   'news': ['396px', '384px'],
   'dividend': ['464px', '384px']
 }
@@ -335,10 +338,16 @@ const PAGE_DATA: Record<Exclude<QuickViewChart['kind'], 'river' | 'metric' | 'pr
   'cash-cycle': 'series?page=cash-cycle',
   'holders': 'holders',
   'news': 'news',
-  // 六面向（2026-11-27）不在 /api/stock 底下：數據中台算好的個股明細經快取轉發讀，跟那一頁同一支（pageUrl）
-  'six-dimensions': 'radar-breakdown'
+  // 六面向（2026-11-27）與景氣循環度（11-28）不在 /api/stock 底下：數據中台算好的個股明細經快取轉發讀，跟那一頁同一支（pageUrl）
+  'six-dimensions': 'radar-breakdown',
+  'cyclicality': 'cyclicality-breakdown'
 }
-const pageUrl = (kind: keyof typeof PAGE_DATA) => (kind === 'six-dimensions' ? `/api/cached/stocks/${code.value}/${PAGE_DATA[kind]}` : `/api/stock/${code.value}/${PAGE_DATA[kind]}`)
+const pageUrl = (kind: keyof typeof PAGE_DATA) => (LISTED_ONLY_KINDS.has(kind) ? `/api/cached/stocks/${code.value}/${PAGE_DATA[kind]}` : `/api/stock/${code.value}/${PAGE_DATA[kind]}`)
+// 這兩張的 404 是查無資料（不在比較範圍），當成讀到了、沒有值：卡片才分得出「沒有」與讀不到（讀不到留空，見下面 loadedEmpty）
+const NOT_FOUND: Partial<Record<keyof typeof PAGE_DATA, unknown>> = {
+  'six-dimensions': { asOf: null, axes: [] },
+  'cyclicality': { value: null, nullReason: 'not_in_universe' }
+}
 const pinnedKinds = computed(() => new Set(pinnedSlugs.value.map(slug => quickViewChartOf(slug)?.kind)))
 const pageData = new Map<string, Ref<unknown>>()
 const pageStatus = new Map<string, Ref<string>>()
@@ -347,11 +356,10 @@ function usePageData<T>(kind: keyof typeof PAGE_DATA) {
     () => `quick-view-${kind}-${code.value}`,
     async () => {
       if (!pinnedKinds.value.has(kind)) return null
-      // 興櫃沒有六面向（上游一律 404），卡片也不畫：不問
-      if (kind === 'six-dimensions' && profile.value?.market === 'rotc') return null
+      // 興櫃沒有六面向與景氣循環度（上游一律 404），卡片也不畫：不問
+      if (LISTED_ONLY_KINDS.has(kind) && profile.value?.market === 'rotc') return null
       const response = await $fetch<T>(pageUrl(kind), { retry: 0, timeout: BUSINESS_REQUEST_TIMEOUT_MS })
-        // 六面向的 404 是查無資料（不在比較範圍），當成讀到了、沒有軸：卡片才分得出「目前沒有」與讀不到（讀不到留空，見下面 loadedEmpty）
-        .catch(error => (kind === 'six-dimensions' && error?.statusCode === 404 ? { asOf: null, axes: [] } as T : null))
+        .catch(error => (error?.statusCode === 404 && NOT_FOUND[kind] ? NOT_FOUND[kind] as T : null))
       // 上游讀不到時伺服器回 200、series 或某個群組是 null（各頁當讀取失敗處理，見 margins.vue 的 readFailed）：這裡同樣當成沒讀到
       const partial = response as { series?: unknown; groups?: Record<string, unknown> } | null
       return partial?.series === null || Object.values(partial?.groups ?? {}).includes(null) ? null : response
@@ -382,6 +390,9 @@ const newsData = usePageData<StockNewsResponse>('news')
 const sixDimensions = usePageData<RadarBreakdown>('six-dimensions')
 const sixAxes = computed(() => sixDimensionAxes(sixDimensions.value))
 const sixHasValues = computed(() => sixAxes.value.some(axis => axis.value !== null))
+// 景氣循環度（2026-11-28，能釘、不在預設）：標題後面接百分位（同其他指標卡片接最新數值），卡片自己畫位置條、四項與趨勢圖
+const cyclicality = usePageData<CyclicalityBreakdown>('cyclicality')
+const cyclicalityHead = computed(() => (typeof cyclicality.value?.value === 'number' ? `百分位 ${Math.round(cyclicality.value.value)}` : ''))
 // 金融業的資產負債表不分流動與非流動，那兩塊沒有可畫的期別：落到下面的空卡，不要整格消失
 const hasBalanceRows = (part: BalanceCompositionKind) => !!balanceComposition.value?.periods.some(period => pickBalanceComposition(part, period))
 const cashCycleEntry = computed(() => latestCashCycleEntry(cashCycleSeries.value?.groups?.TTM_CYCLE_20?.entries ?? []))
@@ -571,6 +582,9 @@ const { breadcrumbs } = useStockPageSeo({ code, shortName: stockShortName, topic
             <p v-else-if="sixDimensions" class="stock-quick-view-page__chart-empty">目前沒有{{ stockShortName }}的六面向資料。</p>
           </div>
         </SharedChartCard>
+        <StockCyclicalityCard v-else-if="item.spec.kind === 'cyclicality' && !pageLoading('cyclicality')" :breakdown="cyclicality" :short-name="stockShortName">
+          <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="cyclicalityHead" @remove="removeRow(item.slug, item.label)" /></template>
+        </StockCyclicalityCard>
         <SharedChartCard v-else>
           <template #header><StockQuickViewChartHead :to="item.to" :label="item.label" :value="valueText(item.field, item.slug)" @remove="removeRow(item.slug, item.label)" /></template>
           <p v-if="loadedEmpty(item.spec.kind)" class="stock-quick-view-page__chart-empty">目前沒有這張圖的資料。</p>

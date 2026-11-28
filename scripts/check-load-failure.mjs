@@ -162,6 +162,28 @@ await scenario('六面向讀不到：卡片留空、頁面不說「目前沒有�
   await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 6_000 })
 })
 
+// 景氣循環度（2026-11-28）同六面向：讀不到（上游重算中的 502）不寫 404 那句「不在比較範圍裡」，也不寫沒有分數的原因。卡片不在預設裡，先釘
+await scenario('景氣循環度讀不到：卡片留空、頁面不說「不在比較範圍」，寬限期後開彈窗', async ({ page, dialog }) => {
+  await page.route('**/api/cached/stocks/2330/cyclicality-breakdown', fail502)
+  await openStock(page)
+  await page.getByRole('button', { name: '加入指標' }).click()
+  const picker = page.getByRole('dialog', { name: '加入指標' })
+  await picker.waitFor()
+  await picker.getByRole('button', { name: /^景氣循環度$/ }).click()
+  await page.keyboard.press('Escape')
+  await picker.waitFor({ state: 'hidden' })
+  await wait(2_500)
+  const card = await page.locator('.stock-quick-view-page__cell[data-slug="cyclicality"] .el-card__body').innerText()
+  expect(card.trim() === '', `指標速覽的景氣循環度卡片寫了：${card.trim()}`)
+  await clientNavigate(page, '/stock/2330/cyclicality')
+  await page.waitForURL('**/cyclicality', { timeout: 30_000 })
+  await wait(2_000)
+  // 只看第一段：頁尾的定義本來就寫「興櫃公司不在比較範圍裡」
+  const first = await page.locator('#stock-cyclicality').innerText()
+  expect(!first.includes('不在比較範圍') && !first.includes('算不出景氣循環度'), `頁面在讀不到的時候寫了沒有分數的句子：${first.replace(/\s+/g, ' ').slice(0, 80)}`)
+  await dialog.waitFor({ state: 'visible', timeout: GRACE_MS + 6_000 })
+})
+
 const setHidden = (page, hidden) => page.evaluate((isHidden) => {
   if (isHidden) {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true })

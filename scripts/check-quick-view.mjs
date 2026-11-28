@@ -15,7 +15,7 @@ const baseUrl = process.env.QUICK_VIEW_CHECK_URL ?? 'http://localhost:3000'
 // 每種 kind 一支，列名同指標目錄（STOCK_METRIC_INDEX）。一次最多釘 12 支，所以分兩批
 const BATCHES = [
   ['本益比', '每股盈餘', 'ROE', '股東回饋組成', '營業費用組成', '現金殖利率', '月營收', '杜邦分析', '淨值從哪來', '財報三率', '償債能力比率', '現金循環的組成'],
-  ['淨值組成', '流動資產組成', '非流動資產組成', '負債組成', '現金流量的組成', '近期新聞', '六面向']
+  ['淨值組成', '流動資產組成', '非流動資產組成', '負債組成', '現金流量的組成', '近期新聞', '六面向', '景氣循環度']
 ]
 const TABLE_ONLY = ['填權填息', '三大財務報表', '資產負債表', '損益表', '現金流量表']
 
@@ -45,8 +45,9 @@ const cardOf = (page, label) => page.locator('.stock-quick-view-page__grid > *')
 // 圖進到畫面附近才畫（SharedChart，2026-10-23）：先捲到卡片，跟讀者看到的方式一樣
 async function hasChart(card) {
   await card.scrollIntoViewIfNeeded().catch(() => {})
-  // 近期新聞（2026-11-16 起能釘）不是圖：有新聞列表就算畫出來了。六面向（2026-11-27）是自己畫的雷達圖：有連線就算
-  return (await card.locator('[role="img"] svg path').count()) >= 3 || (await card.locator('.cctl__seg').count()) > 0 || (await card.locator('.news-card__item').count()) > 0 || (await card.locator('.six-radar__line').count()) > 0
+  // 近期新聞（2026-11-16 起能釘）不是圖：有新聞列表就算畫出來了。六面向（2026-11-27）是自己畫的雷達圖：有連線就算。
+  // 景氣循環度（2026-11-28）是自己畫的點與趨勢線：有年度的點就算
+  return (await card.locator('[role="img"] svg path').count()) >= 3 || (await card.locator('.cctl__seg').count()) > 0 || (await card.locator('.news-card__item').count()) > 0 || (await card.locator('.six-radar__line').count()) > 0 || (await card.locator('.cycle-trend__dot').count()) > 0
 }
 
 async function waitFor(check, timeout = 45000) {
